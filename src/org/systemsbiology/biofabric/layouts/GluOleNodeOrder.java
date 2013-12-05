@@ -39,7 +39,10 @@ import java.util.TreeSet;
 
 /****************************************************************************
 **
-** Generate node order attribute files for the 
+** Generate node order attribute files for the example combined Glucose/Oleate
+** network discussed in the blog post at:
+**
+** http://biofabric.blogspot.com/2013/11/i-view-yeast-to-breadth-and-height.html
 */
 
 public class GluOleNodeOrder {
