@@ -332,7 +332,6 @@ public class GluOleNodeOrder {
       return (sum);
     }
     
-    @Override
     public int compareTo(Bintag otherBT) {
       return (this.hashCode() - otherBT.hashCode());
     }    

@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2012 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,48 +17,64 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biotapestry.biofabric;
+package org.systemsbiology.biofabric.util;
 
-import java.util.prefs.Preferences;
+import java.util.SortedMap;
 
 /****************************************************************************
 **
-** This legacy class must be retained because it was used to store user 
-** preferences in Version 1.0.0
+** An interface for monitoring progress
 */
 
-public class FabricCommands {
+public interface BTProgressMonitor {
+ 
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC METHODS
+  //
+  ////////////////////////////////////////////////////////////////////////////
 
   /***************************************************************************
   **
-  ** Preferences are stored by package. 
-  */ 
-    
-  public static void setPreference(String key, String val) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);
-    prefs.put(key, val);
-    return;
-  }    
+  ** set total
+  */
+  
+  public void setTotal(int total);  
   
   /***************************************************************************
   **
-  ** Preferences are stored by package.
-  */ 
-    
-  public static String getPreference(String key) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);    
-    String retval = prefs.get(key, null);
-    return (retval);
-  } 
+  ** Get total
+  */
   
+  public int getTotal();
   
   /***************************************************************************
   **
-  ** Never instantiate
-  */ 
+  ** Callback
+  */
+  
+  public boolean updateProgress(int done);
+  
+  /***************************************************************************
+  **
+  ** Callback
+  */
+  
+  public boolean updateRankings(SortedMap chartVals);
     
-  private FabricCommands() {
-    // Never instantiate
-    throw new UnsupportedOperationException();
-  }
+  /***************************************************************************
+  **
+  ** Callback
+  */
+  
+  public boolean keepGoing();  
+  
+
+  /***************************************************************************
+  **
+  ** Get progress
+  */  
+  
+  public int getProgress();  
+
 }

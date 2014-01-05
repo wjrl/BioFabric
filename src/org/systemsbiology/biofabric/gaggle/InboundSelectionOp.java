@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2011 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,48 +17,50 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biotapestry.biofabric;
+package org.systemsbiology.biofabric.gaggle;
 
-import java.util.prefs.Preferences;
+import org.systemsbiology.biofabric.app.BioFabricWindow;
+import org.systemsbiology.biofabric.gaggle.SelectionSupport.SelectionsForSpecies;
+import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 
 /****************************************************************************
 **
-** This legacy class must be retained because it was used to store user 
-** preferences in Version 1.0.0
+** Inbound selections
 */
 
-public class FabricCommands {
+public class InboundSelectionOp extends InboundGaggleOp {
+
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PRIVATE INSTANCE VARIABLES
+  //
+  ////////////////////////////////////////////////////////////////////////////
+
+  private SelectionSupport.SelectionsForSpecies sfs_;
+   
+  /***************************************************************************
+  **
+  ** Create the op - called on RMI thread
+  */
+
+  public InboundSelectionOp(BioFabricWindow bfw, SelectionSupport.SelectionsForSpecies sfs) {
+    super(bfw);
+    sfs_ = sfs;
+    return;
+  }
 
   /***************************************************************************
   **
-  ** Preferences are stored by package. 
-  */ 
-    
-  public static void setPreference(String key, String val) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);
-    prefs.put(key, val);
+  ** Execute the op - called on AWT thread
+  */
+
+  public void executeOp() {
+    BioFabricPanel bfp = bfw_.getFabricPanel();
+    if (sfs_.selections.isEmpty()) {
+      bfp.clearSelections();
+    } else {
+      bfp.selectFromGaggle(sfs_);
+    }
     return;
   }    
-  
-  /***************************************************************************
-  **
-  ** Preferences are stored by package.
-  */ 
-    
-  public static String getPreference(String key) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);    
-    String retval = prefs.get(key, null);
-    return (retval);
-  } 
-  
-  
-  /***************************************************************************
-  **
-  ** Never instantiate
-  */ 
-    
-  private FabricCommands() {
-    // Never instantiate
-    throw new UnsupportedOperationException();
-  }
 }
