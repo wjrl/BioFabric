@@ -20,9 +20,9 @@
 package org.systemsbiology.biotapestry.biofabric;
 
 /****************************************************************************
-**
-** A Class
-*/
+ * *
+ * * A Class
+ */
 
 public class FabricLink implements Cloneable, Comparable {
   private String src_;
@@ -45,16 +45,16 @@ public class FabricLink implements Cloneable, Comparable {
   public FabricLink(String src, String trg, String relation, boolean isShadow) {
     this(src, trg, relation, isShadow, null);
   }
-    
+
   public FabricLink flipped() {
     if (isFeedback()) {
       throw new IllegalStateException();
     }
-    return (new FabricLink(trg_, src_, relation_, isShadow_, directed_)); 
+    return (new FabricLink(trg_, src_, relation_, isShadow_, directed_));
   }
   
   public boolean directionFrozen() {
-    return (directed_ != null); 
+    return (directed_ != null);
   }
   
   public void installDirection(Boolean isDirected) {
@@ -64,15 +64,15 @@ public class FabricLink implements Cloneable, Comparable {
     directed_ = isDirected;
     return;
   }
-    
+
   public Object clone() {
     try {
       return (super.clone());
     } catch (CloneNotSupportedException cnse) {
       throw new IllegalStateException();
     }
-  }    
-   
+  }
+
   public boolean isShadow() {
     return (isShadow_);
   }
@@ -88,32 +88,36 @@ public class FabricLink implements Cloneable, Comparable {
 
   public String getSrc() {
     return (src_);
-  } 
-     
+  }
+
+  public String getRelation() {
+    return (relation_);
+  }
+
   public AugRelation getAugRelation() {
     return (new AugRelation(relation_, isShadow_));
-  } 
+  }
   
   public boolean isDirected() {
     if (directed_ == null) {
-      throw new IllegalStateException(); 
-    }  
+      throw new IllegalStateException();
+    }
     return (directed_.booleanValue());
-  } 
-    
+  }
+
   public boolean isFeedback() {
     return (src_.equals(trg_));
-  } 
-   
+  }
+
   public int hashCode() {
-    return (src_.hashCode() + trg_.hashCode() + relation_.hashCode() + ((isShadow_) ? 17 : 31) + 
+    return (src_.hashCode() + trg_.hashCode() + relation_.hashCode() + ((isShadow_) ? 17 : 31) +
             ((directed_ == null) ? 0 : directed_.hashCode()));
   }
 
   public String toString() {
-    return ("src = " + src_ + " trg = " + trg_ + "rel = " + relation_ + " directed_ = " + directed_ + " isShadow_ = " + isShadow_);
+    return ("src = " + src_ + " trg = " + trg_ + " rel = " + relation_ + " directed_ = " + directed_ + " isShadow_ = " + isShadow_);
   }
- 
+
   public String toDisplayString() {
     StringBuffer buf = new StringBuffer();
     buf.append(src_);
@@ -123,7 +127,7 @@ public class FabricLink implements Cloneable, Comparable {
     }
     buf.append("(");
     buf.append(relation_);
-    buf.append(")");  
+    buf.append(")");
     buf.append('\u2192');  // For bidirectional '\u2194'
     buf.append(trg_);
     return (buf.toString());
@@ -143,23 +147,23 @@ public class FabricLink implements Cloneable, Comparable {
     buf.append(trg_);
     return (buf.toString());
   }
-   
-  public boolean equals(Object other) {    
+
+  public boolean equals(Object other) {
     if (other == null) {
       return (false);
     }
     if (other == this) {
       return (true);
     }
-    if (!(other instanceof FabricLink)) {
+    if (! (other instanceof FabricLink)) {
       return (false);
     }
-    FabricLink otherLink = (FabricLink)other;
-  
-    if (!this.src_.equals(otherLink.src_)) {
+    FabricLink otherLink = (FabricLink) other;
+
+    if (! this.src_.equals(otherLink.src_)) {
       return (false);
     }
-    if (!this.trg_.equals(otherLink.trg_)) {
+    if (! this.trg_.equals(otherLink.trg_)) {
       return (false);
     }
     
@@ -167,17 +171,17 @@ public class FabricLink implements Cloneable, Comparable {
       return (false);
     }
     
-    if (!this.relation_.equals(otherLink.relation_)) {
+    if (! this.relation_.equals(otherLink.relation_)) {
       return (false);
     }
     
     if (this.directed_ == null) {
       return (otherLink.directed_ == null);
-    }   
-       
+    }
+
     return (this.directed_.equals(otherLink.directed_));
-  }  
- 
+  }
+
   public boolean synonymous(FabricLink other) {
     if (this.equals(other)) {
       return (true);
@@ -185,70 +189,70 @@ public class FabricLink implements Cloneable, Comparable {
     if (this.isDirected() || other.isDirected()) {
       return (false);
     }
-    if (!this.relation_.equals(other.relation_)) {
+    if (! this.relation_.equals(other.relation_)) {
       return (false);
     }
     if (this.isShadow_ != other.isShadow_) {
       return (false);
-    }    
-    if (!this.src_.equals(other.trg_)) {
+    }
+    if (! this.src_.equals(other.trg_)) {
       return (false);
     }
     return (this.trg_.equals(other.src_));
   }
-   
-   public boolean shadowPair(FabricLink other) {
+
+  public boolean shadowPair(FabricLink other) {
     if (this.equals(other)) {
       return (false);
     }
-    if (!this.src_.equals(other.src_)) {
+    if (! this.src_.equals(other.src_)) {
       return (false);
     }
-    if (!this.trg_.equals(other.trg_)) {
+    if (! this.trg_.equals(other.trg_)) {
       return (false);
-    }   
-    if (!this.relation_.equals(other.relation_)) {
+    }
+    if (! this.relation_.equals(other.relation_)) {
       return (false);
     }
     
     if (this.directed_ == null) {
       if (other.directed_ != null) {
-        return (false); 
+        return (false);
       }
-    } else if (!this.directed_.equals(other.directed_)) {
+    } else if (! this.directed_.equals(other.directed_)) {
       return (false);
     }
     if (this.isShadow_ == other.isShadow_) {
       return (false);
     }
-    return (true);   
+    return (true);
   }
 
   public int compareTo(Object o) {
     if (this.equals(o)) {
       return (0);
     }
-    FabricLink otherLink = (FabricLink)o;   
+    FabricLink otherLink = (FabricLink) o;
 
-    if (!this.src_.equals(otherLink.src_)) {
+    if (! this.src_.equals(otherLink.src_)) {
       return (this.src_.compareToIgnoreCase(otherLink.src_));
-    }    
-    if (!this.trg_.equals(otherLink.trg_)) {
+    }
+    if (! this.trg_.equals(otherLink.trg_)) {
       return (this.trg_.compareToIgnoreCase(otherLink.trg_));
     }
     if (this.isShadow_ != otherLink.isShadow_) {
-      return ((this.isShadow_) ? -1 : 1);
-    }   
-    if (!this.relation_.equals(otherLink.relation_)) {
+      return ((this.isShadow_) ? - 1 : 1);
+    }
+    if (! this.relation_.equals(otherLink.relation_)) {
       return (this.relation_.compareToIgnoreCase(otherLink.relation_));
     }
     throw new IllegalStateException();
   }
   
   /***************************************************************************
-  **
-  ** Augmented relation
-  */  
+   * *
+   * * Augmented relation
+   */
   
   public static class AugRelation implements Cloneable, Comparable {
     public String relation;
@@ -265,50 +269,50 @@ public class FabricLink implements Cloneable, Comparable {
       } catch (CloneNotSupportedException cnse) {
         throw new IllegalStateException();
       }
-    }   
-   
+    }
+
     public int compareTo(Object o) {
       if (this.equals(o)) {
         return (0);
       }
-      AugRelation otherAug = (AugRelation)o;   
+      AugRelation otherAug = (AugRelation) o;
 
       if (this.isShadow != otherAug.isShadow) {
-        return ((this.isShadow) ? -1 : 1);
-      }    
-      if (!this.relation.equals(otherAug.relation)) {
+        return ((this.isShadow) ? - 1 : 1);
+      }
+      if (! this.relation.equals(otherAug.relation)) {
         return (this.relation.compareToIgnoreCase(otherAug.relation));
       }
       throw new IllegalStateException();
     }
-      
-      
-    public boolean equals(Object other) {    
+
+
+    public boolean equals(Object other) {
       if (other == null) {
         return (false);
       }
       if (other == this) {
         return (true);
       }
-      if (!(other instanceof AugRelation)) {
+      if (! (other instanceof AugRelation)) {
         return (false);
       }
-      AugRelation otherAug = (AugRelation)other;
+      AugRelation otherAug = (AugRelation) other;
 
       if (this.isShadow != otherAug.isShadow) {
         return (false);
       }
-    
+
       return (this.relation.equals(otherAug.relation));
     }
-       
+
     public int hashCode() {
       return (relation.hashCode() + ((isShadow) ? 17 : 31));
     }
 
     public String toString() {
       return ("rel = " + relation + " isShadow = " + isShadow);
-    }    
+    }
   }
- 
+
 }

@@ -19,13 +19,11 @@
 
 package org.systemsbiology.biotapestry.biofabric;
 
-import java.awt.BorderLayout;
-import java.awt.CardLayout;
-import java.awt.Color;
-import java.awt.event.ActionEvent;
-import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
+import org.systemsbiology.biotapestry.util.BackgroundWorkerControlManager;
+import org.systemsbiology.biotapestry.util.ExceptionHandler;
+import org.systemsbiology.biotapestry.util.FixedJComboBox;
+import org.systemsbiology.biotapestry.util.ResourceManager;
+
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.ImageIcon;
@@ -40,17 +38,18 @@ import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
-
-import org.systemsbiology.biotapestry.util.BackgroundWorkerControlManager;
-import org.systemsbiology.biotapestry.util.ExceptionHandler;
-import org.systemsbiology.biotapestry.util.FixedJComboBox;
-import org.systemsbiology.biotapestry.util.ResourceManager;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 
 
 /****************************************************************************
-**
-** This is the BioFabric Window!
-*/
+ * *
+ * * This is the BioFabric Window!
+ */
 
 public class BioFabricWindow extends JFrame implements BackgroundWorkerControlManager {
   
@@ -59,7 +58,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
   // PRIVATE CONSTANTS
   //
   //////////////////////////////////////////////////////////////////////////// 
-   
+
   private BioFabricPanel cp_;
   private BioFabricApplication bfa_;
   private FabricMagnifyingTool fmt_;
@@ -84,7 +83,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
   // PRIVATE INSTANCE MEMBERS
   //
   ////////////////////////////////////////////////////////////////////////////
-   
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTRUCTORS
@@ -92,19 +91,19 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
   ////////////////////////////////////////////////////////////////////////////
 
   /***************************************************************************
-  **
-  ** Constructor
-  */
+   * *
+   * * Constructor
+   */
 
   public BioFabricWindow(Map args, BioFabricApplication bfa, boolean isMain) {
     super((isMain) ? "BioFabric" : "BioFabric: Selected Submodel View");
-    Boolean doGag = (Boolean)args.get("doGaggle");
+    Boolean doGag = (Boolean) args.get("doGaggle");
     doGaggle_ = (doGag != null) && doGag.booleanValue();
     bfa_ = bfa;
     isMain_ = isMain;
     actionMap_ = new HashMap();
   }
-    
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
@@ -112,9 +111,9 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
   ////////////////////////////////////////////////////////////////////////////
 
   /****************************************************************************
-  **
-  ** disable
-  */  
+   * *
+   * * disable
+   */
   
   public void disableControls() {
     disableControls(FabricCommands.GENERAL_PUSH, true);
@@ -122,9 +121,9 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
   }
   
   /***************************************************************************
-  **
-  ** Disable the main controls
-  */ 
+   * *
+   * * Disable the main controls
+   */
   
   public void disableControls(int pushFlags, boolean displayToo) {
     FabricCommands fc = FabricCommands.getCmds((isMain_) ? "mainWindow" : "selectionWindow");
@@ -135,15 +134,15 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     nac_.getNavTool().enableControls(false);
     if (gaggleGooseCombo_ != null) {
       gaggleGooseCombo_.setEnabled(false);
-    }    
+    }
     getContentPane().validate();
     fc.pushDisabled(pushFlags);
   }
 
   /****************************************************************************
-  **
-  ** enable
-  */  
+   * *
+   * * enable
+   */
   
   public void reenableControls() {
     FabricCommands fc = FabricCommands.getCmds((isMain_) ? "mainWindow" : "selectionWindow");
@@ -151,12 +150,12 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     myCard_.show(hidingPanel_, "SUPanel");
     fmt_.enableControls(true);
     nac_.getNavTool().enableControls(true);
-  
+
     if (gaggleGooseCombo_ != null) {
       gaggleGooseCombo_.setEnabled(true);
-    }    
+    }
     
-    getContentPane().validate();    
+    getContentPane().validate();
     
     //
     // Following background thread operations, sometimes we need to
@@ -166,58 +165,58 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     // the genome is changed, which causes the time slider to lose focus EVERY 
     // TIME IT IS MOVED!!!!!!!
     
-  //  if (withFocus) {
-   //   sup_.requestFocus();
-  //  }
+    //  if (withFocus) {
+    //   sup_.requestFocus();
+    //  }
     
     return;
-  } 
+  }
   
   /****************************************************************************
-  **
-  ** also redraw....
-  */  
+   * *
+   * * also redraw....
+   */
   
   public void redraw() {
     cp_.repaint();
     return;
-  } 
-    
+  }
+
   /***************************************************************************
-  **
-  ** Get it up and running
-  */
+   * *
+   * * Get it up and running
+   */
 
   public void initWindow() {
-    JPanel cpane = (JPanel)getContentPane();
-    ((JComponent)cpane).getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke("ESCAPE"), "BioTapCancel");
-    ((JComponent)cpane).getActionMap().put("BioTapCancel", new AbstractAction() {
+    JPanel cpane = (JPanel) getContentPane();
+    ((JComponent) cpane).getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke("ESCAPE"), "BioTapCancel");
+    ((JComponent) cpane).getActionMap().put("BioTapCancel", new AbstractAction() {
       public void actionPerformed(ActionEvent e) {
         try {
-          AbstractAction aa = (AbstractAction)actionMap_.get(new Integer(FabricCommands.CANCEL));
+          AbstractAction aa = (AbstractAction) actionMap_.get(new Integer(FabricCommands.CANCEL));
           aa.actionPerformed(null);
           return;
         } catch (Exception ex) {
           ExceptionHandler.getHandler().displayException(ex);
         }
       }
-    });        
+    });
     FabricCommands fc = FabricCommands.getCmds((isMain_) ? "mainWindow" : "selectionWindow");
     JToolBar toolBar = null;
-    JMenu gaggleGooseChooseMenu = (doGaggle_) ? new JMenu(ResourceManager.getManager().getString("command.gooseChoose")) : null;    
-    gaggleGooseCombo_ = (doGaggle_) ? new FixedJComboBox(250) : null;    
+    JMenu gaggleGooseChooseMenu = (doGaggle_) ? new JMenu(ResourceManager.getManager().getString("command.gooseChoose")) : null;
+    gaggleGooseCombo_ = (doGaggle_) ? new FixedJComboBox(250) : null;
     fc.setGaggleElements(gaggleGooseChooseMenu, gaggleGooseCombo_);
-        
+
     menuInstall(fc, isMain_, gaggleGooseChooseMenu);
     toolBar = new JToolBar();
     stockActionMap(fc, isMain_);
-    stockToolBar(toolBar, isMain_, fc);   
+    stockToolBar(toolBar, isMain_, fc);
     nac_ = new BioFabricNavAndControl(isMain_, this);
     fmt_ = nac_.getFMT();
     cp_ = new BioFabricPanel(fc.getColorGenerator(), bfa_, fmt_, nac_.getOverview(), nac_.getNavTool(), isMain_, this);
     fc.setFabricPanel(cp_);
     nac_.setFabricPanel(cp_);
-    cp_.setFabricLocation(nac_.getFabricLocation());        
+    cp_.setFabricLocation(nac_.getFabricLocation());
     cp_.setBackground(Color.white);
     
     JScrollPane jsp = new JScrollPane(cp_);
@@ -225,13 +224,13 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     // GOTTA USE THIS ON MY LINUX BOX, BUT NOWHERE ELSE!!!!
     //jsp.getViewport().setScrollMode(JViewport.BACKINGSTORE_SCROLL_MODE);
     cp_.getZoomController().registerScrollPaneAndZoomTarget(jsp, cp_);
-     
+
     cpane.setLayout(new BorderLayout());
     
     if (toolBar != null) {
       cpane.add(toolBar, BorderLayout.NORTH);
     }
-        
+
     hidingPanel_ = new JPanel();
     myCard_ = new CardLayout();
     hidingPanel_.setLayout(myCard_);
@@ -240,20 +239,20 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     blankPanel.setBackground(Color.white);
     hidingPanel_.add(blankPanel, "Hiding");
 
-    cpane.add(hidingPanel_, BorderLayout.CENTER);    
+    cpane.add(hidingPanel_, BorderLayout.CENTER);
     cpane.add(nac_, BorderLayout.SOUTH);
-           
-    URL ugif = getClass().getResource("/org/systemsbiology/biotapestry/biofabric/images/BioFab16White.gif");  
+
+    URL ugif = getClass().getResource("/org/systemsbiology/biotapestry/biofabric/images/BioFab16White.gif");
     setIconImage(new ImageIcon(ugif).getImage());
     setResizable(true);
     fc.checkForChanges();
     return;
-  } 
- 
+  }
+
   /***************************************************************************
-  **
-  ** Call to let us know new gaggle commands are available
-  */    
+   * *
+   * * Call to let us know new gaggle commands are available
+   */
   
   public void haveInboundGaggleCommands() {
     FabricCommands fc = FabricCommands.getCmds((isMain_) ? "mainWindow" : "selectionWindow");
@@ -262,71 +261,71 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
   }
   
   /***************************************************************************
-  **
-  ** Call to let us know gaggle geese have changed
-  */    
+   * *
+   * * Call to let us know gaggle geese have changed
+   */
   
   public void haveGaggleGooseChange() {
     FabricCommands fc = FabricCommands.getCmds((isMain_) ? "mainWindow" : "selectionWindow");
     fc.triggerGaggleState(FabricCommands.GAGGLE_GOOSE_UPDATE, true);
     return;
-  }  
+  }
   
   /***************************************************************************
-  **
-  ** Call to let us know gaggle geese have changed
-  */    
+   * *
+   * * Call to let us know gaggle geese have changed
+   */
   
   public void connectedToGaggle(boolean connected) {
     FabricCommands fc = FabricCommands.getCmds((isMain_) ? "mainWindow" : "selectionWindow");
-    fc.getAction(FabricCommands.GAGGLE_CONNECT, true, null).setEnabled(!connected);
+    fc.getAction(FabricCommands.GAGGLE_CONNECT, true, null).setEnabled(! connected);
     fc.getAction(FabricCommands.GAGGLE_DISCONNECT, true, null).setEnabled(connected);
-    fc.getAction(FabricCommands.GAGGLE_CONNECT, false, null).setEnabled(!connected);
+    fc.getAction(FabricCommands.GAGGLE_CONNECT, false, null).setEnabled(! connected);
     fc.getAction(FabricCommands.GAGGLE_DISCONNECT, false, null).setEnabled(connected);
     return;
-  }  
+  }
 
- /***************************************************************************
-  **
-  ** Drawing core
-  */
+  /***************************************************************************
+   * *
+   * * Drawing core
+   */
   
   public void stopBufferBuilding() {
     cp_.shutdown();
     return;
   }
- 
+
   /***************************************************************************
-  **
-  ** Drawing core
-  */
+   * *
+   * * Drawing core
+   */
   
   public BioFabricApplication getApplication() {
     return (bfa_);
   }
-   
+
   /***************************************************************************
-  **
-  ** Drawing core
-  */
+   * *
+   * * Drawing core
+   */
   
   public BioFabricPanel getFabricPanel() {
     return (cp_);
   }
   
   /***************************************************************************
-  **
-  ** Drawing core
-  */
+   * *
+   * * Drawing core
+   */
   
   public BioFabricOverview getOverview() {
     return (nac_.getOverview());
   }
 
   /***************************************************************************
-  **
-  ** Menu install
-  */
+   * *
+   * * Menu install
+   */
   
   private void menuInstall(FabricCommands fc, boolean isMain, JMenu gaggleGooseChooseMenu) {
     ResourceManager rMan = ResourceManager.getManager();
@@ -342,19 +341,19 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
       fMenu.add(new JSeparator());
       JMenu importMenu = new JMenu(rMan.getString("command.importMenu"));
       importMenu.setMnemonic(rMan.getChar("command.importMenuMnem"));
-      fMenu.add(importMenu);    
-      importMenu.add(fc.getAction(FabricCommands.LOAD, false, null)); 
-      importMenu.add(fc.getAction(FabricCommands.LOAD_WITH_NODE_ATTRIBUTES, false, null));       
+      fMenu.add(importMenu);
+      importMenu.add(fc.getAction(FabricCommands.LOAD, false, null));
+      importMenu.add(fc.getAction(FabricCommands.LOAD_WITH_NODE_ATTRIBUTES, false, null));
       JMenu exportMenu = new JMenu(rMan.getString("command.exportMenu"));
       exportMenu.setMnemonic(rMan.getChar("command.exportMenuMnem"));
-      fMenu.add(exportMenu);    
-      exportMenu.add(fc.getAction(FabricCommands.EXPORT_IMAGE, false, null)); 
-      exportMenu.add(fc.getAction(FabricCommands.EXPORT_IMAGE_PUBLISH, false, null));      
+      fMenu.add(exportMenu);
+      exportMenu.add(fc.getAction(FabricCommands.EXPORT_IMAGE, false, null));
+      exportMenu.add(fc.getAction(FabricCommands.EXPORT_IMAGE_PUBLISH, false, null));
       exportMenu.add(new JSeparator());
-      exportMenu.add(fc.getAction(FabricCommands.EXPORT_NODE_ORDER, false, null)); 
-      exportMenu.add(fc.getAction(FabricCommands.EXPORT_LINK_ORDER, false, null)); 
-      exportMenu.add(new JSeparator()); 
-      exportMenu.add(fc.getAction(FabricCommands.EXPORT_SELECTED_NODES, false, null));       
+      exportMenu.add(fc.getAction(FabricCommands.EXPORT_NODE_ORDER, false, null));
+      exportMenu.add(fc.getAction(FabricCommands.EXPORT_LINK_ORDER, false, null));
+      exportMenu.add(new JSeparator());
+      exportMenu.add(fc.getAction(FabricCommands.EXPORT_SELECTED_NODES, false, null));
       fMenu.add(new JSeparator());
       fMenu.add(fc.getAction(FabricCommands.EMPTY_NETWORK, false, null));
       fMenu.add(new JSeparator());
@@ -367,17 +366,17 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
       menuBar.add(fMenu);
       JMenu exportMenu = new JMenu(rMan.getString("command.exportMenu"));
       exportMenu.setMnemonic(rMan.getChar("command.exportMenuMnem"));
-      fMenu.add(exportMenu);    
-      exportMenu.add(fc.getAction(FabricCommands.EXPORT_IMAGE, false, null)); 
+      fMenu.add(exportMenu);
+      exportMenu.add(fc.getAction(FabricCommands.EXPORT_IMAGE, false, null));
       exportMenu.add(fc.getAction(FabricCommands.EXPORT_IMAGE_PUBLISH, false, null));
       exportMenu.add(new JSeparator());
-      exportMenu.add(fc.getAction(FabricCommands.EXPORT_SELECTED_NODES, false, null));       
+      exportMenu.add(fc.getAction(FabricCommands.EXPORT_SELECTED_NODES, false, null));
     }
     
     JMenu eMenu = new JMenu(rMan.getString("command.Edit"));
     eMenu.setMnemonic(rMan.getChar("command.EditMnem"));
     menuBar.add(eMenu);
-    eMenu.add(fc.getAction(FabricCommands.CLEAR_SELECTIONS, false, null));    
+    eMenu.add(fc.getAction(FabricCommands.CLEAR_SELECTIONS, false, null));
     eMenu.add(fc.getAction(FabricCommands.ADD_FIRST_NEIGHBORS, false, null));
     if (isMain) {
       eMenu.add(fc.getAction(FabricCommands.PROPAGATE_DOWN, false, null));
@@ -386,20 +385,20 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     JCheckBoxMenuItem jcb = new JCheckBoxMenuItem(bsa);
     jcb.setSelected(true);
     eMenu.add(jcb);
-    eMenu.add(new JSeparator());    
+    eMenu.add(new JSeparator());
     eMenu.add(fc.getAction(FabricCommands.SET_DISPLAY_OPTIONS, false, null));
 
     JMenu vMenu = new JMenu(rMan.getString("command.View"));
     vMenu.setMnemonic(rMan.getChar("command.ViewMnem"));
     menuBar.add(vMenu);
-    vMenu.add(fc.getAction(FabricCommands.ZOOM_OUT, false, null));    
+    vMenu.add(fc.getAction(FabricCommands.ZOOM_OUT, false, null));
     vMenu.add(fc.getAction(FabricCommands.ZOOM_IN, false, null));
-    vMenu.add(fc.getAction(FabricCommands.ZOOM_TO_MODEL, false, null)); 
-    vMenu.add(fc.getAction(FabricCommands.ZOOM_TO_RECT, false, null));   
+    vMenu.add(fc.getAction(FabricCommands.ZOOM_TO_MODEL, false, null));
+    vMenu.add(fc.getAction(FabricCommands.ZOOM_TO_RECT, false, null));
     vMenu.add(fc.getAction(FabricCommands.ZOOM_TO_CURRENT_MOUSE, false, null));
     vMenu.add(fc.getAction(FabricCommands.ZOOM_TO_CURRENT_MAGNIFY, false, null));
     vMenu.add(fc.getAction(FabricCommands.ZOOM_TO_SELECTIONS, false, null));
-    vMenu.add(new JSeparator());    
+    vMenu.add(new JSeparator());
     vMenu.add(fc.getAction(FabricCommands.CENTER_ON_PREVIOUS_SELECTION, false, null));
     vMenu.add(fc.getAction(FabricCommands.ZOOM_TO_CURRENT_SELECTION, false, null));
     vMenu.add(fc.getAction(FabricCommands.CENTER_ON_NEXT_SELECTION, false, null));
@@ -427,7 +426,23 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     lMenu.add(fc.getAction(FabricCommands.LAYOUT_NODES_VIA_ATTRIBUTES, false, null));
     lMenu.add(fc.getAction(FabricCommands.LAYOUT_LINKS_VIA_ATTRIBUTES, false, null));
     lMenu.add(fc.getAction(FabricCommands.SET_LINK_GROUPS, false, null));
- 
+
+    // Here is the code for the temporary layout button
+    JButton button = new JButton("Layout by grouping...");
+    button.setOpaque(true);
+    button.setContentAreaFilled(false);
+    button.setBorderPainted(false);
+
+    final FabricCommands fc2 = fc;
+    button.addActionListener(new ActionListener() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        fc2.ReLayoutLinksByGroups();
+      }
+    });
+
+    lMenu.add(button);
+
     //
     // Gaggle Menu
     //
@@ -441,8 +456,8 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
       gMenu.add(fc.getAction(FabricCommands.GAGGLE_RAISE_GOOSE, false, null));
       gMenu.add(fc.getAction(FabricCommands.GAGGLE_LOWER_GOOSE, false, null));
       gMenu.add(fc.getAction(FabricCommands.GAGGLE_SEND_NETWORK, false, null));
-      gMenu.add(fc.getAction(FabricCommands.GAGGLE_SEND_NAMELIST, false, null));    
-      gMenu.add(fc.getAction(FabricCommands.GAGGLE_PROCESS_INBOUND, false, null));          
+      gMenu.add(fc.getAction(FabricCommands.GAGGLE_SEND_NAMELIST, false, null));
+      gMenu.add(fc.getAction(FabricCommands.GAGGLE_PROCESS_INBOUND, false, null));
       gMenu.add(fc.getAction(FabricCommands.GAGGLE_CONNECT, false, null));
       gMenu.add(fc.getAction(FabricCommands.GAGGLE_DISCONNECT, false, null));
     }
@@ -455,13 +470,13 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     setJMenuBar(menuBar);
     return;
   }
-    
+
   /***************************************************************************
-  **
-  ** Stock the action map
-  */ 
+   * *
+   * * Stock the action map
+   */
   
-  private void stockActionMap(FabricCommands fc, boolean isMain) {  
+  private void stockActionMap(FabricCommands fc, boolean isMain) {
     actionMap_.put(new Integer(FabricCommands.SEARCH), fc.getAction(FabricCommands.SEARCH, true, null));
     actionMap_.put(new Integer(FabricCommands.ZOOM_OUT), fc.getAction(FabricCommands.ZOOM_OUT, true, null));
     actionMap_.put(new Integer(FabricCommands.ZOOM_IN), fc.getAction(FabricCommands.ZOOM_IN, true, null));
@@ -477,7 +492,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     
     if (isMain) {
       actionMap_.put(new Integer(FabricCommands.PROPAGATE_DOWN), fc.getAction(FabricCommands.PROPAGATE_DOWN, true, null));
-    }    
+    }
     if (doGaggle_) {
       actionMap_.put(new Integer(FabricCommands.GAGGLE_GOOSE_UPDATE), fc.getAction(FabricCommands.GAGGLE_GOOSE_UPDATE, true, null));
       actionMap_.put(new Integer(FabricCommands.GAGGLE_RAISE_GOOSE), fc.getAction(FabricCommands.GAGGLE_RAISE_GOOSE, true, null));
@@ -487,57 +502,57 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
       actionMap_.put(new Integer(FabricCommands.GAGGLE_PROCESS_INBOUND), fc.getAction(FabricCommands.GAGGLE_PROCESS_INBOUND, true, null));
       actionMap_.put(new Integer(FabricCommands.GAGGLE_CONNECT), fc.getAction(FabricCommands.GAGGLE_CONNECT, true, null));
       actionMap_.put(new Integer(FabricCommands.GAGGLE_DISCONNECT), fc.getAction(FabricCommands.GAGGLE_DISCONNECT, true, null));
-    }    
+    }
     return;
   }
 
   /***************************************************************************
-  **
-  ** Stock the tool bar
-  */ 
+   * *
+   * * Stock the tool bar
+   */
   
   private void stockToolBar(JToolBar toolBar, boolean isMain, FabricCommands fc) {
-    toolBar.removeAll();  
-    toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.ZOOM_OUT)));
-    toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.ZOOM_IN)));
-    toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.ZOOM_TO_MODEL)));
-    toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.ZOOM_TO_RECT)));    
-    toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.ZOOM_TO_SELECTIONS)));
+    toolBar.removeAll();
+    toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.ZOOM_OUT)));
+    toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.ZOOM_IN)));
+    toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.ZOOM_TO_MODEL)));
+    toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.ZOOM_TO_RECT)));
+    toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.ZOOM_TO_SELECTIONS)));
     toolBar.addSeparator();
-    toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.CENTER_ON_PREVIOUS_SELECTION)));
-    toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.ZOOM_TO_CURRENT_SELECTION)));
-    toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.CENTER_ON_NEXT_SELECTION)));
-    toolBar.addSeparator();        
-    toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.ADD_FIRST_NEIGHBORS)));
-    toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.CLEAR_SELECTIONS)));
-    toolBar.addSeparator();        
-    toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.CANCEL)));
-    toolBar.addSeparator();    
-    toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.SEARCH)));
+    toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.CENTER_ON_PREVIOUS_SELECTION)));
+    toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.ZOOM_TO_CURRENT_SELECTION)));
+    toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.CENTER_ON_NEXT_SELECTION)));
+    toolBar.addSeparator();
+    toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.ADD_FIRST_NEIGHBORS)));
+    toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.CLEAR_SELECTIONS)));
+    toolBar.addSeparator();
+    toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.CANCEL)));
+    toolBar.addSeparator();
+    toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.SEARCH)));
     if (isMain) {
-      toolBar.addSeparator();  
-      toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.PROPAGATE_DOWN)));
+      toolBar.addSeparator();
+      toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.PROPAGATE_DOWN)));
     }
     
     if (doGaggle_) {
       boolean updateMcmd = false;
       toolBar.addSeparator();
       if (gaggleUpdateGooseButton_ == null) {
-        AbstractAction gaggleUpdate = (AbstractAction)actionMap_.get(new Integer(FabricCommands.GAGGLE_GOOSE_UPDATE));
+        AbstractAction gaggleUpdate = (AbstractAction) actionMap_.get(new Integer(FabricCommands.GAGGLE_GOOSE_UPDATE));
         gaggleUpdateGooseButton_ = toolBar.add(gaggleUpdate);
         updateMcmd = true;
       } else {
         toolBar.add(gaggleUpdateGooseButton_);
       }
       toolBar.add(gaggleGooseCombo_);
-      toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.GAGGLE_RAISE_GOOSE)));
-      toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.GAGGLE_LOWER_GOOSE)));
-      toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.GAGGLE_SEND_NETWORK)));
-      toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.GAGGLE_SEND_NAMELIST))); 
-      toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.GAGGLE_CONNECT))); 
-      toolBar.add((AbstractAction)actionMap_.get(new Integer(FabricCommands.GAGGLE_DISCONNECT))); 
+      toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.GAGGLE_RAISE_GOOSE)));
+      toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.GAGGLE_LOWER_GOOSE)));
+      toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.GAGGLE_SEND_NETWORK)));
+      toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.GAGGLE_SEND_NAMELIST)));
+      toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.GAGGLE_CONNECT)));
+      toolBar.add((AbstractAction) actionMap_.get(new Integer(FabricCommands.GAGGLE_DISCONNECT)));
       if (gaggleInstallButton_ == null) {
-        AbstractAction gaggleInstall = (AbstractAction)actionMap_.get(new Integer(FabricCommands.GAGGLE_PROCESS_INBOUND));
+        AbstractAction gaggleInstall = (AbstractAction) actionMap_.get(new Integer(FabricCommands.GAGGLE_PROCESS_INBOUND));
         gaggleInstallButton_ = toolBar.add(gaggleInstall);
         updateMcmd = true;
       } else {
@@ -545,8 +560,9 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
       }
       if (updateMcmd) {
         fc.setGaggleButtons(gaggleInstallButton_, gaggleUpdateGooseButton_, gaggleInstallButton_.getBackground());
-      }      
-    } 
+      }
+    }
     return;
   }
+
 }

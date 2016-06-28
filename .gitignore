@@ -3,3 +3,8 @@
 /build/
 /manifest.mf
 /nbbuild.xml
+.idea/
+BioFabric Fork.iml
+BioFabric.iml
+out/
+src/META-INF/
