@@ -40,7 +40,6 @@ import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -426,22 +425,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     lMenu.add(fc.getAction(FabricCommands.LAYOUT_NODES_VIA_ATTRIBUTES, false, null));
     lMenu.add(fc.getAction(FabricCommands.LAYOUT_LINKS_VIA_ATTRIBUTES, false, null));
     lMenu.add(fc.getAction(FabricCommands.SET_LINK_GROUPS, false, null));
-
-    // Here is the code for the temporary layout button
-    JButton button = new JButton("Layout by grouping...");
-    button.setOpaque(true);
-    button.setContentAreaFilled(false);
-    button.setBorderPainted(false);
-
-    final FabricCommands fc2 = fc;
-    button.addActionListener(new ActionListener() {
-      @Override
-      public void actionPerformed(ActionEvent e) {
-        fc2.ReLayoutLinksByGroups();
-      }
-    });
-
-    lMenu.add(button);
+    lMenu.add(fc.getAction(FabricCommands.LAYOUT_NETWORK_BY_LINK_RELATION, false, null));
 
     //
     // Gaggle Menu

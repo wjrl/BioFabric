@@ -147,6 +147,7 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
   public static final int DEFAULT_LAYOUT = 43;
   public static final int EXPORT_SELECTED_NODES = 44;
   public static final int SAVE = 45;
+  public static final int LAYOUT_NETWORK_BY_LINK_RELATION = 46;
 
   public static final int GENERAL_PUSH = 0x01;
   public static final int ALLOW_NAV_PUSH = 0x02;
@@ -562,13 +563,12 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
         case SET_LINK_GROUPS:
           retval = new SetLinkGroupsAction(withIcon);
           break;
+        case LAYOUT_NETWORK_BY_LINK_RELATION:
+          retval = new LayoutNetworkViaLinkRelationAction(withIcon);
+          break;
         case COMPARE_NODES:
           retval = new CompareNodesAction(withIcon);
           break;
-//        case LAYOUT_BY_GROUPING:
-//          retval = new LayoutLinksByGrouping();
-//          System.out.println("ORDERED_LINK_GROUPS CASE REACHED IN FABRICCOMMAND");
-//          break;
         default:
           throw new IllegalArgumentException();
       }
@@ -2291,7 +2291,7 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
    * * Command
    */
 
-  private class LayoutNodesViaAttributesAction extends LayoutViaAttributesAction { // HEREREREREERERERERERERERE!!!!!
+  private class LayoutNodesViaAttributesAction extends LayoutViaAttributesAction {
 
     LayoutNodesViaAttributesAction(boolean doIcon) {
       super(doIcon, "command.LayoutNodesViaAttributes", "command.LayoutNodesViaAttributesMnem");
@@ -2313,8 +2313,6 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
                 JOptionPane.WARNING_MESSAGE);
         return (true);
       }
-
-      System.out.println("LAYOUT NODE IN here");
 
       BioFabricNetwork.RelayoutBuildData bfn =
               new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.NODE_ATTRIB_LAYOUT);
@@ -2370,6 +2368,92 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
     protected boolean checkGuts() {
       return (bfp_.hasAModel() && (bfp_.getNetwork().getLinkCount(true) != 0));
     }
+  }
+
+  /***************************************************************************
+   * *
+   * * Command
+   */
+
+  private class LayoutNetworkViaLinkRelationAction extends ChecksForEnabled {
+
+    LayoutNetworkViaLinkRelationAction(boolean doIcon) {
+      ResourceManager rMan = ResourceManager.getManager();
+      putValue(Action.NAME, rMan.getString("command.LayoutNetworkViaLinkRelation"));
+      if (doIcon) {
+        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.LayoutNetworkViaLinkRelation"));
+      } else {
+        char mnem = rMan.getChar("command.LayoutNetworkViaLinkRelationMnem");
+        putValue(Action.MNEMONIC_KEY, new Integer(mnem));
+      }
+
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      reLayoutLinksByRelation();
+    }
+
+    /**
+     * Re-Layouts the whole network.
+     * Groups links with the same relation (suffix).
+     * The relation-groups are in alphabetic order by default.
+     */
+
+    public void reLayoutLinksByRelation() {
+      SortedMap modifiedAndChecked = bfp_.getNetwork().getExistingLinkOrder();
+
+      orderByGroups(modifiedAndChecked);
+
+      BioFabricNetwork.RelayoutBuildData bfn =
+              new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.LINK_ATTRIB_LAYOUT);
+      bfn.setLinkOrder(modifiedAndChecked);
+
+      NetworkRelayout nb = new NetworkRelayout();
+      nb.doNetworkRelayout(bfn, null);
+    }
+
+    private void orderByGroups(SortedMap modifiedAndChecked) {
+
+      Map<String, List<FabricLink>> groups = new TreeMap<String, List<FabricLink>>();
+      // String is link relation, List is all the links with that relation
+
+      for (Object obj : modifiedAndChecked.entrySet()) {
+
+        Map.Entry entry = (Map.Entry) obj;
+
+        FabricLink fl = (FabricLink) entry.getValue();
+        String rel = fl.getRelation();
+
+        if (groups.get(rel) == null) {
+          groups.put(rel, new ArrayList<FabricLink>());
+        }
+
+        groups.get(rel).add(fl);
+      }
+
+      modifiedAndChecked.clear();  // clear the original map of links
+
+      List<String> groupNames = new ArrayList<String>(groups.keySet());
+
+      int rowIdx = 0;
+      for (String rel : groupNames) {
+
+        List<FabricLink> group = groups.get(rel);
+
+        for (FabricLink fl : group) {
+          modifiedAndChecked.put(rowIdx, fl);  // fill the original in arbitrary order for now, at least.
+          rowIdx++;                            // increment the row index
+        }
+
+      }
+
+    }
+
+    protected boolean checkGuts() {
+      return bfp_.hasAModel();
+    }
+
   }
 
   /***************************************************************************
@@ -4393,61 +4477,6 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
     public Object postRunCore() {
       return (null);
     }
-  }
-
-  /**
-   * Puts each link with the other links of their same group. Right now, the groups
-   * are in arbitrary order but in the future I'll implement a button that asks
-   * the user for a file that specifies the order of the groups.
-   */
-
-  public void ReLayoutLinksByGroups() {
-    SortedMap modifiedAndChecked = bfp_.getNetwork().getExistingLinkOrder();
-
-    orderByGroups(modifiedAndChecked);
-
-    BioFabricNetwork.RelayoutBuildData bfn =
-            new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.LINK_ATTRIB_LAYOUT);
-    bfn.setLinkOrder(modifiedAndChecked);
-
-    NetworkRelayout nb = new NetworkRelayout();
-    nb.doNetworkRelayout(bfn, null);
-  }
-
-  private void orderByGroups(SortedMap modifiedAndChecked) {
-
-    Map<String, List<FabricLink>> links = new TreeMap<String, List<FabricLink>>();
-
-    for (Object obj : modifiedAndChecked.entrySet()) {
-
-      Map.Entry entry = (Map.Entry) obj;
-
-      FabricLink fl = (FabricLink) entry.getValue();
-      String rel = fl.getRelation();
-
-      if (links.get(rel) == null) {
-        links.put(rel, new ArrayList<FabricLink>());
-      }
-
-      links.get(rel).add(fl);
-    }
-
-    modifiedAndChecked.clear();  // clear the original Map of links
-
-    List<String> groups = new ArrayList<String>(links.keySet());
-
-    int rowIdx = 0;
-    for (String rel : groups) {
-
-      List<FabricLink> group = links.get(rel);
-
-      for (FabricLink fl : group) {
-        modifiedAndChecked.put(rowIdx, fl);  // fill the original in arbitrary order for now, at least.
-        rowIdx++;     // increment the row index
-      }
-
-    }
-
   }
 
 }
