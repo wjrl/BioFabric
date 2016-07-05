@@ -41,12 +41,34 @@ import org.systemsbiology.biotapestry.util.ObjChoiceContent;
 import org.systemsbiology.biotapestry.util.ResourceManager;
 import org.systemsbiology.biotapestry.util.UiUtil;
 
-import javax.swing.*;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.Box;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JComboBox;
+import javax.swing.JEditorPane;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.KeyStroke;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.filechooser.FileFilter;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Event;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
@@ -56,11 +78,25 @@ import java.awt.image.BufferedImage;
 import java.awt.print.PageFormat;
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.URL;
 import java.text.MessageFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.prefs.Preferences;
 
 /****************************************************************************
@@ -151,9 +187,6 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
 
   public static final int GENERAL_PUSH = 0x01;
   public static final int ALLOW_NAV_PUSH = 0x02;
-
-  // Temporary button for testing Link ordering and annotations
-  //  public static final int LAYOUT_BY_GROUPING = 46;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -2391,19 +2424,28 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
 
     @Override
     public void actionPerformed(ActionEvent e) {
-      reLayoutLinksByRelation();
+      BioFabricNetwork bfn = bfp_.getNetwork();
+      List currentTags = bfn.getLinkGroups();
+      ArrayList links = new ArrayList(bfn.getAllLinks(true));
+      Set allRelations = BioFabricNetwork.extractRelations(links).keySet();
+      LinkGroupingSetupDialog lgsd = new LinkGroupingSetupDialog(topWindow_, currentTags, allRelations);
+      lgsd.show();
+      if (! lgsd.haveResult()) {
+        return;
+      }
+
+      reLayoutLinksByRelation(lgsd.getGroups());
+      return;
     }
 
     /**
-     * Re-Layouts the whole network.
-     * Groups links with the same relation (suffix).
-     * The relation-groups are in alphabetic order by default.
+     * Re-Layouts the whole network after ordering by groups.
      */
 
-    public void reLayoutLinksByRelation() {
+    private void reLayoutLinksByRelation(List groupOrder) {
       SortedMap modifiedAndChecked = bfp_.getNetwork().getExistingLinkOrder();
 
-      orderByGroups(modifiedAndChecked);
+      orderByGroups(modifiedAndChecked, groupOrder);
 
       BioFabricNetwork.RelayoutBuildData bfn =
               new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.LINK_ATTRIB_LAYOUT);
@@ -2411,14 +2453,19 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
 
       NetworkRelayout nb = new NetworkRelayout();
       nb.doNetworkRelayout(bfn, null);
+      return;
     }
 
-    private void orderByGroups(SortedMap modifiedAndChecked) {
+    /**
+     * Groups links with the same relation (suffix) in the order of 'groupOrder'
+     */
+
+    private void orderByGroups(SortedMap links, List groupOrder) {
 
       Map<String, List<FabricLink>> groups = new TreeMap<String, List<FabricLink>>();
       // String is link relation, List is all the links with that relation
 
-      for (Object obj : modifiedAndChecked.entrySet()) {
+      for (Object obj : links.entrySet()) {
 
         Map.Entry entry = (Map.Entry) obj;
 
@@ -2432,22 +2479,22 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
         groups.get(rel).add(fl);
       }
 
-      modifiedAndChecked.clear();  // clear the original map of links
-
-      List<String> groupNames = new ArrayList<String>(groups.keySet());
+      links.clear();                 // clear the original map of links
 
       int rowIdx = 0;
-      for (String rel : groupNames) {
+      for (Object obj : groupOrder) {
 
-        List<FabricLink> group = groups.get(rel);
+        String relation = (String) obj;
+
+        List<FabricLink> group = groups.get(relation);
 
         for (FabricLink fl : group) {
-          modifiedAndChecked.put(rowIdx, fl);  // fill the original in arbitrary order for now, at least.
-          rowIdx++;                            // increment the row index
+          links.put(rowIdx, fl);
+          rowIdx++;                    // increment the row index
         }
 
       }
-
+      return;
     }
 
     protected boolean checkGuts() {
