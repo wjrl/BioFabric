@@ -362,18 +362,18 @@ public class WordLinkComm {
       WordLinkComm cp = new WordLinkComm();
       ArrayList allLinks = new ArrayList();
       
-      Set trueLinks = cp.readEdgeTab(new File("/users/wlongaba/collaborations/Sune/word.edgelist"));
+      Set trueLinks = cp.readEdgeTab(new File("/users/wlongaba/XXX/word.edgelist"));
 
-      Map nodeOrder = (!forSIF) ? cp.readNodeOrder(new File("/users/wlongaba/collaborations/Sune/nature09182-s4_-Conn-Nodes.noa"))
+      Map nodeOrder = (!forSIF) ? cp.readNodeOrder(new File("/users/wlongaba/XXX.noa"))
                                 : new HashMap();
 
       TreeSet forGroups = new TreeSet(new GroupRangeComparator());
-      SortedMap linkAssign = cp.readCSV(new File("/users/wlongaba/collaborations/Sune/nature09182-s4.csv"), allLinks, nodeOrder, forGroups, trueLinks);
-      cp.dumpSIF("/users/wlongaba/collaborations/Sune/nature09182-s4rl_.sif", allLinks);    
+      SortedMap linkAssign = cp.readCSV(new File("/users/wlongaba/XXX.csv"), allLinks, nodeOrder, forGroups, trueLinks);
+      cp.dumpSIF("/users/wlongaba/XXX.sif", allLinks);    
       
 
       if (!forSIF) {     
-        Map origOrder = cp.readEdgeOrder(new File("/users/wlongaba/collaborations/Sune/nature09182-s4_-Conn-Links.eda"));
+        Map origOrder = cp.readEdgeOrder(new File("/users/wlongaba/XXX.eda"));
 
         TreeMap reorder = new TreeMap(new GroupRangeComparator());      
         Iterator grit = forGroups.iterator();
@@ -407,7 +407,7 @@ public class WordLinkComm {
           }
         }
 
-        cp.dumpEDA("/users/wlongaba/collaborations/Sune/nature09182-s4rl_-Conn-Links-Grouped.eda", ordering);
+        cp.dumpEDA("/users/wlongaba/XXX-G.eda", ordering);
       }     
     } catch (IOException ioex) {
       System.err.println("IO Error " + ioex);
