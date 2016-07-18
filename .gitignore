@@ -3,3 +3,9 @@
 /build/
 /manifest.mf
 /nbbuild.xml
+/bin/
+/BioFabric-1.0.0.jar
+/installInMVN.sh
+/.project
+/.DS_Store
+/.classpath

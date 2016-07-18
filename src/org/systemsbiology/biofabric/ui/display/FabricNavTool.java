@@ -139,7 +139,6 @@ public class FabricNavTool extends JPanel {
 
   @Override
   public Dimension getPreferredSize() {
-    System.out.println("BPP " + bigPan_.getPreferredSize());
     return (bigPan_.getPreferredSize());
   }
 
@@ -283,7 +282,7 @@ public class FabricNavTool extends JPanel {
     if (tstat == null) {
       return;       
     } 
-    currTstat_ = (BioFabricPanel.TourStatus)tstat.clone();
+    currTstat_ = tstat.clone();
     syncToState();
     return;
   } 

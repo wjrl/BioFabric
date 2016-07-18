@@ -188,8 +188,10 @@ public class PopupMenuControl {
     */
   
     void prepareMenu() { 
-      String browserURL = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getBrowserURL();
-      lbn_.setEnabled(!browserURL.equals(""));
+    	FabricDisplayOptions fdo = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
+      String browserURL = fdo.getBrowserURL();
+      boolean canShow = fdo.getOfferNodeBrowser();
+      lbn_.setEnabled(canShow && !browserURL.equals(""));
       return;
     }
   }
@@ -249,12 +251,14 @@ public class PopupMenuControl {
          
     /***************************************************************************
     **
-    ** Prepare the node menu for display
+    ** Prepare the link menu for display
     */
   
     void prepareMenu() { 
-      String browserURL = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getBrowserLinkURL();
-      lbl_.setEnabled(!browserURL.equals(""));
+    	FabricDisplayOptions fdo = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
+    	boolean canShow = fdo.getOfferLinkBrowser();
+      String browserURL = fdo.getBrowserLinkURL();
+      lbl_.setEnabled(canShow && !browserURL.equals(""));
       return;
     }
   }
@@ -292,7 +296,11 @@ public class PopupMenuControl {
 
     public void actionPerformed(ActionEvent e) {
       try {
-        String browserURL = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getBrowserURL();
+      	FabricDisplayOptions fdo = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
+      	if (!fdo.getOfferNodeBrowser()) {
+      		return;
+      	}
+        String browserURL = fdo.getBrowserURL();
         if (browserURL.indexOf(FabricDisplayOptions.NODE_NAME_PLACEHOLDER) == -1) {
           return;
         }
@@ -321,7 +329,11 @@ public class PopupMenuControl {
 
     public void actionPerformed(ActionEvent e) {
       try {
-        String browserURL = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getBrowserLinkURL();
+      	FabricDisplayOptions fdo = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
+      	if (!fdo.getOfferLinkBrowser()) {
+      		return;
+      	}
+        String browserURL = fdo.getBrowserLinkURL();
         if ((browserURL.indexOf(FabricDisplayOptions.LINK_SRC_PLACEHOLDER) == -1) ||
             (browserURL.indexOf(FabricDisplayOptions.LINK_TRG_PLACEHOLDER) == -1) ||
             (browserURL.indexOf(FabricDisplayOptions.LINK_REL_PLACEHOLDER) == -1)) {

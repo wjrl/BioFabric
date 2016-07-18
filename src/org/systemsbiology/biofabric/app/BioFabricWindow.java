@@ -219,7 +219,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     cp_ = new BioFabricPanel(fc.getColorGenerator(), bfa_, fmt_, nac_.getOverview(), nac_.getNavTool(), isMain_, this);
     fc.setFabricPanel(cp_);
     nac_.setFabricPanel(cp_);
-    cp_.setFabricLocation(nac_.getFabricLocation());        
+    cp_.setFabricLocation(nac_.getFabricLocation(), nac_.getMouseOverView());        
     cp_.setBackground(Color.white);
     
     JScrollPane jsp = new JScrollPane(cp_);
@@ -384,6 +384,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
       fMenu.add(importMenu);    
       importMenu.add(fc.getAction(CommandSet.LOAD, false, null)); 
       importMenu.add(fc.getAction(CommandSet.LOAD_WITH_NODE_ATTRIBUTES, false, null));       
+      importMenu.add(fc.getAction(CommandSet.LOAD_WITH_EDGE_WEIGHTS, false, null));       
       JMenu exportMenu = new JMenu(rMan.getString("command.exportMenu"));
       exportMenu.setMnemonic(rMan.getChar("command.exportMenuMnem"));
       fMenu.add(exportMenu);    
@@ -467,6 +468,10 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     lMenu.add(fc.getAction(CommandSet.RELAYOUT_USING_SHAPE_MATCH, false, null));
     lMenu.add(fc.getAction(CommandSet.LAYOUT_NODES_VIA_ATTRIBUTES, false, null));
     lMenu.add(fc.getAction(CommandSet.LAYOUT_LINKS_VIA_ATTRIBUTES, false, null));
+    lMenu.add(fc.getAction(CommandSet.LAYOUT_VIA_NODE_CLUSTER_ASSIGN, false, null));   
+    lMenu.add(fc.getAction(CommandSet.LAYOUT_TOP_CONTROL, false, null)); 
+    lMenu.add(fc.getAction(CommandSet.HIER_DAG_LAYOUT, false, null)); 
+    lMenu.add(fc.getAction(CommandSet.WORLD_BANK_LAYOUT, false, null)); 
     lMenu.add(fc.getAction(CommandSet.SET_LINK_GROUPS, false, null));
  
     //

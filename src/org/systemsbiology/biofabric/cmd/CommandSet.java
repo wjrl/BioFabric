@@ -21,11 +21,6 @@ package org.systemsbiology.biofabric.cmd;
 
 import java.awt.Color;
 import java.awt.Dimension;
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
-import java.util.List;
-import java.util.HashMap;
 import java.awt.Event;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -37,56 +32,58 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.print.PageFormat;
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.net.URL;
 import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.Collections;
-import javax.swing.Action;
-import javax.swing.JOptionPane;
-import javax.swing.JFileChooser;
-import javax.swing.KeyStroke;
-import javax.swing.ImageIcon;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
-import java.util.SortedSet;
 import java.util.TreeMap;
-import java.util.prefs.Preferences;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.Box;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JEditorPane;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.KeyStroke;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.filechooser.FileFilter;
 
-import java.util.Properties;
-//import org.freehep.graphics2d.VectorGraphics;
-//import org.freehep.graphicsio.PageConstants;
-//import org.freehep.graphicsio.pdf.PDFGraphics2D;
-//import org.freehep.graphicsio.ps.PSGraphics2D;
-//import org.freehep.util.export.ExportDialog;
-
-
-import org.systemsbiology.biofabric.analysis.Link;
+import org.freehep.graphics2d.VectorGraphics;
+import org.freehep.graphicsio.PageConstants;
+import org.freehep.graphicsio.pdf.PDFGraphics2D;
+import org.freehep.graphicsio.ps.PSGraphics2D;
 import org.systemsbiology.biofabric.app.BioFabricApplication;
 import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.event.EventManager;
@@ -96,16 +93,15 @@ import org.systemsbiology.biofabric.gaggle.FabricGooseInterface;
 import org.systemsbiology.biofabric.gaggle.FabricGooseManager;
 import org.systemsbiology.biofabric.gaggle.InboundGaggleOp;
 import org.systemsbiology.biofabric.gaggle.SelectionSupport;
-import org.systemsbiology.biofabric.gaggle.SelectionSupport.NetworkForSpecies;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.io.FabricSIFLoader;
-import org.systemsbiology.biofabric.io.AttributeLoader.AttributeKey;
-import org.systemsbiology.biofabric.io.AttributeLoader.ReadStats;
-import org.systemsbiology.biofabric.io.AttributeLoader.StringKey;
-import org.systemsbiology.biofabric.io.FabricSIFLoader.SIFStats;
-import org.systemsbiology.biofabric.layouts.AssignedNodeClusterLayout;
-import org.systemsbiology.biofabric.layouts.ClusteredLayout;
+import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
+import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
+import org.systemsbiology.biofabric.layouts.ControlTopLayout;
+import org.systemsbiology.biofabric.layouts.DefaultLayout;
+import org.systemsbiology.biofabric.layouts.HierDAGLayout;
+import org.systemsbiology.biofabric.layouts.ProcessWorldBankCSV;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.parser.ParserClient;
@@ -113,8 +109,9 @@ import org.systemsbiology.biofabric.parser.SUParser;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.ImageExporter;
-import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager.DisplayOptionTracker;
-import org.systemsbiology.biofabric.ui.dialogs.ClusteredLayoutParamsDialog;
+import org.systemsbiology.biofabric.ui.dialogs.BreadthFirstLayoutDialog;
+import org.systemsbiology.biofabric.ui.dialogs.ClusterLayoutSetupDialog;
+import org.systemsbiology.biofabric.ui.dialogs.NodeSimilarityLayoutSetupDialog;
 import org.systemsbiology.biofabric.ui.dialogs.CompareNodesSetupDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ExportSettingsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ExportSettingsPublishDialog;
@@ -127,7 +124,6 @@ import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.ui.display.FabricMagnifyingTool;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.BackgroundWorker;
 import org.systemsbiology.biofabric.util.BackgroundWorkerClient;
 import org.systemsbiology.biofabric.util.BackgroundWorkerOwner;
@@ -229,6 +225,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public static final int PRINT_PDF                    = 47;
   public static final int SHOW_TOUR                    = 48;
   public static final int SHOW_NAV_PANEL               = 49;
+  public static final int LAYOUT_TOP_CONTROL           = 50;
+  public static final int HIER_DAG_LAYOUT              = 51;
+  public static final int WORLD_BANK_LAYOUT            = 52;
+  public static final int LOAD_WITH_EDGE_WEIGHTS       = 53;
+  
   
   
   public static final int GENERAL_PUSH   = 0x01;
@@ -368,7 +369,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       BioFabricNetwork bfn = bfp_.getNetwork();
       if (bfn != null) {
         BioFabricNetwork.PreBuiltBuildData rbd = 
-          new BioFabricNetwork.PreBuiltBuildData(bfn, BioFabricNetwork.SHADOW_LINK_CHANGE);
+          new BioFabricNetwork.PreBuiltBuildData(bfn, BioFabricNetwork.BuildMode.SHADOW_LINK_CHANGE);
         NetworkBuilder nb = new NetworkBuilder(); 
         nb.doNetworkBuild(rbd, true);
       }
@@ -529,8 +530,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           retval = new LoadXMLAction(withIcon); 
           break;
         case LOAD:
-          retval = new ImportSIFAction(withIcon); 
+          retval = new ImportSIFAction(withIcon, false); 
           break;
+        case LOAD_WITH_EDGE_WEIGHTS:
+          retval = new ImportSIFAction(withIcon, true); 
+          break;          
         case LOAD_WITH_NODE_ATTRIBUTES:
           retval = new LoadWithNodeAttributesAction(withIcon); 
           break;  
@@ -648,6 +652,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         case DEFAULT_LAYOUT:
           retval = new DefaultLayoutAction(withIcon); 
           break;
+        case HIER_DAG_LAYOUT:
+          retval = new HierDAGLayoutAction(withIcon); 
+          break;
         case RELAYOUT_USING_SHAPE_MATCH:
           retval = new LayoutViaShapeMatchAction(withIcon); 
           break;  
@@ -660,11 +667,17 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         case LAYOUT_VIA_NODE_CLUSTER_ASSIGN:
           retval = new LayoutViaNodeClusterAction(withIcon); 
           break;
+        case LAYOUT_TOP_CONTROL:
+          retval = new LayoutTopControlAction(withIcon); 
+          break;          
         case SHOW_TOUR:
           retval = new ToggleShowTourAction(withIcon); 
           break;
         case SHOW_NAV_PANEL:
           retval = new ToggleShowNavPanelAction(withIcon); 
+          break;
+        case WORLD_BANK_LAYOUT:
+          retval = new WorldBankLayoutAction(withIcon); 
           break;
         default:
           throw new IllegalArgumentException();
@@ -679,7 +692,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   ** Common load operations.  Take your pick of input sources
   */ 
     
-  private boolean loadFromSifSource(File file, Map<AttributeLoader.AttributeKey, String> nameMap) {  
+  private boolean loadFromSifSource(File file, Map<AttributeLoader.AttributeKey, String> nameMap, Integer magBins) {  
     ArrayList<FabricLink> links = new ArrayList<FabricLink>();
     HashSet<String> loneNodes = new HashSet<String>();
     HashMap<String, String> nodeNames = null;
@@ -694,12 +707,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     if (file.length() > 500000) {
       sss = new FabricSIFLoader.SIFStats();
       BackgroundFileReader br = new BackgroundFileReader();
-      br.doBackgroundSIFRead(file, links, loneNodes, nodeNames, sss);
+      br.doBackgroundSIFRead(file, links, loneNodes, nodeNames, sss, magBins);
       return (true);
     } else {
       try { 
-        sss = (new FabricSIFLoader()).readSIF(file, links, loneNodes, nodeNames); 
-        return (finishLoadFromSIFSource(file, sss, links, loneNodes));
+        sss = (new FabricSIFLoader()).readSIF(file, links, loneNodes, nodeNames, magBins); 
+        return (finishLoadFromSIFSource(file, sss, links, loneNodes, (magBins != null)));
       } catch (IOException ioe) {
         displayFileInputError(ioe);
         return (false);              
@@ -715,7 +728,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   ** Common load operations.
   */ 
     
-  private boolean finishLoadFromSIFSource(File file, FabricSIFLoader.SIFStats sss, List<FabricLink> links, Set<String> loneNodes) {
+  private boolean finishLoadFromSIFSource(File file, FabricSIFLoader.SIFStats sss, List<FabricLink> links, Set<String> loneNodes, boolean binMag) {
     ResourceManager rMan = ResourceManager.getManager();
     try {
       if (!sss.badLines.isEmpty()) {        
@@ -792,7 +805,39 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                                       JOptionPane.WARNING_MESSAGE);
       }
       
-      BioFabricNetwork.OrigBuildData bfn = new BioFabricNetwork.OrigBuildData(reducedLinks, loneNodes, colGen_, BioFabricNetwork.BUILD_FROM_SIF);
+      //
+      // Handle magnitude bins:
+      //
+      
+      if (binMag) {
+      	HashSet<FabricLink> binnedLinks = new HashSet<FabricLink>();
+        Pattern p = Pattern.compile("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?");
+        
+        Iterator<FabricLink> alit = reducedLinks.iterator();
+        while (alit.hasNext()) {
+          FabricLink nextLink = alit.next();
+          FabricLink.AugRelation rel = nextLink.getAugRelation();
+          Matcher m = p.matcher(rel.relation);
+          int magCount = 0;
+          if (m.find()) {      
+            double d = Double.parseDouble(m.group(0));
+            magCount = (int)Math.floor((Math.abs(d) * 10.0) - 5.0);
+          }
+          /*
+          for (int k = 0; k < magCount; k++) {
+        	  String suf = ":" + Integer.toString(k);
+	          FabricLink nextLink = new FabricLink(source, target, rel + suf, false);
+	        links.add(nextLink);
+	        // We never create shadow feedback links!
+	        if (!source.equals(target)) {
+	          FabricLink nextShadowLink = new FabricLink(source, target, rel + suf, true);
+	          links.add(nextShadowLink);
+	        }*/       
+        }
+      }
+      
+      BioFabricNetwork.RelayoutBuildData bfn = new BioFabricNetwork.RelayoutBuildData(reducedLinks, loneNodes, colGen_, 
+                                                                                      BioFabricNetwork.BuildMode.BUILD_FROM_SIF);
       NetworkBuilder nb = new NetworkBuilder(); 
       nb.doNetworkBuild(bfn, true);            
     } catch (OutOfMemoryError oom) {
@@ -842,7 +887,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
   boolean postXMLLoad(FabricFactory ff, String fileName) {  
     BioFabricNetwork bfn = ff.getFabricNetwork();
-    BioFabricNetwork.PreBuiltBuildData pbd = new BioFabricNetwork.PreBuiltBuildData(bfn, BioFabricNetwork.BUILD_FROM_XML);
+    BioFabricNetwork.PreBuiltBuildData pbd = new BioFabricNetwork.PreBuiltBuildData(bfn, BioFabricNetwork.BuildMode.BUILD_FROM_XML);
     NetworkBuilder nb = new NetworkBuilder(); 
     nb.doNetworkBuild(pbd, true);
     manageWindowTitle(fileName);
@@ -867,8 +912,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                                     rMan.getString("fabricRead.dupLinkTitle"),
                                     JOptionPane.WARNING_MESSAGE);
     }
-    BioFabricNetwork.OrigBuildData bfnbd = new BioFabricNetwork.OrigBuildData(reducedLinks, new HashSet<String>(singles), 
-                                                                              colGen_, BioFabricNetwork.BUILD_FROM_GAGGLE);
+    BioFabricNetwork.RelayoutBuildData bfnbd = new BioFabricNetwork.RelayoutBuildData(reducedLinks, new HashSet<String>(singles), 
+                                                                                      colGen_, BioFabricNetwork.BuildMode.BUILD_FROM_GAGGLE);
     NetworkBuilder nb = new NetworkBuilder(); 
     nb.doNetworkBuild(bfnbd, true);
     manageWindowTitle("Gaggle");
@@ -1250,104 +1295,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }  
   }
     
-  /***************************************************************************
-  ** 
-  ** Move nodes to match shapes
-  */
 
-  public Map<String, String> doReorderLayout(BioFabricNetwork bfn, 
-                                             ClusteredLayout.CRParams params,
-                                             BTProgressMonitor monitor, 
-                                             double startFrac, 
-                                             double endFrac) throws AsynchExitRequestException { 
-
-    ClusteredLayout lo = new ClusteredLayout();
-    SortedMap<Integer, SortedSet<Integer>>  connVecs = lo.getConnectionVectors(bfn);
-   
-    ClusteredLayout.ResortParams rp = (ClusteredLayout.ResortParams)params;
-    
-    List<String> ordered = new ArrayList<String>();
-    int numRows = bfn.getRowCount();
-    for (int i = 0; i < numRows; i++) {
-      ordered.add(Integer.toString(i));
-    }
-    
-    double currStart = startFrac;
-    double inc = (endFrac - startFrac) / rp.passCount;
-    double currEnd = currStart + inc;
-    
-    TreeMap<Integer, Double> rankings = new TreeMap<Integer, Double>();
-    ClusteredLayout.ClusterPrep cprep = lo.setupForResort(bfn, connVecs, ordered, rankings);
-    Double lastRank = rankings.get(rankings.lastKey());
-    
-    for (int i = 0; i < rp.passCount; i++) {
-      monitor.updateRankings(rankings);
-      List<String> nextOrdered = lo.resort(cprep, monitor, currStart, currEnd);
-      currStart = currEnd;
-      currEnd = currStart + inc;
-      cprep = lo.setupForResort(bfn, connVecs, nextOrdered, rankings);
-      Integer lastKey = rankings.lastKey();
-      Double nowRank = rankings.get(lastKey);
-      if (rp.terminateAtIncrease) {
-        if (lastRank.doubleValue() < nowRank.doubleValue()) {
-          rankings.remove(lastKey);
-          break;
-        }
-      }
-      ordered = nextOrdered;
-      lastRank = nowRank;
-    }
-    
-    monitor.updateRankings(rankings);
-    Map<String, String>  orderedNames = lo.convertOrderToMap(bfn, ordered);
-    return (orderedNames);
-  }
-  
-  /***************************************************************************
-  **
-  ** Clustered Layout guts
-  */   
-
-  public Map<String, String> doClusteredLayout(BioFabricNetwork bfn, 
-                                               ClusteredLayout.CRParams params,
-                                               BTProgressMonitor monitor, 
-                                               double startFrac, double endFrac) throws AsynchExitRequestException {   
- 
-    ClusteredLayout lo = new ClusteredLayout();
-    ClusteredLayout.ClusterParams cp = (ClusteredLayout.ClusterParams)params;
-    SortedMap<Integer, SortedSet<Integer>> connVecs = lo.getConnectionVectors(bfn);
-
-    TreeMap<Double, SortedSet<Link>> dists = new TreeMap<Double, SortedSet<Link>>(Collections.reverseOrder());
-    HashMap<String, Integer> degMag = new HashMap<String, Integer>();
-    
-    Integer highestDegree = (cp.distanceMethod == ClusteredLayout.ClusterParams.COSINES) ?
-                             lo.getCosines(connVecs, dists, degMag, bfn) :
-                             lo.getJaccard(connVecs, dists, degMag, bfn);
-    
-    ArrayList<Link> linkTrace = new ArrayList<Link>();
-    ArrayList<Integer> jumpLog = new ArrayList<Integer>();
-    List<String> ordered = lo.orderByDistanceChained(bfn, highestDegree, dists, 
-                                                     degMag, linkTrace, cp.chainLength, 
-                                                     cp.tolerance, jumpLog, monitor, startFrac, endFrac);
-    Map<String, String> orderedNames = lo.convertOrderToMap(bfn, ordered);
-    return (orderedNames);
-  }
-  
-  /***************************************************************************
-  **
-  ** Clustered Layout guts
-  */   
-
-  public void doNodeClusterLayout(BioFabricNetwork.RelayoutBuildData rbd, Map newNodeOrder, SortedMap newLinkOrder,
-                                  BTProgressMonitor monitor, 
-                                  double startFrac, double endFrac) throws AsynchExitRequestException {
-     
-    AssignedNodeClusterLayout lo = new AssignedNodeClusterLayout();
-   
-  //  Map orderedNames = lo.convertOrderToMap(bfn, ordered);
-   // return (orderedNames);
-  }
- 
   
   /***************************************************************************
   **
@@ -2428,7 +2376,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         return (true);
       }
       BioFabricNetwork.RelayoutBuildData bfn = 
-        new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.NODE_ATTRIB_LAYOUT);
+        new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.BuildMode.NODE_ATTRIB_LAYOUT);
       bfn.setNodeOrderFromAttrib(nodeAttributes);
       NetworkRelayout nb = new NetworkRelayout(); 
       nb.doNetworkRelayout(bfn, null);    
@@ -2471,7 +2419,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         return (true);
       }
       BioFabricNetwork.RelayoutBuildData bfn = 
-        new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.LINK_ATTRIB_LAYOUT);
+        new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.BuildMode.LINK_ATTRIB_LAYOUT);
       bfn.setLinkOrder(modifiedAndChecked);
       NetworkRelayout nb = new NetworkRelayout(); 
       nb.doNetworkRelayout(bfn, null);         
@@ -2565,26 +2513,23 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     protected boolean performOperation() {
-      File file = getTheFile(".noa", ".na", "AttribDirectory", "filterName.noa");
-      if (file == null) {
-        return (true);
+    	Set<String> sels = bfp_.getNodeSelections();
+      String selNode = (sels.size() == 1) ? sels.iterator().next() : null;
+    	
+    	ClusterLayoutSetupDialog clsd = new ClusterLayoutSetupDialog(topWindow_, bfp_.getNetwork(), selNode);
+      clsd.setVisible(true);      
+      if (clsd.haveResult()) {
+        NodeClusterLayout.ClusterParams params = clsd.getParams();
+        if (params.needsFile()) {
+        	if (!ClusterLayoutSetupDialog.askForFileInfo(params, CommandSet.this, bfp_.getNetwork())) {
+        		return (true);
+        	}
+        }        
+        BioFabricNetwork.RelayoutBuildData bfn = 
+          new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.BuildMode.NODE_CLUSTER_LAYOUT);
+        NetworkRelayout nb = new NetworkRelayout(); 
+        nb.doNetworkRelayout(bfn, params);
       }
-      Map<AttributeLoader.AttributeKey,String> nodeClusterAttributes = loadTheFile(file, true);
-      if (nodeClusterAttributes == null) {
-        return (true);
-      }
-      if (!bfp_.getNetwork().checkNodeClusterAssignment(nodeClusterAttributes)) { 
-        ResourceManager rMan = ResourceManager.getManager();
-        JOptionPane.showMessageDialog(topWindow_, rMan.getString("attribRead.badClusterMessage"),
-                                      rMan.getString("attribRead.badClusterMessageTitle"),
-                                      JOptionPane.WARNING_MESSAGE);
-        return (true);
-      }
-      BioFabricNetwork.RelayoutBuildData bfn = 
-        new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.NODE_CLUSTER_LAYOUT);
-      bfn.setNodeClusters(nodeClusterAttributes);
-      NetworkRelayout nb = new NetworkRelayout(); 
-      nb.doNetworkRelayout(bfn, null);    
       return (true);
     }
     
@@ -2593,8 +2538,48 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
   }      
   
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+   
+  private class LayoutTopControlAction extends BasicLayoutAction {
+     
+    private static final long serialVersionUID = 1L;
+    
+    LayoutTopControlAction(boolean doIcon) {
+      super(doIcon, "command.TopControlLayout", "command.TopControlLayoutMnem", BioFabricNetwork.BuildMode.CONTROL_TOP_LAYOUT);
+    }
+  }  
   
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+   
+  private class HierDAGLayoutAction extends BasicLayoutAction {
+     
+    private static final long serialVersionUID = 1L;
+    
+    HierDAGLayoutAction(boolean doIcon) {
+      super(doIcon, "command.HierDAGLayout", "command.HierDAGLayoutMnem", BioFabricNetwork.BuildMode.HIER_DAG_LAYOUT);
+    }
+  }
   
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+   
+  private class WorldBankLayoutAction extends BasicLayoutAction {
+     
+    private static final long serialVersionUID = 1L;
+    
+    WorldBankLayoutAction(boolean doIcon) {
+      super(doIcon, "command.WorldBankLayout", "command.WorldBankLayoutMnem", BioFabricNetwork.BuildMode.WORLD_BANK_LAYOUT);
+    }
+  }
+
   /***************************************************************************
   **
   ** Command
@@ -2619,26 +2604,68 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         
     public void actionPerformed(ActionEvent e) {
       try {
-        performOperation(null);
+        Set<String> sels = bfp_.getNodeSelections();
+        String selNode = (sels.size() == 1) ? sels.iterator().next() : null;
+        BreadthFirstLayoutDialog bfl = new BreadthFirstLayoutDialog(topWindow_, selNode, topWindow_.getFabricPanel().getNetwork());
+        bfl.setVisible(true);
+           
+        if (bfl.haveResult()) {
+          DefaultLayout.Params params = bfl.getParams();
+          BioFabricNetwork.RelayoutBuildData bfn = 
+            new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.BuildMode.DEFAULT_LAYOUT);
+          NetworkRelayout nb = new NetworkRelayout(); 
+          nb.doNetworkRelayout(bfn, params); 
+        }
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }      
       return;
     }
     
-    private boolean performOperation(Object[] args) {
-          
-      BioFabricNetwork.RelayoutBuildData bfn = 
-        new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.DEFAULT_LAYOUT);
-      NetworkRelayout nb = new NetworkRelayout(); 
-      nb.doNetworkRelayout(bfn, null);        
-      return (true);   
+    protected boolean checkGuts() {
+      return (bfp_.hasAModel() && (bfp_.getNetwork().getLinkCount(true) != 0));
+    }   
+  }
+  
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+   
+  private abstract class BasicLayoutAction extends ChecksForEnabled {
+    
+    private static final long serialVersionUID = 1L;
+    private BioFabricNetwork.BuildMode bMode_;
+    
+    BasicLayoutAction(boolean doIcon, String nameTag, String mnemTag, BioFabricNetwork.BuildMode bMode) {
+      ResourceManager rMan = ResourceManager.getManager(); 
+      putValue(Action.NAME, rMan.getString(nameTag));
+      if (doIcon) {
+        putValue(Action.SHORT_DESCRIPTION, rMan.getString(nameTag));        
+        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/FIXME24.gif");  
+        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
+      } else {
+        char mnem = rMan.getChar(mnemTag); 
+        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem)); 
+      }
+      bMode_ = bMode;
+    }
+        
+    public void actionPerformed(ActionEvent e) {
+      try {
+        BioFabricNetwork.RelayoutBuildData bfn = new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), bMode_);
+        (new NetworkRelayout()).doNetworkRelayout(bfn, null); 
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }      
+      return;
     }
     
     protected boolean checkGuts() {
       return (bfp_.hasAModel() && (bfp_.getNetwork().getLinkCount(true) != 0));
     }   
   }
+  
   
   /***************************************************************************
   **
@@ -2673,18 +2700,17 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     private boolean performOperation(Object[] args) {
           
-      ClusteredLayoutParamsDialog clpd = 
-        new ClusteredLayoutParamsDialog(topWindow_, new ClusteredLayout.ClusterParams());  
+      NodeSimilarityLayoutSetupDialog clpd = 
+        new NodeSimilarityLayoutSetupDialog(topWindow_, new NodeSimilarityLayout.ClusterParams());  
   
       clpd.setVisible(true);
       if (!clpd.haveResult()) {
         return (false);
       }
   
-      ClusteredLayout.ClusterParams result = clpd.getParams();
-      
+      NodeSimilarityLayout.ClusterParams result = clpd.getParams();     
       BioFabricNetwork.RelayoutBuildData bfn = 
-        new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.CLUSTERED_LAYOUT);
+        new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.BuildMode.CLUSTERED_LAYOUT);
       NetworkRelayout nb = new NetworkRelayout(); 
       nb.doNetworkRelayout(bfn, result);        
       return (true);   
@@ -2730,17 +2756,16 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private boolean performOperation(Object[] args) {
       
       ReorderLayoutParamsDialog clpd = 
-        new ReorderLayoutParamsDialog(topWindow_, new ClusteredLayout.ResortParams());  
+        new ReorderLayoutParamsDialog(topWindow_, new NodeSimilarityLayout.ResortParams());  
   
       clpd.setVisible(true);
       if (!clpd.haveResult()) {
         return (false);
       }
   
-      ClusteredLayout.ResortParams result = clpd.getParams();
-          
+      NodeSimilarityLayout.ResortParams result = clpd.getParams();        
       BioFabricNetwork.RelayoutBuildData bfn = 
-        new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.REORDER_LAYOUT);
+        new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.BuildMode.REORDER_LAYOUT);
       NetworkRelayout nb = new NetworkRelayout(); 
       nb.doNetworkRelayout(bfn, result);   
       return (true);   
@@ -2800,7 +2825,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       }
      
       BioFabricNetwork.RelayoutBuildData bfnd = 
-        new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.LINK_GROUP_CHANGE);
+        new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.BuildMode.LINK_GROUP_CHANGE);
+      bfnd.setLinkOrder(new TreeMap<Integer, FabricLink>());
       bfnd.setLinkGroups(newGroupings);
       NetworkRelayout nb = new NetworkRelayout(); 
       nb.doNetworkRelayout(bfnd, null);   
@@ -2820,18 +2846,20 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   private class ImportSIFAction extends ChecksForEnabled {
     
     private static final long serialVersionUID = 1L;
+    private boolean doWeights_;
     
-    ImportSIFAction(boolean doIcon) {
+    ImportSIFAction(boolean doIcon, boolean doWeights) {
       ResourceManager rMan = ResourceManager.getManager(); 
-      putValue(Action.NAME, rMan.getString("command.LoadSIF"));
+      putValue(Action.NAME, rMan.getString((doWeights) ? "command.LoadSIFWithWeights" :"command.LoadSIF"));
       if (doIcon) {
-        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.LoadSIF"));        
+        putValue(Action.SHORT_DESCRIPTION, rMan.getString((doWeights) ? "command.LoadSIFWithWeights" :"command.LoadSIF"));        
         URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/FIXME24.gif");  
         putValue(Action.SMALL_ICON, new ImageIcon(ugif));
       } else {
-        char mnem = rMan.getChar("command.LoadSIFMnem"); 
+        char mnem = rMan.getChar((doWeights) ? "command.LoadSIFWithWeightsMnem" :"command.LoadSIFMnem"); 
         putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem)); 
       }
+      doWeights_ = doWeights;
     }
     
     public void actionPerformed(ActionEvent e) {
@@ -2872,7 +2900,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           continue; 
         }
       }
-      return (loadFromSifSource(file, null));
+      Integer magBins = (doWeights_) ? Integer.valueOf(4) : null;
+      return (loadFromSifSource(file, null, magBins));
     }
   }
   
@@ -3012,7 +3041,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         return (true);
       }
  
-      return (loadFromSifSource(file, attribs));
+      return (loadFromSifSource(file, attribs, null));
     }
   }
   
@@ -3406,18 +3435,20 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
        // p.setProperty(PSGraphics2D.ORIENTATION, PageConstants.LANDSCAPE);
    //     ExportDialog export = new ExportDialog();
      //   export.showExportDialog(topWindow_, "Export view as ...", bfp_, "export");
-
-        
-        /*
+  
         
         Rectangle2D viewInWorld = bfp_.getViewInWorld();
-        Dimension viw = new Dimension((int)(viewInWorld.getWidth() / 15.0), (int)(viewInWorld.getHeight() / 15.0));     
-        VectorGraphics g = new PDFGraphics2D(new File("/Users/bill/Output2.pdf"), viw); 
+        System.out.println("VFW " + viewInWorld);
+       // Dimension viw = new Dimension((int)(viewInWorld.getWidth() / 15.0), (int)(viewInWorld.getHeight() / 15.0));     
+    //    Dimension viw = new Dimension((int)(viewInWorld.getWidth() / 10.0), (int)(viewInWorld.getHeight() / 10.0));
+         Dimension viw = new Dimension((int)(viewInWorld.getWidth() / 10.0), (int)(viewInWorld.getHeight() / 10.0));
+        System.out.println("dim " + viw);
+        VectorGraphics g = new PDFGraphics2D(new File("/Users/bill/OutputAOa.pdf"), viw); 
         g.setProperties(p); 
         g.startExport(); 
         bfp_.print(g); 
         g.endExport();
-        * */
+       
              
         // FIX ME: Needed for Win32?  Linux won't default to landscape without this?
         //PageFormat pf2 = pj.pageDialog(pf);
@@ -3633,9 +3664,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     public void actionPerformed(ActionEvent e) {
       try {
         manageWindowTitle(null);
-        BioFabricNetwork.OrigBuildData obd = new BioFabricNetwork.OrigBuildData(new HashSet<FabricLink>(), 
-                                                                                new HashSet<String>(), colGen_, 
-                                                                                BioFabricNetwork.BUILD_FROM_SIF);
+        BioFabricNetwork.RelayoutBuildData obd = new BioFabricNetwork.RelayoutBuildData(new HashSet<FabricLink>(), 
+                                                                                        new HashSet<String>(), colGen_, 
+                                                                                        BioFabricNetwork.BuildMode.BUILD_FROM_SIF);
         newModelOperations(obd, true);
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
@@ -4178,7 +4209,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       try {
         if (bfn.canRestore()) {
           BioFabricNetwork net = bfp_.getNetwork();
-          restore_ = new BioFabricNetwork.PreBuiltBuildData(net, BioFabricNetwork.BUILD_FROM_XML);
+          restore_ = new BioFabricNetwork.PreBuiltBuildData(net, BioFabricNetwork.BuildMode.BUILD_FROM_XML);
         } else {
           restore_ = null;
         }
@@ -4211,7 +4242,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       if (restore_ != null) {
         ubd = restore_;
       } else {
-        ubd = new BioFabricNetwork.OrigBuildData(new HashSet<FabricLink>(), new HashSet<String>(), colGen_, BioFabricNetwork.BUILD_FROM_SIF);
+        ubd = new BioFabricNetwork.RelayoutBuildData(new HashSet<FabricLink>(), new HashSet<String>(), colGen_, BioFabricNetwork.BuildMode.BUILD_FROM_SIF);
       }
       try {
         newModelOperations(ubd, true);
@@ -4250,20 +4281,20 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     private BioFabricNetwork.PreBuiltBuildData restore_;
        
-    public void doNetworkRelayout(BioFabricNetwork.RelayoutBuildData bfn, ClusteredLayout.CRParams result) {
-      if (bfn.canRestore()) {
+    public void doNetworkRelayout(BioFabricNetwork.RelayoutBuildData rbd, NodeSimilarityLayout.CRParams params) {
+      if (rbd.canRestore()) {
         BioFabricNetwork net = bfp_.getNetwork();
-        restore_ = new BioFabricNetwork.PreBuiltBuildData(net, BioFabricNetwork.BUILD_FROM_XML);
+        restore_ = new BioFabricNetwork.PreBuiltBuildData(net, BioFabricNetwork.BuildMode.BUILD_FROM_XML);
       } else {
         restore_ = null;
       }
 
       try {
         preLoadOperations();
-        NetworkRelayoutRunner runner = new NetworkRelayoutRunner(bfn, result);                                                                  
+        NetworkRelayoutRunner runner = new NetworkRelayoutRunner(rbd, params);                                                                  
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
                                                                  "netRelayout.waitTitle", "netRelayout.wait", null, true);
-        if (bfn.getMode() == BioFabricNetwork.REORDER_LAYOUT) {
+        if (rbd.getMode() == BioFabricNetwork.BuildMode.REORDER_LAYOUT) {
           bwc.makeSuperChart();
         }
         runner.setClient(bwc);
@@ -4291,7 +4322,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       if (restore_ != null) {
         ubd = restore_;
       } else {
-        ubd = new BioFabricNetwork.OrigBuildData(new HashSet<FabricLink>(), new HashSet<String>(), colGen_, BioFabricNetwork.BUILD_FROM_SIF);
+        ubd = new BioFabricNetwork.RelayoutBuildData(new HashSet<FabricLink>(), new HashSet<String>(), colGen_, 
+                                                     BioFabricNetwork.BuildMode.BUILD_FROM_SIF);
       }
       try {
         newModelOperations(ubd, true);
@@ -4335,14 +4367,17 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private List<FabricLink> links_; 
     private Set<String> loneNodes_;
     private FabricSIFLoader.SIFStats sss_;
+    private Integer magBins_;
      
-    public void doBackgroundSIFRead(File file, List<FabricLink> links, Set<String> loneNodes, Map<String, String> nameMap, FabricSIFLoader.SIFStats sss) {
+    public void doBackgroundSIFRead(File file, List<FabricLink> links, Set<String> loneNodes, 
+    		                            Map<String, String> nameMap, FabricSIFLoader.SIFStats sss, Integer magBins) {
       file_ = file;
       links_ = links;
       loneNodes_ = loneNodes;
       sss_ = sss;
+      magBins_ = magBins;
       try {       
-        SIFReaderRunner runner = new SIFReaderRunner(file, links, loneNodes, nameMap, sss);                                                        
+        SIFReaderRunner runner = new SIFReaderRunner(file, links, loneNodes, nameMap, sss, magBins);                                                        
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
                                                                  "fileLoad.waitTitle", "fileLoad.wait", null, false);
         runner.setClient(bwc);
@@ -4398,7 +4433,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         setCurrentXMLFile(file_);
         postXMLLoad(ff_, file_.getName());
       } else {
-        finishLoadFromSIFSource(file_, sss_, links_, loneNodes_);
+        finishLoadFromSIFSource(file_, sss_, links_, loneNodes_, (magBins_ != null));
       }
       return;
     }
@@ -4548,10 +4583,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   private class NetworkRelayoutRunner extends BackgroundWorker {
  
     private BioFabricNetwork.RelayoutBuildData rbd_;
-    private int mode_;
-    private ClusteredLayout.CRParams params_;
+    private BioFabricNetwork.BuildMode mode_;
+    private NodeSimilarityLayout.CRParams params_;
     
-    public NetworkRelayoutRunner(BioFabricNetwork.RelayoutBuildData rbd, ClusteredLayout.CRParams params) {
+    public NetworkRelayoutRunner(BioFabricNetwork.RelayoutBuildData rbd, NodeSimilarityLayout.CRParams params) {
       super("Early Result");      
       rbd_ = rbd;
       mode_ = rbd.getMode();
@@ -4561,31 +4596,94 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     public Object runCore() throws AsynchExitRequestException {
       try {            
         switch (mode_) {
-          case BioFabricNetwork.DEFAULT_LAYOUT:
-          case BioFabricNetwork.NODE_ATTRIB_LAYOUT:
-          case BioFabricNetwork.LINK_ATTRIB_LAYOUT:
-          case BioFabricNetwork.LINK_GROUP_CHANGE:
+          case DEFAULT_LAYOUT:
+            (new DefaultLayout()).doLayout(rbd_, params_);
+            break;
+          case CONTROL_TOP_LAYOUT:
+            List<String> forcedTop = new ArrayList<String>();
+           // forcedTop.add("VIM");
+          //  forcedTop.add("HSPA8");
+          //  forcedTop.add("HIV-1 Nef");
+          ////  forcedTop.add("HSPA9");
+          //  forcedTop.add("MYH10");
+          //  forcedTop.add("PACS1");
+            
+           // this has to be FORCED; the layers after the first are laid out in a crap fashion!
+            forcedTop.add("MBP1");
+forcedTop.add("FKH2");
+forcedTop.add("SWI6");
+forcedTop.add("MCM1");
+forcedTop.add("REB1");
+forcedTop.add("IXR1");
+forcedTop.add("PDR1");
+forcedTop.add("SOK2");
+forcedTop.add("RPN4");
+forcedTop.add("YRR1");
+forcedTop.add("YAP6");
+forcedTop.add("HAP4");
+forcedTop.add("MOT3");
+forcedTop.add("TYE7");
+forcedTop.add("HAC1");
+forcedTop.add("SUM1");
+forcedTop.add("STB2");
+forcedTop.add("YAP7");
+
+forcedTop.add("BAS1");
+forcedTop.add("RLM1");
+forcedTop.add("DIG1");
+forcedTop.add("CAD1");
+forcedTop.add("ASH1");
+forcedTop.add("PHD1");
+forcedTop.add("STB1");
+forcedTop.add("CIN5");
+forcedTop.add("NDD1");
+forcedTop.add("SWI4");
+forcedTop.add("PUT3");
+forcedTop.add("FKH1");
+forcedTop.add("YOX1");
+forcedTop.add("RME1");
+
+
+
+
+
+
+
+
+
+
+
+            
+            
+            
+            
+            (new ControlTopLayout()).doLayout(rbd_, forcedTop);
+            break;
+          case HIER_DAG_LAYOUT:
+            (new HierDAGLayout()).doLayout(rbd_);
+            break;
+          case WORLD_BANK_LAYOUT:
+            (new ProcessWorldBankCSV()).doLayout(rbd_);
+            break;
+          case NODE_ATTRIB_LAYOUT:
+          case LINK_ATTRIB_LAYOUT:
+          case LINK_GROUP_CHANGE:
             // previously installed....
             break;
-          case BioFabricNetwork.REORDER_LAYOUT:
-            rbd_.setNodeOrder(doReorderLayout(rbd_.bfn, params_, this, 0.0, 1.0));
+          case REORDER_LAYOUT:
+            (new NodeSimilarityLayout()).doReorderLayout(rbd_, params_, this, 0.0, 1.0);
             break;            
-          case BioFabricNetwork.CLUSTERED_LAYOUT:
-            rbd_.setNodeOrder(doClusteredLayout(rbd_.bfn, params_, this, 0.0, 1.0));
+          case CLUSTERED_LAYOUT:
+            (new NodeSimilarityLayout()).doClusteredLayout(rbd_, params_, this, 0.0, 1.0);
             break;
-          case BioFabricNetwork.NODE_CLUSTER_LAYOUT:
-            HashMap<String, String> clusterNodeOrder = new HashMap<String, String>();
-            TreeMap<Integer, FabricLink> clusterLinkOrder = new TreeMap<Integer, FabricLink>();
-            doNodeClusterLayout(rbd_, clusterNodeOrder, clusterLinkOrder, this, 0.0, 1.0);
-            rbd_.setNodeOrder(clusterNodeOrder);
-            rbd_.setLinkOrder(clusterLinkOrder);
-            break;            
-            
-          case BioFabricNetwork.SHADOW_LINK_CHANGE:
-          case BioFabricNetwork.BUILD_FOR_SUBMODEL:
-          case BioFabricNetwork.BUILD_FROM_XML:
-          case BioFabricNetwork.BUILD_FROM_SIF:
-          case BioFabricNetwork.BUILD_FROM_GAGGLE:
+          case NODE_CLUSTER_LAYOUT:
+            (new NodeClusterLayout()).orderByClusterAssignment(rbd_, params_, this, 0.0, 1.0);
+            break;                        
+          case SHADOW_LINK_CHANGE:
+          case BUILD_FOR_SUBMODEL:
+          case BUILD_FROM_XML:
+          case BUILD_FROM_SIF:
+          case BUILD_FROM_GAGGLE:
           default:
             throw new IllegalArgumentException();
         }
@@ -4672,19 +4770,22 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private Set<String> loneNodes_;
     private Map<String, String> nameMap_;
     private FabricSIFLoader.SIFStats sss_;
+    private Integer magBins_;
     
-    public SIFReaderRunner(File file, List<FabricLink> links, Set<String> loneNodes, Map<String, String> nameMap, FabricSIFLoader.SIFStats sss) {
+    public SIFReaderRunner(File file, List<FabricLink> links, Set<String> loneNodes, Map<String, String> nameMap, 
+    		                   FabricSIFLoader.SIFStats sss, Integer magBins) {
       super("Early Result");
       myFile_ = file;
       links_ = links;
       loneNodes_ = loneNodes;
       nameMap_ = nameMap;
       sss_ = sss;
+      magBins_ = magBins;
     }
     
     public Object runCore() throws AsynchExitRequestException {
       try {
-        FabricSIFLoader.SIFStats sss = (new FabricSIFLoader()).readSIF(myFile_, links_, loneNodes_, nameMap_);
+        FabricSIFLoader.SIFStats sss = (new FabricSIFLoader()).readSIF(myFile_, links_, loneNodes_, nameMap_, magBins_);
         sss_.copyInto(sss);
         return (new Boolean(true));
       } catch (IOException ioe) {

@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2012 Institute for Systems Biology 
+**    Copyright (C) 2003-2014 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,7 +17,6 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-
 package org.systemsbiology.biofabric.cmd;
 
 import java.awt.Point;
@@ -28,6 +27,8 @@ import javax.swing.JViewport;
 import java.awt.Rectangle;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.awt.event.HierarchyEvent;
+import java.awt.event.HierarchyListener;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import javax.swing.event.ChangeEvent;
@@ -120,6 +121,7 @@ public class ZoomCommandSupport {
     // Need to make view adjustments when the scroll pane size changes:
     //
     jsp.addComponentListener(new ComponentAdapter() {
+      @Override
       public void componentResized(ComponentEvent e) {
         try {
           handlePanelResize();
@@ -141,11 +143,31 @@ public class ZoomCommandSupport {
         }
       }
     };
+    
+    //
+    // Having scroll bars come and go makes the actual view extent
+    // change without any window size change: this happens with
+    // zooming, causing bug #16. Track when it comes and goes:
+    
+    HierarchyListener hChange = new HierarchyListener() {
+      public void hierarchyChanged(HierarchyEvent e) {       
+        try {
+          if ((e.getID() == HierarchyEvent.HIERARCHY_CHANGED) && 
+              ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0x00)) {
+            checkBarVisible();
+          }
+        } catch (Exception ex) {
+          ExceptionHandler.getHandler().displayException(ex);
+        }
+      }
+    };
         
     JScrollBar vsb = jsp.getVerticalScrollBar();
-    vsb.getModel().addChangeListener(barChange); 
+    vsb.getModel().addChangeListener(barChange);
+    vsb.addHierarchyListener(hChange);
     JScrollBar hsb = jsp.getHorizontalScrollBar();     
-    hsb.getModel().addChangeListener(barChange);  
+    hsb.getModel().addChangeListener(barChange); 
+    hsb.addHierarchyListener(hChange);
     return;
   }
   
@@ -783,8 +805,8 @@ public class ZoomCommandSupport {
     Dimension viewExtent = view.getExtentSize();
     Dimension viewSize = view.getViewSize(); 
 
-    int currX = (int)Math.round((currViewXFrac_ * (double)viewSize.width) - ((double)viewExtent.width / 2.0));
-    int currY = (int)Math.round((currViewYFrac_ * (double)viewSize.height) - ((double)viewExtent.height / 2.0));
+    int currX = (int)Math.round((currViewXFrac_ * viewSize.width) - (viewExtent.width / 2.0));
+    int currY = (int)Math.round((currViewYFrac_ * viewSize.height) - (viewExtent.height / 2.0));
     view.setViewPosition(doBounding(currX, currY, view));            
 
     //
@@ -806,11 +828,13 @@ public class ZoomCommandSupport {
   */ 
     
   public void trackScrollBars() { 
+    
     JViewport view = jsp_.getViewport();
     Dimension viewExtent = view.getExtentSize();
     if (currViewSize_ == null) {
       currViewSize_ = viewExtent;
     }
+    
     if (viewExtent.equals(currViewSize_)) {
       Point viewPos = view.getViewPosition();
       int currX = viewPos.x + (viewExtent.width / 2);
@@ -821,6 +845,18 @@ public class ZoomCommandSupport {
       currClipRect_ = view.getViewRect();
     }
     if (tracker_ != null) tracker_.zoomStateChanged(true);
+    return;
+  }
+  
+  /***************************************************************************
+  **
+  ** We need to know when scroll bar visibility changes, since we need to
+  ** always have an accurate read on extent size (Fixes issue #16)
+  */ 
+    
+  public void checkBarVisible() {    
+    JViewport view = jsp_.getViewport();
+    currViewSize_ = view.getExtentSize();
     return;
   }
 

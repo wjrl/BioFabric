@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2009 Institute for Systems Biology 
+**    Copyright (C) 2003-2014 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -106,6 +106,9 @@ public class CharacterEntityMapper {
   
   public static String unmapEntities(String input, boolean doSpaces) {
 
+  	if (input == null) {
+  		return (input);
+  	}
     //
     // We are only doing common conversions.  FIX ME to be more general?
     //

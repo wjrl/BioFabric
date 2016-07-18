@@ -84,6 +84,9 @@ public class PaintCache {
   private FabricColorGenerator colGen_;
   private Color superLightPink_;
   private Color superLightBlue_;
+  private Color superLightNegGray_;
+  
+  private Color[] superLightCycle_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -106,6 +109,14 @@ public class PaintCache {
     colGen_ = colGen;
     superLightPink_ = new Color(255, 244, 244);
     superLightBlue_ = new Color(244, 244, 255);
+    superLightCycle_ = new Color[6];
+    superLightCycle_[0] = new Color(244, 222, 222);
+    superLightCycle_[1] = new Color(222, 222, 244);
+    superLightCycle_[2] = new Color(222, 244, 222);
+    superLightCycle_[3] = new Color(244, 222, 244); 
+    superLightCycle_[4] = new Color(244, 244, 222);
+    superLightCycle_[5] = new Color(222, 244, 244); 
+    superLightNegGray_ = new Color(200, 200, 200);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -120,6 +131,7 @@ public class PaintCache {
   */
   
   public boolean needToPaint() {
+  	System.out.println("paint paths = " + paintPaths_.size());
     return (!paintPaths_.isEmpty());
   }
   
@@ -185,7 +197,10 @@ public class PaintCache {
       int sRow = link.topRow();
       int eRow = link.bottomRow();
       linkExtents.put(Integer.valueOf(num), new MinMax(sRow, eRow));
-    }    
+    } 
+       
+   // drawLinkBacks(linkExtents, links, paintPaths_);
+    drawNegativeLinkBacks(linkExtents, links, paintPaths_);
   
     ArrayList<PaintedPath> postPaths = new ArrayList<PaintedPath>();
     ArrayList<PaintedPath> postPostPaths = new ArrayList<PaintedPath>();
@@ -201,9 +216,79 @@ public class PaintCache {
       buildALineVert(link, paintPaths_, colGen_, showShadows);
     }
     paintPaths_.addAll(postPostPaths);
+    
+
+
     return;
   }
   
+  /***************************************************************************
+  ** 
+  ** Draw link backing rectangles
+  */
+
+  public void drawLinkBacks(HashMap<Integer, MinMax> linkExtents, List<BioFabricNetwork.LinkInfo> links, List<PaintedPath> paths) {
+  	
+  	int numLinks = links.size();
+    String currRel = null;
+    int currRelStart = 0;
+    int backCount = 0;
+    for (int i = 0; i < numLinks; i++) {    	
+      BioFabricNetwork.LinkInfo link = links.get(i);
+      String linkRel = link.getAugRelation().relation;
+      if (i == 0) {
+      	currRel = linkRel;
+      	currRelStart = 0;
+      } else {
+      	if (!linkRel.equals(currRel)) {
+      		MinMax forRel = new MinMax(currRelStart, i - 1);
+      		Color col = superLightCycle_[backCount++ % 6];
+      		buildABackRect(forRel, linkExtents, null, paths, col);
+      		currRel = linkRel;
+      		currRelStart = i;
+      	}
+      }
+    }
+    MinMax forRel = new MinMax(currRelStart, numLinks - 1);
+    Color col = superLightCycle_[backCount++ % 6];
+    buildABackRect(forRel, linkExtents, null, paths, col);
+    return;
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Draw link backing rectangles
+  */
+
+  public void drawNegativeLinkBacks(HashMap<Integer, MinMax> linkExtents, List<BioFabricNetwork.LinkInfo> links, List<PaintedPath> paths) {
+  	
+  	int numLinks = links.size();
+    int negStart = 0;
+    boolean lastRelIsNeg = false;
+    for (int i = 0; i <= numLinks; i++) {
+    	boolean relIsNeg = false;
+    	if (i < numLinks) {
+        BioFabricNetwork.LinkInfo link = links.get(i);
+        String linkRel = link.getAugRelation().relation;
+        relIsNeg = (linkRel.indexOf("-") == 0);
+    	} else {
+    		relIsNeg = !lastRelIsNeg;
+    	}
+    	if (relIsNeg) {
+    		if ((i == 0) || !lastRelIsNeg) {
+    		 	negStart = i;
+    		}
+    	} else if (lastRelIsNeg) {
+    		MinMax forRel = new MinMax(negStart, i - 1);
+        buildABackRect(forRel, linkExtents, null, paths, superLightNegGray_);
+    	}
+    	lastRelIsNeg = relIsNeg;
+    }
+    return;
+  }
+  
+  
+ 
   /***************************************************************************
   ** 
   ** Get detail panel
@@ -389,29 +474,8 @@ public class PaintCache {
         dumpRect.setRect(tnamex, tnamey - dumpScaleHeight, dumpRect.getWidth(), dumpScaleHeight);
       }
       if (shadeNodes) {
-        int minRow = Integer.MAX_VALUE;
-        int maxRow = Integer.MIN_VALUE;       
-        for (int i = dzmm.min; i <= dzmm.max; i++) {
-          MinMax range = linkExtents.get(Integer.valueOf(i));
-          if (range != null) {
-            if (minRow > range.min) {
-              minRow = range.min;
-            }
-            if (maxRow < range.max) {
-              maxRow = range.max;
-            }
-          }
-        }
-        int rectLeft = (int)Math.floor((double)(dzmm.min * BioFabricPanel.GRID_SIZE) - BB_RADIUS_ - (STROKE_SIZE / 2.0));
-        int topRow = (int)Math.floor((double)(minRow * BioFabricPanel.GRID_SIZE) - BB_RADIUS_ - (STROKE_SIZE / 2.0));
-        int rectTop = Math.min((int)dumpRect.getMinY(), topRow);
-        int rectRight = (int)Math.ceil((double)(dzmm.max * BioFabricPanel.GRID_SIZE) + BB_RADIUS_ + (STROKE_SIZE / 2.0));
-        int rectWidth = rectRight - rectLeft;
-        int rectBot = (int)Math.floor((double)(maxRow * BioFabricPanel.GRID_SIZE) + BB_RADIUS_ + (STROKE_SIZE / 2.0));
-        int rectHeight = rectBot - rectTop;
-        Rectangle rect = new Rectangle(rectLeft, rectTop, rectWidth, rectHeight);
-        Color col = ((target.nodeRow % 2) == 0) ? superLightBlue_ : superLightPink_;
-        preCache.add(new PaintedPath(col, rect));
+      	Color col = ((target.nodeRow % 2) == 0) ? superLightBlue_ : superLightPink_;
+      	buildABackRect(dzmm, linkExtents, dumpRect, preCache, col);
       }
     }
     
@@ -443,7 +507,38 @@ public class PaintCache {
       drainMap.put(target.nodeName, (Rectangle2D)dumpRect.clone());
     }    
     return;
-  }   
+  } 
+  
+  /***************************************************************************
+  **
+  ** Build a backRect
+  */
+  
+  private void buildABackRect(MinMax dzmm, Map<Integer, MinMax> linkExtents, Rectangle2D dumpRect, List<PaintedPath> preCache, Color col) {  
+    int minRow = Integer.MAX_VALUE;
+    int maxRow = Integer.MIN_VALUE;       
+    for (int i = dzmm.min; i <= dzmm.max; i++) {
+      MinMax range = linkExtents.get(Integer.valueOf(i));
+      if (range != null) {
+        if (minRow > range.min) {
+          minRow = range.min;
+        }
+        if (maxRow < range.max) {
+          maxRow = range.max;
+        }
+      }
+    }
+    int rectLeft = (int)Math.floor((double)(dzmm.min * BioFabricPanel.GRID_SIZE) - BB_RADIUS_ - (STROKE_SIZE / 2.0));
+    int topRow = (int)Math.floor((double)(minRow * BioFabricPanel.GRID_SIZE) - BB_RADIUS_ - (STROKE_SIZE / 2.0));
+    int rectTop = (dumpRect == null) ? topRow : Math.min((int)dumpRect.getMinY(), topRow);
+    int rectRight = (int)Math.ceil((double)(dzmm.max * BioFabricPanel.GRID_SIZE) + BB_RADIUS_ + (STROKE_SIZE / 2.0));
+    int rectWidth = rectRight - rectLeft;
+    int rectBot = (int)Math.floor((double)(maxRow * BioFabricPanel.GRID_SIZE) + BB_RADIUS_ + (STROKE_SIZE / 2.0));
+    int rectHeight = rectBot - rectTop;
+    Rectangle rect = new Rectangle(rectLeft, rectTop, rectWidth, rectHeight);
+    preCache.add(new PaintedPath(col, rect));
+    return;
+  }
   
   /***************************************************************************
   **

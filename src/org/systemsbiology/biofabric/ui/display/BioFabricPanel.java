@@ -69,13 +69,10 @@ import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.gaggle.FabricGooseInterface;
 import org.systemsbiology.biofabric.gaggle.FabricGooseManager;
 import org.systemsbiology.biofabric.gaggle.SelectionSupport;
-import org.systemsbiology.biofabric.gaggle.SelectionSupport.NetworkForSpecies;
-import org.systemsbiology.biofabric.gaggle.SelectionSupport.SelectionsForSpecies;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.model.BioFabricNetwork.LinkInfo;
 import org.systemsbiology.biofabric.model.BioFabricNetwork.NodeInfo;
-import org.systemsbiology.biofabric.model.BioFabricNetwork.SelectBuildData;
 import org.systemsbiology.biofabric.ui.BasicZoomTargetSupport;
 import org.systemsbiology.biofabric.ui.CursorManager;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -87,8 +84,6 @@ import org.systemsbiology.biofabric.ui.ZoomPresentation;
 import org.systemsbiology.biofabric.ui.render.BufBuildDrawer;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
 import org.systemsbiology.biofabric.ui.render.PaintCache;
-import org.systemsbiology.biofabric.ui.render.BufferBuilder.BufferBuilderClient;
-import org.systemsbiology.biofabric.ui.render.PaintCache.FloaterSet;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.TaggedSet;
@@ -169,6 +164,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   private ArrayList<Rectangle> rects_;
   private int currSel_;
   private FabricLocation myLocation_;
+  private MouseOverView mov_;
   private Rectangle worldRect_;
   private Dimension screenDim_;
   private Dimension worldDim_;
@@ -185,6 +181,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   private FabricMagnifyingTool fmt_;
   private FabricNavTool fnt_;
   private BioFabricOverview bfo_;
+
 
   private BufferedImage bim_;
   private boolean doBuildSelect_;
@@ -506,8 +503,9 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   ** Set location announcement
   */
 
-  public void setFabricLocation(FabricLocation loc) { 
+  public void setFabricLocation(FabricLocation loc, MouseOverView mov) { 
     myLocation_ = loc;
+    mov_ = mov;
     return;
   }  
   
@@ -1024,7 +1022,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     handleFloaterChange();
     centerOnRectangle(floaterSet_.tourRect);
     fmt_.setCenter(rowColToWorld(tourFocus_), tourFocus_, true);
-    String[] vals = buildMouseLocation(tourFocus_);
+    MouseLocInfo vals = buildMouseLocation(tourFocus_);
     SortedSet<Integer> okStops = (selectedOnlyNodeName == null) ? null : findSelectedLinkStops(selectedOnlyNodeName);
     boolean nodeAlive = (selectedOnlyNodeName == null) ? true : currNodeSelections_.contains(selectedOnlyNodeName);
     boolean showShadows = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getDisplayShadows();
@@ -1144,7 +1142,20 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     jsp_ = jsp;
     return;
   }
- 
+  
+  
+  /***************************************************************************
+  **
+  ** 
+  */
+
+  @Override
+  public void setBounds(int x, int y, int width, int height) {
+    super.setBounds(x, y, width, height);
+    System.out.println("BFP set bounds " + x + " " + y + " " + width + " " + height);
+    return;
+  } 
+  
   /***************************************************************************
   **
   ** Update zoom state
@@ -1390,6 +1401,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     //g2.setBackground(Color.WHITE);
     //g2.clearRect(clip.x, clip.y, clip.width, clip.height);
     
+    
     g2.setPaint(Color.WHITE);
     g2.drawRect(clip.x, clip.y, clip.width, clip.height); 
     painter_.paintIt(g2, true, clip, false);
@@ -1406,10 +1418,10 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   
   /***************************************************************************
   **
-  ** Drawing routine
+  ** Drawing routine for printing
   */
-  
-  // Netbeans change. Why??
+
+  @Override
   public void print(Graphics g) {
     if (bfn_ == null) {
       return;
@@ -1927,16 +1939,37 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     }
   }  
  
+  public static class MouseLocInfo {
+  	public String nodeDesc;
+  	public String linkDesc;
+  	public String zoneDesc;
+  	public String linkSrcDesc;
+  	public String linkTrgDesc;
+  	
+  	public MouseLocInfo(String nodeDesc, String linkDesc, String zoneDesc, String linkSrcDesc, String linkTrgDesc) {
+  		this.nodeDesc = nodeDesc;
+  	  this.linkDesc = linkDesc;
+  	  this.zoneDesc = zoneDesc;
+  	  this.linkSrcDesc = linkSrcDesc;
+  	  this.linkTrgDesc = linkTrgDesc;
+  	}
+  	
+  	public MouseLocInfo() {
+  		this.nodeDesc = "<none>";
+  	  this.linkDesc = "<none>";
+  	  this.zoneDesc = "<none>";
+  	  this.linkSrcDesc = "<none>";
+  	  this.linkTrgDesc = "<none>";
+  	}  	
+  }
+  
   /***************************************************************************
   **
   ** build mouse location
   */ 
   
-  String[] buildMouseLocation(Point cprc) {
-    String[] retval = new String[3];
-    retval[0] = "<none>";
-    retval[1] = "<none>";
-    retval[2] = "<none>";
+  MouseLocInfo buildMouseLocation(Point cprc) {
+    MouseLocInfo retval = new MouseLocInfo();
     Integer colObj = Integer.valueOf(cprc.x);
     String target = bfn_.getNodeForRow(Integer.valueOf(cprc.y));
     boolean showShadows = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getDisplayShadows();
@@ -1948,12 +1981,12 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       BioFabricNetwork.NodeInfo ni = bfn_.getNodeDefinition(target);
       MinMax nimm = ni.getColRange(showShadows);
       if ((nimm.min <= cprc.x) && (nimm.max >= cprc.x)) {
-        retval[0] = target;           
+        retval.nodeDesc = target;           
       } else {
         Rectangle2D nnl = nodeNameLocations_.get(target);
         Point2D inWorld = rowColToWorld(cprc);
         if (nnl.contains(inWorld)) {
-          retval[0] = target;
+          retval.nodeDesc = target;
         }       
       }    
     }  
@@ -1963,13 +1996,16 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
         int minRow = li.topRow();
         int maxRow = li.bottomRow();
         if ((minRow <= cprc.y) && (maxRow >= cprc.y)) {
-          retval[1] = li.getLink().toDisplayString();
+        	FabricLink flink = li.getLink();
+        	retval.linkDesc = flink.toDisplayString();
+          retval.linkSrcDesc = flink.getSrc();
+          retval.linkTrgDesc = flink.getTrg();
         }     
       }
     }
     if (drain != null) {        
       if ((0 <= cprc.x) && (numRows >= cprc.y)) {
-        retval[2] = drain;           
+        retval.zoneDesc = drain;           
       }
     }  
     return (retval);
@@ -2266,8 +2302,6 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     return;
   }
   
-
-
   /***************************************************************************
   **
   ** Support image export
@@ -2331,7 +2365,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     tourFocus_ = worldToRowCol(new Point2D.Double(floaterSet_.tourRect.getCenterX(), floaterSet_.tourRect.getCenterY()));
     centerOnRectangle(floaterSet_.tourRect);
     fmt_.setCenter(rowColToWorld(tourFocus_), tourFocus_, true);
-    String[] vals = buildMouseLocation(tourFocus_);
+    MouseLocInfo vals = buildMouseLocation(tourFocus_);
     handleFloaterChange();  // else tour rect does not redraw
     boolean showShadows = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getDisplayShadows(); 
     Integer tfx = Integer.valueOf(tourFocus_.x);
@@ -2462,10 +2496,10 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
      boolean farRightEnabled;
      boolean currStopUnselected;
      
-     TourStatus(String[] vals, BioFabricNetwork bfn, BioFabricNetwork.LinkInfo link, 
+     TourStatus(MouseLocInfo vals, BioFabricNetwork bfn, BioFabricNetwork.LinkInfo link, 
                 Point navFocus, SortedSet<Integer> selectedOnly, boolean nodeAlive, boolean stopUnselected) {
-       nodeName = vals[0];
-       linkName = vals[1];
+       nodeName = vals.nodeDesc;
+       linkName = vals.linkDesc;
        boolean showShadows = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getDisplayShadows(); 
        currStopUnselected = stopUnselected;
        // Null link means we are sitting on a node label
@@ -2499,9 +2533,9 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
        }
      }
      
-     public Object clone() {
+     public TourStatus clone() {
       try {
-        return (super.clone());
+        return ((TourStatus)super.clone());
       } catch (CloneNotSupportedException cnse) {
         throw new IllegalStateException();
       }
@@ -2516,7 +2550,8 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   public class MouseHandler extends MouseAdapter { 
     
     private final static int CLICK_SLOP_  = 2;
-      
+    
+    @Override
     public void mouseClicked(MouseEvent me) {
       if (me.isPopupTrigger()) {
         Point pscreenLoc = me.getComponent().getLocationOnScreen();
@@ -2554,7 +2589,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
           }          
           tourFocus_ = newFocus;
           floaterSet_.tourRect = buildFocusBox(tourFocus_);
-          String[] loc = buildMouseLocation(tourFocus_);
+          MouseLocInfo loc = buildMouseLocation(tourFocus_);
           BioFabricNetwork.LinkInfo linf = bfn_.getLinkDefinition(Integer.valueOf(tourFocus_.x), showShadows);
           if ((linf != null) && !linf.inLinkRowRange(tourFocus_.y)) {
             linf = null;
@@ -2642,6 +2677,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       }
     }  
     
+    @Override
     public void mousePressed(MouseEvent me) {
       try {
         if (me.isPopupTrigger()) {
@@ -2662,6 +2698,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       return;
     }   
 
+    @Override
     public void mouseEntered(MouseEvent me) {
       try {
         bfo_.setMouseIn(true, fmt_.isIgnoring());
@@ -2672,18 +2709,20 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       return;
     }      
     
+    @Override
     public void mouseExited(MouseEvent me) {
       try {
         bfo_.setMouseIn(false, fmt_.isIgnoring());  
         fmt_.setMouseIn(false);
-        myLocation_.setNodeAndLink("<none>", "<none>", "<none>");
+        myLocation_.setNodeAndLink(new MouseLocInfo());
+        mov_.showForNode(new MouseLocInfo());
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }        
       return;
     }      
     
-   
+    @Override
     public void mouseReleased(MouseEvent me) {
       try {
         // Do this stuff NO MATTER WHAT!
@@ -2761,6 +2800,8 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   */  
       
   public class MouseMotionHandler extends MouseMotionAdapter {
+    
+    @Override
     public void mouseDragged(MouseEvent me) {
       try {
         if (lastPress_ == null) {
@@ -2815,8 +2856,9 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
         if (bfn_ == null) {
           return;
         }
-        String[] vals = buildMouseLocation(cprc);
-        myLocation_.setNodeAndLink(vals[0], vals[1], vals[2]);        
+        MouseLocInfo vals = buildMouseLocation(cprc);
+        myLocation_.setNodeAndLink(vals);
+        mov_.showForNode(vals);
         if (collectingZoomMode_) {
           if (firstZoomPoint_ != null) {
             Point2D lpw = viewToWorld(firstZoomPoint_);

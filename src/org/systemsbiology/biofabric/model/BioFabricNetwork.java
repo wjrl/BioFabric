@@ -22,9 +22,7 @@ package org.systemsbiology.biofabric.model;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -39,6 +37,8 @@ import org.xml.sax.Attributes;
 import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FabricFactory;
+import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
+import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -49,6 +49,7 @@ import org.systemsbiology.biofabric.util.CharacterEntityMapper;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.MinMax;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -69,18 +70,22 @@ public class BioFabricNetwork {
   //
   //////////////////////////////////////////////////////////////////////////// 
   
-  public static final int DEFAULT_LAYOUT     = 0;
-  public static final int REORDER_LAYOUT     = 1;
-  public static final int CLUSTERED_LAYOUT   = 2;
-  public static final int SHADOW_LINK_CHANGE = 3;
-  public static final int LINK_GROUP_CHANGE  = 4;
-  public static final int BUILD_FOR_SUBMODEL = 5;
-  public static final int BUILD_FROM_XML     = 6;
-  public static final int BUILD_FROM_SIF     = 7;
-  public static final int BUILD_FROM_GAGGLE  = 8;
-  public static final int NODE_ATTRIB_LAYOUT = 9;
-  public static final int LINK_ATTRIB_LAYOUT = 10;
-  public static final int NODE_CLUSTER_LAYOUT = 11;
+  public enum BuildMode {DEFAULT_LAYOUT,
+                         REORDER_LAYOUT ,
+                         CLUSTERED_LAYOUT ,
+                         SHADOW_LINK_CHANGE,
+                         LINK_GROUP_CHANGE ,
+                         BUILD_FOR_SUBMODEL,
+                         BUILD_FROM_XML ,
+                         BUILD_FROM_SIF  ,
+                         BUILD_FROM_GAGGLE ,
+                         NODE_ATTRIB_LAYOUT ,
+                         LINK_ATTRIB_LAYOUT,
+                         NODE_CLUSTER_LAYOUT,
+                         CONTROL_TOP_LAYOUT,
+                         HIER_DAG_LAYOUT,
+                         WORLD_BANK_LAYOUT
+                        };
    
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -130,7 +135,7 @@ public class BioFabricNetwork {
   */
 
   public BioFabricNetwork(BuildData bd) {
-    int mode = bd.getMode();
+    BuildMode mode = bd.getMode();
     
     switch (mode) {
       case DEFAULT_LAYOUT:  
@@ -140,6 +145,9 @@ public class BioFabricNetwork {
       case NODE_ATTRIB_LAYOUT:
       case LINK_ATTRIB_LAYOUT:
       case NODE_CLUSTER_LAYOUT:
+      case CONTROL_TOP_LAYOUT: 
+      case HIER_DAG_LAYOUT:
+      case WORLD_BANK_LAYOUT:
         RelayoutBuildData rbd = (RelayoutBuildData)bd;
         normalCols_ = new ColumnAssign();
         shadowCols_ = new ColumnAssign();
@@ -172,7 +180,7 @@ public class BioFabricNetwork {
         break;
       case BUILD_FROM_SIF:
       case BUILD_FROM_GAGGLE:
-        OrigBuildData obd = (OrigBuildData)bd;    
+        RelayoutBuildData obd = (RelayoutBuildData)bd;    
         normalCols_ = new ColumnAssign();
         shadowCols_ = new ColumnAssign();
         rowToTarg_ = new HashMap<Integer, String>(); 
@@ -181,7 +189,7 @@ public class BioFabricNetwork {
         nodeDefs_ = new HashMap<String, NodeInfo>();
         linkGrouping_ = new ArrayList<String>();
         colGen_ = obd.colGen;
-        processLinks(obd.allLinks, obd.loneNodes, obd.colGen);
+        processLinks(obd);
         break;
       default:
         throw new IllegalArgumentException();
@@ -267,9 +275,10 @@ public class BioFabricNetwork {
     while (rttvit.hasNext()) {
       asUpper.add(new AttributeLoader.StringKey(rttvit.next().toUpperCase()));
     }
-    if (!asUpper.equals(new HashSet<AttributeLoader.AttributeKey>(nodeClusters.keySet()))) {
-      return (false);
-    }
+    UiUtil.fixMePrintout("Actually do somehitng");
+ //   if (!asUpper.equals(new HashSet<AttributeLoader.AttributeKey>(nodeClusters.keySet()))) {
+  //    return (false);
+  //  }
    
     return (true);
   }
@@ -388,33 +397,26 @@ public class BioFabricNetwork {
   ** Process a link set
   */
 
-  private void processLinks(Set<FabricLink> allLinks, Set<String> loneNodes, FabricColorGenerator colGen) {    
+  private void processLinks(RelayoutBuildData rbd) { 
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
     //
-    
-    List<String> targets = defaultNodeOrder(allLinks, loneNodes);
+       
+    List<String> targets =  (new DefaultLayout()).doNodeLayout(rbd, null);
     
     //
     // Now have the ordered list of targets we are going to display.
-    // Build target->row maps and the inverse:
     //
     
-    fillNodesFromOrder(targets, colGen);
+    fillNodesFromOrder(targets, rbd.colGen, rbd.clustAssign);
 
-    //
-    // Now each link is given a vertical extent.
-    //
-    
-    TreeMap<Integer, SortedSet<Integer>> rankedLinks = new TreeMap<Integer, SortedSet<Integer>>();
-    Map<Link, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair = generateLinkExtents(allLinks, rankedLinks);
-    
     //
     // This now assigns the link to its column.  Note that we order them
     // so that the shortest vertical link is drawn first!
     //
     
-    defaultLinkToColumn(rankedLinks, relsForPair, colGen);
+    (new DefaultEdgeLayout()).layoutEdges(rbd);
+    specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, false);
 
     //
     // Determine the start & end of each target row needed to handle the incoming
@@ -427,7 +429,7 @@ public class BioFabricNetwork {
     // For the lone nodes, they are assigned into the last column:
     //
     
-    loneNodesToLastColumn(loneNodes);
+    loneNodesToLastColumn(rbd.loneNodes);
     return;
   }
   
@@ -437,22 +439,20 @@ public class BioFabricNetwork {
   */
   
   private void relayoutNetwork(RelayoutBuildData rbd) {
-    int mode = rbd.getMode();
-    FabricColorGenerator colGen = rbd.colGen;
-    SortedMap<Integer, FabricLink> linkOrder = rbd.linkOrder; 
-    List<String> linkGroups = (mode == LINK_GROUP_CHANGE) ? rbd.newLinkGroups : rbd.existingLinkGroups;    
+    BuildMode mode = rbd.getMode();
+    List<String> linkGroups = (mode == BuildMode.LINK_GROUP_CHANGE) ? rbd.newLinkGroups : rbd.existingLinkGroups;    
     installLinkGroups(linkGroups);
-    boolean installNonStandardNodeOrder = (mode == NODE_ATTRIB_LAYOUT) || 
-                                          (mode == NODE_CLUSTER_LAYOUT) || 
-                                          (mode == CLUSTERED_LAYOUT) || 
-                                          (mode == REORDER_LAYOUT);
-    boolean installDefaultNodeOrder = (mode == DEFAULT_LAYOUT);
-           
+    boolean specifiedNodeOrder = (mode == BuildMode.NODE_ATTRIB_LAYOUT) || 
+                                 (mode == BuildMode.DEFAULT_LAYOUT) ||
+                                 (mode == BuildMode.CONTROL_TOP_LAYOUT) ||
+                                 (mode == BuildMode.HIER_DAG_LAYOUT) ||
+                                 (mode == BuildMode.WORLD_BANK_LAYOUT) ||
+                                 (mode == BuildMode.NODE_CLUSTER_LAYOUT) || 
+                                 (mode == BuildMode.CLUSTERED_LAYOUT) || 
+                                 (mode == BuildMode.REORDER_LAYOUT);          
     List<String> targets;
-    if (installNonStandardNodeOrder) {
+    if (specifiedNodeOrder) {
       targets = specifiedOrder(rbd.allNodes, rbd.nodeOrder);
-    } else if (installDefaultNodeOrder) {
-      targets = defaultNodeOrder(rbd.allLinks, rbd.loneNodes);       
     } else {       
       targets = rbd.existingOrder;
     }
@@ -462,31 +462,29 @@ public class BioFabricNetwork {
     // Build target->row maps and the inverse:
     //
     
-    fillNodesFromOrder(targets, colGen);
+    fillNodesFromOrder(targets, rbd.colGen, rbd.clustAssign);
 
-    //
-    // Now each link is given a vertical extent.
-    //
-    
-    TreeMap<Integer, SortedSet<Integer>> rankedLinks = new TreeMap<Integer, SortedSet<Integer>>();
-    Map<Link, SortedMap<FabricLink.AugRelation, FabricLink>>  relsForPair = generateLinkExtents(rbd.allLinks, rankedLinks);
-    
     //
     // Ordering of links:
     //
     
-    if (linkOrder == null) {
-      //
-      // This now assigns the link to its column.  Note that we order them
-      // so that the shortest vertical link is drawn first!
-      // 
-      defaultLinkToColumn(rankedLinks, relsForPair, colGen);    
-    } else {
-      //
-      // This now assigns the link to its column, based on user specification
-      // 
-      specifiedLinkToColumn(colGen, linkOrder, ((mode == LINK_ATTRIB_LAYOUT) || (mode == NODE_CLUSTER_LAYOUT)));
+    if ((rbd.linkOrder == null) || rbd.linkOrder.isEmpty() || (mode == BuildMode.LINK_GROUP_CHANGE)) {
+      if ((rbd.nodeOrder == null) || rbd.nodeOrder.isEmpty()) {
+        rbd.nodeOrder = new HashMap<String, String>();
+        int numT = targets.size();
+        for (int i = 0; i < numT; i++) {
+          String targName = targets.get(i);
+          rbd.nodeOrder.put(targName.toUpperCase(), Integer.toString(i));
+        }
+      }
+      (new DefaultEdgeLayout()).layoutEdges(rbd);
     }
+
+    //
+    // This now assigns the link to its column, based on user specification
+    //
+    
+    specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, ((mode == BuildMode.LINK_ATTRIB_LAYOUT) || (mode == BuildMode.NODE_CLUSTER_LAYOUT)));
       
     //
     // Determine the start & end of each target row needed to handle the incoming
@@ -520,6 +518,7 @@ public class BioFabricNetwork {
         Integer newRow = Integer.valueOf(valAsStr);
         forRetval.put(newRow, key);
       } catch (NumberFormatException nfex) {
+        System.err.println("Bad Number: " + valAsStr + " >" + asUpperKey + "<");
         throw new IllegalStateException();
       }
     }
@@ -755,38 +754,7 @@ public class BioFabricNetwork {
       Integer row = r2tit.next();
       String targ = rowToTarg_.get(row);
       NodeInfo ni = getNodeDefinition(targ);
-      ind.indent();
-      out.print("<node name=\"");
-      out.print(CharacterEntityMapper.mapEntities(targ, false));
-      out.print("\" row=\"");
-      out.print(row);
-      MinMax nsCols = ni.getColRange(false);
-      out.print("\" minCol=\"");
-      out.print(nsCols.min);
-      out.print("\" maxCol=\"");
-      out.print(nsCols.max);
-      MinMax sCols = ni.getColRange(true);
-      out.print("\" minColSha=\"");
-      out.print(sCols.min);
-      out.print("\" maxColSha=\"");
-      out.print(sCols.max);
-      MinMax nDrain = ni.getDrainZone(false);
-      if (nDrain != null) {
-        out.print("\" drainMin=\"");
-        out.print(nDrain.min);
-        out.print("\" drainMax=\"");
-        out.print(nDrain.max);
-      }
-      MinMax sDrain = ni.getDrainZone(true);
-      if (sDrain != null) {
-        out.print("\" drainMinSha=\"");
-        out.print(sDrain.min);
-        out.print("\" drainMaxSha=\"");
-        out.print(sDrain.max);
-      }
-      out.print("\" color=\"");
-      out.print(ni.colorKey);
-      out.println("\" />");
+      ni.writeXML(out, ind, row.intValue(), targ);
     }
     ind.down().indent();
     out.println("</nodes>");
@@ -1555,295 +1523,13 @@ public class BioFabricNetwork {
     return;
   }
 
-  /***************************************************************************
-  ** 
-  ** Calculate default node order
-  */
 
-  public static List<String> defaultNodeOrder(Set<FabricLink> allLinks, Set<String> loneNodes) {    
-    //
-    // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
-    //
-    //
-    // Build a target list, top to bottom, that adds the node with the most
-    // links first, and adds those link targets ASAP:
-    // 
-    
-    HashMap<String, Integer> linkCounts = new HashMap<String, Integer>();
-    HashMap<String, Set<String>> targsPerSource = new HashMap<String, Set<String>>();
-    ArrayList<String> targets = new ArrayList<String>();
-         
-    HashSet<String> targsToGo = new HashSet<String>();
-    Iterator<FabricLink> alit = allLinks.iterator();
-    while (alit.hasNext()) {
-      FabricLink nextLink = alit.next();
-      String source = nextLink.getSrc();
-      String target = nextLink.getTrg();
-      Set<String> targs = targsPerSource.get(source);
-      if (targs == null) {
-        targs = new HashSet<String>();
-        targsPerSource.put(source, targs);
-      }
-      targs.add(target);
-      targs = targsPerSource.get(target);
-      if (targs == null) {
-        targs = new HashSet<String>();
-        targsPerSource.put(target, targs);
-      }
-      targs.add(source);
-      targsToGo.add(source);
-      targsToGo.add(target);        
-      Integer srcCount = linkCounts.get(source);
-      linkCounts.put(source, (srcCount == null) ? Integer.valueOf(1) : Integer.valueOf(srcCount.intValue() + 1));
-      Integer trgCount = linkCounts.get(target);
-      linkCounts.put(target, (trgCount == null) ? Integer.valueOf(1) : Integer.valueOf(trgCount.intValue() + 1));
-    }
-    
-    //
-    // Rank the nodes by link count:
-    //
-    
-    TreeMap<Integer, SortedSet<String>> countRank = new TreeMap<Integer, SortedSet<String>>(Collections.reverseOrder());
-    Iterator<String> lcit = linkCounts.keySet().iterator();
-    while (lcit.hasNext()) {
-      String src = lcit.next();
-      Integer count = linkCounts.get(src);
-      SortedSet<String> perCount = countRank.get(count);
-      if (perCount == null) {
-        perCount = new TreeSet<String>();
-        countRank.put(count, perCount);
-      }
-      perCount.add(src);
-    }
-    
-    //
-    // Get all kids added in.  Now doing this without recursion; seeing blown
-    // stacks for huge networks!
-    //
-     
-    while (!targsToGo.isEmpty()) {
-      Iterator<Integer> crit = countRank.keySet().iterator();
-      while (crit.hasNext()) {
-        Integer key = crit.next();
-        SortedSet<String> perCount = countRank.get(key);
-        Iterator<String> pcit = perCount.iterator();
-        while (pcit.hasNext()) {
-          String node = pcit.next();    
-          if (targsToGo.contains(node)) {
-            ArrayList<String> queue = new ArrayList<String>();
-            targsToGo.remove(node);
-            targets.add(node);
-            addMyKidsNR(targets, targsPerSource, linkCounts, targsToGo, node, queue);
-          }
-        }
-      }
-    }
-    
-    //
-    //
-    // Tag on lone nodes.  If a node is by itself, but also shows up in the links,
-    // we drop it:
-    //
-    
-    HashSet<String> remains = new HashSet<String>(loneNodes);
-    remains.removeAll(targets);
-    targets.addAll(new TreeSet<String>(remains));
-    return (targets);
-  }
-  
-      
-  /***************************************************************************
-  ** 
-  ** Process a link set
-  */
-
-  public void defaultLinkToColumn(SortedMap<Integer, SortedSet<Integer>> rankedLinks, 
-                                  Map<Link, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair, 
-                                  FabricColorGenerator colGen) {    
-    int numColors = colGen.getNumColors();
-  
-    //
-    // This now assigns the link to its column.  Note that we order them
-    // so that the shortest vertical link is drawn first!
-    //
-   
-    ArrayList<String> rels = new ArrayList<String>(linkGrouping_);
-    if (rels.isEmpty()) {
-      rels.add("");
-    }
-    int numRel = rels.size();
-    
-    normalCols_.columnCount = 0;
-    shadowCols_.columnCount = 0;
-    // For each top row...
-    for (int k = 0; k < rowCount_; k++) {
-      Integer topRow = Integer.valueOf(k);
-      int currMin = normalCols_.columnCount;
-      int currShadMin = shadowCols_.columnCount;
-      for (int i = 0; i < numRel; i++) {
-        String relOnly = rels.get(i);
-        if (relOnly.equals("")) {
-          relOnly = null;
-        }
-        shadowLinkToColumn(topRow.intValue(), rankedLinks, relsForPair, colGen, relOnly);     
-        SortedSet<Integer> perSrc = rankedLinks.get(topRow);
-        if (perSrc == null) {
-          continue;
-        }
-        Iterator<Integer> psit = perSrc.iterator();
-
-        // Drain the bottoms rows, in increasing order...
-        while (psit.hasNext()) {
-          Integer botRow = psit.next();
-          String topNode = rowToTarg_.get(topRow);
-          String botNode = rowToTarg_.get(botRow);
-          // Dumping links in order of the relation sort (alphabetical)...
-          SortedMap<FabricLink.AugRelation, FabricLink> forPair1 = relsForPair.get(new Link(topNode, botNode));
-          if (forPair1 != null) {
-            Iterator<FabricLink> fp1it = forPair1.values().iterator();
-            while (fp1it.hasNext()) {
-              FabricLink nextLink = fp1it.next();
-              if (!nextLink.isShadow()) {
-                String augR = nextLink.getAugRelation().relation;
-                if ((relOnly == null) || (augR.indexOf(relOnly) == (augR.length() - relOnly.length()))) {
-                  Integer[] colAssign = addLinkDef(nextLink, numColors, normalCols_.columnCount, shadowCols_.columnCount, colGen);                 
-                  if (colAssign[1] == null) {
-                    throw new IllegalStateException();
-                  }
-                  shadowCols_.columnCount = colAssign[0].intValue();
-                  normalCols_.columnCount = colAssign[1].intValue();
-                }
-              }
-            }
-          }
-          // With directed links from above coming before directed links from below...       
-          if (!topNode.equals(botNode)) { // DO NOT DUPLICATE FEEDBACK LINKS!
-            SortedMap<FabricLink.AugRelation, FabricLink> forPair2 = relsForPair.get(new Link(botNode, topNode));
-            if (forPair2 != null) {        
-              Iterator<FabricLink> fp2it = forPair2.values().iterator();
-              while (fp2it.hasNext()) {
-                FabricLink nextLink = fp2it.next();
-                if (!nextLink.isShadow()) {
-                  String augR = nextLink.getAugRelation().relation;
-                  if ((relOnly == null) || (augR.indexOf(relOnly) == (augR.length() - relOnly.length()))) {
-                    Integer[] colAssign = addLinkDef(nextLink, numColors, normalCols_.columnCount, shadowCols_.columnCount, colGen);                 
-                    if (colAssign[1] == null) {
-                      throw new IllegalStateException();
-                    }
-                    shadowCols_.columnCount = colAssign[0].intValue();
-                    normalCols_.columnCount = colAssign[1].intValue();
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-      int currMaxNorm = normalCols_.columnCount - 1;
-      int currMaxShad = shadowCols_.columnCount - 1;
-      
-      //
-      // We only have drain zones if the maximum column we are working with actually
-      // hosts a link to/from the row we are working with:
-      //
-      
-      NodeInfo srcNI = nodeDefs_.get(rowToTarg_.get(topRow));
-      int topRowVal = topRow.intValue();
-      LinkInfo linf = getLinkDefinition(Integer.valueOf(currMaxNorm), false);
-      
-      if ((linf != null) && (linf.topRow() == topRowVal)) {
-        srcNI.setDrainZone(new MinMax(currMin, currMaxNorm), false);
-      }
-      linf = getLinkDefinition(Integer.valueOf(currMaxShad), true);
-      if ((linf != null) && ((linf.topRow() == topRowVal) || (linf.bottomRow() == topRowVal))) {
-        srcNI.setDrainZone(new MinMax(currShadMin, currMaxShad), true);
-      }
-    }
-    return;
-  }
-  
-  /***************************************************************************
-  ** 
-  ** Get shadow links into their columns:
-  */
-
-  private void shadowLinkToColumn(int currDrainRow, SortedMap<Integer, SortedSet<Integer>> rankedLinks, 
-                                  Map<Link, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair, 
-                                  FabricColorGenerator colGen, String relOnly) {    
-    int numColors = colGen.getNumColors();
-    
-    Iterator<Integer> rlit = rankedLinks.keySet().iterator();
-    // For each top row...
-    while (rlit.hasNext()) {
-      Integer topRow = rlit.next();
-      SortedSet<Integer> perSrc = rankedLinks.get(topRow);
-      Iterator<Integer> psit = perSrc.iterator();
-      // Drain ONLY the bottom row that ends on our row...
-      while (psit.hasNext()) {
-        Integer botRow = psit.next();
-        if (botRow.intValue() != currDrainRow) {
-          continue;
-        }
-        // We NEVER create shadow feedback links.  They are insanely redundant.
-        if (topRow.equals(botRow)) {
-          continue;
-        }
-        
-        String topNode = rowToTarg_.get(topRow);
-        String botNode = rowToTarg_.get(botRow);
-        // Dumping links in order of the relation sort (alphabetical)...
-        SortedMap<FabricLink.AugRelation, FabricLink> forPair1 = relsForPair.get(new Link(topNode, botNode));
-        if (forPair1 != null) {
-          Iterator<FabricLink> fp1it = forPair1.values().iterator();
-          while (fp1it.hasNext()) {
-            // But ONLY if they are shadow links:
-            FabricLink nextLink = fp1it.next();
-            if (nextLink.isShadow()) {
-              String augR = nextLink.getAugRelation().relation;
-              if ((relOnly == null) || (augR.indexOf(relOnly) == (augR.length() - relOnly.length()))) {
-                Integer[] colAssign = addLinkDef(nextLink, numColors, Integer.MIN_VALUE, shadowCols_.columnCount, colGen);
-                if (colAssign[1] != null) {
-                  throw new IllegalStateException();
-                }
-                shadowCols_.columnCount = colAssign[0].intValue();
-              }
-            }
-          }
-        }
-        // With directed links from above coming before directed links from below... 
-        // This test should now always be true, given we are never doing feedback....
-        if (!topNode.equals(botNode)) { // DO NOT DUPLICATE FEEDBACK LINKS!
-          SortedMap<FabricLink.AugRelation, FabricLink> forPair2 = relsForPair.get(new Link(botNode, topNode));
-          if (forPair2 != null) {        
-            Iterator<FabricLink> fp2it = forPair2.values().iterator();
-            while (fp2it.hasNext()) {
-              FabricLink nextLink = fp2it.next();
-              if (nextLink.isShadow()) {
-                String augR = nextLink.getAugRelation().relation;
-                if ((relOnly == null) || (augR.indexOf(relOnly) == (augR.length() - relOnly.length()))) {
-                  Integer[] colAssign = addLinkDef(nextLink, numColors, Integer.MIN_VALUE, shadowCols_.columnCount, colGen);
-                  if (colAssign[1] != null) {
-                    throw new IllegalStateException();
-                  }
-                  shadowCols_.columnCount = colAssign[0].intValue();
-                }
-              }
-            }
-          }
-        } else {
-          throw new IllegalStateException();  // Now should never get here for shadow links...
-        }
-      }
-    }
-    return;
-  }
- 
   /***************************************************************************
   ** 
   ** Fill out node info from order
   */
 
-  private void fillNodesFromOrder(List<String> targets, FabricColorGenerator colGen) {
+  private void fillNodesFromOrder(List<String> targets, FabricColorGenerator colGen, Map<String, String> clustAssign) {
     //
     // Now have the ordered list of targets we are going to display.
     // Build target->row maps and the inverse:
@@ -1857,8 +1543,12 @@ public class BioFabricNetwork {
       String target = trit.next();
       Integer rowObj = Integer.valueOf(currRow);
       rowToTarg_.put(rowObj, target);
-      String colorKey = colGen.getGeneColor(currRow % numColors);  
-      nodeDefs_.put(target, new NodeInfo(target, currRow++, colorKey));
+      String colorKey = colGen.getGeneColor(currRow % numColors);
+      NodeInfo nextNI = new NodeInfo(target, currRow++, colorKey);
+      if (clustAssign != null) {
+      	nextNI.setCluster(clustAssign.get(target.toUpperCase()));
+      }
+      nodeDefs_.put(target, nextNI);
     }
     rowCount_ = targets.size();
     return;
@@ -1874,75 +1564,6 @@ public class BioFabricNetwork {
     rowCount_ = nodeDefs_.size();   
     rowToTarg_.put(Integer.valueOf(nif.nodeRow), nif.nodeName);
     return;
-  }
-  
-  /***************************************************************************
-  ** 
-  ** Generate vertical extents for links:
-  **
-  ** Returns Map relsForPair:
-  **  Maps each simple source/target "Link" to sorted map
-  **  Sorted map maps each link relation to the associated FabricLink, ordered by
-  **  how the AugRelation comparator works
-  ** 
-  ** Fills in empty SortedMap rankedLinks:
-  **  Maps each top link row to an ordered set of link maximums 
-  */
-
-  private Map<Link, SortedMap<FabricLink.AugRelation, FabricLink>> 
-    generateLinkExtents(Set<FabricLink> allLinks, TreeMap<Integer, SortedSet<Integer>> rankedLinks) {
-    //
-    // Now each link is given a vertical extent.
-    //
-    
-    HashMap<Link, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair 
-      = new HashMap<Link, SortedMap<FabricLink.AugRelation, FabricLink>>();
-  //  HashMap directedMap = new HashMap();
-    Iterator<FabricLink> alit = allLinks.iterator();
-    while (alit.hasNext()) {
-      FabricLink nextLink = alit.next();
-      String source = nextLink.getSrc();
-      String target = nextLink.getTrg();
-   //   boolean directed = nextLink.isDirected();
-  //    directedMap.put(new Link(source, target), new Boolean(directed));
-      Link key = new Link(source, target);
-      SortedMap<FabricLink.AugRelation, FabricLink> rels = relsForPair.get(key);
-      if (rels == null) {
-        rels = new TreeMap<FabricLink.AugRelation, FabricLink>();
-        relsForPair.put(key, rels);
-      }
-      rels.put(nextLink.getAugRelation(), nextLink);
-      int[] link = new int[2];
-      NodeInfo srcInfo = nodeDefs_.get(source);
-      if (srcInfo == null) {
-        System.err.println("Bad source: " + source + " from link " + nextLink + " key " + key);
-        throw new IllegalStateException();
-      }
-      NodeInfo trgInfo = nodeDefs_.get(target);
-      if (trgInfo == null) {
-        System.err.println("Bad target: " + target + " from link " + nextLink + " key " + key);
-        throw new IllegalStateException();
-      }
-      link[0] = srcInfo.nodeRow;
-      link[1] = trgInfo.nodeRow;
-      int min; 
-      int max;
-      if (link[0] < link[1]) {
-        min = link[0];
-        max = link[1];
-      } else {
-        min = link[1];
-        max = link[0];         
-      }
-      Integer minObj = Integer.valueOf(min);
-      SortedSet<Integer> perSrc = rankedLinks.get(minObj);  // min == node row!
-      if (perSrc == null) {
-        perSrc = new TreeSet<Integer>();
-        rankedLinks.put(minObj, perSrc);
-      }
-      perSrc.add(Integer.valueOf(max));  // Have the ordered set of link maxes
-    }
-    return (relsForPair);
   }
   
   /***************************************************************************
@@ -2086,67 +1707,6 @@ public class BioFabricNetwork {
  
   /***************************************************************************
   **
-  ** Node ordering
-  */
-  
-  private static ArrayList<String> orderMyKids(Map<String, Set<String>> targsPerSource, Map<String, Integer> linkCounts, 
-                                               HashSet<String> targsToGo, String node) {
-    Set<String> targs = targsPerSource.get(node);      
-    TreeMap<Integer, SortedSet<String>> kidMap = new TreeMap<Integer, SortedSet<String>>(Collections.reverseOrder());
-    Iterator<String> tait = targs.iterator();
-    while (tait.hasNext()) {  
-      String nextTarg = tait.next(); 
-      Integer count = linkCounts.get(nextTarg);
-      SortedSet<String> perCount = kidMap.get(count);
-      if (perCount == null) {
-        perCount = new TreeSet<String>();
-        kidMap.put(count, perCount);
-      }
-      perCount.add(nextTarg);
-    }
-    
-    ArrayList<String> myKidsToProc = new ArrayList<String>();
-    Iterator<SortedSet<String>> kmit = kidMap.values().iterator();
-    while (kmit.hasNext()) {  
-      SortedSet<String> perCount = kmit.next(); 
-      Iterator<String> pcit = perCount.iterator();
-      while (pcit.hasNext()) {  
-        String kid = pcit.next();
-        if (targsToGo.contains(kid)) { 
-          myKidsToProc.add(kid);
-        }
-      }
-    }
-    return (myKidsToProc);
-  }    
-  
-  /***************************************************************************
-  **
-  ** Node ordering, non-recursive:
-  */
-  
-  private static void addMyKidsNR(ArrayList<String> targets, Map<String, Set<String>> targsPerSource, 
-                                  Map<String, Integer> linkCounts, 
-                                  HashSet<String> targsToGo, String node, ArrayList<String> queue) {
-    queue.add(node);
-    while (!queue.isEmpty()) {
-      node = queue.remove(0);
-      ArrayList<String> myKids = orderMyKids(targsPerSource, linkCounts, targsToGo, node);
-      Iterator<String> ktpit = myKids.iterator(); 
-      while (ktpit.hasNext()) {  
-        String kid = ktpit.next();
-        if (targsToGo.contains(kid)) {
-          targsToGo.remove(kid);
-          targets.add(kid);
-          queue.add(kid);
-        }
-      }
-    }
-    return;
-  }
- 
-  /***************************************************************************
-  **
   ** Set color generator (I/0)
   */
   
@@ -2154,6 +1714,60 @@ public class BioFabricNetwork {
     colGen_ = fcg;
     return;
   } 
+  
+  /***************************************************************************
+  **
+  ** Answer if we have node cluster assignments
+  */
+  
+  public boolean nodeClustersAssigned() {
+  	if (nodeDefs_.isEmpty()) {
+  		return (false);
+  	}
+    NodeInfo ni = nodeDefs_.values().iterator().next();
+    return (ni.getCluster() != null);
+  } 
+  
+  /***************************************************************************
+  **
+  ** Return node cluster assignment
+  */
+  
+  public Map<String, String> nodeClusterAssigment() {
+  	HashMap<String, String> retval = new HashMap<String, String>();
+  	if (nodeDefs_.isEmpty()) {
+  		return (retval);
+  	}
+    for (NodeInfo ni : nodeDefs_.values()) {
+    	String cluster = ni.getCluster();
+    	if (cluster == null) {
+    		throw new IllegalStateException();
+    	}
+    	retval.put(ni.nodeName.toUpperCase(), cluster);
+    }
+    return (retval);    
+  } 
+  
+  /***************************************************************************
+  **
+  ** Set node cluster assignment
+  */
+  
+  public void setNodeClusterAssigment(Map<String, String> assign) {
+  	if (nodeDefs_.isEmpty()) {
+  		throw new IllegalStateException();
+  	}
+    for (NodeInfo ni : nodeDefs_.values()) {
+    	String cluster = assign.get(ni.nodeName.toUpperCase());
+    	if (cluster == null) {
+    		throw new IllegalArgumentException();
+    	}
+    	ni.setCluster(cluster);
+    }
+    return;    
+  } 
+  
+
   
   /***************************************************************************
   **
@@ -2259,6 +1873,7 @@ public class BioFabricNetwork {
     public String nodeName;
     public int nodeRow;
     public String colorKey;
+    private String cluster_;
         
     private MinMax colRangeSha_;
     private MinMax colRangePln_;
@@ -2275,6 +1890,7 @@ public class BioFabricNetwork {
       colRangePln_.init();
       plainDrainZone_ = null;
       shadowDrainZone_ = null;
+      cluster_ = null;
     }
     
     public MinMax getDrainZone(boolean forShadow) { 
@@ -2299,6 +1915,60 @@ public class BioFabricNetwork {
       useMM.update(i);
       return;
     }
+    
+    public void setCluster(String cluster) {
+      cluster_ = cluster;
+      return;
+    }
+    
+    public String getCluster() {
+      return (cluster_);
+    }
+    
+    /***************************************************************************
+    **
+    ** Dump the node using XML
+    */
+  
+	  public void writeXML(PrintWriter out, Indenter ind, int row, String targ) {
+	    ind.indent();
+	    out.print("<node name=\"");
+	    out.print(CharacterEntityMapper.mapEntities(targ, false));
+	    out.print("\" row=\"");
+	    out.print(row);
+	    MinMax nsCols = getColRange(false);
+	    out.print("\" minCol=\"");
+	    out.print(nsCols.min);
+	    out.print("\" maxCol=\"");
+	    out.print(nsCols.max);
+	    MinMax sCols = getColRange(true);
+	    out.print("\" minColSha=\"");
+	    out.print(sCols.min);
+	    out.print("\" maxColSha=\"");
+	    out.print(sCols.max);
+	    MinMax nDrain = getDrainZone(false);
+	    if (nDrain != null) {
+	      out.print("\" drainMin=\"");
+	      out.print(nDrain.min);
+	      out.print("\" drainMax=\"");
+	      out.print(nDrain.max);
+	    }
+	    MinMax sDrain = getDrainZone(true);
+	    if (sDrain != null) {
+	      out.print("\" drainMinSha=\"");
+	      out.print(sDrain.min);
+	      out.print("\" drainMaxSha=\"");
+	      out.print(sDrain.max);
+	    }
+	    out.print("\" color=\"");
+	    out.print(colorKey);
+	    String clust = getCluster();
+	    if (clust != null) {
+	      out.print("\" cluster=\"");
+	      out.print(CharacterEntityMapper.mapEntities(clust, false));
+	    }
+	    out.println("\" />");
+	  }
   } 
   
   /***************************************************************************
@@ -2307,13 +1977,13 @@ public class BioFabricNetwork {
   */  
   
   public static abstract class BuildData {
-    protected int mode;
+    protected BuildMode mode;
     
-    public BuildData(int mode) {
+    public BuildData(BuildMode mode) {
       this.mode = mode;
     }
        
-    public int getMode() {
+    public BuildMode getMode() {
       return (mode);
     }  
     
@@ -2330,28 +2000,10 @@ public class BioFabricNetwork {
   public static class PreBuiltBuildData extends BuildData {
     BioFabricNetwork bfn;
   
-    public PreBuiltBuildData(BioFabricNetwork bfn, int mode) {
+    public PreBuiltBuildData(BioFabricNetwork bfn, BuildMode mode) {
       super(mode);
       this.bfn = bfn;
     } 
-  }
-  
-  /***************************************************************************
-  **
-  ** For passing around build data
-  */  
-  
-  public static class OrigBuildData extends BuildData {
-    Set<FabricLink> allLinks;
-    Set<String> loneNodes;
-    FabricColorGenerator colGen;
- 
-    public OrigBuildData(Set<FabricLink> allLinks, Set<String> loneNodes, FabricColorGenerator colGen, int mode) {
-      super(mode);
-      this.allLinks = allLinks;
-      this.loneNodes = loneNodes;
-      this.colGen = colGen;
-    }   
   }
   
   /***************************************************************************
@@ -2365,14 +2017,14 @@ public class BioFabricNetwork {
     public Set<String> loneNodes;
     public FabricColorGenerator colGen;
     public Map<String, String> nodeOrder;
-    public Map<String, String> nodeClusters;
     public List<String> existingOrder;
     public SortedMap<Integer, FabricLink> linkOrder;
     public List<String> existingLinkGroups;
     public List<String> newLinkGroups;
     public Set<String> allNodes;
+    public Map<String, String> clustAssign;
     
-    public RelayoutBuildData(BioFabricNetwork fullNet, int mode) {
+    public RelayoutBuildData(BioFabricNetwork fullNet, BuildMode mode) {
       super(mode);
       this.bfn = fullNet;
       this.allLinks = fullNet.getAllLinks(true);
@@ -2383,8 +2035,22 @@ public class BioFabricNetwork {
       this.existingLinkGroups = fullNet.linkGrouping_;
       this.loneNodes = fullNet.getLoneNodes();
       this.allNodes = fullNet.nodeDefs_.keySet();
+      this.clustAssign = (fullNet.nodeClustersAssigned()) ? fullNet.nodeClusterAssigment() : null;
     }
     
+    public RelayoutBuildData(Set<FabricLink> allLinks, Set<String> loneNodes, FabricColorGenerator colGen, BuildMode mode) {
+      super(mode);
+      this.bfn = null;
+      this.allLinks = allLinks;
+      this.colGen = colGen;
+      this.nodeOrder = null;
+      this.existingOrder = null;
+      this.linkOrder = null;
+      this.existingLinkGroups = new ArrayList<String>();
+      this.loneNodes = loneNodes;
+      this.allNodes = null;
+    } 
+
     public void setNodeOrderFromAttrib(Map<AttributeLoader.AttributeKey, String> nodeOrder) {
       this.nodeOrder = new HashMap<String, String>();
       for (AttributeLoader.AttributeKey key : nodeOrder.keySet()) {
@@ -2407,14 +2073,6 @@ public class BioFabricNetwork {
       this.newLinkGroups = linkGroups;
       return;
     }
-    
-    public void setNodeClusters(Map<AttributeLoader.AttributeKey, String> nodeClusters) {
-      this.nodeClusters = new HashMap<String, String>();
-      for (AttributeLoader.AttributeKey key : nodeClusters.keySet()) {
-        this.nodeClusters.put(((AttributeLoader.StringKey)key).key, nodeClusters.get(key));
-      }
-      return;
-    } 
   }
  
   /***************************************************************************
@@ -2428,7 +2086,7 @@ public class BioFabricNetwork {
      List<LinkInfo> subLinks;
 
     public SelectBuildData(BioFabricNetwork fullNet, List<NodeInfo> subNodes, List<LinkInfo> subLinks) {
-      super(BUILD_FOR_SUBMODEL);
+      super(BuildMode.BUILD_FOR_SUBMODEL);
       this.fullNet = fullNet;
       this.subNodes = subNodes;
       this.subLinks = subLinks;
@@ -2457,10 +2115,10 @@ public class BioFabricNetwork {
   ** For storing column assignments
   */  
   
-  static private class ColumnAssign  {
-    HashMap<Integer, String> columnToSource;
-    HashMap<Integer, String> columnToTarget;
-    int columnCount;
+  public static class ColumnAssign  {
+    public HashMap<Integer, String> columnToSource;
+    public HashMap<Integer, String> columnToTarget;
+    public int columnCount;
 
     ColumnAssign() {
       this.columnToSource = new HashMap<Integer, String>();
@@ -2748,10 +2406,17 @@ public class BioFabricNetwork {
       String minDrainSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "drainMinSha", false);
       String maxDrainSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "drainMaxSha", false);
       String color = AttributeExtractor.extractAttribute(elemName, attrs, "node", "color", true);
+      String cluster = AttributeExtractor.extractAttribute(elemName, attrs, "node", "cluster", false);
+      cluster = CharacterEntityMapper.unmapEntities(cluster, false);
+      
       NodeInfo retval;
       try {
         int nodeRow = Integer.valueOf(row).intValue();
         retval = new NodeInfo(name, nodeRow, color);
+        if (cluster != null) {
+        	UiUtil.fixMePrintout("Make cluster assign a list");
+        	retval.setCluster(cluster);
+        }
         
         int min = Integer.valueOf(minCol).intValue();
         int max = Integer.valueOf(maxCol).intValue();

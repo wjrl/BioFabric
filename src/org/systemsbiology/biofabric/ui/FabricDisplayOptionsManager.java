@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2011 Institute for Systems Biology 
+**    Copyright (C) 2003-2014 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -45,7 +45,7 @@ public class FabricDisplayOptionsManager {
 
   private static FabricDisplayOptionsManager singleton_;
   private FabricDisplayOptions options_;
-  private ArrayList trackers_;
+  private ArrayList<DisplayOptionTracker> trackers_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -69,10 +69,10 @@ public class FabricDisplayOptionsManager {
   */
 
   public void setDisplayOptions(FabricDisplayOptions opts, boolean needRebuild, boolean needRecolor) {
-    options_ = (FabricDisplayOptions)opts.clone();
+    options_ = opts.clone();
     int numTrack = trackers_.size();
     for (int i = 0; i < numTrack; i++) {
-      DisplayOptionTracker dot = (DisplayOptionTracker)trackers_.get(i);
+      DisplayOptionTracker dot = trackers_.get(i);
       dot.optionsHaveChanged(needRebuild, needRecolor);
     }
     return;
@@ -151,6 +151,6 @@ public class FabricDisplayOptionsManager {
     
   private FabricDisplayOptionsManager() {
     options_ = new FabricDisplayOptions();
-    trackers_ = new ArrayList();
+    trackers_ = new ArrayList<DisplayOptionTracker>();
   }
 }

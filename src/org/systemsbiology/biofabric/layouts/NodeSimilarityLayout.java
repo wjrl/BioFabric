@@ -20,6 +20,7 @@
 package org.systemsbiology.biofabric.layouts;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.TreeSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,6 +36,7 @@ import java.util.Vector;
 
 import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AffineCombination;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
@@ -47,10 +49,10 @@ import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
-** This is the Network model
+** This does the node similarity layout
 */
 
-public class ClusteredLayout {
+public class NodeSimilarityLayout {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -81,7 +83,7 @@ public class ClusteredLayout {
   ** Constructor
   */
 
-  public ClusteredLayout() {
+  public NodeSimilarityLayout() {
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -92,27 +94,144 @@ public class ClusteredLayout {
 
   /***************************************************************************
   ** 
+  ** Move nodes to match shapes
+  */
+
+  public void doReorderLayout(BioFabricNetwork.RelayoutBuildData rbd, 
+                              NodeSimilarityLayout.CRParams params,
+                              BTProgressMonitor monitor, 
+                              double startFrac, 
+                              double endFrac) throws AsynchExitRequestException { 
+
+  	BioFabricNetwork bfn = rbd.bfn;
+  	HashMap<String, Integer> targToRow = new HashMap<String, Integer>();
+    SortedMap<Integer, SortedSet<Integer>>  connVecs = getConnectionVectors(rbd, targToRow);
+   
+    NodeSimilarityLayout.ResortParams rp = (NodeSimilarityLayout.ResortParams)params;
+    
+    List<String> ordered = new ArrayList<String>();
+    int numRows = bfn.getRowCount();
+    for (int i = 0; i < numRows; i++) {
+      ordered.add(Integer.toString(i));
+    }
+    
+    double currStart = startFrac;
+    double inc = (endFrac - startFrac) / rp.passCount;
+    double currEnd = currStart + inc;
+    
+    TreeMap<Integer, Double> rankings = new TreeMap<Integer, Double>();
+    NodeSimilarityLayout.ClusterPrep cprep = setupForResort(bfn, connVecs, ordered, rankings);
+    Double lastRank = rankings.get(rankings.lastKey());
+    
+    for (int i = 0; i < rp.passCount; i++) {
+      monitor.updateRankings(rankings);
+      List<String> nextOrdered = resort(cprep, monitor, currStart, currEnd);
+      currStart = currEnd;
+      currEnd = currStart + inc;
+      cprep = setupForResort(bfn, connVecs, nextOrdered, rankings);
+      Integer lastKey = rankings.lastKey();
+      Double nowRank = rankings.get(lastKey);
+      if (rp.terminateAtIncrease) {
+        if (lastRank.doubleValue() < nowRank.doubleValue()) {
+          rankings.remove(lastKey);
+          break;
+        }
+      }
+      ordered = nextOrdered;
+      lastRank = nowRank;
+    }
+    
+    monitor.updateRankings(rankings);
+    Map<String, String>  orderedNames = convertOrderToMap(bfn, ordered);
+    rbd.setNodeOrder(orderedNames);
+   
+    return;
+  }
+  
+  /***************************************************************************
+  **
+  ** Clustered Layout guts
+  */   
+
+  public void doClusteredLayout(BioFabricNetwork.RelayoutBuildData rbd, 
+                                NodeSimilarityLayout.CRParams params,
+                                BTProgressMonitor monitor, 
+                                double startFrac, double endFrac) throws AsynchExitRequestException {   
+ 
+    List<String> ordered = doClusteredLayoutOrder(rbd, params, monitor, startFrac, endFrac);
+    Map<String, String> orderedNames = convertOrderToMap(rbd.bfn, ordered);
+    rbd.setNodeOrder(orderedNames);
+    return;
+  }
+  
+  /***************************************************************************
+  **
+  ** Clustered Layout Ordering only
+  */   
+
+  public List<String> doClusteredLayoutOrder(BioFabricNetwork.RelayoutBuildData rbd, 
+				                                     NodeSimilarityLayout.CRParams params,
+				                                     BTProgressMonitor monitor, 
+				                                     double startFrac, double endFrac) throws AsynchExitRequestException {   
+ 
+  	//BioFabricNetwork bfn = rbd.bfn;
+    NodeSimilarityLayout.ClusterParams cp = (NodeSimilarityLayout.ClusterParams)params;
+    HashMap<String, Integer> targToRow = new HashMap<String, Integer>();
+    SortedMap<Integer, SortedSet<Integer>> connVecs = getConnectionVectors(rbd, targToRow);
+
+    TreeMap<Double, SortedSet<Link>> dists = new TreeMap<Double, SortedSet<Link>>(Collections.reverseOrder());
+    HashMap<String, Integer> degMag = new HashMap<String, Integer>();
+    
+    Integer highestDegree = (cp.distanceMethod == NodeSimilarityLayout.ClusterParams.COSINES) ?
+                             getCosines(connVecs, dists, degMag, rbd, targToRow) :
+                             getJaccard(connVecs, dists, degMag, rbd, targToRow);
+    
+    ArrayList<Link> linkTrace = new ArrayList<Link>();
+    ArrayList<Integer> jumpLog = new ArrayList<Integer>();
+    
+    
+    HashMap<Integer, String> rowToTarg = new HashMap<Integer, String>();
+    for (String targ : targToRow.keySet()) {
+    	rowToTarg.put(targToRow.get(targ), targ);
+    }
+    List<String> ordered = orderByDistanceChained(rowToTarg, highestDegree, dists, 
+                                                 degMag, linkTrace, cp.chainLength, 
+                                                 cp.tolerance, jumpLog, monitor, startFrac, endFrac);
+    return (ordered);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PRIVATE METHODS
+  //
+  ////////////////////////////////////////////////////////////////////////////
+  
+  /***************************************************************************
+  ** 
   ** Get connection vectors
   */
 
-  public SortedMap<Integer, SortedSet<Integer>> getConnectionVectors(BioFabricNetwork bfn) { 
+  private SortedMap<Integer, SortedSet<Integer>> getConnectionVectors(BioFabricNetwork.RelayoutBuildData rbd, 
+  		                                                                Map<String, Integer> targToRow) { 
     
-    HashMap<String, Integer> targToRow = new HashMap<String, Integer>();
-    Iterator<Integer> rtit = bfn.getRows();
+    Iterator<String> rtit = rbd.existingOrder.iterator();
+    int count = 0;
     while (rtit.hasNext()) {
-      Integer row = rtit.next();
-      String node = bfn.getNodeForRow(row);
-      targToRow.put(node, row);
+      String node = rtit.next();
+      targToRow.put(node, Integer.valueOf(count++));
     }
     
     TreeMap<Integer, SortedSet<Integer>> retval = new TreeMap<Integer, SortedSet<Integer>>();
-    Iterator<Integer> ldit = bfn.getOrderedLinkInfo(false);
+    Iterator<FabricLink> ldit = rbd.allLinks.iterator();
     while (ldit.hasNext()) {
-      Integer col = ldit.next();
-      BioFabricNetwork.LinkInfo linf = bfn.getLinkDefinition(col, false);
-      String srcName = linf.getSource();
+      FabricLink fl = ldit.next(); //Integer col = ldit.next();
+      if (fl.isShadow()) {
+      	continue;
+      }
+    //  BioFabricNetwork.LinkInfo linf = bfn.getLinkDefinition(col, false);
+      String srcName = fl.getSrc(); //linf.getSource();
       Integer srcRow = targToRow.get(srcName);
-      String trgName = linf.getTarget();
+      String trgName = fl.getTrg(); //.getTarget();
       Integer trgRow = targToRow.get(trgName);
 
       SortedSet<Integer> forRetval = retval.get(srcRow);
@@ -137,38 +256,33 @@ public class ClusteredLayout {
   ** Get cosines.
   */
 
-  public Integer getCosines(SortedMap<Integer, SortedSet<Integer>> connVec, 
-                            SortedMap<Double, SortedSet<Link>> retval, 
-                            Map<String, Integer> connMag, BioFabricNetwork bfn) {
-    int rowCount = bfn.getRowCount();
+  private Integer getCosines(SortedMap<Integer, SortedSet<Integer>> connVec, 
+                             SortedMap<Double, SortedSet<Link>> retval, 
+                             Map<String, Integer> connMag, 
+                             BioFabricNetwork.RelayoutBuildData rbd, Map<String, Integer> targToRow) {
+    int rowCount = rbd.allNodes.size();
     Integer[] icache = new Integer[rowCount];
     String[] scache = new String[rowCount];
     for (int i = 0; i < rowCount; i++) {
       icache[i] = Integer.valueOf(i);
       scache[i] = icache[i].toString();
     }
-    HashMap<String, Integer> targToRow = new HashMap<String, Integer>();
-    Iterator<Integer> rtit = bfn.getRows();
-    while (rtit.hasNext()) {
-      Integer row = rtit.next();
-      String node = bfn.getNodeForRow(row);
-      targToRow.put(node,row);
-    }
-  
+ 
     int count = 0;
-    //int fullCount = (rowCount * rowCount) / 2;
  
     Integer highestDegree = null;
     int biggestMag = Integer.MIN_VALUE;
     HashSet<Integer> intersect = new HashSet<Integer>();
     
-    Iterator<Integer> ldit = bfn.getOrderedLinkInfo(false);
+    Iterator<FabricLink> ldit = rbd.allLinks.iterator();
     while (ldit.hasNext()) {
-      Integer col = ldit.next();
-      BioFabricNetwork.LinkInfo linf = bfn.getLinkDefinition(col, false);
-      String srcName = linf.getSource();
+      FabricLink fl = ldit.next();
+      if (fl.isShadow()) {
+      	continue;
+      }
+      String srcName = fl.getSrc();
       Integer srcRow = targToRow.get(srcName);
-      String trgName = linf.getTarget();
+      String trgName = fl.getTrg();
       Integer trgRow = targToRow.get(trgName);
       SortedSet<Integer> srcVec = connVec.get(srcRow);     
       int srcSize = srcVec.size();
@@ -229,39 +343,35 @@ public class ClusteredLayout {
    * This distance is a proper metric
   */
   
-  public Integer getJaccard(SortedMap<Integer, SortedSet<Integer>> connVec, 
+  private Integer getJaccard(SortedMap<Integer, SortedSet<Integer>> connVec, 
                             SortedMap<Double, SortedSet<Link>> retval, 
-                            Map<String, Integer> connMag, BioFabricNetwork bfn) {
+                            Map<String, Integer> connMag, 
+                            BioFabricNetwork.RelayoutBuildData rbd, Map<String, Integer> targToRow) {
 
-    int rowCount = bfn.getRowCount();
+    int rowCount = rbd.allNodes.size();
     Integer[] icache = new Integer[rowCount];
     String[] scache = new String[rowCount];
     for (int i = 0; i < rowCount; i++) {
       icache[i] = Integer.valueOf(i);
       scache[i] = icache[i].toString();
     }
-    HashMap<String, Integer> targToRow = new HashMap<String, Integer>();
-    Iterator<Integer> rtit = bfn.getRows();
-    while (rtit.hasNext()) {
-      Integer row = rtit.next();
-      String node = bfn.getNodeForRow(row);
-      targToRow.put(node, row);
-    }
-  
+    
     int count = 0;
 
     Integer highestDegree = null;
     int biggestMag = Integer.MIN_VALUE;
     HashSet<Integer> union = new HashSet<Integer>();
     HashSet<Integer> intersect = new HashSet<Integer>();
-    
-    Iterator<Integer> ldit = bfn.getOrderedLinkInfo(false);
+      
+    Iterator<FabricLink> ldit = rbd.allLinks.iterator();
     while (ldit.hasNext()) {
-      Integer col = ldit.next();
-      BioFabricNetwork.LinkInfo linf = bfn.getLinkDefinition(col, false);
-      String srcName = linf.getSource();
+      FabricLink fl = ldit.next();
+      if (fl.isShadow()) {
+      	continue;
+      }
+      String srcName = fl.getSrc();
       Integer srcRow = targToRow.get(srcName);
-      String trgName = linf.getTarget();
+      String trgName = fl.getTrg();
       Integer trgRow = targToRow.get(trgName);
       SortedSet<Integer> srcVec = connVec.get(srcRow);     
       int srcSize = srcVec.size();
@@ -305,12 +415,12 @@ public class ClusteredLayout {
   ** set of nodes.
   */
 
-  public List<String> orderByDistanceChained(BioFabricNetwork bfn, Integer start, SortedMap<Double, SortedSet<Link>> cosines, 
+  private List<String> orderByDistanceChained(Map<Integer, String> rowToTarg, Integer start, SortedMap<Double, SortedSet<Link>> cosines, 
                                              Map<String, Integer> connMag, List<Link> linkTrace, 
                                              int limit, double tol, List<Integer> jumpLog,
                                              BTProgressMonitor monitor, double startFrac, double endFrac) 
                                                throws AsynchExitRequestException { 
-    int rowCount = bfn.getRowCount();
+    int rowCount = rowToTarg.size();
     ArrayList<String> retval = new ArrayList<String>();
     HashSet<String> seen = new HashSet<String>();  
     String startNode = Integer.toString(start.intValue());
@@ -336,15 +446,15 @@ public class ClusteredLayout {
     //
     while (retval.size() < rowCount) {
       // Find best unconstrained hop:
-      DoubleRanked bestHop = findBestUnseenHop(bfn, cosines, connMag, seen, null, retval);  
+      DoubleRanked bestHop = findBestUnseenHop(rowToTarg, cosines, connMag, seen, null, retval);  
       // Find best hop off the current search net:   
-      DoubleRanked currentHop = findBestUnseenHop(bfn, cosines, connMag, seen, currentChain, retval);
+      DoubleRanked currentHop = findBestUnseenHop(rowToTarg, cosines, connMag, seen, currentChain, retval);
  
       if (bestHop == null) { // Not found, need to find the highest non-seen guy.
         if (currentHop != null) {
           throw new IllegalStateException();
         }
-        handleFallbacks(bfn, connMag, linkTrace, seen, retval);
+        handleFallbacks(rowToTarg, connMag, linkTrace, seen, retval);
         continue;
       } 
       //
@@ -379,12 +489,7 @@ public class ClusteredLayout {
     return (retval);
   }
  
-  ////////////////////////////////////////////////////////////////////////////
-  //
-  // PRIVATE METHODS
-  //
-  ////////////////////////////////////////////////////////////////////////////
-  
+
   /***************************************************************************
   ** 
   ** Maintain  the recent used chain
@@ -417,7 +522,7 @@ public class ClusteredLayout {
   ** another node.  That node then becomes the next to search on.
   */
 
-  private DoubleRanked findBestUnseenHop(BioFabricNetwork bfn, SortedMap<Double, SortedSet<Link>> cosines, 
+  private DoubleRanked findBestUnseenHop(Map<Integer, String> nodeForRow, SortedMap<Double, SortedSet<Link>> cosines, 
                                          Map<String, Integer> degMag, HashSet<String> seen, 
                                          List<String> launchNodes, List<String> currentOrder) { 
     if ((launchNodes != null) && launchNodes.isEmpty()) {
@@ -465,7 +570,7 @@ public class ClusteredLayout {
         if (cand != null) {
           Integer degVal = degMag.get(cand);
           UiUtil.fixMePrintout("current degmag counts src->trg and trg->src directed links as only degree 1");
-          String n4r = bfn.getNodeForRow(Integer.valueOf(cand));
+          String n4r = nodeForRow.get(Integer.valueOf(cand));
           Integer r4o = Integer.valueOf(currentOrder.indexOf(other));
           boolean gtCon = (maxDegDeg == null) || (maxDegDeg.intValue() < degVal.intValue());
           boolean eqCon = (maxDegDeg != null) && (maxDegDeg.intValue() == degVal.intValue());
@@ -517,9 +622,9 @@ public class ClusteredLayout {
   ** Handle the fallback case.
   */
 
-  private void handleFallbacks(BioFabricNetwork bfn, Map<String, Integer> degMag, List<Link> linkTrace, 
+  private void handleFallbacks(Map<Integer, String> rowToNode, Map<String, Integer> degMag, List<Link> linkTrace, 
                                 HashSet<String> seen, List<String> retval) { 
-    String nextBest = getHighestDegreeRemaining(bfn, seen, degMag);
+    String nextBest = getHighestDegreeRemaining(rowToNode, seen, degMag);
     if (nextBest != null) {        
       retval.add(nextBest);
       seen.add(nextBest);
@@ -527,7 +632,7 @@ public class ClusteredLayout {
     } else {
       // Nodes not connected need to be flushed
       TreeSet<String> remainingTargs = new TreeSet<String>();
-      Iterator<Integer> rtkit = bfn.getRows();
+      Iterator<Integer> rtkit = rowToNode.keySet().iterator();
       while (rtkit.hasNext()) {       
         Integer row = rtkit.next();
         remainingTargs.add(row.toString());
@@ -548,7 +653,7 @@ public class ClusteredLayout {
   ** When we run out of connected nodes, go get the best one remaining
   */
 
-  private String getHighestDegreeRemaining(BioFabricNetwork bfn, Set<String> seen, Map<String, Integer> degMag) { 
+  private String getHighestDegreeRemaining(Map<Integer, String> rowToNode, Set<String> seen, Map<String, Integer> degMag) { 
     String maxDegNode = null;
     String maxDegNodeName = null;
     Integer maxDegDeg = null;
@@ -559,7 +664,7 @@ public class ClusteredLayout {
         continue;
       }
       Integer degVal = degMag.get(cand);
-      String n4r = bfn.getNodeForRow(Integer.valueOf(cand));
+      String n4r = rowToNode.get(Integer.valueOf(cand));
       boolean gtCon = (maxDegDeg == null) || (maxDegDeg.intValue() < degVal.intValue());
       boolean eqCon = (maxDegDeg != null) && (maxDegDeg.intValue() == degVal.intValue());
       boolean ltName = (maxDegNodeName == null) || (maxDegNodeName.compareToIgnoreCase(n4r) > 0);

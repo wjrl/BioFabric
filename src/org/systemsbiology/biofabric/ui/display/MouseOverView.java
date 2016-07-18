@@ -19,29 +19,22 @@
 
 package org.systemsbiology.biofabric.ui.display;
 
-import java.awt.Color;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 
-import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
-** This is location announcement
+** This panel gives a view for mouseovers
 */
 
-public class FabricLocation extends JPanel {
-    
+public class MouseOverView {
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE CONSTANTS
   //
   //////////////////////////////////////////////////////////////////////////// 
-	
-  private static final long serialVersionUID = 1L;
-  
+    
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTANTS
@@ -53,10 +46,10 @@ public class FabricLocation extends JPanel {
   // PRIVATE INSTANCE MEMBERS
   //
   ////////////////////////////////////////////////////////////////////////////
-
-  private JLabel nodeName_;
-  private JLabel linkName_;
-  private JLabel linkZone_;
+   
+  private MouseOverViewPanel pan1_;
+  private MouseOverViewPanel pan2_;
+  
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -69,23 +62,9 @@ public class FabricLocation extends JPanel {
   ** Constructor
   */
 
-  public FabricLocation() {
-    setBackground(Color.WHITE);
-    setLayout(new GridBagLayout());
-    GridBagConstraints gbc = new GridBagConstraints();
-    
-    nodeName_ = new JLabel("Mouse Over Node Row: <none>");
-    linkName_ = new JLabel("Mouse Over Link: <none>");
-    linkZone_ = new JLabel("Mouse Over Node Link Zone: <none>");
-
-    UiUtil.gbcSet(gbc, 0, 0, 10, 1, UiUtil.HOR, 0, 0, 5, 5, 5, 5, UiUtil.CEN, 0.5, 0.0);
-    add(nodeName_, gbc);
-       
-    UiUtil.gbcSet(gbc, 11, 0, 45, 1, UiUtil.HOR, 0, 0, 5, 5, 5, 5, UiUtil.CEN, 0.5, 0.0);
-    add(linkName_, gbc);
-    
-    UiUtil.gbcSet(gbc, 56, 0, 10, 1, UiUtil.HOR, 0, 0, 5, 5, 5, 5, UiUtil.CEN, 0.5, 0.0);
-    add(linkZone_, gbc);   
+  public MouseOverView() {
+    pan1_ = new MouseOverViewPanel();
+    pan2_ = new MouseOverViewPanel();
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -96,19 +75,38 @@ public class FabricLocation extends JPanel {
   
   /***************************************************************************
   **
-  ** Drawing routine
+  ** Show or hide the view
   */
 
-  public void setNodeAndLink(BioFabricPanel.MouseLocInfo mlo) {
-    UiUtil.fixMePrintout("This baby is causing e.g. magnifier validation on every mouse move!");
-    nodeName_.setText("Mouse Over Node Row: " + mlo.nodeDesc);
-    linkName_.setText("Mouse Over Link: " + mlo.linkDesc);
-    linkZone_.setText("Mouse Over Node Link Zone: " + mlo.zoneDesc);
-    nodeName_.invalidate();
-    linkName_.invalidate();
-    linkZone_.invalidate();
-    System.out.println("revalidate SNAL");
-    revalidate();
+  public void showView(boolean enabled) {
+  	pan1_.showView(enabled);
+    pan2_.showView(enabled);
     return;
-  }   
+  }
+  
+  
+  /***************************************************************************
+  **
+  ** SGet the view
+  */
+
+  public JPanel getPanel(int num) {
+  	return ((num == 0) ? pan1_ : pan2_);
+  }
+
+  /***************************************************************************
+  ** 
+  ** Install a model
+  */
+
+  public void showForNode(BioFabricPanel.MouseLocInfo mlo) {
+  	pan1_.showForNode(mlo.zoneDesc.equals("<none>") ? null : mlo.zoneDesc);
+  	if (mlo.linkDesc.equals("<none>")) {
+  	  pan2_.showForNode(null);
+  	} else {
+  		String other = mlo.zoneDesc.equals(mlo.linkSrcDesc) ? mlo.linkTrgDesc : mlo.linkSrcDesc;
+  		pan2_.showForNode(other);
+  	}
+  	return;
+  }
 }

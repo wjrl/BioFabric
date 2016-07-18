@@ -24,6 +24,11 @@ import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.GridLayout;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -51,6 +56,7 @@ public class BioFabricNavAndControl extends JPanel {
    
   private FabricMagnifyingTool fmt_;
   private BioFabricOverview bfo_;
+  private MouseOverView mvo_;
   private FabricNavTool fnt_;
   private FabricNavTool.LabeledFabricNavTool lfnt_;
   private FabricLocation floc_;
@@ -94,6 +100,8 @@ public class BioFabricNavAndControl extends JPanel {
     bfo_ = new BioFabricOverview();
     fmt_.setFabricOverview(bfo_);
     
+    mvo_ = new MouseOverView();
+    
     JPanel fopan = new JPanel();
     fopan.setLayout(new BorderLayout());
     fopan.setBorder(new LineBorder(Color.black, 2));
@@ -109,6 +117,12 @@ public class BioFabricNavAndControl extends JPanel {
     fnt_ = lfnt_.getFabricNavTool();
      
     spot_ = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, fopan, lfnt_);
+    //JPanel dmvo = new JPanel();
+   // dmvo.setLayout(new GridLayout(1, 2));
+   // dmvo.add(mvo_.getPanel(0));
+   // dmvo.add(mvo_.getPanel(1));
+  
+    //spot_ = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, fopan, dmvo);
     spot_.setBorder(new EmptyBorder(0,0,0,0));
     spot_.setResizeWeight(1.0);
 
@@ -233,6 +247,15 @@ public class BioFabricNavAndControl extends JPanel {
     return (floc_);
   }  
   
+  /***************************************************************************
+  **
+  ** Get the Mouseover view:
+  */
+
+  public MouseOverView getMouseOverView() {
+    return (mvo_);
+  }  
+   
   /***************************************************************************
   **
   ** Get the FMT

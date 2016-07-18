@@ -19,14 +19,17 @@
 
 package org.systemsbiology.biofabric.io;
 
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.systemsbiology.biofabric.model.FabricLink;
 
@@ -83,12 +86,15 @@ public class FabricSIFLoader {
   ** Process a SIF input
   */
 
-  public SIFStats readSIF(File infile, List<FabricLink> links, Set<String> loneNodes, Map<String, String> nameMap) throws IOException { 
+  public SIFStats readSIF(File infile, List<FabricLink> links, Set<String> loneNodes, Map<String, String> nameMap, Integer magBins) throws IOException { 
     SIFStats retval = new SIFStats();
-    BufferedReader in = new BufferedReader(new FileReader(infile));
+    BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(infile), "UTF-8"));
     ArrayList<String[]> tokSets = new ArrayList<String[]>();
     String line = null;
     while ((line = in.readLine()) != null) {
+    	if (line.trim().equals("")) {
+    		continue;
+    	}
       String[] tokens = line.split("\\t");
       if ((tokens.length == 1) && (line.indexOf("\\t") == -1)) {
         tokens = line.split(" ");
@@ -104,9 +110,7 @@ public class FabricSIFLoader {
     }
     in.close();
     
-    //
-    // Build link set:
-    //
+
     
     int numLines = tokSets.size();  
     for (int i = 0; i < numLines; i++) {
@@ -134,13 +138,16 @@ public class FabricSIFLoader {
         if ((rel.indexOf("\"") == 0) && (rel.lastIndexOf("\"") == (rel.length() - 1))) {
           rel = rel.replaceAll("\"", "");
         }
-        FabricLink nextLink = new FabricLink(source, target, rel, false);
-        links.add(nextLink);
-        // We never create shadow feedback links!
-        if (!source.equals(target)) {
-          FabricLink nextShadowLink = new FabricLink(source, target, rel, true);
-          links.add(nextShadowLink);
-        }
+
+	      FabricLink nextLink = new FabricLink(source, target, rel, false);
+	      links.add(nextLink);
+	      
+	      // We never create shadow feedback links!
+	      if (!source.equals(target)) {
+	        FabricLink nextShadowLink = new FabricLink(source, target, rel, true);
+	        links.add(nextShadowLink);
+	      }
+ 
       } else {
         String loner = tokens[0].trim();
         if ((loner.indexOf("\"") == 0) && (loner.lastIndexOf("\"") == (loner.length() - 1))) {

@@ -61,9 +61,13 @@ public class FabricDisplayOptions implements Cloneable {
   private static final double DEFAULT_LINK_DARKER_LEVEL_ = 0.43;
   private static final boolean DEFAULT_DISPLAY_SHADOWS_ = false;
   private static final boolean DEFAULT_SHADE_NODES_ = false;
+  private static final boolean DEFAULT_OFFER_NODE_BROWSER_ = false;
+  private static final boolean DEFAULT_OFFER_LINK_BROWSER_ = false;
+  private static final boolean DEFAULT_OFFER_MOUSEOVER_VIEW_ = false;
   private static final boolean DEFAULT_MINIMIZE_SHADOW_SUBMODEL_LINKS_ = true;
   private static final String DEFAULT_BROWSER_URL_ = "http://www.genecards.org/cgi-bin/carddisp.pl?gene=" + NODE_NAME_PLACEHOLDER;
   private static final String DEFAULT_LINK_BROWSER_URL_ = "http://localhost:8080/setToYourPage.jsp?src=" + LINK_SRC_PLACEHOLDER  + "&rel=" + LINK_REL_PLACEHOLDER  + "&trg=" + LINK_TRG_PLACEHOLDER;
+  private static final String DEFAULT_MOUSEOVER_URL_ = "/Users/bill/Desktop/ForBrains/" + NODE_NAME_PLACEHOLDER + ".jpg";
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -77,8 +81,12 @@ public class FabricDisplayOptions implements Cloneable {
   private boolean displayShadows_;
   private boolean shadeNodes_;
   private boolean minShadSubLinks_;
+  private boolean offerNodeBrowser_;
+  private boolean offerLinkBrowser_;
+  private boolean offerMouseOverView_;
   private String browserURL_;
   private String browserLinkURL_;
+  private String mouseOverURL_;
  
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -100,6 +108,11 @@ public class FabricDisplayOptions implements Cloneable {
     browserURL_ = DEFAULT_BROWSER_URL_;
     browserLinkURL_ = DEFAULT_LINK_BROWSER_URL_;
     minShadSubLinks_ = DEFAULT_MINIMIZE_SHADOW_SUBMODEL_LINKS_;
+    
+    offerNodeBrowser_ = DEFAULT_OFFER_NODE_BROWSER_;
+    offerLinkBrowser_ = DEFAULT_OFFER_LINK_BROWSER_;
+    offerMouseOverView_ = DEFAULT_OFFER_MOUSEOVER_VIEW_;
+    mouseOverURL_= DEFAULT_MOUSEOVER_URL_;
   }
   
   /***************************************************************************
@@ -109,8 +122,9 @@ public class FabricDisplayOptions implements Cloneable {
 
   FabricDisplayOptions(String selectionOpaqueLevelStr, String nodeLighterLevelStr, 
                        String linkDarkerLevelStr, String displayShadowsStr,
-                       String shadeNodesStr, String minShadSubLinksStr, String browserURL, 
-                       String browserLinkURL) throws IOException {
+                       String shadeNodesStr, String minShadSubLinksStr, 
+                       String offerNodeBrowser, String offerLinkBrowser, String offerMouseOverView,
+                       String browserURL, String browserLinkURL, String mouseOverURL) throws IOException {
     
     if (selectionOpaqueLevelStr != null) {
       try {
@@ -159,6 +173,24 @@ public class FabricDisplayOptions implements Cloneable {
     } else {
       minShadSubLinks_ = DEFAULT_MINIMIZE_SHADOW_SUBMODEL_LINKS_;
     }
+    
+    if (offerNodeBrowser != null) {
+      offerNodeBrowser_ = Boolean.valueOf(offerNodeBrowser).booleanValue();
+    } else {
+      offerNodeBrowser_ = DEFAULT_OFFER_NODE_BROWSER_;
+    }
+        
+    if (offerLinkBrowser != null) {
+      offerLinkBrowser_ = Boolean.valueOf(offerLinkBrowser).booleanValue();
+    } else {
+      offerLinkBrowser_ = DEFAULT_OFFER_LINK_BROWSER_;
+    }
+        
+    if (offerMouseOverView != null) {
+      offerMouseOverView_ = Boolean.valueOf(offerMouseOverView).booleanValue();
+    } else {
+      offerMouseOverView_ = DEFAULT_OFFER_MOUSEOVER_VIEW_;
+    }
  
     if (browserURL != null) {
       browserURL_ = browserURL;
@@ -171,7 +203,12 @@ public class FabricDisplayOptions implements Cloneable {
     } else {
       browserLinkURL_ = DEFAULT_LINK_BROWSER_URL_;
     }
-       
+    
+    if (mouseOverURL != null) {
+      mouseOverURL_ = mouseOverURL;
+    } else {
+      mouseOverURL = DEFAULT_MOUSEOVER_URL_;
+    }      
   }
   
   ////////////////////////////////////////////////////////////////////////////
@@ -218,6 +255,25 @@ public class FabricDisplayOptions implements Cloneable {
     return;
   }   
  
+  /***************************************************************************
+  **
+  ** Get mouseover URL
+  */
+
+  public String getMouseOverURL() {
+    return (mouseOverURL_);
+  }   
+ 
+  /***************************************************************************
+  **
+  ** Set mouseover URL
+  */
+
+  public void setMouseOverURL(String mouseOverURL) {
+    mouseOverURL_ = mouseOverURL;
+    return;
+  }     
+   
   /***************************************************************************
   **
   ** Get Selection Opaque level
@@ -343,10 +399,68 @@ public class FabricDisplayOptions implements Cloneable {
  
   /***************************************************************************
   **
+  ** Get if we are to offer node browser option
+  */
+
+  public boolean getOfferNodeBrowser() {
+    return (offerNodeBrowser_);
+  }   
+ 
+  /***************************************************************************
+  **
+  ** Set if we are to offer node browser option
+  */
+
+  public void setOfferNodeBrowser(boolean offerNodeBrowser) {
+    offerNodeBrowser_ = offerNodeBrowser;
+    return;
+  }  
+  
+ /***************************************************************************
+  **
+  ** Get if we are to offer link browser option
+  */
+
+  public boolean getOfferLinkBrowser() {
+    return (offerLinkBrowser_);
+  }   
+ 
+  /***************************************************************************
+  **
+  ** Set if we are to offer link browser option
+  */
+
+  public void setOfferLinkBrowser(boolean offerLinkBrowser) {
+    offerLinkBrowser_ = offerLinkBrowser;
+    return;
+  }  
+  
+  /***************************************************************************
+  **
+  ** Get if we are to offer mouseover view
+  */
+
+  public boolean getOfferMouseOverView() {
+    return (offerMouseOverView_);
+  }   
+ 
+  /***************************************************************************
+  **
+  ** Set if we are to offer mouseover view
+  */
+
+  public void setOfferMouseOverView(boolean offerMouseOverView) {
+    offerMouseOverView_ = offerMouseOverView;
+    return;
+  }  
+  
+  /***************************************************************************
+  **
   ** Clone
   */
 
-  public Object clone() {
+  @Override
+  public FabricDisplayOptions clone() {
     try {
       FabricDisplayOptions retval = (FabricDisplayOptions)super.clone();
       return (retval);
@@ -400,7 +514,25 @@ public class FabricDisplayOptions implements Cloneable {
       out.print(minShadSubLinks_);    
       out.print("\" ");
     }
-      
+    
+    if (offerNodeBrowser_ != DEFAULT_OFFER_NODE_BROWSER_) {
+      out.print("offerNodeBrowser=\"");
+      out.print(offerNodeBrowser_);    
+      out.print("\" ");
+    }
+        
+    if (offerLinkBrowser_ != DEFAULT_OFFER_LINK_BROWSER_) {
+      out.print("offerLinkBrowser=\"");
+      out.print(offerLinkBrowser_);    
+      out.print("\" ");
+    }  
+    
+    if (offerMouseOverView_ != DEFAULT_OFFER_MOUSEOVER_VIEW_) {
+      out.print("offerMouseOverView=\"");
+      out.print(offerMouseOverView_);    
+      out.print("\" ");
+    }
+    
     if (!browserURL_.equals(DEFAULT_BROWSER_URL_)) {
       out.print("browserURL=\"");
       out.print(CharacterEntityMapper.mapEntities(browserURL_, false));    
@@ -413,7 +545,11 @@ public class FabricDisplayOptions implements Cloneable {
       out.print("\" ");
     }
     
-    
+    if (!mouseOverURL_.equals(DEFAULT_MOUSEOVER_URL_)) {
+      out.print("mouseOverURL=\"");
+      out.print(CharacterEntityMapper.mapEntities(mouseOverURL_, false));    
+      out.print("\" ");
+    }
          
     out.println("/>");  
     return;
@@ -456,15 +592,21 @@ public class FabricDisplayOptions implements Cloneable {
       String displayShadowsStr = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "shadows", false);
       String shadeNodesStr = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "shading", false);
       String minShadSubLinks = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "minShadSubLinks", false);
+      String offerNodeBrowserStr = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "offerNodeBrowser", false);
+      String offerLinkBrowserStr = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "offerLinkBrowser", false);
+      String offerMouseOverViewStr = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "offerMouseOverView", false);
       String browserURL = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "browserURL", false);
       String browserLinkURL = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "browserLinkURL", false);
+      String mouseOverURL = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "mouseOverURL", false);
    
       browserURL = (browserURL == null) ? null : CharacterEntityMapper.unmapEntities(browserURL, false);
       browserLinkURL =  (browserLinkURL == null) ? null : CharacterEntityMapper.unmapEntities(browserLinkURL, false);
       
       return (new FabricDisplayOptions(selectionOpaqueLevelStr, nodeLighterLevelStr, 
                                        linkDarkerLevelStr, displayShadowsStr,
-                                       shadeNodesStr, minShadSubLinks, browserURL, browserLinkURL));        
+                                       shadeNodesStr, minShadSubLinks, 
+                                       offerNodeBrowserStr, offerLinkBrowserStr, offerMouseOverViewStr,
+                                       browserURL, browserLinkURL, mouseOverURL));        
     }
   }
  

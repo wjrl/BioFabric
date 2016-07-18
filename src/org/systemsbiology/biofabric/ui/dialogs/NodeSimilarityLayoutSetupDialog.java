@@ -29,7 +29,7 @@ import javax.swing.JLabel;
 import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
 
-import org.systemsbiology.biofabric.layouts.ClusteredLayout;
+import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.util.ChoiceContent;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
@@ -41,7 +41,7 @@ import org.systemsbiology.biofabric.util.ResourceManager;
 ** Dialog box for setting layout params
 */
 
-public class ClusteredLayoutParamsDialog extends BTStashResultsDialog {
+public class NodeSimilarityLayoutSetupDialog extends BTStashResultsDialog {
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -60,7 +60,7 @@ public class ClusteredLayoutParamsDialog extends BTStashResultsDialog {
   private JTextField chainSizeField_;
   private JTextField jumpToleranceField_;
   private JComboBox distanceTypeCombo_;
-  private ClusteredLayout.ClusterParams results_;
+  private NodeSimilarityLayout.ClusterParams results_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -73,11 +73,11 @@ public class ClusteredLayoutParamsDialog extends BTStashResultsDialog {
   ** Constructor 
   */ 
   
-  public ClusteredLayoutParamsDialog(JFrame parent, ClusteredLayout.ClusterParams params) {     
+  public NodeSimilarityLayoutSetupDialog(JFrame parent, NodeSimilarityLayout.ClusterParams params) {     
     super(parent, "clusteredLayout.title", new Dimension(600, 350), 2);
     results_ = null;
        
-    distanceTypeCombo_ = new JComboBox(ClusteredLayout.ClusterParams.getDistanceChoices());
+    distanceTypeCombo_ = new JComboBox(NodeSimilarityLayout.ClusterParams.getDistanceChoices());
     int numSrc = distanceTypeCombo_.getItemCount();
     for (int i = 0; i < numSrc; i++) {
       ChoiceContent cc = (ChoiceContent)distanceTypeCombo_.getItemAt(i);
@@ -128,7 +128,7 @@ public class ClusteredLayoutParamsDialog extends BTStashResultsDialog {
   ** Get results
   */
   
-  public ClusteredLayout.ClusterParams getParams() {
+  public NodeSimilarityLayout.ClusterParams getParams() {
     return (results_);
   }
   
@@ -146,7 +146,7 @@ public class ClusteredLayoutParamsDialog extends BTStashResultsDialog {
   
   protected boolean stashForOK() {
  
-    results_ = new ClusteredLayout.ClusterParams();
+    results_ = new NodeSimilarityLayout.ClusterParams();
     
     ChoiceContent cc = (ChoiceContent)distanceTypeCombo_.getSelectedItem();
     results_.distanceMethod = cc.val;
@@ -246,7 +246,7 @@ public class ClusteredLayoutParamsDialog extends BTStashResultsDialog {
   */
   
   private void resetDefaults() {
-    ClusteredLayout.ClusterParams defaults = new ClusteredLayout.ClusterParams();
+    NodeSimilarityLayout.ClusterParams defaults = new NodeSimilarityLayout.ClusterParams();
    
     int numSrc = distanceTypeCombo_.getItemCount();
     for (int i = 0; i < numSrc; i++) {

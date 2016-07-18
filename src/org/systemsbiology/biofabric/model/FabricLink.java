@@ -20,7 +20,6 @@
 package org.systemsbiology.biofabric.model;
 
 import org.systemsbiology.biofabric.io.AttributeLoader;
-import org.systemsbiology.biofabric.io.AttributeLoader.AttributeKey;
 
 /****************************************************************************
 **

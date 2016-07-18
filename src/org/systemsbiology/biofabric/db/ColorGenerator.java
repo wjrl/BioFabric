@@ -48,7 +48,7 @@ public class ColorGenerator {
   ////////////////////////////////////////////////////////////////////////////
 
   private UniqueLabeller colorLabels_;
-  private Map colors_;
+  private Map<String, NamedColor> colors_;
 
   private String[] geneCol_ = new String[] {  
     "EX-blue",
@@ -142,7 +142,7 @@ public class ColorGenerator {
     colorLabels_.addExistingLabel("zz_newColor_0");
     // Can't do this: SpEndomes has custom tags e.g. "forest"
     //colorLabels_.setFixedPrefix("zz_newColor_0")
-    colors_ = new HashMap();
+    colors_ = new HashMap<String, NamedColor>();
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -182,7 +182,7 @@ public class ColorGenerator {
   */
 
   public Color getColor(String colorKey) {
-    return (((NamedColor)colors_.get(colorKey)).color);
+    return (colors_.get(colorKey).color);
   }
 
   /***************************************************************************
@@ -191,7 +191,7 @@ public class ColorGenerator {
   */
 
   public NamedColor getNamedColor(String colorKey) {
-    return ((NamedColor)colors_.get(colorKey));
+    return (colors_.get(colorKey));
   }  
 
   /***************************************************************************
@@ -199,7 +199,7 @@ public class ColorGenerator {
   ** Update the color set
   */
   
-  public GlobalChange updateColors(Map namedColors) {
+  public GlobalChange updateColors(Map<String, NamedColor> namedColors) {
     GlobalChange retval = new GlobalChange();
     retval.origColors = deepCopyColorMap(colors_);
     colors_ = deepCopyColorMap(namedColors);
@@ -242,7 +242,7 @@ public class ColorGenerator {
   ** Return an iterator over all the color keys
   */
   
-  public Iterator getColorKeys() {
+  public Iterator<String> getColorKeys() {
     return (colors_.keySet().iterator());
   }
 
@@ -251,7 +251,7 @@ public class ColorGenerator {
   ** Return gene colors as list
   */
   
-  public List getGeneColorsAsList() {    
+  public List<String> getGeneColorsAsList() {    
     return (Arrays.asList(geneCol_));
   }
     
@@ -284,8 +284,8 @@ public class ColorGenerator {
   ** Return the colors you cannot delete
   */
   
-  public Set cannotDeleteColors() {
-    HashSet retval = new HashSet();
+  public Set<String> cannotDeleteColors() {
+    HashSet<String> retval = new HashSet<String>();
     retval.add("white");
     //retval.add("red");  // This is handled now by EX-red
     retval.add("black");
@@ -396,7 +396,7 @@ public class ColorGenerator {
   */
   
   private void buildDefaultColors() {
-    colors_ = new HashMap();
+    colors_ = new HashMap<String, NamedColor>();
     colors_.put("inactiveLightBlue", new NamedColor("inactiveLightBlue", new Color(235, 235, 250), "Very Light Blue"));
     colorLabels_.addExistingLegacyLabel("inactiveLightBlue");   
     colors_.put("white", new NamedColor("white", new Color(255, 255, 255), "White"));    
@@ -428,10 +428,10 @@ public class ColorGenerator {
     colors_.put("lightPurple", new NamedColor("lightPurple", new Color(235, 219, 229), "Light Purple"));
     colorLabels_.addExistingLegacyLabel("lightPurple");
     
-    List geneColors = buildGeneColors();
+    List<NamedColor> geneColors = buildGeneColors();
     int geneColSize = geneColors.size();
     for (int i = 0; i < geneColSize; i++) {
-      NamedColor col = (NamedColor)geneColors.get(i);
+      NamedColor col = geneColors.get(i);
       colors_.put(col.key, col);
       colorLabels_.addExistingLegacyLabel(col.key);
     }
@@ -454,10 +454,10 @@ public class ColorGenerator {
     ind.indent();
     out.println("<colors>");
     ind.up();
-    Iterator colors = colors_.keySet().iterator();
+    Iterator<String> colors = colors_.keySet().iterator();
     while (colors.hasNext()) {
-      String key = (String)colors.next();
-      NamedColor nc = (NamedColor)colors_.get(key);
+      String key = colors.next();
+      NamedColor nc = colors_.get(key);
       Color c = nc.color;
       ind.indent();
       out.print("<color ");
@@ -485,9 +485,9 @@ public class ColorGenerator {
   ** Build gene colors
   */
 
-  private List buildGeneColors() {
+  private List<NamedColor> buildGeneColors() {
 
-    ArrayList colors = new ArrayList();
+    ArrayList<NamedColor> colors = new ArrayList<NamedColor>();
     colors.add(new NamedColor("EX-red", Color.getHSBColor(0.0F, 1.0F, 1.0F), "Bright Red"));
     colors.add(new NamedColor("EX-pale-red-orange", Color.getHSBColor(0.033F, 0.4F, 0.9F), "Dark Salmon"));
     colors.add(new NamedColor("EX-orange", Color.getHSBColor(0.067F, 1.0F, 1.0F), "Pumpkin Orange"));            
@@ -528,13 +528,13 @@ public class ColorGenerator {
   ** Write the note properties to XML
   */
   
-  private HashMap deepCopyColorMap(Map otherMap) {
-    HashMap retval = new HashMap();
-    Set keys = otherMap.keySet();
-    Iterator kit = keys.iterator();
+  private HashMap<String, NamedColor> deepCopyColorMap(Map<String, NamedColor> otherMap) {
+    HashMap<String, NamedColor> retval = new HashMap<String, NamedColor>();
+    Set<String> keys = otherMap.keySet();
+    Iterator<String> kit = keys.iterator();
     while (kit.hasNext()) {
-      String key = (String)kit.next();
-      NamedColor col = (NamedColor)otherMap.get(key);
+      String key = kit.next();
+      NamedColor col = otherMap.get(key);
       retval.put(new String(key), new NamedColor(col));
     }
     return (retval);

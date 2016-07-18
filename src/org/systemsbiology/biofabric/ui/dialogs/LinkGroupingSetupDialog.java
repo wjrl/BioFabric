@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Set;
 
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.model.FabricLink.AugRelation;
 import org.systemsbiology.biofabric.ui.dialogs.utils.DialogSupport;
 import org.systemsbiology.biofabric.ui.dialogs.utils.EditableTable;
 import org.systemsbiology.biofabric.util.DataUtil;
@@ -272,42 +271,46 @@ public class LinkGroupingSetupDialog extends JDialog implements DialogSupport.Di
       
       //
       // This tests that all the provided tags show up somewhere in the set of relations,
-      // plus that all relations are matched by one and only one tag.
+      // plus that all relations are matched by one and only one tag. The latter case should
+      // deal with issue #8
       // 
       
-      boolean fail = false;
+      //
+      // Note that all group suffixes must apply to at least one AugRelation; each group suffix is allowed 
+      // to apply to multiple AugRelations. However, all AugRelations must have exactly one suffix that applies, 
+      //
+      
       int numST = seenTags.size();
-      HashSet<FabricLink.AugRelation> matched = new HashSet<FabricLink.AugRelation>();
+      int numAugs = 0;
+      HashSet<FabricLink.AugRelation> augsWithTags = new HashSet<FabricLink.AugRelation>();
+      HashSet<String> tagsWithAug = new HashSet<String>();
       Iterator<FabricLink.AugRelation> arit = allRelations_.iterator();
       while (arit.hasNext()) {
         FabricLink.AugRelation relation = arit.next();
-        boolean gotIt = false;
+        numAugs++;
         for (int i = 0; i < numST; i++) {
-          if (relation.relation.indexOf(seenTags.get(i)) == (relation.relation.length() - seenTags.get(i).length())) {
-            gotIt = true;
-            break;
+          String checkTag = seenTags.get(i);
+          if (relation.relation.indexOf(checkTag) == (relation.relation.length() - checkTag.length())) {
+            // We have already had a match with another tag:
+            if (augsWithTags.contains(relation)) {
+              JOptionPane.showMessageDialog(parent_, rMan.getString("rsedit.ambig"),
+                                            rMan.getString("rsedit.ambigTitle"),
+                                            JOptionPane.ERROR_MESSAGE);            
+              return (null);
+            }
+            augsWithTags.add(relation);
+            tagsWithAug.add(checkTag);
           }
-        }
-        if (!gotIt) {
-          fail = true;
-          break;
         }
       }
       
-      if (fail) {
+      if ((tagsWithAug.size() != numST) || (augsWithTags.size() != numAugs)) {
         JOptionPane.showMessageDialog(parent_, rMan.getString("rsedit.notCovering"),
                                       rMan.getString("rsedit.badCoverageTitle"),
                                       JOptionPane.ERROR_MESSAGE);           
-            
         return (null);
       }
-      
-      //
-      
-      
-      
-      
-      
+ 
       return (seenTags);
     }
   }  

@@ -19,9 +19,10 @@
 
 package org.systemsbiology.biofabric.io;
 
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.io.IOException;
 import java.util.Map;
@@ -89,7 +90,7 @@ public class AttributeLoader {
     Matcher mainMatch = (forNodes) ? nodePat.matcher("") : linkPat.matcher("");
 
     String retval = null;
-    BufferedReader in = new BufferedReader(new FileReader(infile));
+    BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(infile), "UTF-8"));
     String line = null;
     boolean isFirst = true;
     while ((line = in.readLine()) != null) {
@@ -97,6 +98,9 @@ public class AttributeLoader {
         isFirst = false;
         retval = line.trim();
         continue;
+      }
+      if (line.trim().equals("")) {
+      	continue;
       }
       mainMatch.reset(line);
       if (!mainMatch.matches()) {
@@ -154,6 +158,31 @@ public class AttributeLoader {
     public StringKey(String key) {
       this.key = key;
     } 
+    
+    @Override
+    public String toString() {
+      return ("SKey: " + key);
+    }
+    
+    @Override
+    public int hashCode() {
+      return (key.hashCode());
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      if (other == null) {
+        return (false);
+      }
+      if (other == this) {
+        return (true);
+      }
+      if (!(other instanceof StringKey)) {
+        return (false);
+      }
+      StringKey otherT = (StringKey)other;
+      return ((this.key.equals(otherT.key)));
+    }
   }
    
   public static class ReadStats {

@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2012 Institute for Systems Biology 
+**    Copyright (C) 2003-2014 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -25,6 +25,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.net.MalformedURLException;
 import java.net.URL;
+
 import javax.swing.JFrame;
 import javax.swing.JTextField;
 import javax.swing.JLabel;
@@ -37,6 +38,7 @@ import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.ResourceManager;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -51,6 +53,8 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
   //
   ////////////////////////////////////////////////////////////////////////////  
  
+	private static final long serialVersionUID = 1L;
+	  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE INSTANCE MEMBERS
@@ -63,8 +67,12 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
   private JCheckBox displayShadowsBox_;
   private JCheckBox minShadSublinksBox_;
   private JCheckBox shadeNodesBox_;
+  private JCheckBox offerNodeBrowser_;
   private JTextField browserURLField_;
+  private JCheckBox offerLinkBrowser_;
   private JTextField browserLinkURLField_;
+  private JCheckBox offerMouseOverView_;
+  private JTextField mouseOverTemplateField_;
   private FabricDisplayOptions newOpts_;
   
   private boolean needRebuild_;
@@ -82,7 +90,7 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
   */ 
   
   public FabricDisplayOptionsDialog(JFrame parent) {     
-    super(parent, "displayOptions.title", new Dimension(1000, 400), 2);
+    super(parent, "displayOptions.title", new Dimension(1000, 600), 2);
     ResourceManager rMan = ResourceManager.getManager();
     parent_ = parent; 
     
@@ -125,13 +133,29 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
     shadeNodesBox_.setSelected(options.getShadeNodes());
     addWidgetFullRow(shadeNodesBox_, false); 
     
+    offerNodeBrowser_ = new JCheckBox(rMan.getString("displayOptions.offerNodeBrowser"));
+    offerNodeBrowser_.setSelected(options.getOfferNodeBrowser());
+    addWidgetFullRow(offerNodeBrowser_, false); 
+    
     browserURLField_ = new JTextField(options.getBrowserURL());
     label = new JLabel(rMan.getString("displayOptions.browserURL"));
     addLabeledWidget(label, browserURLField_, false, false); 
     
+    offerLinkBrowser_ = new JCheckBox(rMan.getString("displayOptions.offerLinkBrowser"));
+    offerLinkBrowser_.setSelected(options.getOfferLinkBrowser());
+    addWidgetFullRow(offerLinkBrowser_, false); 
+    
     browserLinkURLField_ = new JTextField(options.getBrowserLinkURL());
     label = new JLabel(rMan.getString("displayOptions.browserLinkURL"));
     addLabeledWidget(label, browserLinkURLField_, false, false); 
+    
+    offerMouseOverView_ = new JCheckBox(rMan.getString("displayOptions.offerMouseOverView"));
+    offerMouseOverView_.setSelected(options.getOfferMouseOverView());
+    addWidgetFullRow(offerMouseOverView_, false); 
+    
+    mouseOverTemplateField_ = new JTextField(options.getMouseOverURL());
+    label = new JLabel(rMan.getString("displayOptions.MouseOverURL"));
+    addLabeledWidget(label, mouseOverTemplateField_, false, false);    
     
     //
     // Build extra button:
@@ -243,6 +267,15 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
     newOpts_.setShadeNodes(currShade);
     needRecolor_ = needRecolor_ || (oldOpts.getShadeNodes() != newOpts_.getShadeNodes());
     
+    boolean offerNode = offerNodeBrowser_.isSelected();
+    newOpts_.setOfferNodeBrowser(offerNode);
+    
+    boolean offerLink = offerLinkBrowser_.isSelected();
+    newOpts_.setOfferLinkBrowser(offerLink);
+    
+    boolean offerMO = offerMouseOverView_.isSelected();
+    newOpts_.setOfferMouseOverView(offerMO);    
+    
     String browserURL = browserURLField_.getText().trim();
     if (!testURL(browserURL, true)) {
       return (false);    
@@ -254,7 +287,11 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
       return (false);    
     }
     newOpts_.setBrowserLinkURL(browserLinkURL);
- 
+    
+    String mouseOverURL = this.mouseOverTemplateField_.getText().trim();
+    UiUtil.fixMePrintout("Test this URL for correctness");
+    newOpts_.setMouseOverURL(mouseOverURL);
+
     return (true);
   }
   

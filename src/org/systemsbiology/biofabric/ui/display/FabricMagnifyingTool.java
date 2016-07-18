@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2012 Institute for Systems Biology 
+**    Copyright (C) 2003-2014 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -55,12 +55,9 @@ import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.BioFabricNetwork.LinkInfo;
-import org.systemsbiology.biofabric.model.BioFabricNetwork.NodeInfo;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.render.PaintCache;
-import org.systemsbiology.biofabric.ui.render.PaintCache.FloaterSet;
 import org.systemsbiology.biofabric.util.ColorListRenderer;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.MinMax;
@@ -373,10 +370,12 @@ public class FabricMagnifyingTool extends JPanel {
   ** Sizing
   */
   
+  @Override
   public Dimension getPreferredSize() {
     return (getMinimumSize());    
   }
 
+  @Override
   public Dimension getMinimumSize() {
     if (neverSet_) {
       return (new Dimension(550, (2 * (FabricMagnifier.PREF_SIZE * FabricMagnifier.MAG_GRID))));
@@ -385,6 +384,7 @@ public class FabricMagnifyingTool extends JPanel {
     }
   }
   
+  @Override
   public Dimension getMaximumSize() {
     return (new Dimension(4000, (2 * (FabricMagnifier.MAX_SIZE * FabricMagnifier.MAG_GRID)) + 40));    
   }
@@ -708,10 +708,11 @@ public class FabricMagnifyingTool extends JPanel {
         int minRow = li.topRow();
         int maxRow = li.bottomRow();
         
+        UiUtil.fixMePrintout("Mother Plutarch Mabeuf (rightmost) link not appearing in clustered LesMiz");
         if ((minRow <= (myCen.y + (currSize_ / 2))) && (maxRow >= (myCen.y - (currSize_ / 2)))) {
           String linkDisp = li.getLink().toDisplayString();
           Rectangle2D bounds = tiny_.getStringBounds(linkDisp, frc);
-          atPoint.setLocation((double)(i * BioFabricPanel.GRID_SIZE), 0.0);
+          atPoint.setLocation((i * BioFabricPanel.GRID_SIZE), 0.0);
           ac.transform(atPoint, drawPoint);
           //float baseptX = nodeLabels_.getWidth() + (float)drawPoint.getX();
          // if ((baseptX < nodeLabels_.getWidth()) || (baseptX > nodeLabels_.getWidth() + 200)) {

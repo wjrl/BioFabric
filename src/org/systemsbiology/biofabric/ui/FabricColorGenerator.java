@@ -59,8 +59,8 @@ public class FabricColorGenerator {
   ////////////////////////////////////////////////////////////////////////////
 
   private ColorGenerator myColGen_;
-  private HashMap brighter_;
-  private HashMap darker_;
+  private HashMap<String, Color> brighter_;
+  private HashMap<String, Color> darker_;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -75,8 +75,8 @@ public class FabricColorGenerator {
 
   public FabricColorGenerator() {
     myColGen_ = new ColorGenerator();
-    brighter_ = new HashMap();
-    darker_ = new HashMap();
+    brighter_ = new HashMap<String, Color>();
+    darker_ = new HashMap<String, Color>();
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -111,10 +111,15 @@ public class FabricColorGenerator {
         float db = Math.min(1.0F, hsbvals[2] * (float)dark);
         darker_.put(gckey, Color.getHSBColor(hsbvals[0], hsbvals[1], db));
       } else {
-        int rb = Math.min(255, (int)Math.round((double)baseR * light));
-        int gb = Math.min(255, (int)Math.round((double)baseG * light));
-        int bb = Math.min(255, (int)Math.round((double)baseB * light));
-        brighter_.put(gckey, new Color(rb, gb, bb));
+      	if ((nc.name.indexOf("Gold") == -1) && (nc.name.indexOf("Dark Wheat") == -1) &&  (nc.name.indexOf("Pale Goldenrod") == -1)) {
+	        int rb = Math.min(255, (int)Math.round((double)baseR * light));
+	        int gb = Math.min(255, (int)Math.round((double)baseG * light));
+	        int bb = Math.min(255, (int)Math.round((double)baseB * light));       
+	        brighter_.put(gckey, new Color(rb, gb, bb));
+      	} else {
+      		System.out.println("Not light on " + nc.name);
+      		brighter_.put(gckey, nc.color);
+      	}
         int rd = Math.min(255, (int)Math.round((double)baseR * dark));
         int gd = Math.min(255, (int)Math.round((double)baseG * dark));
         int bd = Math.min(255, (int)Math.round((double)baseB * dark));
@@ -168,10 +173,10 @@ public class FabricColorGenerator {
         paintCol = ((nc == null) || (nc.color == null)) ? null : nc.color;
         break;
       case DARKER:
-        paintCol = (Color)darker_.get(colorKey);
+        paintCol = darker_.get(colorKey);
         break;
       case BRIGHTER:
-        paintCol = (Color)brighter_.get(colorKey);
+        paintCol = brighter_.get(colorKey);
         break;
       default:
         throw new IllegalArgumentException();

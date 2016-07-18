@@ -29,7 +29,7 @@ import javax.swing.JTextField;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 
-import org.systemsbiology.biofabric.layouts.ClusteredLayout;
+import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
@@ -56,7 +56,7 @@ public class ReorderLayoutParamsDialog extends BTStashResultsDialog {
   
   private JTextField numPassesField_;
   private JCheckBox termAtIncreaseBox_;
-  private ClusteredLayout.ResortParams results_;
+  private NodeSimilarityLayout.ResortParams results_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -69,7 +69,7 @@ public class ReorderLayoutParamsDialog extends BTStashResultsDialog {
   ** Constructor 
   */ 
   
-  public ReorderLayoutParamsDialog(JFrame parent, ClusteredLayout.ResortParams params) {     
+  public ReorderLayoutParamsDialog(JFrame parent, NodeSimilarityLayout.ResortParams params) {     
     super(parent, "clusteredLayout.reorderTitle", new Dimension(600, 300), 2);
     ResourceManager rMan = ResourceManager.getManager();
     parent_ = parent; 
@@ -113,7 +113,7 @@ public class ReorderLayoutParamsDialog extends BTStashResultsDialog {
   ** Get results
   */
   
-  public ClusteredLayout.ResortParams getParams() {
+  public NodeSimilarityLayout.ResortParams getParams() {
     return (results_);
   }
   
@@ -131,7 +131,7 @@ public class ReorderLayoutParamsDialog extends BTStashResultsDialog {
   
   protected boolean stashForOK() {
  
-    results_ = new ClusteredLayout.ResortParams();
+    results_ = new NodeSimilarityLayout.ResortParams();
        
     String passStr = numPassesField_.getText();
     Integer passes = parseInteger(passStr, "clusteredLayout.badPass");
@@ -185,7 +185,7 @@ public class ReorderLayoutParamsDialog extends BTStashResultsDialog {
   */
   
   private void resetDefaults() {
-    ClusteredLayout.ResortParams defaults = new ClusteredLayout.ResortParams();
+    NodeSimilarityLayout.ResortParams defaults = new NodeSimilarityLayout.ResortParams();
     numPassesField_.setText(Integer.toString(defaults.passCount));
     termAtIncreaseBox_.setSelected(defaults.terminateAtIncrease);
     return;
