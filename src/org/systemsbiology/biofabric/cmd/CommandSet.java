@@ -80,10 +80,10 @@ import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.filechooser.FileFilter;
 
-import org.freehep.graphics2d.VectorGraphics;
-import org.freehep.graphicsio.PageConstants;
-import org.freehep.graphicsio.pdf.PDFGraphics2D;
-import org.freehep.graphicsio.ps.PSGraphics2D;
+//import org.freehep.graphics2d.VectorGraphics;
+//import org.freehep.graphicsio.PageConstants;
+//import org.freehep.graphicsio.pdf.PDFGraphics2D;
+//import org.freehep.graphicsio.ps.PSGraphics2D;
 import org.systemsbiology.biofabric.app.BioFabricApplication;
 import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.event.EventManager;
@@ -3443,11 +3443,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     //    Dimension viw = new Dimension((int)(viewInWorld.getWidth() / 10.0), (int)(viewInWorld.getHeight() / 10.0));
          Dimension viw = new Dimension((int)(viewInWorld.getWidth() / 10.0), (int)(viewInWorld.getHeight() / 10.0));
         System.out.println("dim " + viw);
-        VectorGraphics g = new PDFGraphics2D(new File("/Users/bill/OutputAOa.pdf"), viw); 
-        g.setProperties(p); 
-        g.startExport(); 
-        bfp_.print(g); 
-        g.endExport();
+      //  VectorGraphics g = new PDFGraphics2D(new File("/Users/bill/OutputAOa.pdf"), viw); 
+     //   g.setProperties(p); 
+     //   g.startExport(); 
+     //   bfp_.print(g); 
+     //   g.endExport();
        
              
         // FIX ME: Needed for Win32?  Linux won't default to landscape without this?
