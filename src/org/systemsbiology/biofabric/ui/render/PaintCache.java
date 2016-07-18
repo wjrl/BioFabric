@@ -84,9 +84,6 @@ public class PaintCache {
   private FabricColorGenerator colGen_;
   private Color superLightPink_;
   private Color superLightBlue_;
-  private Color superLightNegGray_;
-  
-  private Color[] superLightCycle_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -109,14 +106,6 @@ public class PaintCache {
     colGen_ = colGen;
     superLightPink_ = new Color(255, 244, 244);
     superLightBlue_ = new Color(244, 244, 255);
-    superLightCycle_ = new Color[6];
-    superLightCycle_[0] = new Color(244, 222, 222);
-    superLightCycle_[1] = new Color(222, 222, 244);
-    superLightCycle_[2] = new Color(222, 244, 222);
-    superLightCycle_[3] = new Color(244, 222, 244); 
-    superLightCycle_[4] = new Color(244, 244, 222);
-    superLightCycle_[5] = new Color(222, 244, 244); 
-    superLightNegGray_ = new Color(200, 200, 200);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -199,9 +188,6 @@ public class PaintCache {
       linkExtents.put(Integer.valueOf(num), new MinMax(sRow, eRow));
     } 
        
-   // drawLinkBacks(linkExtents, links, paintPaths_);
-    drawNegativeLinkBacks(linkExtents, links, paintPaths_);
-  
     ArrayList<PaintedPath> postPaths = new ArrayList<PaintedPath>();
     ArrayList<PaintedPath> postPostPaths = new ArrayList<PaintedPath>();
     Iterator<BioFabricNetwork.NodeInfo> trit = targets.iterator();
@@ -221,73 +207,6 @@ public class PaintCache {
 
     return;
   }
-  
-  /***************************************************************************
-  ** 
-  ** Draw link backing rectangles
-  */
-
-  public void drawLinkBacks(HashMap<Integer, MinMax> linkExtents, List<BioFabricNetwork.LinkInfo> links, List<PaintedPath> paths) {
-  	
-  	int numLinks = links.size();
-    String currRel = null;
-    int currRelStart = 0;
-    int backCount = 0;
-    for (int i = 0; i < numLinks; i++) {    	
-      BioFabricNetwork.LinkInfo link = links.get(i);
-      String linkRel = link.getAugRelation().relation;
-      if (i == 0) {
-      	currRel = linkRel;
-      	currRelStart = 0;
-      } else {
-      	if (!linkRel.equals(currRel)) {
-      		MinMax forRel = new MinMax(currRelStart, i - 1);
-      		Color col = superLightCycle_[backCount++ % 6];
-      		buildABackRect(forRel, linkExtents, null, paths, col);
-      		currRel = linkRel;
-      		currRelStart = i;
-      	}
-      }
-    }
-    MinMax forRel = new MinMax(currRelStart, numLinks - 1);
-    Color col = superLightCycle_[backCount++ % 6];
-    buildABackRect(forRel, linkExtents, null, paths, col);
-    return;
-  }
-  
-  /***************************************************************************
-  ** 
-  ** Draw link backing rectangles
-  */
-
-  public void drawNegativeLinkBacks(HashMap<Integer, MinMax> linkExtents, List<BioFabricNetwork.LinkInfo> links, List<PaintedPath> paths) {
-  	
-  	int numLinks = links.size();
-    int negStart = 0;
-    boolean lastRelIsNeg = false;
-    for (int i = 0; i <= numLinks; i++) {
-    	boolean relIsNeg = false;
-    	if (i < numLinks) {
-        BioFabricNetwork.LinkInfo link = links.get(i);
-        String linkRel = link.getAugRelation().relation;
-        relIsNeg = (linkRel.indexOf("-") == 0);
-    	} else {
-    		relIsNeg = !lastRelIsNeg;
-    	}
-    	if (relIsNeg) {
-    		if ((i == 0) || !lastRelIsNeg) {
-    		 	negStart = i;
-    		}
-    	} else if (lastRelIsNeg) {
-    		MinMax forRel = new MinMax(negStart, i - 1);
-        buildABackRect(forRel, linkExtents, null, paths, superLightNegGray_);
-    	}
-    	lastRelIsNeg = relIsNeg;
-    }
-    return;
-  }
-  
-  
  
   /***************************************************************************
   ** 
