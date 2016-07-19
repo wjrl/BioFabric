@@ -93,6 +93,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
@@ -183,7 +184,6 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
   public static final int DEFAULT_LAYOUT = 43;
   public static final int EXPORT_SELECTED_NODES = 44;
   public static final int SAVE = 45;
-  public static final int LAYOUT_NETWORK_BY_LINK_RELATION = 46;
 
   public static final int GENERAL_PUSH = 0x01;
   public static final int ALLOW_NAV_PUSH = 0x02;
@@ -595,9 +595,6 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
           break;
         case SET_LINK_GROUPS:
           retval = new SetLinkGroupsAction(withIcon);
-          break;
-        case LAYOUT_NETWORK_BY_LINK_RELATION:
-          retval = new LayoutNetworkViaLinkRelationAction(withIcon);
           break;
         case COMPARE_NODES:
           retval = new CompareNodesAction(withIcon);
@@ -2408,106 +2405,6 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
    * * Command
    */
 
-  private class LayoutNetworkViaLinkRelationAction extends ChecksForEnabled {
-
-    LayoutNetworkViaLinkRelationAction(boolean doIcon) {
-      ResourceManager rMan = ResourceManager.getManager();
-      putValue(Action.NAME, rMan.getString("command.LayoutNetworkViaLinkRelation"));
-      if (doIcon) {
-        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.LayoutNetworkViaLinkRelation"));
-      } else {
-        char mnem = rMan.getChar("command.LayoutNetworkViaLinkRelationMnem");
-        putValue(Action.MNEMONIC_KEY, new Integer(mnem));
-      }
-
-    }
-
-    @Override
-    public void actionPerformed(ActionEvent e) {
-      BioFabricNetwork bfn = bfp_.getNetwork();
-      List currentTags = bfn.getLinkGroups();
-      ArrayList links = new ArrayList(bfn.getAllLinks(true));
-      Set allRelations = BioFabricNetwork.extractRelations(links).keySet();
-      LinkGroupingSetupDialog lgsd = new LinkGroupingSetupDialog(topWindow_, currentTags, allRelations);
-      lgsd.show();
-      if (! lgsd.haveResult()) {
-        return;
-      }
-
-      reLayoutLinksByRelation(lgsd.getGroups());
-      return;
-    }
-
-    /**
-     * Re-Layouts the whole network after ordering by groups.
-     */
-
-    private void reLayoutLinksByRelation(List groupOrder) {
-      SortedMap modifiedAndChecked = bfp_.getNetwork().getExistingLinkOrder();
-
-      orderByGroups(modifiedAndChecked, groupOrder);
-
-      BioFabricNetwork.RelayoutBuildData bfn =
-              new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.LINK_ATTRIB_LAYOUT);
-      bfn.setLinkOrder(modifiedAndChecked);
-
-      NetworkRelayout nb = new NetworkRelayout();
-      nb.doNetworkRelayout(bfn, null);
-      return;
-    }
-
-    /**
-     * Groups links with the same relation (suffix) in the order of 'groupOrder'
-     */
-
-    private void orderByGroups(SortedMap links, List groupOrder) {
-
-      Map<String, List<FabricLink>> groups = new TreeMap<String, List<FabricLink>>();
-      // String is link relation, List is all the links with that relation
-
-      for (Object obj : links.entrySet()) {
-
-        Map.Entry entry = (Map.Entry) obj;
-
-        FabricLink fl = (FabricLink) entry.getValue();
-        String rel = fl.getRelation();
-
-        if (groups.get(rel) == null) {
-          groups.put(rel, new ArrayList<FabricLink>());
-        }
-
-        groups.get(rel).add(fl);
-      }
-
-      links.clear();                 // clear the original map of links
-
-      int rowIdx = 0;
-      for (Object obj : groupOrder) {
-
-        String relation = (String) obj;
-
-        List<FabricLink> group = groups.get(relation);
-
-        for (FabricLink fl : group) {
-          links.put(rowIdx, fl);
-          rowIdx++;                    // increment the row index
-        }
-
-      }
-      return;
-    }
-
-    protected boolean checkGuts() {
-      return bfp_.hasAModel();
-    }
-
-  }
-
-  /***************************************************************************
-   * *
-   * * Command
-   */
-
   private class DefaultLayoutAction extends ChecksForEnabled {
 
     DefaultLayoutAction(boolean doIcon) {
@@ -2706,16 +2603,85 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
       }
 
       List newGroupings = lgsd.getGroups();
-      if (newGroupings.equals(currentTags)) {
-        return (true);
+      int mode = lgsd.getSelectedMode();
+
+      bfn.setLayoutMode(mode);
+      // update Layout mode, soon will add feature to not reLayout if
+      // link relation order and layout mode are same
+
+      if (mode == BioFabricNetwork.PER_NODE_MODE) {  // order each node's link
+        BioFabricNetwork.RelayoutBuildData bfnd =
+                new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.LINK_GROUP_CHANGE);
+        bfnd.setLinkGroups(newGroupings);
+        NetworkRelayout nb = new NetworkRelayout();
+        nb.doNetworkRelayout(bfnd, null);
+
       }
 
-      BioFabricNetwork.RelayoutBuildData bfnd =
-              new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.LINK_GROUP_CHANGE);
-      bfnd.setLinkGroups(newGroupings);
-      NetworkRelayout nb = new NetworkRelayout();
-      nb.doNetworkRelayout(bfnd, null);
+      if (mode == BioFabricNetwork.PER_NETWORK_MODE){ // order the whole network into groups
+        reLayoutNetworkByLinkRelation(newGroupings);
+      }
+
       return (true);
+    }
+
+    /**
+     * Re-Layouts the whole network after ordering by groups.
+     */
+
+    private void reLayoutNetworkByLinkRelation(List groupOrder) {
+      SortedMap modifiedAndChecked = bfp_.getNetwork().getExistingLinkOrder();
+
+      orderNetworkByGroups(modifiedAndChecked, groupOrder);
+
+      BioFabricNetwork.RelayoutBuildData bfn =
+              new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.LINK_ATTRIB_LAYOUT);
+      bfn.setLinkOrder(modifiedAndChecked);
+
+      NetworkRelayout nb = new NetworkRelayout();
+      nb.doNetworkRelayout(bfn, null);
+      return;
+    }
+
+    /**
+     * Groups links with the same relation (suffix) in the order of 'groupOrder'
+     */
+
+    private void orderNetworkByGroups(SortedMap links, List groupOrder) {
+
+      Map<String, List<FabricLink>> groups = new TreeMap<String, List<FabricLink>>();
+      // String is link relation, List is all the links with that relation
+
+      for (Object obj : links.entrySet()) {
+
+        Map.Entry entry = (Map.Entry) obj;
+
+        FabricLink fl = (FabricLink) entry.getValue();
+        String rel = fl.getRelation();
+
+        if (groups.get(rel) == null) {
+          groups.put(rel, new ArrayList<FabricLink>());
+        }
+
+        groups.get(rel).add(fl);
+      }
+
+      links.clear();                 // clear the original map of links
+
+      int rowIdx = 0;
+      for (Object obj : groupOrder) {
+
+        String relation = (String) obj;
+
+        List<FabricLink> group = groups.get(relation);
+
+        for (FabricLink fl : group) {
+          links.put(rowIdx, fl);
+          rowIdx++;                    // increment the row index
+        }
+
+      }
+      return;
     }
 
     protected boolean checkGuts() {

@@ -42,38 +42,38 @@ import org.systemsbiology.biotapestry.util.FixedJButton;
 import org.systemsbiology.biotapestry.util.UiUtil;
 
 /****************************************************************************
-**
-** Dialog box for setting up a node comparison
-*/
+ **
+ ** Dialog box for setting up a node comparison
+ */
 
 public class CompareNodesSetupDialog extends BTStashResultsDialog {
-  
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE INSTANCE MEMBERS
   //
-  ////////////////////////////////////////////////////////////////////////////  
+  ////////////////////////////////////////////////////////////////////////////
 
   private Set result_;
   private EditableTable est_;
   private Set allNodes_;
- 
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTRUCTORS
   //
-  ////////////////////////////////////////////////////////////////////////////    
+  ////////////////////////////////////////////////////////////////////////////
 
   /***************************************************************************
-  **
-  ** Constructor 
-  */ 
+   **
+   ** Constructor
+   */
 
-  public CompareNodesSetupDialog(JFrame parent, Set allNodes) { 
+  public CompareNodesSetupDialog(JFrame parent, Set allNodes) {
     super(parent, "compareNodesSetup.title", new Dimension(600, 500), 2);
     result_ = null;
-    allNodes_ = allNodes; 
-    
+    allNodes_ = allNodes;
+
     //
     // Build extra button:
     //
@@ -87,7 +87,7 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
           ExceptionHandler.getHandler().displayException(ex);
         }
       }
-    });   
+    });
 
     est_ = new EditableTable(new NodeListTableModel(), parent_);
     EditableTable.TableParams etp = new EditableTable.TableParams();
@@ -95,50 +95,50 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
     etp.buttons = EditableTable.ALL_BUT_EDIT_BUTTONS;
     etp.singleSelectOnly = true;
     JPanel tablePan = est_.buildEditableTable(etp);
-    
+
     addTable(tablePan, 5);
     finishConstructionWithExtraLeftButton(buttonR);
 
   }
-  
+
   /***************************************************************************
-  **
-  ** Return results
-  ** 
-  */
-  
+   **
+   ** Return results
+   **
+   */
+
   public Set getResults() {
     return (result_);
-  }  
+  }
 
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE METHODS
   //
-  ////////////////////////////////////////////////////////////////////////////    
-   
+  ////////////////////////////////////////////////////////////////////////////
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // INNER CLASSES
   //
   ////////////////////////////////////////////////////////////////////////////
-  
+
   /***************************************************************************
-  **
-  ** The table
-  */
+   **
+   ** The table
+   */
 
   class NodeListTableModel extends EditableTable.TableModel {
 
     private final static int NODE_NAME_  = 0;
-    private final static int NUM_COL_    = 1;   
-    
+    private final static int NUM_COL_    = 1;
+
     NodeListTableModel() {
       super(NUM_COL_);
       colNames_ = new String[] {"compareNodesSetup.nodeName"};
       colClasses_ = new Class[] {String.class};
-    }    
-   
+    }
+
     public List getValuesFromTable() {
       ArrayList retval = new ArrayList();
       for (int i = 0; i < this.rowCount_; i++) {
@@ -146,7 +146,7 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
       }
       return (retval);
     }
-     
+
     public void extractValues(List prsList) {
       super.extractValues(prsList);
       Iterator rit = prsList.iterator();
@@ -155,55 +155,55 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
       }
       return;
     }
-    
+
     List applyValues() {
       List vals = getValuesFromTable();
-      
+
       //
       // Make sure the groups are OK. Names must be unique, non-blank, present as suffixes in the
       // provided set of link relations, and they must cover the set.
       //
-      
+
       ResourceManager rMan = ResourceManager.getManager();
       ArrayList seenTags = new ArrayList();
       int size = vals.size();
       if (size == 0) {
         return (seenTags);
       }
-      
+
       for (int i = 0; i < size; i++) {
         String tag = (String)vals.get(i);
         if ((tag == null) || (tag.trim().equals(""))) {
           JOptionPane.showMessageDialog(parent_, rMan.getString("compareNodesSetup.badName"),
-                                        rMan.getString("compareNodesSetup.badNameTitle"),
-                                        JOptionPane.ERROR_MESSAGE);
+                  rMan.getString("compareNodesSetup.badNameTitle"),
+                  JOptionPane.ERROR_MESSAGE);
           return (null);
         }
-        
+
         tag = tag.trim();
-        
+
         if (DataUtil.containsKey(seenTags, tag)) {
           JOptionPane.showMessageDialog(parent_, rMan.getString("compareNodesSetup.dupName"),
-                                        rMan.getString("compareNodesSetup.dupNameTitle"),
-                                        JOptionPane.ERROR_MESSAGE);           
-            
+                  rMan.getString("compareNodesSetup.dupNameTitle"),
+                  JOptionPane.ERROR_MESSAGE);
+
           return (null);
         }
-        
+
         if (!DataUtil.containsKey(allNodes_, tag)) {
           JOptionPane.showMessageDialog(parent_, rMan.getString("compareNodesSetup.notANode"),
-                                        rMan.getString("compareNodesSetup.notANodeTitle"),
-                                        JOptionPane.ERROR_MESSAGE);           
-            
+                  rMan.getString("compareNodesSetup.notANodeTitle"),
+                  JOptionPane.ERROR_MESSAGE);
+
           return (null);
         }
         seenTags.add(tag);
       }
-      
+
       return (seenTags);
     }
-  }  
-  
+  }
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // PROTECTED METHODS
@@ -211,27 +211,27 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
   ////////////////////////////////////////////////////////////////////////////
 
   /***************************************************************************
-  **
-  ** Stash our results for later interrogation.
-  ** 
-  */
-  
+   **
+   ** Stash our results for later interrogation.
+   **
+   */
+
   protected boolean stashForOK() {
-    List av = ((NodeListTableModel)est_.getModel()).applyValues();    
+    List av = ((NodeListTableModel)est_.getModel()).applyValues();
     if (av == null) {
       result_ = null;
       return (false);
     }
     result_ = new HashSet(av);
     return (true);
-  } 
-  
+  }
+
   /***************************************************************************
-  **
-  ** Load names from a file
-  ** 
-  */
-  
+   **
+   ** Load names from a file
+   **
+   */
+
   void loadFromFile() {
     FabricCommands cmd = FabricCommands.getCmds("mainWindow");
     File fileEda = cmd.getTheFile(".txt", null, "AttribDirectory", "filterName.txt");
@@ -245,6 +245,6 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
     ((NodeListTableModel)est_.getModel()).extractValues(nodes);
     est_.updateTable(true, nodes);
     cmd.setPreference("AttribDirectory", fileEda.getAbsoluteFile().getParent());
-    return;   
+    return;
   }
 }

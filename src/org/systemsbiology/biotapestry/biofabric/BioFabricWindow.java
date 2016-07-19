@@ -425,7 +425,6 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     lMenu.add(fc.getAction(FabricCommands.LAYOUT_NODES_VIA_ATTRIBUTES, false, null));
     lMenu.add(fc.getAction(FabricCommands.LAYOUT_LINKS_VIA_ATTRIBUTES, false, null));
     lMenu.add(fc.getAction(FabricCommands.SET_LINK_GROUPS, false, null));
-    lMenu.add(fc.getAction(FabricCommands.LAYOUT_NETWORK_BY_LINK_RELATION, false, null));
 
     //
     // Gaggle Menu
