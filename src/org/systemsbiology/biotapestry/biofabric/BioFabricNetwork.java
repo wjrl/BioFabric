@@ -43,7 +43,6 @@ import org.systemsbiology.biotapestry.util.CharacterEntityMapper;
 import org.systemsbiology.biotapestry.util.DataUtil;
 import org.systemsbiology.biotapestry.util.Indenter;
 import org.systemsbiology.biotapestry.util.MinMax;
-import org.systemsbiology.biotapestry.util.UiUtil;
 
 
 /****************************************************************************
@@ -65,20 +64,22 @@ public class BioFabricNetwork {
   //
   //////////////////////////////////////////////////////////////////////////// 
   
-  public static final int DEFAULT_LAYOUT     = 0;
-  public static final int REORDER_LAYOUT     = 1;
-  public static final int CLUSTERED_LAYOUT   = 2;
-  public static final int SHADOW_LINK_CHANGE = 3;
-  public static final int LINK_GROUP_CHANGE  = 4;
-  public static final int BUILD_FOR_SUBMODEL = 5;
-  public static final int BUILD_FROM_XML     = 6;
-  public static final int BUILD_FROM_SIF     = 7;
-  public static final int BUILD_FROM_GAGGLE  = 8;
-  public static final int NODE_ATTRIB_LAYOUT = 9;
-  public static final int LINK_ATTRIB_LAYOUT = 10;
+  public static final int DEFAULT_LAYOUT           = 0;
+  public static final int REORDER_LAYOUT           = 1;
+  public static final int CLUSTERED_LAYOUT         = 2;
+  public static final int SHADOW_LINK_CHANGE       = 3;
+  public static final int GROUP_PER_NODE_CHANGE    = 4;
+  public static final int BUILD_FOR_SUBMODEL       = 5;
+  public static final int BUILD_FROM_XML           = 6;
+  public static final int BUILD_FROM_SIF           = 7;
+  public static final int BUILD_FROM_GAGGLE        = 8;
+  public static final int NODE_ATTRIB_LAYOUT       = 9;
+  public static final int LINK_ATTRIB_LAYOUT       = 10;
+  public static final int GROUP_PER_NETWORK_CHANGE = 11;
 
-  public static final int PER_NODE_MODE = 0;
-  public static final int PER_NETWORK_MODE = 1;
+  public static final int UNINITIALIZED_MODE     = 12;
+  public static final int PER_NODE_MODE          = 13;
+  public static final int PER_NETWORK_MODE       = 14;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -117,11 +118,10 @@ public class BioFabricNetwork {
   private FabricColorGenerator colGen_;
 
   //
-  // Current Link Layout Mode, either PER_NODE or PER_NETWORK
-  // Default value is PER_NODE
+  // Current Link Layout Mode, default is UNINITIALIZED_MODE
   //
 
-  private int layoutMode = PER_NODE_MODE;
+  private int layoutMode_ = UNINITIALIZED_MODE;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -141,7 +141,8 @@ public class BioFabricNetwork {
       case DEFAULT_LAYOUT:
       case REORDER_LAYOUT:
       case CLUSTERED_LAYOUT:
-      case LINK_GROUP_CHANGE:
+      case GROUP_PER_NODE_CHANGE:
+      case GROUP_PER_NETWORK_CHANGE:
       case NODE_ATTRIB_LAYOUT:
       case LINK_ATTRIB_LAYOUT:
         RelayoutBuildData rbd = (RelayoutBuildData)bd;
@@ -153,6 +154,7 @@ public class BioFabricNetwork {
         nodeDefs_ = new HashMap();
         linkGrouping_ = new ArrayList();
         colGen_ = rbd.colGen;
+        layoutMode_ = rbd.layoutMode;
         relayoutNetwork(rbd);
         break;
       case BUILD_FOR_SUBMODEL:
@@ -421,7 +423,8 @@ public class BioFabricNetwork {
     int mode = rbd.getMode();
     FabricColorGenerator colGen = rbd.colGen;
     SortedMap linkOrder = rbd.linkOrder;
-    List linkGroups = (mode == LINK_GROUP_CHANGE) ? rbd.newLinkGroups : rbd.existingLinkGroups;
+    List linkGroups = (mode == GROUP_PER_NODE_CHANGE || mode == GROUP_PER_NETWORK_CHANGE)
+            ? rbd.newLinkGroups : rbd.existingLinkGroups;
     installLinkGroups(linkGroups);
     boolean installNonStandardNodeOrder = (mode == NODE_ATTRIB_LAYOUT) ||
                                           (mode == CLUSTERED_LAYOUT) ||
@@ -464,8 +467,9 @@ public class BioFabricNetwork {
     } else {
       //
       // This now assigns the link to its column, based on user specification
-      // 
-      specifiedLinkToColumn(colGen, linkOrder, (mode == LINK_ATTRIB_LAYOUT));
+      // For now, the GROUP_PER_NETWORK_CHANGE is piggy-backing on the LINK_ATTRIB_LAYOUT
+      //
+      specifiedLinkToColumn(colGen, linkOrder, (mode == LINK_ATTRIB_LAYOUT || mode == GROUP_PER_NETWORK_CHANGE));
     }
 
     //
@@ -774,6 +778,7 @@ public class BioFabricNetwork {
       Iterator lgit = linkGrouping_.iterator();
       ind.indent();
       out.println("<linkGroups>");
+      out.println("<layout = \"" + layoutMode_ + "\" />");   // is this correct?
       ind.up();
       while (lgit.hasNext()) {
         String grpTag = (String)lgit.next();
@@ -1033,20 +1038,20 @@ public class BioFabricNetwork {
 
   /***************************************************************************
    **
-   ** Set Layout Mode (PER_NODE or PER_NETWORK)
+   ** Set Layout Mode
    */
 
   public void setLayoutMode(int mode) {
-    layoutMode = mode;
+    layoutMode_ = mode;
   }
 
   /***************************************************************************
    **
-   ** Get Layout Mode (PER_NODE or PER_NETWORK)
+   ** Get Layout Mode
    */
 
   public int getLayoutMode() {
-    return layoutMode;
+    return layoutMode_;
   }
   
   /***************************************************************************
@@ -2359,6 +2364,7 @@ public class BioFabricNetwork {
     List existingLinkGroups;
     List newLinkGroups;
     Set allNodes;
+    int layoutMode;
     
     public RelayoutBuildData(BioFabricNetwork fullNet, int mode) {
       super(mode);
@@ -2371,6 +2377,7 @@ public class BioFabricNetwork {
       this.existingLinkGroups = fullNet.linkGrouping_;
       this.loneNodes = fullNet.getLoneNodes();
       this.allNodes = fullNet.nodeDefs_.keySet();
+      this.layoutMode = fullNet.getLayoutMode();
     }
     
     public void setNodeOrder(Map nodeOrder) {

@@ -20,6 +20,7 @@
 
 package org.systemsbiology.biotapestry.biofabric;
 
+import org.systemsbiology.biotapestry.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biotapestry.ui.dialogs.utils.DialogSupport;
 import org.systemsbiology.biotapestry.ui.dialogs.utils.EditableTable;
 import org.systemsbiology.biotapestry.util.*;
@@ -40,7 +41,16 @@ import java.util.Set;
  * * Dialog comboBox for specifying link groupings
  */
 
-public class LinkGroupingSetupDialog extends JDialog implements DialogSupport.DialogSupportClient {
+public class LinkGroupingSetupDialog extends BTStashResultsDialog {
+
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC INSTANCE MEMBERS
+  //
+  ////////////////////////////////////////////////////////////////////////////
+
+  public final int CHOICE_PER_NODE    = 0;
+  public final int CHOICE_PER_NETWORK = 1;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -67,68 +77,15 @@ public class LinkGroupingSetupDialog extends JDialog implements DialogSupport.Di
    * * Constructor
    */
 
-  public LinkGroupingSetupDialog(JFrame parent, List currentTags, Set allRelations) {
-    super(parent, ResourceManager.getManager().getString("linkGroupEdit.title"), true);
+  public LinkGroupingSetupDialog(JFrame parent, List currentTags, Set allRelations, BioFabricNetwork bfn) {
+    super(parent, ResourceManager.getManager().getString("linkGroupEdit.title"),new Dimension(650, 450), 2);
     parent_ = parent;
     allRelations_ = allRelations;
 
-    setSize(650, 400);
-    JPanel cp = (JPanel) getContentPane();
-    cp.setBorder(new EmptyBorder(20, 20, 20, 20));
-    cp.setLayout(new GridBagLayout());
-    GridBagConstraints gbc = new GridBagConstraints();
+    installJComboBox(bfn);
 
-    installJComboBox(cp, gbc);
-    installLoadFileButton(cp, gbc);
-
-    est_ = new EditableTable(new LinkGroupingTableModel(), parent_);
-    EditableTable.TableParams etp = new EditableTable.TableParams();
-    etp.addAlwaysAtEnd = false;
-    etp.buttons = EditableTable.ALL_BUT_EDIT_BUTTONS;
-    etp.singleSelectOnly = true;
-    JPanel tablePan = est_.buildEditableTable(etp);
-
-    UiUtil.gbcSet(gbc, 0, 1, 10, 8, UiUtil.BO, 0, 0, 5, 5, 5, 5, UiUtil.CEN, 1.0, 1.0);
-    cp.add(tablePan, gbc);
-
-    DialogSupport ds = new DialogSupport(this, ResourceManager.getManager(), gbc);
-    ds.buildAndInstallButtonBox(cp, 10, 10, false, true);
-    est_.getModel().extractValues((currentTags == null) ? new ArrayList() : currentTags);
-    setLocationRelativeTo(parent);
-  }
-
-  /**
-   * installs JComboBox with options and Label
-   */
-
-  private void installJComboBox(JPanel cp, GridBagConstraints gbc) {
-    ResourceManager rman = ResourceManager.getManager();
-
-    JLabel boxLabel = new JLabel(rman.getString("linkGroupEdit.mode"));
-    gbc.gridx = 0;
-    gbc.gridy = 0;
-    cp.add(boxLabel, gbc);
-
-    String[] choices = new String[2];
-    choices[BioFabricNetwork.PER_NODE_MODE] = rman.getString("linkGroupEdit.orderPerNode");
-    choices[BioFabricNetwork.PER_NETWORK_MODE] = rman.getString("linkGroupEdit.orderNetwork");
-
-    comboBox = new JComboBox(choices);
-    gbc.gridx = 1;
-    gbc.gridy = 0;
-    cp.add(comboBox, gbc);
-
-    return;
-  }
-
-  /**
-   * installs Load File Button, which allows user to specify relation
-   * order in a file
-   */
-
-  private void installLoadFileButton(JPanel cp, GridBagConstraints gbc) {
     FixedJButton fileButton =
-            new FixedJButton(ResourceManager.getManager().getString("linkGroupEdit.loadFromFile"));
+            new FixedJButton(rMan_.getString("linkGroupEdit.loadFromFile"));
 
     fileButton.addActionListener(new ActionListener() {
       @Override
@@ -141,9 +98,43 @@ public class LinkGroupingSetupDialog extends JDialog implements DialogSupport.Di
       }
     });
 
-    gbc.gridx = 0;
-    gbc.gridy = 10;
-    cp.add(fileButton, gbc);
+    est_ = new EditableTable(new LinkGroupingTableModel(), parent_);
+    EditableTable.TableParams etp = new EditableTable.TableParams();
+    etp.addAlwaysAtEnd = false;
+    etp.buttons = EditableTable.ALL_BUT_EDIT_BUTTONS;
+    etp.singleSelectOnly = true;
+    JPanel tablePan = est_.buildEditableTable(etp);
+
+    addTable(tablePan, 4);
+
+    est_.getModel().extractValues((currentTags == null) ? new ArrayList() : currentTags);
+    setLocationRelativeTo(parent);
+
+    finishConstructionWithExtraLeftButton(fileButton);
+  }
+
+  /***************************************************************************
+   * * Install JComboBox with existing mode pre-selected from BioFabric Network's
+   * * current layoutMode
+   */
+
+  private void installJComboBox(BioFabricNetwork bfn) {
+    JLabel boxLabel = new JLabel(rMan_.getString("linkGroupEdit.mode"));
+
+    String[] choices = new String[2];
+    choices[CHOICE_PER_NODE] = rMan_.getString("linkGroupEdit.orderPerNode");
+    choices[CHOICE_PER_NETWORK] = rMan_.getString("linkGroupEdit.orderNetwork");
+
+    comboBox = new JComboBox(choices);
+
+    int mode = bfn.getLayoutMode();
+    if (mode == BioFabricNetwork.UNINITIALIZED_MODE || mode == BioFabricNetwork.PER_NODE_MODE) {
+      comboBox.setSelectedIndex(CHOICE_PER_NODE);
+    } else if (mode == BioFabricNetwork.PER_NETWORK_MODE) {
+      comboBox.setSelectedIndex(CHOICE_PER_NETWORK);
+    }
+
+    addLabeledWidget(boxLabel, comboBox, true, true);
   }
 
   /***************************************************************************
@@ -338,21 +329,27 @@ public class LinkGroupingSetupDialog extends JDialog implements DialogSupport.Di
    * * up a warning dialog and return false, else return true.
    * *
    */
-  
-  private boolean stashResults(boolean ok) {
-    if (ok) {
-      linkGroupResult_ = ((LinkGroupingTableModel) est_.getModel()).applyValues();
-      if (linkGroupResult_ == null) {
-        haveResult_ = false;
-        return (false);
-      }
-      haveResult_ = true;
-      chosenMode = comboBox.getSelectedIndex();
-      return (true);
-    } else {
+
+  @Override
+  protected boolean stashForOK() {
+    linkGroupResult_ = ((LinkGroupingTableModel) est_.getModel()).applyValues();
+    if (linkGroupResult_ == null) {
       haveResult_ = false;
-      return (true);
+      return (false);
     }
+    haveResult_ = true;
+
+    int mode = comboBox.getSelectedIndex();
+
+    if (mode == CHOICE_PER_NODE) {
+      chosenMode =  BioFabricNetwork.PER_NODE_MODE;
+    } else if (mode == CHOICE_PER_NETWORK){
+      chosenMode = BioFabricNetwork.PER_NETWORK_MODE;
+    } else {
+      ExceptionHandler.getHandler()
+              .displayException(new IllegalArgumentException("Illegal Link-Group-Dialog-JComboBox Selected Index"));
+    }
+    return (true);
   }
 
   /**
@@ -374,4 +371,5 @@ public class LinkGroupingSetupDialog extends JDialog implements DialogSupport.Di
     est_.updateTable(true, nodes);  // update table
     return;
   }
+
 }

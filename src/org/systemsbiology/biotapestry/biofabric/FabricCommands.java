@@ -93,7 +93,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
@@ -119,74 +118,74 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
    */
 
   public static final boolean FILE_MUST_EXIST_DONT_CARE = false;
-  public static final boolean FILE_MUST_EXIST = true;
+  public static final boolean FILE_MUST_EXIST           = true;
 
   public static final boolean FILE_CAN_CREATE_DONT_CARE = false;
-  public static final boolean FILE_CAN_CREATE = true;
+  public static final boolean FILE_CAN_CREATE           = true;
 
   public static final boolean FILE_DONT_CHECK_OVERWRITE = false;
-  public static final boolean FILE_CHECK_OVERWRITE = true;
+  public static final boolean FILE_CHECK_OVERWRITE      = true;
 
-  public static final boolean FILE_MUST_BE_FILE = false;
-  public static final boolean FILE_MUST_BE_DIRECTORY = true;
+  public static final boolean FILE_MUST_BE_FILE         = false;
+  public static final boolean FILE_MUST_BE_DIRECTORY    = true;
 
-  public static final boolean FILE_CAN_WRITE_DONT_CARE = false;
-  public static final boolean FILE_CAN_WRITE = true;
+  public static final boolean FILE_CAN_WRITE_DONT_CARE  = false;
+  public static final boolean FILE_CAN_WRITE            = true;
 
-  public static final boolean FILE_CAN_READ_DONT_CARE = false;
-  public static final boolean FILE_CAN_READ = true;
+  public static final boolean FILE_CAN_READ_DONT_CARE   = false;
+  public static final boolean FILE_CAN_READ             = true;
 
-  public static final int EMPTY_NETWORK = 0;
-  public static final int CLOSE = 1;
-  public static final int LOAD = 2;
-  public static final int SEARCH = 3;
-  public static final int ZOOM_OUT = 4;
-  public static final int ZOOM_IN = 5;
-  public static final int CLEAR_SELECTIONS = 6;
-  public static final int SAVE_AS = 7;
+  public static final int EMPTY_NETWORK                = 0;
+  public static final int CLOSE                        = 1;
+  public static final int LOAD                         = 2;
+  public static final int SEARCH                       = 3;
+  public static final int ZOOM_OUT                     = 4;
+  public static final int ZOOM_IN                      = 5;
+  public static final int CLEAR_SELECTIONS             = 6;
+  public static final int SAVE_AS                      = 7;
 
-  public static final int ZOOM_TO_MODEL = 8;
-  public static final int ZOOM_TO_SELECTIONS = 9;
-  public static final int PROPAGATE_DOWN = 10;
-  public static final int ZOOM_TO_RECT = 11;
-  public static final int CANCEL = 12;
-  public static final int ZOOM_TO_CURRENT_SELECTION = 13;
-  public static final int ADD_FIRST_NEIGHBORS = 14;
-  public static final int BUILD_SELECT = 15;
-  public static final int SET_DISPLAY_OPTIONS = 16;
+  public static final int ZOOM_TO_MODEL                = 8;
+  public static final int ZOOM_TO_SELECTIONS           = 9;
+  public static final int PROPAGATE_DOWN               = 10;
+  public static final int ZOOM_TO_RECT                 = 11;
+  public static final int CANCEL                       = 12;
+  public static final int ZOOM_TO_CURRENT_SELECTION    = 13;
+  public static final int ADD_FIRST_NEIGHBORS          = 14;
+  public static final int BUILD_SELECT                 = 15;
+  public static final int SET_DISPLAY_OPTIONS          = 16;
 
-  public static final int GAGGLE_GOOSE_UPDATE = 17;
-  public static final int GAGGLE_RAISE_GOOSE = 18;
-  public static final int GAGGLE_LOWER_GOOSE = 19;
-  public static final int GAGGLE_SEND_NETWORK = 20;
-  public static final int GAGGLE_SEND_NAMELIST = 21;
-  public static final int GAGGLE_PROCESS_INBOUND = 22;
-  public static final int GAGGLE_CONNECT = 23;
-  public static final int GAGGLE_DISCONNECT = 24;
-  public static final int ABOUT = 25;
-  public static final int CENTER_ON_NEXT_SELECTION = 26;
+  public static final int GAGGLE_GOOSE_UPDATE          = 17;
+  public static final int GAGGLE_RAISE_GOOSE           = 18;
+  public static final int GAGGLE_LOWER_GOOSE           = 19;
+  public static final int GAGGLE_SEND_NETWORK          = 20;
+  public static final int GAGGLE_SEND_NAMELIST         = 21;
+  public static final int GAGGLE_PROCESS_INBOUND       = 22;
+  public static final int GAGGLE_CONNECT               = 23;
+  public static final int GAGGLE_DISCONNECT            = 24;
+  public static final int ABOUT                        = 25;
+  public static final int CENTER_ON_NEXT_SELECTION     = 26;
   public static final int CENTER_ON_PREVIOUS_SELECTION = 27;
-  public static final int LAYOUT_NODES_VIA_ATTRIBUTES = 28;
-  public static final int LAYOUT_LINKS_VIA_ATTRIBUTES = 29;
-  public static final int LOAD_WITH_NODE_ATTRIBUTES = 30;
-  public static final int LOAD_XML = 31;
-  public static final int RELAYOUT_USING_CONNECTIVITY = 32;
-  public static final int RELAYOUT_USING_SHAPE_MATCH = 33;
-  public static final int SET_LINK_GROUPS = 34;
-  public static final int COMPARE_NODES = 35;
-  public static final int ZOOM_TO_CURRENT_MOUSE = 36;
-  public static final int ZOOM_TO_CURRENT_MAGNIFY = 37;
-  public static final int EXPORT_NODE_ORDER = 38;
-  public static final int EXPORT_LINK_ORDER = 39;
-  public static final int EXPORT_IMAGE = 40;
-  public static final int EXPORT_IMAGE_PUBLISH = 41;
-  public static final int PRINT = 42;
-  public static final int DEFAULT_LAYOUT = 43;
-  public static final int EXPORT_SELECTED_NODES = 44;
-  public static final int SAVE = 45;
+  public static final int LAYOUT_NODES_VIA_ATTRIBUTES  = 28;
+  public static final int LAYOUT_LINKS_VIA_ATTRIBUTES  = 29;
+  public static final int LOAD_WITH_NODE_ATTRIBUTES    = 30;
+  public static final int LOAD_XML                     = 31;
+  public static final int RELAYOUT_USING_CONNECTIVITY  = 32;
+  public static final int RELAYOUT_USING_SHAPE_MATCH   = 33;
+  public static final int SET_LINK_GROUPS              = 34;
+  public static final int COMPARE_NODES                = 35;
+  public static final int ZOOM_TO_CURRENT_MOUSE        = 36;
+  public static final int ZOOM_TO_CURRENT_MAGNIFY      = 37;
+  public static final int EXPORT_NODE_ORDER            = 38;
+  public static final int EXPORT_LINK_ORDER            = 39;
+  public static final int EXPORT_IMAGE                 = 40;
+  public static final int EXPORT_IMAGE_PUBLISH         = 41;
+  public static final int PRINT                        = 42;
+  public static final int DEFAULT_LAYOUT               = 43;
+  public static final int EXPORT_SELECTED_NODES        = 44;
+  public static final int SAVE                         = 45;
 
-  public static final int GENERAL_PUSH = 0x01;
-  public static final int ALLOW_NAV_PUSH = 0x02;
+  public static final int GENERAL_PUSH     = 0x01;
+  public static final int ALLOW_NAV_PUSH   = 0x02;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -2596,7 +2595,7 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
       List currentTags = bfn.getLinkGroups();
       ArrayList links = new ArrayList(bfn.getAllLinks(true));
       Set allRelations = BioFabricNetwork.extractRelations(links).keySet();
-      LinkGroupingSetupDialog lgsd = new LinkGroupingSetupDialog(topWindow_, currentTags, allRelations);
+      LinkGroupingSetupDialog lgsd = new LinkGroupingSetupDialog(topWindow_, currentTags, allRelations, bfn);
       lgsd.show();
       if (! lgsd.haveResult()) {
         return (false);
@@ -2605,54 +2604,49 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
       List newGroupings = lgsd.getGroups();
       int mode = lgsd.getSelectedMode();
 
+      if (newGroupings.equals(currentTags) && mode == bfn.getLayoutMode()) {
+        return (true);
+      }
+
       bfn.setLayoutMode(mode);
-      // update Layout mode, soon will add feature to not reLayout if
-      // link relation order and layout mode are same
 
-      if (mode == BioFabricNetwork.PER_NODE_MODE) {  // order each node's link
-        BioFabricNetwork.RelayoutBuildData bfnd =
-                new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.LINK_GROUP_CHANGE);
+      BioFabricNetwork.RelayoutBuildData bfnd;
+
+      if (mode == BioFabricNetwork.PER_NODE_MODE) {
+
+        bfnd = new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.GROUP_PER_NODE_CHANGE);
         bfnd.setLinkGroups(newGroupings);
-        NetworkRelayout nb = new NetworkRelayout();
-        nb.doNetworkRelayout(bfnd, null);
 
+      } else if (mode == BioFabricNetwork.PER_NETWORK_MODE) {
+
+        SortedMap modifiedAndChecked = bfp_.getNetwork().getExistingLinkOrder();
+        orderNetworkByGroups(modifiedAndChecked, newGroupings);
+
+        bfnd = new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.GROUP_PER_NETWORK_CHANGE);
+        bfnd.setLinkGroups(newGroupings);
+        bfnd.setLinkOrder(modifiedAndChecked);
+
+      } else {
+        bfnd = null;
+        ExceptionHandler.getHandler().displayException(new IllegalArgumentException("Illegal Layout Mode"));
       }
 
-      if (mode == BioFabricNetwork.PER_NETWORK_MODE){ // order the whole network into groups
-        reLayoutNetworkByLinkRelation(newGroupings);
-      }
+      NetworkRelayout nb = new NetworkRelayout();
+      nb.doNetworkRelayout(bfnd, null);
 
       return (true);
     }
 
     /**
-     * Re-Layouts the whole network after ordering by groups.
+     *  existingOrd's link order will follow groupOrder's relation order.
      */
 
-    private void reLayoutNetworkByLinkRelation(List groupOrder) {
-      SortedMap modifiedAndChecked = bfp_.getNetwork().getExistingLinkOrder();
-
-      orderNetworkByGroups(modifiedAndChecked, groupOrder);
-
-      BioFabricNetwork.RelayoutBuildData bfn =
-              new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.LINK_ATTRIB_LAYOUT);
-      bfn.setLinkOrder(modifiedAndChecked);
-
-      NetworkRelayout nb = new NetworkRelayout();
-      nb.doNetworkRelayout(bfn, null);
-      return;
-    }
-
-    /**
-     * Groups links with the same relation (suffix) in the order of 'groupOrder'
-     */
-
-    private void orderNetworkByGroups(SortedMap links, List groupOrder) {
+    private void orderNetworkByGroups(SortedMap existingOrd, List groupOrder) {
 
       Map<String, List<FabricLink>> groups = new TreeMap<String, List<FabricLink>>();
-      // String is link relation, List is all the links with that relation
+      // String: link relation, List: all the links with that relation
 
-      for (Object obj : links.entrySet()) {
+      for (Object obj : existingOrd.entrySet()) {
 
         Map.Entry entry = (Map.Entry) obj;
 
@@ -2666,8 +2660,6 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
         groups.get(rel).add(fl);
       }
 
-      links.clear();                 // clear the original map of links
-
       int rowIdx = 0;
       for (Object obj : groupOrder) {
 
@@ -2676,7 +2668,7 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
         List<FabricLink> group = groups.get(relation);
 
         for (FabricLink fl : group) {
-          links.put(rowIdx, fl);
+          existingOrd.put(rowIdx, fl);
           rowIdx++;                    // increment the row index
         }
 
@@ -4335,7 +4327,8 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
           case BioFabricNetwork.DEFAULT_LAYOUT:
           case BioFabricNetwork.NODE_ATTRIB_LAYOUT:
           case BioFabricNetwork.LINK_ATTRIB_LAYOUT:
-          case BioFabricNetwork.LINK_GROUP_CHANGE:
+          case BioFabricNetwork.GROUP_PER_NODE_CHANGE:
+          case BioFabricNetwork.GROUP_PER_NETWORK_CHANGE:
             // previously installed....
             break;
           case BioFabricNetwork.REORDER_LAYOUT:
