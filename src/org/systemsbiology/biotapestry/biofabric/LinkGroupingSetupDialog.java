@@ -49,8 +49,8 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
   //
   ////////////////////////////////////////////////////////////////////////////
 
-  public final int CHOICE_PER_NODE    = 0;
-  public final int CHOICE_PER_NETWORK = 1;
+  private final int CHOICE_PER_NODE    = 0;
+  private final int CHOICE_PER_NETWORK = 1;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -64,7 +64,7 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
   private JFrame parent_;
   private Set allRelations_;
   private JComboBox comboBox;
-  private int chosenMode;
+  private BioFabricNetwork.LayoutMode chosenMode;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -82,6 +82,7 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
     parent_ = parent;
     allRelations_ = allRelations;
 
+    // bfn is only for pre-selecting the JComboBox to current LayoutMode
     installJComboBox(bfn);
 
     FixedJButton fileButton =
@@ -127,10 +128,12 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
 
     comboBox = new JComboBox(choices);
 
-    int mode = bfn.getLayoutMode();
-    if (mode == BioFabricNetwork.UNINITIALIZED_MODE || mode == BioFabricNetwork.PER_NODE_MODE) {
+    BioFabricNetwork.LayoutMode mode = bfn.getLayoutMode();
+    if (mode == BioFabricNetwork.LayoutMode.UNINITIALIZED_MODE ||
+            mode == BioFabricNetwork.LayoutMode.PER_NODE_MODE) {
       comboBox.setSelectedIndex(CHOICE_PER_NODE);
-    } else if (mode == BioFabricNetwork.PER_NETWORK_MODE) {
+
+    } else if (mode == BioFabricNetwork.LayoutMode.PER_NETWORK_MODE) {
       comboBox.setSelectedIndex(CHOICE_PER_NETWORK);
     }
 
@@ -163,7 +166,7 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
    * *
    */
 
-  public int getSelectedMode() {
+  public BioFabricNetwork.LayoutMode getSelectedMode() {
     return chosenMode;
   }
 
@@ -342,12 +345,12 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
     int mode = comboBox.getSelectedIndex();
 
     if (mode == CHOICE_PER_NODE) {
-      chosenMode =  BioFabricNetwork.PER_NODE_MODE;
+      chosenMode =  BioFabricNetwork.LayoutMode.PER_NODE_MODE;
     } else if (mode == CHOICE_PER_NETWORK){
-      chosenMode = BioFabricNetwork.PER_NETWORK_MODE;
+      chosenMode = BioFabricNetwork.LayoutMode.PER_NETWORK_MODE;
     } else {
       ExceptionHandler.getHandler()
-              .displayException(new IllegalArgumentException("Illegal Link-Group-Dialog-JComboBox Selected Index"));
+              .displayException(new IllegalArgumentException("Illegal Selected Index"));
     }
     return (true);
   }

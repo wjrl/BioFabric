@@ -77,9 +77,11 @@ public class BioFabricNetwork {
   public static final int LINK_ATTRIB_LAYOUT       = 10;
   public static final int GROUP_PER_NETWORK_CHANGE = 11;
 
-  public static final int UNINITIALIZED_MODE     = 12;
-  public static final int PER_NODE_MODE          = 13;
-  public static final int PER_NETWORK_MODE       = 14;
+  public enum LayoutMode {
+    UNINITIALIZED_MODE,
+    PER_NODE_MODE,
+    PER_NETWORK_MODE
+  }
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -121,7 +123,7 @@ public class BioFabricNetwork {
   // Current Link Layout Mode, default is UNINITIALIZED_MODE
   //
 
-  private int layoutMode_ = UNINITIALIZED_MODE;
+  private LayoutMode layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -1041,7 +1043,7 @@ public class BioFabricNetwork {
    ** Set Layout Mode
    */
 
-  public void setLayoutMode(int mode) {
+  public void setLayoutMode(LayoutMode mode) {
     layoutMode_ = mode;
   }
 
@@ -1050,7 +1052,7 @@ public class BioFabricNetwork {
    ** Get Layout Mode
    */
 
-  public int getLayoutMode() {
+  public LayoutMode getLayoutMode() {
     return layoutMode_;
   }
   
@@ -2364,7 +2366,7 @@ public class BioFabricNetwork {
     List existingLinkGroups;
     List newLinkGroups;
     Set allNodes;
-    int layoutMode;
+    LayoutMode layoutMode;
     
     public RelayoutBuildData(BioFabricNetwork fullNet, int mode) {
       super(mode);

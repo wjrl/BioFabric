@@ -2602,7 +2602,7 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
       }
 
       List newGroupings = lgsd.getGroups();
-      int mode = lgsd.getSelectedMode();
+      BioFabricNetwork.LayoutMode mode = lgsd.getSelectedMode();
 
       if (newGroupings.equals(currentTags) && mode == bfn.getLayoutMode()) {
         return (true);
@@ -2612,12 +2612,12 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
 
       BioFabricNetwork.RelayoutBuildData bfnd;
 
-      if (mode == BioFabricNetwork.PER_NODE_MODE) {
+      if (mode == BioFabricNetwork.LayoutMode.PER_NODE_MODE) {
 
         bfnd = new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.GROUP_PER_NODE_CHANGE);
         bfnd.setLinkGroups(newGroupings);
 
-      } else if (mode == BioFabricNetwork.PER_NETWORK_MODE) {
+      } else if (mode == BioFabricNetwork.LayoutMode.PER_NETWORK_MODE) {
 
         SortedMap modifiedAndChecked = bfp_.getNetwork().getExistingLinkOrder();
         orderNetworkByGroups(modifiedAndChecked, newGroupings);
