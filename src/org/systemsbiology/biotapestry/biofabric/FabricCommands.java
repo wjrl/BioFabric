@@ -2602,7 +2602,7 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
       }
 
       List newGroupings = lgsd.getGroups();
-      BioFabricNetwork.LayoutMode mode = lgsd.getSelectedMode();
+      BioFabricNetwork.LayoutMode mode = lgsd.getChosenMode();
 
       if (newGroupings.equals(currentTags) && mode == bfn.getLayoutMode()) {
         return (true);

@@ -45,20 +45,13 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
 
   ////////////////////////////////////////////////////////////////////////////
   //
-  // PUBLIC INSTANCE MEMBERS
-  //
-  ////////////////////////////////////////////////////////////////////////////
-
-  private final int CHOICE_PER_NODE    = 0;
-  private final int CHOICE_PER_NETWORK = 1;
-
-  ////////////////////////////////////////////////////////////////////////////
-  //
   // PRIVATE INSTANCE MEMBERS
   //
   ////////////////////////////////////////////////////////////////////////////
+  
+  private final int CHOICE_PER_NODE    = 0;
+  private final int CHOICE_PER_NETWORK = 1;
 
-  private boolean haveResult_;
   private List linkGroupResult_;
   private EditableTable est_;
   private JFrame parent_;
@@ -78,7 +71,7 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
    */
 
   public LinkGroupingSetupDialog(JFrame parent, List currentTags, Set allRelations, BioFabricNetwork bfn) {
-    super(parent, ResourceManager.getManager().getString("linkGroupEdit.title"),new Dimension(650, 450), 2);
+    super(parent, ResourceManager.getManager().getString("linkGroupEdit.title"), new Dimension(650, 450), 2);
     parent_ = parent;
     allRelations_ = allRelations;
 
@@ -142,16 +135,6 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
 
   /***************************************************************************
    * *
-   * * Answer if we have a result
-   * *
-   */
-  
-  public boolean haveResult() {
-    return (haveResult_);
-  }
-  
-  /***************************************************************************
-   * *
    * * Return results
    * *
    */
@@ -166,54 +149,61 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
    * *
    */
 
-  public BioFabricNetwork.LayoutMode getSelectedMode() {
+  public BioFabricNetwork.LayoutMode getChosenMode() {
     return chosenMode;
   }
-
-  /***************************************************************************
-   * *
-   * * Standard apply
-   * *
-   */
-
-  public void applyAction() {
-    throw new UnsupportedOperationException();
-  }
   
   /***************************************************************************
    * *
-   * * Standard ok
-   * *
-   */
-
-  public void okAction() {
-    if (stashResults(true)) {
-      setVisible(false);
-      dispose();
-    }
-    return;
-  }
-
-  /***************************************************************************
-   * *
-   * * Standard close
-   * *
+   * * Stash our results for later interrogation.
    */
   
-  public void closeAction() {
-    if (stashResults(false)) {
-      setVisible(false);
-      dispose();
+  @Override
+  protected boolean stashForOK() {
+    linkGroupResult_ = ((LinkGroupingTableModel) est_.getModel()).applyValues();
+    if (linkGroupResult_ == null) {
+      return (false);
     }
-    return;
+    
+    int mode = comboBox.getSelectedIndex();
+    
+    if (mode == CHOICE_PER_NODE) {
+      chosenMode =  BioFabricNetwork.LayoutMode.PER_NODE_MODE;
+    } else if (mode == CHOICE_PER_NETWORK){
+      chosenMode = BioFabricNetwork.LayoutMode.PER_NETWORK_MODE;
+    } else {
+      ExceptionHandler.getHandler()
+              .displayException(new IllegalArgumentException("Illegal Selected Index"));
+    }
+    return (true);
   }
 
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE METHODS
   //
-  ////////////////////////////////////////////////////////////////////////////    
-
+  ////////////////////////////////////////////////////////////////////////////
+  
+  /**
+   * loads relation order from file and updates table with new order.
+   * error checking done when user presses "ok"
+   */
+  
+  private void loadFromFile() {
+    FabricCommands cmd = FabricCommands.getCmds("mainWindow");
+    File fileEda = cmd.getTheFile(".txt", null, "AttribDirectory", "filterName.txt");
+    if (fileEda == null) {
+      return;
+    }
+    List nodes = UiUtil.simpleFileRead(fileEda);
+    if (nodes == null) {
+      return;
+    }
+    
+    est_.updateTable(true, nodes);  // update table
+    return;
+  }
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // INNER CLASSES
@@ -320,59 +310,4 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
     }
   }
   
-  ////////////////////////////////////////////////////////////////////////////
-  //
-  // PRIVATE METHODS
-  //
-  ////////////////////////////////////////////////////////////////////////////
-
-  /***************************************************************************
-   * *
-   * * Stash our results for later interrogation.  If they have an error, pop
-   * * up a warning dialog and return false, else return true.
-   * *
-   */
-
-  @Override
-  protected boolean stashForOK() {
-    linkGroupResult_ = ((LinkGroupingTableModel) est_.getModel()).applyValues();
-    if (linkGroupResult_ == null) {
-      haveResult_ = false;
-      return (false);
-    }
-    haveResult_ = true;
-
-    int mode = comboBox.getSelectedIndex();
-
-    if (mode == CHOICE_PER_NODE) {
-      chosenMode =  BioFabricNetwork.LayoutMode.PER_NODE_MODE;
-    } else if (mode == CHOICE_PER_NETWORK){
-      chosenMode = BioFabricNetwork.LayoutMode.PER_NETWORK_MODE;
-    } else {
-      ExceptionHandler.getHandler()
-              .displayException(new IllegalArgumentException("Illegal Selected Index"));
-    }
-    return (true);
-  }
-
-  /**
-   * loads relation order from file and updates table with new order.
-   * error checking done when user presses "ok"
-   */
-
-  private void loadFromFile() {
-    FabricCommands cmd = FabricCommands.getCmds("mainWindow");
-    File fileEda = cmd.getTheFile(".txt", null, "AttribDirectory", "filterName.txt");
-    if (fileEda == null) {
-      return;
-    }
-    List nodes = UiUtil.simpleFileRead(fileEda);
-    if (nodes == null) {
-      return;
-    }
-
-    est_.updateTable(true, nodes);  // update table
-    return;
-  }
-
 }
