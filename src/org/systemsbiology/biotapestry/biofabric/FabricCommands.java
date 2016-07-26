@@ -2619,12 +2619,12 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
 
       } else if (mode == BioFabricNetwork.LayoutMode.PER_NETWORK_MODE) {
 
-        SortedMap modifiedAndChecked = bfp_.getNetwork().getExistingLinkOrder();
-        orderNetworkByGroups(modifiedAndChecked, newGroupings);
+        SortedMap existingOrd = bfp_.getNetwork().getExistingLinkOrder();
+        orderNetworkByGroups(existingOrd, newGroupings);
 
         bfnd = new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.GROUP_PER_NETWORK_CHANGE);
         bfnd.setLinkGroups(newGroupings);
-        bfnd.setLinkOrder(modifiedAndChecked);
+        bfnd.setLinkOrder(existingOrd);
 
       } else {
         bfnd = null;
