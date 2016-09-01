@@ -394,6 +394,7 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
     shadeNodesBox_.setSelected(defOptions.getShadeNodes());   
     browserURLField_.setText(defOptions.getBrowserURL());
     browserLinkURLField_.setText(defOptions.getBrowserLinkURL());
+    mouseOverTemplateField_.setText(defOptions.getMouseOverURL());
     return;
   }   
 }

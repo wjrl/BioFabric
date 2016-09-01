@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2016 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -26,8 +26,6 @@ import java.io.File;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.TreeSet;
-import java.util.Vector;
 
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -38,10 +36,7 @@ import javax.swing.JTextField;
 
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.io.AttributeLoader;
-import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
-import org.systemsbiology.biofabric.layouts.NodeClusterLayout.ClusterParams.ClustLayout;
-import org.systemsbiology.biofabric.layouts.NodeClusterLayout.ClusterParams.InterLink;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.util.ExceptionHandler;

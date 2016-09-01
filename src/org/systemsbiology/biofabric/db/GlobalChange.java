@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2004 Institute for Systems Biology 
+**    Copyright (C) 2003-2016 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -21,12 +21,14 @@ package org.systemsbiology.biofabric.db;
   
 import java.util.Map;
 
+import org.systemsbiology.biofabric.ui.NamedColor;
+
 /***************************************************************************
 **
 ** Info needed to undo a global change (e.g. color, fonts);
 */
   
 public class GlobalChange {
-  public Map origColors;
-  public Map newColors;
+  public Map<String, NamedColor> origColors;
+  public Map<String, NamedColor> newColors;
 }

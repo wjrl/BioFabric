@@ -44,6 +44,8 @@ import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
+import org.systemsbiology.biofabric.ui.FabricColorGenerator.ColorWorker;
+import org.systemsbiology.biofabric.ui.FabricColorGenerator.MyColorGlue;
 import org.systemsbiology.biofabric.util.AttributeExtractor;
 import org.systemsbiology.biofabric.util.CharacterEntityMapper;
 import org.systemsbiology.biofabric.util.DataUtil;
@@ -74,7 +76,7 @@ public class BioFabricNetwork {
                          REORDER_LAYOUT ,
                          CLUSTERED_LAYOUT ,
                          SHADOW_LINK_CHANGE,
-                         LINK_GROUP_CHANGE ,
+                         GROUP_PER_NODE_CHANGE,
                          BUILD_FOR_SUBMODEL,
                          BUILD_FROM_XML ,
                          BUILD_FROM_SIF  ,
@@ -84,9 +86,38 @@ public class BioFabricNetwork {
                          NODE_CLUSTER_LAYOUT,
                          CONTROL_TOP_LAYOUT,
                          HIER_DAG_LAYOUT,
-                         WORLD_BANK_LAYOUT
+                         WORLD_BANK_LAYOUT,
+                         GROUP_PER_NETWORK_CHANGE,
                         };
-   
+                                                
+  public enum LayoutMode {
+    UNINITIALIZED_MODE("notSet"),
+    PER_NODE_MODE("perNode"),
+    PER_NETWORK_MODE("perNetwork");
+
+    private String text;
+
+    LayoutMode(String text) {
+      this.text = text;
+    }
+
+    public String getText() {
+      return (text);
+    }
+
+	  public static LayoutMode fromString(String text)  throws IOException {
+	    if (text != null) {
+	      for (LayoutMode lm : LayoutMode.values()) {
+	        if (text.equalsIgnoreCase(lm.text)) {
+	          return (lm);
+	        }
+	      }
+	    }
+	    throw new IOException();
+	  }
+  }
+                        
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE INSTANCE MEMBERS
@@ -123,6 +154,14 @@ public class BioFabricNetwork {
   
   private FabricColorGenerator colGen_;
   
+  
+  //
+  // Current Link Layout Mode, either PER_NODE or PER_NETWORK
+  // Default value is PER_NODE
+  //
+
+  private LayoutMode layoutMode_;
+   
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTRUCTORS
@@ -135,13 +174,15 @@ public class BioFabricNetwork {
   */
 
   public BioFabricNetwork(BuildData bd) {
+  	layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
     BuildMode mode = bd.getMode();
     
     switch (mode) {
       case DEFAULT_LAYOUT:  
       case REORDER_LAYOUT:
       case CLUSTERED_LAYOUT:
-      case LINK_GROUP_CHANGE:
+      case GROUP_PER_NODE_CHANGE:
+      case GROUP_PER_NETWORK_CHANGE:
       case NODE_ATTRIB_LAYOUT:
       case LINK_ATTRIB_LAYOUT:
       case NODE_CLUSTER_LAYOUT:
@@ -155,14 +196,16 @@ public class BioFabricNetwork {
         fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
         nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
         nodeDefs_ = new HashMap<String, NodeInfo>();
-        linkGrouping_ = new ArrayList<String>();
+        linkGrouping_ = new ArrayList<String>(rbd.linkGroups);
         colGen_ = rbd.colGen;
+        layoutMode_ = rbd.layoutMode;
         relayoutNetwork(rbd);
         break;
       case BUILD_FOR_SUBMODEL:
         SelectBuildData sbd = (SelectBuildData)bd;
         colGen_ = sbd.fullNet.colGen_;
         this.linkGrouping_ = new ArrayList<String>(sbd.fullNet.linkGrouping_);
+        this.layoutMode_ = sbd.fullNet.layoutMode_;
         fillSubModel(sbd.fullNet, sbd.subNodes, sbd.subLinks);
         break;
       case BUILD_FROM_XML:
@@ -177,6 +220,7 @@ public class BioFabricNetwork {
         this.colGen_ = built.colGen_;
         this.rowCount_ = built.rowCount_;
         this.linkGrouping_ = built.linkGrouping_;
+        this.layoutMode_ = built.layoutMode_;
         break;
       case BUILD_FROM_SIF:
       case BUILD_FROM_GAGGLE:
@@ -188,6 +232,7 @@ public class BioFabricNetwork {
         nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
         nodeDefs_ = new HashMap<String, NodeInfo>();
         linkGrouping_ = new ArrayList<String>();
+        layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
         colGen_ = obd.colGen;
         processLinks(obd);
         break;
@@ -440,8 +485,8 @@ public class BioFabricNetwork {
   
   private void relayoutNetwork(RelayoutBuildData rbd) {
     BuildMode mode = rbd.getMode();
-    List<String> linkGroups = (mode == BuildMode.LINK_GROUP_CHANGE) ? rbd.newLinkGroups : rbd.existingLinkGroups;    
-    installLinkGroups(linkGroups);
+    installLinkGroups(rbd.linkGroups);
+    setLayoutMode(rbd.layoutMode);
     boolean specifiedNodeOrder = (mode == BuildMode.NODE_ATTRIB_LAYOUT) || 
                                  (mode == BuildMode.DEFAULT_LAYOUT) ||
                                  (mode == BuildMode.CONTROL_TOP_LAYOUT) ||
@@ -468,7 +513,7 @@ public class BioFabricNetwork {
     // Ordering of links:
     //
     
-    if ((rbd.linkOrder == null) || rbd.linkOrder.isEmpty() || (mode == BuildMode.LINK_GROUP_CHANGE)) {
+    if ((rbd.linkOrder == null) || rbd.linkOrder.isEmpty() || (mode == BuildMode.GROUP_PER_NODE_CHANGE) || (mode == BuildMode.GROUP_PER_NETWORK_CHANGE)) {
       if ((rbd.nodeOrder == null) || rbd.nodeOrder.isEmpty()) {
         rbd.nodeOrder = new HashMap<String, String>();
         int numT = targets.size();
@@ -484,7 +529,10 @@ public class BioFabricNetwork {
     // This now assigns the link to its column, based on user specification
     //
     
-    specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, ((mode == BuildMode.LINK_ATTRIB_LAYOUT) || (mode == BuildMode.NODE_CLUSTER_LAYOUT)));
+    specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, ((mode == BuildMode.LINK_ATTRIB_LAYOUT) || 
+    		                                              (mode == BuildMode.NODE_CLUSTER_LAYOUT) ||
+    		                                              (mode == BuildMode.GROUP_PER_NODE_CHANGE) ||
+    		                                              (mode == BuildMode.GROUP_PER_NETWORK_CHANGE)));
       
     //
     // Determine the start & end of each target row needed to handle the incoming
@@ -762,7 +810,9 @@ public class BioFabricNetwork {
     if (!linkGrouping_.isEmpty()) {
       Iterator<String> lgit = linkGrouping_.iterator();
       ind.indent();
-      out.println("<linkGroups>");
+      out.print("<linkGroups mode=\"");
+      out.print(layoutMode_.getText());
+      out.println("\">");
       ind.up();
       while (lgit.hasNext()) {
         String grpTag = lgit.next();
@@ -1020,6 +1070,24 @@ public class BioFabricNetwork {
     }
   } 
   
+  /***************************************************************************
+   **
+   ** Set Layout Mode (PER_NODE or PER_NETWORK)
+   */
+
+  public void setLayoutMode(LayoutMode mode) {
+    layoutMode_ = mode;
+  }
+
+  /***************************************************************************
+   **
+   ** Get Layout Mode (PER_NODE or PER_NETWORK)
+   */
+
+  public LayoutMode getLayoutMode() {
+    return layoutMode_;
+  }
+ 
   /***************************************************************************
   ** 
   ** Get node matches
@@ -2019,10 +2087,10 @@ public class BioFabricNetwork {
     public Map<String, String> nodeOrder;
     public List<String> existingOrder;
     public SortedMap<Integer, FabricLink> linkOrder;
-    public List<String> existingLinkGroups;
-    public List<String> newLinkGroups;
+    public List<String> linkGroups;
     public Set<String> allNodes;
     public Map<String, String> clustAssign;
+    public LayoutMode layoutMode;
     
     public RelayoutBuildData(BioFabricNetwork fullNet, BuildMode mode) {
       super(mode);
@@ -2032,10 +2100,11 @@ public class BioFabricNetwork {
       this.nodeOrder = null;
       this.existingOrder = fullNet.existingOrder();
       this.linkOrder = null;
-      this.existingLinkGroups = fullNet.linkGrouping_;
+      this.linkGroups = fullNet.linkGrouping_;
       this.loneNodes = fullNet.getLoneNodes();
       this.allNodes = fullNet.nodeDefs_.keySet();
       this.clustAssign = (fullNet.nodeClustersAssigned()) ? fullNet.nodeClusterAssigment() : null;
+      this.layoutMode = fullNet.getLayoutMode();
     }
     
     public RelayoutBuildData(Set<FabricLink> allLinks, Set<String> loneNodes, FabricColorGenerator colGen, BuildMode mode) {
@@ -2046,9 +2115,10 @@ public class BioFabricNetwork {
       this.nodeOrder = null;
       this.existingOrder = null;
       this.linkOrder = null;
-      this.existingLinkGroups = new ArrayList<String>();
+      this.linkGroups = new ArrayList<String>();
       this.loneNodes = loneNodes;
       this.allNodes = null;
+      this.layoutMode = LayoutMode.PER_NODE_MODE;
     } 
 
     public void setNodeOrderFromAttrib(Map<AttributeLoader.AttributeKey, String> nodeOrder) {
@@ -2068,11 +2138,14 @@ public class BioFabricNetwork {
       this.linkOrder = linkOrder;
       return;
     }
-               
-    public void setLinkGroups(List<String> linkGroups) {
-      this.newLinkGroups = linkGroups;
+    
+    public void setGroupOrderAndMode(List<String> groupOrder, LayoutMode mode) {
+      this.linkGroups = groupOrder;
+      this.layoutMode = mode;
       return;
     }
+    
+
   }
  
   /***************************************************************************
@@ -2241,7 +2314,7 @@ public class BioFabricNetwork {
       installWorker(new FabricDisplayOptions.FabricDisplayOptionsWorker(whiteboard), null);
       installWorker(new NodeInfoWorker(whiteboard), new MyNodeGlue());
       installWorker(new LinkInfoWorker(whiteboard), new MyLinkGlue());
-      installWorker(new LinkGroupTagWorker(whiteboard), new MyGroupGlue());
+      installWorker(new LinkGroupWorker(whiteboard), null);
     }
     
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
@@ -2289,8 +2362,33 @@ public class BioFabricNetwork {
       board.bfn.addLinkGroupForIO(board.groupTag);
       return (null);
     }
-  } 
-   
+  }
+ 
+  public static class LinkGroupWorker extends AbstractFactoryClient {
+    
+    public LinkGroupWorker(FabricFactory.FactoryWhiteboard board) {
+      super(board);
+      FabricFactory.FactoryWhiteboard whiteboard = (FabricFactory.FactoryWhiteboard)sharedWhiteboard_;   
+      myKeys_.add("linkGroups");
+      installWorker(new LinkGroupTagWorker(whiteboard), new MyGroupGlue());
+    }
+    
+    protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
+      LayoutMode retval = null;
+      if (elemName.equals("linkGroups")) {
+        String target = AttributeExtractor.extractAttribute(elemName, attrs, "linkGroups", "mode", false);
+        if (target == null) {
+        	target = LayoutMode.PER_NODE_MODE.getText();   	
+        }
+        FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard)this.sharedWhiteboard_;
+        retval = LayoutMode.valueOf(target);
+        board.bfn.setLayoutMode(retval);
+
+      }
+      return (retval);     
+    }  
+  }
+
   /***************************************************************************
   **
   ** For XML I/O

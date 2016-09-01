@@ -104,6 +104,7 @@ import org.systemsbiology.biofabric.layouts.HierDAGLayout;
 import org.systemsbiology.biofabric.layouts.ProcessWorldBankCSV;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.model.BioFabricNetwork.LayoutMode;
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.SUParser;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -2813,29 +2814,36 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       List<String> currentTags = bfn.getLinkGroups();
       ArrayList<FabricLink> links = new ArrayList<FabricLink>(bfn.getAllLinks(true));
       Set<FabricLink.AugRelation>  allRelations = BioFabricNetwork.extractRelations(links).keySet();       
-      LinkGroupingSetupDialog lgsd = new LinkGroupingSetupDialog(topWindow_, currentTags, allRelations); 
+      LinkGroupingSetupDialog lgsd = new LinkGroupingSetupDialog(topWindow_, currentTags, allRelations, bfn);
       lgsd.setVisible(true);
       if (!lgsd.haveResult()) {
         return (false);
       }
-      
-      List<String> newGroupings = lgsd.getGroups();
-      if (newGroupings.equals(currentTags)) {
-        return (true);
+
+      BioFabricNetwork.LayoutMode mode = lgsd.getChosenMode();
+
+      BioFabricNetwork.BuildMode bmode; 
+      if (mode == BioFabricNetwork.LayoutMode.PER_NODE_MODE) {
+        bmode = BioFabricNetwork.BuildMode.GROUP_PER_NODE_CHANGE;
+      } else if (mode == BioFabricNetwork.LayoutMode.PER_NETWORK_MODE) {
+      	bmode = BioFabricNetwork.BuildMode.GROUP_PER_NETWORK_CHANGE;
+      } else {
+        throw new IllegalStateException();
       }
-     
-      BioFabricNetwork.RelayoutBuildData bfnd = 
-        new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.BuildMode.LINK_GROUP_CHANGE);
-      bfnd.setLinkOrder(new TreeMap<Integer, FabricLink>());
-      bfnd.setLinkGroups(newGroupings);
-      NetworkRelayout nb = new NetworkRelayout(); 
-      nb.doNetworkRelayout(bfnd, null);   
-      return (true);   
+      
+      BioFabricNetwork.RelayoutBuildData bfnd = new BioFabricNetwork.RelayoutBuildData(bfn, bmode);
+      bfnd.setGroupOrderAndMode(lgsd.getGroups(), mode);
+
+      NetworkRelayout nb = new NetworkRelayout();
+      nb.doNetworkRelayout(bfnd, null);
+
+      return (true);
     }
-    
+
+    @Override
     protected boolean checkGuts() {
       return (bfp_.hasAModel());
-    }   
+    }  
   }
  
   /***************************************************************************
@@ -4667,7 +4675,8 @@ forcedTop.add("RME1");
             break;
           case NODE_ATTRIB_LAYOUT:
           case LINK_ATTRIB_LAYOUT:
-          case LINK_GROUP_CHANGE:
+          case GROUP_PER_NODE_CHANGE:
+          case GROUP_PER_NETWORK_CHANGE:
             // previously installed....
             break;
           case REORDER_LAYOUT:

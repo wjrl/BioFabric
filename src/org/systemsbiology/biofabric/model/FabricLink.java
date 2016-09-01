@@ -92,7 +92,11 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
   public String getSrc() {
     return (src_);
   } 
-     
+  
+  public String getRelation() {
+    return (relation_);
+  }
+  
   public AugRelation getAugRelation() {
     return (new AugRelation(relation_, isShadow_));
   } 

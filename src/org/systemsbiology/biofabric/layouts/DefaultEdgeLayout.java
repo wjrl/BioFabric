@@ -22,6 +22,7 @@ package org.systemsbiology.biofabric.layouts;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
@@ -122,11 +123,23 @@ public class DefaultEdgeLayout {
     // so that the shortest vertical link is drawn first!
     //
    
-    ArrayList<String> rels = new ArrayList<String>((rbd.getMode() == BioFabricNetwork.BuildMode.LINK_GROUP_CHANGE) ? rbd.newLinkGroups : rbd.existingLinkGroups);
-    if (rels.isEmpty()) {
-      rels.add("");
+    ArrayList<String> microRels;
+    ArrayList<String> macroRels;
+    if (rbd.layoutMode == BioFabricNetwork.LayoutMode.PER_NODE_MODE) {
+    	microRels = new ArrayList<String>(rbd.linkGroups);
+    	macroRels = null;
+    } else if (rbd.layoutMode == BioFabricNetwork.LayoutMode.PER_NETWORK_MODE) {
+    	microRels = new ArrayList<String>();
+    	macroRels = new ArrayList<String>(rbd.linkGroups);
+    } else {
+    	microRels = new ArrayList<String>();
+    	macroRels = null;
     }
-    int numRel = rels.size();
+
+    if (microRels.isEmpty()) {
+      microRels.add("");
+    }
+    int numRel = microRels.size();
       
     int colCount = 0;
     int rowCount = rbd.nodeOrder.size();
@@ -134,7 +147,7 @@ public class DefaultEdgeLayout {
     for (int k = 0; k < rowCount; k++) {
       Integer topRow = Integer.valueOf(k);
       for (int i = 0; i < numRel; i++) {
-        String relOnly = rels.get(i);
+        String relOnly = microRels.get(i);
         if (relOnly.equals("")) {
           relOnly = null;
         }
@@ -185,9 +198,48 @@ public class DefaultEdgeLayout {
         }
       }
     }
-
+    
+    if (rbd.getMode() == BioFabricNetwork.BuildMode.GROUP_PER_NETWORK_CHANGE) {
+    	orderNetworkByGroups(linkOrder, macroRels);
+    }
+ 
     return (linkOrder);
   }
+  
+  /***************************************************************************
+  *  existingOrd's link order will follow groupOrder's relation order.
+  */
+
+    private void orderNetworkByGroups(SortedMap<Integer, FabricLink> existingOrd, List<String> groupOrder) {
+
+      Map<String, List<FabricLink>> groups = new TreeMap<String, List<FabricLink>>();
+      // String: link relation, List: all the links with that relation
+
+      for (Map.Entry<Integer, FabricLink> entry : existingOrd.entrySet()) {
+
+        FabricLink fl = entry.getValue();
+        String rel = fl.getRelation();
+
+        if (groups.get(rel) == null) {
+          groups.put(rel, new ArrayList<FabricLink>());
+        }
+
+        groups.get(rel).add(fl);
+      }
+
+      int rowIdx = 0;
+      for (String relation : groupOrder) {
+
+        List<FabricLink> group = groups.get(relation);
+
+        for (FabricLink fl : group) {
+          existingOrd.put(rowIdx, fl);
+          rowIdx++;                    // increment the row index
+        }
+
+      }
+      return;
+    }
   
   /***************************************************************************
   ** 

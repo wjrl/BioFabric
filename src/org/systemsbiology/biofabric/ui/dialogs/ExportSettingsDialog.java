@@ -508,8 +508,8 @@ public class ExportSettingsDialog extends JDialog {
   */
   
   private void initZoomDims() {
-    currentZoomHeight_ = Math.round((double)baseHeight_ * currentZoomVal_);
-    currentZoomWidth_ = Math.round((double)baseWidth_ * currentZoomVal_);    
+    currentZoomHeight_ = Math.round(baseHeight_ * currentZoomVal_);
+    currentZoomWidth_ = Math.round(baseWidth_ * currentZoomVal_);    
     widthField_.setText(Long.toString(currentZoomWidth_));
     heightField_.setText(Long.toString(currentZoomHeight_));
     return;

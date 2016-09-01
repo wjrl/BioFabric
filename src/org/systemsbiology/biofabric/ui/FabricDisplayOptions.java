@@ -207,7 +207,7 @@ public class FabricDisplayOptions implements Cloneable {
     if (mouseOverURL != null) {
       mouseOverURL_ = mouseOverURL;
     } else {
-      mouseOverURL = DEFAULT_MOUSEOVER_URL_;
+      mouseOverURL_ = DEFAULT_MOUSEOVER_URL_;
     }      
   }
   
