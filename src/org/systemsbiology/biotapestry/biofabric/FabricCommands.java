@@ -2432,11 +2432,25 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
     }
 
     private boolean performOperation(Object[] args) {
+      
+      BioFabricNetwork bfn = bfp_.getNetwork();
+      bfn.setLayoutMode(BioFabricNetwork.LayoutMode.UNINITIALIZED_MODE);
+      
+      /*
+      The problem when after selecting LinkGroup order and then to Default Layout
+      and then to LinkGroup order: When the network is relayouted, the link order
+      stays the same. The LayoutMode is changed, but that doesn't matter if the
+      link order stays the same. Because the LayoutMode is 'uninitialized mode',
+      the LayoutMode and the link order don't match. To solve this problem, a
+      method should be created to calculate and some how store the default value,
+      and make it readily available given any BioFabric relayout.
+       */
 
-      BioFabricNetwork.RelayoutBuildData bfn =
-              new BioFabricNetwork.RelayoutBuildData(bfp_.getNetwork(), BioFabricNetwork.DEFAULT_LAYOUT);
+      BioFabricNetwork.RelayoutBuildData bfnd =
+              new BioFabricNetwork.RelayoutBuildData(bfn, BioFabricNetwork.DEFAULT_LAYOUT);
+      
       NetworkRelayout nb = new NetworkRelayout();
-      nb.doNetworkRelayout(bfn, null);
+      nb.doNetworkRelayout(bfnd, null);
       return (true);
     }
 
@@ -2627,8 +2641,7 @@ public class FabricCommands implements ZoomChangeTracker, SelectionChangeListene
         bfnd.setLinkOrder(existingOrd);
 
       } else {
-        bfnd = null;
-        ExceptionHandler.getHandler().displayException(new IllegalArgumentException("Illegal Layout Mode"));
+        throw new IllegalArgumentException("Illegal Layout Mode");
       }
 
       NetworkRelayout nb = new NetworkRelayout();
