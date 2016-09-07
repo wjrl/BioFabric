@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2010 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,48 +17,27 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biotapestry.biofabric;
-
-import java.util.prefs.Preferences;
+package org.systemsbiology.biofabric.db;
 
 /****************************************************************************
 **
-** This legacy class must be retained because it was used to store user 
-** preferences in Version 1.0.0
+** Interface for workspace sources
 */
 
-public class FabricCommands {
+public interface SimpleWorkspaceSource {
+  
+  /***************************************************************************
+  ** 
+  ** Get the workspace definition
+  */
+
+  public Workspace getWorkspace();
 
   /***************************************************************************
-  **
-  ** Preferences are stored by package. 
-  */ 
-    
-  public static void setPreference(String key, String val) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);
-    prefs.put(key, val);
-    return;
-  }    
-  
-  /***************************************************************************
-  **
-  ** Preferences are stored by package.
-  */ 
-    
-  public static String getPreference(String key) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);    
-    String retval = prefs.get(key, null);
-    return (retval);
-  } 
-  
-  
-  /***************************************************************************
-  **
-  ** Never instantiate
-  */ 
-    
-  private FabricCommands() {
-    // Never instantiate
-    throw new UnsupportedOperationException();
-  }
+  ** 
+  ** Set the workspace definition without handling undo tracking
+  */
+
+  public void simpleSetWorkspace(Workspace workspace);
+
 }

@@ -8,3 +8,9 @@ BioFabric Fork.iml
 BioFabric.iml
 out/
 src/META-INF/
+.gitignore
+org/.gitignore
+org/systemsbiology/.DS_Store
+org/systemsbiology/biofabric/
+org/systemsbiology/biotapestry/.gitignore
+org/systemsbiology/biotapestry/biofabric/.gitignore

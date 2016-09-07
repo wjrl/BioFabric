@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2011 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,48 +17,43 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biotapestry.biofabric;
+package org.systemsbiology.biofabric.gaggle;
 
-import java.util.prefs.Preferences;
+import org.systemsbiology.biofabric.app.BioFabricWindow;
 
 /****************************************************************************
 **
-** This legacy class must be retained because it was used to store user 
-** preferences in Version 1.0.0
+** Inbound connection change
 */
 
-public class FabricCommands {
+public class InboundConnectionOp extends InboundGaggleOp {
+
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PRIVATE INSTANCE VARIABLES
+  //
+  ////////////////////////////////////////////////////////////////////////////
+
+  private boolean connected_;
+   
+  /***************************************************************************
+  **
+  ** Create the op - called on RMI thread
+  */
+
+  public InboundConnectionOp(BioFabricWindow bfw, boolean connected) {
+    super(bfw);
+    connected_ = connected;
+    return;
+  }
 
   /***************************************************************************
   **
-  ** Preferences are stored by package. 
-  */ 
-    
-  public static void setPreference(String key, String val) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);
-    prefs.put(key, val);
+  ** Execute the op - called on AWT thread
+  */
+
+  public void executeOp() { 
+    bfw_.connectedToGaggle(connected_);
     return;
   }    
-  
-  /***************************************************************************
-  **
-  ** Preferences are stored by package.
-  */ 
-    
-  public static String getPreference(String key) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);    
-    String retval = prefs.get(key, null);
-    return (retval);
-  } 
-  
-  
-  /***************************************************************************
-  **
-  ** Never instantiate
-  */ 
-    
-  private FabricCommands() {
-    // Never instantiate
-    throw new UnsupportedOperationException();
-  }
 }
