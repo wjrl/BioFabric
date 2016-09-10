@@ -166,7 +166,7 @@ public class AttributeLoader {
     
     @Override
     public int hashCode() {
-      return (key.hashCode());
+      return (key.toUpperCase().hashCode());
     }
 
     @Override
@@ -181,7 +181,7 @@ public class AttributeLoader {
         return (false);
       }
       StringKey otherT = (StringKey)other;
-      return ((this.key.equals(otherT.key)));
+      return ((this.key.toUpperCase().equals(otherT.key.toUpperCase())));
     }
   }
    

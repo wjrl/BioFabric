@@ -109,12 +109,12 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
   } 
     
   public boolean isFeedback() {
-    return (src_.equals(trg_));
+    return (src_.toUpperCase().equals(trg_.toUpperCase()));
   } 
   
   @Override
   public int hashCode() {
-    return (src_.hashCode() + trg_.hashCode() + relation_.hashCode() + ((isShadow_) ? 17 : 31) + 
+    return (src_.toUpperCase().hashCode() + trg_.toUpperCase().hashCode() + relation_.toUpperCase().hashCode() + ((isShadow_) ? 17 : 31) + 
             ((directed_ == null) ? 0 : directed_.hashCode()));
   }
 
@@ -166,10 +166,10 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
     }
     FabricLink otherLink = (FabricLink)other;
   
-    if (!this.src_.equals(otherLink.src_)) {
+    if (!this.src_.toUpperCase().equals(otherLink.src_.toUpperCase())) {
       return (false);
     }
-    if (!this.trg_.equals(otherLink.trg_)) {
+    if (!this.trg_.toUpperCase().equals(otherLink.trg_.toUpperCase())) {
       return (false);
     }
     
@@ -177,7 +177,7 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
       return (false);
     }
     
-    if (!this.relation_.equals(otherLink.relation_)) {
+    if (!this.relation_.toUpperCase().equals(otherLink.relation_.toUpperCase())) {
       return (false);
     }
     
@@ -195,29 +195,29 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
     if (this.isDirected() || other.isDirected()) {
       return (false);
     }
-    if (!this.relation_.equals(other.relation_)) {
+    if (!this.relation_.toUpperCase().equals(other.relation_.toUpperCase())) {
       return (false);
     }
     if (this.isShadow_ != other.isShadow_) {
       return (false);
     }    
-    if (!this.src_.equals(other.trg_)) {
+    if (!this.src_.toUpperCase().equals(other.trg_.toUpperCase())) {
       return (false);
     }
-    return (this.trg_.equals(other.src_));
+    return (this.trg_.toUpperCase().equals(other.src_.toUpperCase()));
   }
    
    public boolean shadowPair(FabricLink other) {
     if (this.equals(other)) {
       return (false);
     }
-    if (!this.src_.equals(other.src_)) {
+    if (!this.src_.toUpperCase().equals(other.src_.toUpperCase())) {
       return (false);
     }
-    if (!this.trg_.equals(other.trg_)) {
+    if (!this.trg_.toUpperCase().equals(other.trg_.toUpperCase())) {
       return (false);
     }   
-    if (!this.relation_.equals(other.relation_)) {
+    if (!this.relation_.toUpperCase().equals(other.relation_.toUpperCase())) {
       return (false);
     }
     
@@ -239,16 +239,16 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
       return (0);
     }
 
-    if (!this.src_.equals(otherLink.src_)) {
+    if (!this.src_.toUpperCase().equals(otherLink.src_.toUpperCase())) {
       return (this.src_.compareToIgnoreCase(otherLink.src_));
     }    
-    if (!this.trg_.equals(otherLink.trg_)) {
+    if (!this.trg_.toUpperCase().equals(otherLink.trg_.toUpperCase())) {
       return (this.trg_.compareToIgnoreCase(otherLink.trg_));
     }
     if (this.isShadow_ != otherLink.isShadow_) {
       return ((this.isShadow_) ? -1 : 1);
     }   
-    if (!this.relation_.equals(otherLink.relation_)) {
+    if (!this.relation_.toUpperCase().equals(otherLink.relation_.toUpperCase())) {
       return (this.relation_.compareToIgnoreCase(otherLink.relation_));
     }
     throw new IllegalStateException();
@@ -285,7 +285,7 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
       if (this.isShadow != otherAug.isShadow) {
         return ((this.isShadow) ? -1 : 1);
       }    
-      if (!this.relation.equals(otherAug.relation)) {
+      if (!this.relation.toUpperCase().equals(otherAug.relation.toUpperCase())) {
         return (this.relation.compareToIgnoreCase(otherAug.relation));
       }
       throw new IllegalStateException();
@@ -308,12 +308,12 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
         return (false);
       }
     
-      return (this.relation.equals(otherAug.relation));
+      return (this.relation.toUpperCase().equals(otherAug.relation.toUpperCase()));
     }
      
     @Override
     public int hashCode() {
-      return (relation.hashCode() + ((isShadow) ? 17 : 31));
+      return (relation.toUpperCase().hashCode() + ((isShadow) ? 17 : 31));
     }
 
     @Override

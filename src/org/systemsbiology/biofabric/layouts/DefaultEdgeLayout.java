@@ -85,9 +85,9 @@ public class DefaultEdgeLayout {
     Iterator<String> trit = nodeOrder.keySet().iterator();
     while (trit.hasNext()) {
       String target = trit.next();
-      Integer rowObj = Integer.valueOf(nodeOrder.get(target));
-      targToRow.put(target, rowObj);
-      rowToTarg.put(rowObj, target);
+      Integer rowObj = Integer.valueOf(nodeOrder.get(target.toUpperCase()));
+      targToRow.put(target.toUpperCase(), rowObj);
+      rowToTarg.put(rowObj, target.toUpperCase());
     }
     
     //
@@ -347,9 +347,9 @@ public class DefaultEdgeLayout {
         rels = new TreeMap<FabricLink.AugRelation, FabricLink>();
         relsForPair.put(key, rels);
       }
-      rels.put(nextLink.getAugRelation(), nextLink);
+      rels.put(nextLink.getAugRelation(), nextLink);   
       Integer srcRow = targToRow.get(source.toUpperCase());
-      Integer trgRow = targToRow.get(target.toUpperCase());
+      Integer trgRow = targToRow.get(target.toUpperCase());       
       if ((srcRow == null) || (trgRow == null)) {
       	System.out.println(source + " " + target + " "  + srcRow + " " + trgRow);
       }
@@ -366,7 +366,7 @@ public class DefaultEdgeLayout {
       if (perSrc == null) {
         perSrc = new TreeSet<Integer>();
         rankedLinks.put(minRow, perSrc);
-      }
+      }   
       perSrc.add(maxRow);  // Have the ordered set of link maxes
     }
     return (relsForPair);

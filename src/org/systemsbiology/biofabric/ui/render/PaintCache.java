@@ -370,7 +370,7 @@ public class PaintCache {
     if ((colmm.max == Integer.MIN_VALUE) || (colmm.min == Integer.MAX_VALUE)) {
       objCache.add(new PaintedPath(Color.BLACK, target.nodeName, 100.0F, namey, 100.0F, tnamey, 
                                    doRotateName, useFont, labelBounds, dumpRect));
-      nameMap.put(target.nodeName, (Rectangle2D)labelBounds.clone());
+      nameMap.put(target.nodeName.toUpperCase(), (Rectangle2D)labelBounds.clone());
       return;
     }
 
@@ -421,9 +421,9 @@ public class PaintCache {
     Line2D line = new Line2D.Double(xStrt, yval, xEnd, yval);
     Color paintCol = getColorForNode(target, colGen);     
     objCache.add(new PaintedPath(paintCol, line, Integer.MIN_VALUE, yval, new MinMax(xStrt, xEnd)));
-    nameMap.put(target.nodeName, (Rectangle2D)labelBounds.clone());
+    nameMap.put(target.nodeName.toUpperCase(), (Rectangle2D)labelBounds.clone());
     if (dumpRect != null) {
-      drainMap.put(target.nodeName, (Rectangle2D)dumpRect.clone());
+      drainMap.put(target.nodeName.toUpperCase(), (Rectangle2D)dumpRect.clone());
     }    
     return;
   } 

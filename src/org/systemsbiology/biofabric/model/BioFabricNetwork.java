@@ -640,8 +640,8 @@ public class BioFabricNetwork {
       String topNodeName = rowToTarg_.get(Integer.valueOf(linf.topRow()));
       String botNodeName = rowToTarg_.get(Integer.valueOf(linf.bottomRow()));
       
-      NodeInfo nit = nodeDefs_.get(topNodeName);
-      NodeInfo nib = nodeDefs_.get(botNodeName);
+      NodeInfo nit = nodeDefs_.get(topNodeName.toUpperCase());
+      NodeInfo nib = nodeDefs_.get(botNodeName.toUpperCase());
       
       //
       // When displaying shadows, drain zone of top node is only mod 
@@ -738,7 +738,7 @@ public class BioFabricNetwork {
         }
       }
       if (maxRun != null) {
-        NodeInfo nit = nodeDefs_.get(nodeName);
+        NodeInfo nit = nodeDefs_.get(nodeName.toUpperCase());
         nit.setDrainZone(maxRun.clone(), forShadow);
       }
     }
@@ -918,7 +918,7 @@ public class BioFabricNetwork {
   */
 
   public NodeInfo getNodeDefinition(String targ) {
-    NodeInfo node = nodeDefs_.get(targ);
+    NodeInfo node = nodeDefs_.get(targ.toUpperCase());
     return (node);
   }
   
@@ -963,7 +963,7 @@ public class BioFabricNetwork {
     String target = useCA.columnToTarget.get(colVal);
     String source = useCA.columnToSource.get(colVal);
     if (target != null) {
-      NodeInfo nit = nodeDefs_.get(target);
+      NodeInfo nit = nodeDefs_.get(target.toUpperCase());
       MinMax tdz = nit.getDrainZone(forShadow);
       if (tdz != null) {
         if ((col >= tdz.min) && (col <= tdz.max)) {
@@ -972,7 +972,7 @@ public class BioFabricNetwork {
       }
     }
     if (source != null) {
-      NodeInfo nis = nodeDefs_.get(source);
+      NodeInfo nis = nodeDefs_.get(source.toUpperCase());
       MinMax sdz = nis.getDrainZone(forShadow);
       if (sdz != null) {
         if ((col >= sdz.min) && (col <= sdz.max)) {
@@ -1047,7 +1047,13 @@ public class BioFabricNetwork {
   */
 
   public Set<String> getNodeSet() {
-    return (new HashSet<String>(nodeDefs_.keySet()));
+  	HashSet<String> retval = new HashSet<String>();
+  	Iterator<NodeInfo> nsit = nodeDefs_.values().iterator();
+    while (nsit.hasNext()) {
+    	NodeInfo ni = nsit.next();
+      retval.add(ni.nodeName);
+    }
+    return (retval);
   }  
   
   /***************************************************************************
@@ -1125,7 +1131,7 @@ public class BioFabricNetwork {
     Iterator<String> nsit = nodeSet.iterator();
     while (nsit.hasNext()) {
       String name = nsit.next();
-      nodes.add(nodeDefs_.get(name));
+      nodes.add(nodeDefs_.get(name.toUpperCase()));
     }
     return;
   }
@@ -1476,7 +1482,7 @@ public class BioFabricNetwork {
     for (int i = 0; i < rowCount_; i++) {
       NodeInfo infoMini = modTargetList.get(i);
       rowToTarg_.put(Integer.valueOf(infoMini.nodeRow), infoMini.nodeName);
-      nodeDefs_.put(infoMini.nodeName, infoMini);
+      nodeDefs_.put(infoMini.nodeName.toUpperCase(), infoMini);
     }
     
     normalCols_ = new ColumnAssign();
@@ -1610,13 +1616,14 @@ public class BioFabricNetwork {
     while (trit.hasNext()) {
       String target = trit.next();
       Integer rowObj = Integer.valueOf(currRow);
-      rowToTarg_.put(rowObj, target);
+      rowToTarg_.put(rowObj, target.toUpperCase());
       String colorKey = colGen.getGeneColor(currRow % numColors);
+
       NodeInfo nextNI = new NodeInfo(target, currRow++, colorKey);
       if (clustAssign != null) {
       	nextNI.setCluster(clustAssign.get(target.toUpperCase()));
       }
-      nodeDefs_.put(target, nextNI);
+      nodeDefs_.put(target.toUpperCase(), nextNI);
     }
     rowCount_ = targets.size();
     return;
@@ -1628,7 +1635,7 @@ public class BioFabricNetwork {
   */
   
   void addNodeInfoForIO(NodeInfo nif) {
-    nodeDefs_.put(nif.nodeName, nif);
+    nodeDefs_.put(nif.nodeName.toUpperCase(), nif);
     rowCount_ = nodeDefs_.size();   
     rowToTarg_.put(Integer.valueOf(nif.nodeRow), nif.nodeName);
     return;
@@ -1647,8 +1654,8 @@ public class BioFabricNetwork {
       LinkInfo li = fullLinkDefs_.get(colNum);
       shadowCols_.columnToSource.put(colNum, li.getSource());
       shadowCols_.columnToTarget.put(colNum, li.getTarget());
-      NodeInfo srcNI = nodeDefs_.get(li.getSource());    
-      NodeInfo trgNI = nodeDefs_.get(li.getTarget());    
+      NodeInfo srcNI = nodeDefs_.get(li.getSource().toUpperCase());    
+      NodeInfo trgNI = nodeDefs_.get(li.getTarget().toUpperCase()); 
       srcNI.updateMinMaxCol(colNum.intValue(), true);
       trgNI.updateMinMaxCol(colNum.intValue(), true);
     }
@@ -1659,8 +1666,8 @@ public class BioFabricNetwork {
       LinkInfo li = fullLinkDefs_.get(mappedCol);
       normalCols_.columnToSource.put(colNum, li.getSource());
       normalCols_.columnToTarget.put(colNum, li.getTarget());
-      NodeInfo srcNI = nodeDefs_.get(li.getSource());    
-      NodeInfo trgNI = nodeDefs_.get(li.getTarget());    
+      NodeInfo srcNI = nodeDefs_.get(li.getSource().toUpperCase());    
+      NodeInfo trgNI = nodeDefs_.get(li.getTarget().toUpperCase());    
       srcNI.updateMinMaxCol(colNum.intValue(), false);
       trgNI.updateMinMaxCol(colNum.intValue(), false);
     }
@@ -1676,7 +1683,7 @@ public class BioFabricNetwork {
     Iterator<String> lnit = loneNodes.iterator();
     while (lnit.hasNext()) {
       String lone = lnit.next();
-      NodeInfo loneNI = nodeDefs_.get(lone);     
+      NodeInfo loneNI = nodeDefs_.get(lone.toUpperCase());     
       loneNI.updateMinMaxCol(normalCols_.columnCount - 1, false);
       loneNI.updateMinMaxCol(shadowCols_.columnCount - 1, true);
     }    
@@ -1722,8 +1729,8 @@ public class BioFabricNetwork {
   private Integer[] addLinkDef(FabricLink nextLink, int numColors, int noShadowCol, int shadowCol, FabricColorGenerator colGen) {
     Integer[] retval = new Integer[2]; 
     String key = colGen.getGeneColor(shadowCol % numColors);
-    int srcRow = nodeDefs_.get(nextLink.getSrc()).nodeRow;
-    int trgRow = nodeDefs_.get(nextLink.getTrg()).nodeRow;
+    int srcRow = nodeDefs_.get(nextLink.getSrc().toUpperCase()).nodeRow;
+    int trgRow = nodeDefs_.get(nextLink.getTrg().toUpperCase()).nodeRow;
     LinkInfo linf = new LinkInfo(nextLink, srcRow, trgRow, noShadowCol, shadowCol, key);
     Integer shadowKey = Integer.valueOf(shadowCol);
     fullLinkDefs_.put(shadowKey, linf);

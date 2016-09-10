@@ -108,10 +108,9 @@ public class DefaultLayout {
     HashMap<String, String> nodeOrder = new HashMap<String, String>();
     Iterator<String> trit = targets.iterator();
     while (trit.hasNext()) {
-      String target = trit.next();
+      String target = trit.next();   
       String rowTag = Integer.toString(currRow++);
       nodeOrder.put(target.toUpperCase(), rowTag);
-      //System.out.println("ino " + target + " " + rowTag);
     }  
     rbd.setNodeOrder(nodeOrder);
     return;
@@ -140,8 +139,8 @@ public class DefaultLayout {
     Iterator<FabricLink> alit = allLinks.iterator();
     while (alit.hasNext()) {
       FabricLink nextLink = alit.next();
-      String source = nextLink.getSrc();
-      String target = nextLink.getTrg();
+      String source = nextLink.getSrc().toUpperCase();
+      String target = nextLink.getTrg().toUpperCase();
       Set<String> targs = targsPerSource.get(source);
       if (targs == null) {
         targs = new HashSet<String>();
@@ -188,7 +187,6 @@ public class DefaultLayout {
       targsToGo.removeAll(startNodes);
       targets.addAll(startNodes);
       queue.addAll(startNodes);
-      System.out.println("added all " + startNodes);
       flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue);
     }   
     

@@ -907,7 +907,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
         String target = bfn_.getTargetForColumn(testCol, showShadows);
         String source = bfn_.getSourceForColumn(testCol, showShadows);
         if ((target != null) && (source != null)) {
-          if (target.equals(node.nodeName) || source.equals(node.nodeName)) {
+          if (target.equalsIgnoreCase(node.nodeName) || source.equalsIgnoreCase(node.nodeName)) {
             return (handleTourStop(useCol, tourFocus_.y, testCol, nodeName));
           }
         }
@@ -944,7 +944,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       String target = bfn_.getTargetForColumn(testCol, showShadows);
       String source = bfn_.getSourceForColumn(testCol, showShadows);
       if ((target != null) && (source != null)) {
-        if (target.equals(node.nodeName) || source.equals(node.nodeName)) { 
+        if (target.equalsIgnoreCase(node.nodeName) || source.equalsIgnoreCase(node.nodeName)) { 
           retval.add(testCol);
         }
       }
@@ -1978,12 +1978,12 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     String drain = bfn_.getDrainForColumn(colObj, showShadows);
     int numRows = bfn_.getRowCount();
     if (target != null) {        
-      BioFabricNetwork.NodeInfo ni = bfn_.getNodeDefinition(target);
+      BioFabricNetwork.NodeInfo ni = bfn_.getNodeDefinition(target.toUpperCase());
       MinMax nimm = ni.getColRange(showShadows);
       if ((nimm.min <= cprc.x) && (nimm.max >= cprc.x)) {
         retval.nodeDesc = target;           
       } else {
-        Rectangle2D nnl = nodeNameLocations_.get(target);
+        Rectangle2D nnl = nodeNameLocations_.get(target.toUpperCase());
         Point2D inWorld = rowColToWorld(cprc);
         if (nnl.contains(inWorld)) {
           retval.nodeDesc = target;
@@ -2074,7 +2074,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       Iterator<String> dnlit = drainNameLocations_.keySet().iterator(); 
       while (dnlit.hasNext()) {
         String target = dnlit.next();
-        Rectangle2D nameLoc = drainNameLocations_.get(target);
+        Rectangle2D nameLoc = drainNameLocations_.get(target.toUpperCase());
         if (nameLoc.contains(worldPt)) {
           gotDrain = target;
           break;
@@ -2205,7 +2205,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       String target = tgit.next();
       BioFabricNetwork.NodeInfo targetInf = bfn_.getNodeDefinition(target);
       targetList_.add(targetInf);
-      Rectangle2D targName = nodeNameLocations_.get(target);
+      Rectangle2D targName = nodeNameLocations_.get(target.toUpperCase());
       Point targNameRC = worldToRowCol(new Point2D.Double(targName.getCenterX(), targName.getCenterY()));
       focus.setLocation(targNameRC.x, targetInf.nodeRow);
       sortTargs.put(Integer.valueOf(targetInf.nodeRow), buildFocusBox(focus));  
