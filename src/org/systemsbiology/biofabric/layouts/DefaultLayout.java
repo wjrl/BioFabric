@@ -188,7 +188,7 @@ public class DefaultLayout {
       targsToGo.removeAll(startNodes);
       targets.addAll(startNodes);
       queue.addAll(startNodes);
-      System.out.println("added all " + startNodes);
+//      System.out.println("added all " + startNodes);
       flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue);
     }   
     
@@ -236,7 +236,7 @@ public class DefaultLayout {
                                         HashSet<String> targsToGo, String node) {
     Set<String> targs = targsPerSource.get(node);
     if (targs == null) {
-    	System.out.println("no kids for " + node);
+//    	System.out.println("no kids for " + node);
     	return (new ArrayList<String>());
     }
     TreeMap<Integer, SortedSet<String>> kidMap = new TreeMap<Integer, SortedSet<String>>(Collections.reverseOrder());

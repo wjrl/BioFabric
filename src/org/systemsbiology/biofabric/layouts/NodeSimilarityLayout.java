@@ -751,12 +751,12 @@ public class NodeSimilarityLayout {
     while (cit.hasNext()) {
       Integer key = cit.next();
       Double val = curve.get(key);
-      System.out.print("(" + key + "," + val + ")");
+//      System.out.print("(" + key + "," + val + ")");
       if (count++ == 5) {
         break;
       }
     }
-    System.out.println();    
+//    System.out.println();
   }
  
   /***************************************************************************
@@ -1121,9 +1121,9 @@ public class NodeSimilarityLayout {
     }
     double retval = Math.sqrt(deltaSqSum);
     if (Double.isNaN(retval)) {
-      System.err.println(vec1Points);
-      System.err.println(vec2Points);
-      System.err.println(unionBuf);
+//      System.err.println(vec1Points);
+//      System.err.println(vec2Points);
+//      System.err.println(unionBuf);
       throw new IllegalStateException();
     }
     return (retval);

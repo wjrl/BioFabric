@@ -164,7 +164,7 @@ public class FabricNavTool extends JPanel {
   public void setBounds(int x, int y, int width, int height) {
     neverSet_ = false;
     Dimension minBig = bigPan_.getMinimumSize();
-    System.out.println(currPan_ + " " + width + " " + height + " " + bigPan_.getMinimumSize());
+//    System.out.println(currPan_ + " " + width + " " + height + " " + bigPan_.getMinimumSize());
     if ((currPan_ == BIG_) && ((minBig.height > height) || (minBig.width > width))) {
       currPan_ = SMALL_;
       clay_.show(this, "small");
@@ -172,7 +172,7 @@ public class FabricNavTool extends JPanel {
       currPan_ = BIG_;
       clay_.show(this, "big");
     }
-    System.out.println(currPan_);
+//    System.out.println(currPan_);
     super.setBounds(x, y, width, height);
     repaint();
     return;

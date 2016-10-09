@@ -302,14 +302,14 @@ public class BufferBuilder {
     
     int worldWInc = worldDim.width / zoomNum;
     if ((worldWInc < MIN_DIM_) && !force) {
-      System.out.println("WMIN HIT " + worldWInc);
+//      System.out.println("WMIN HIT " + worldWInc);
       worldWInc = MIN_DIM_;
       wIsMin = true;     
     }
     
     int worldHInc = worldDim.height / zoomNum;
     if ((worldHInc < MIN_DIM_) && !force) {
-      System.out.println("HMIN HIT " + worldHInc);
+//      System.out.println("HMIN HIT " + worldHInc);
       worldHInc = MIN_DIM_;
       hIsMin = true;
     }

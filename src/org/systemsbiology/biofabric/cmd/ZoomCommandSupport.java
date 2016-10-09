@@ -321,7 +321,7 @@ public class ZoomCommandSupport {
     view.setViewPosition(boundedViewPos(center, vDim, view));
     view.invalidate();
     jsp_.validate();
-    System.out.println("validate VU");
+//    System.out.println("validate VU");
     return;
   }  
 

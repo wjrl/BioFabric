@@ -108,7 +108,7 @@ public class ControlTopLayout {
     //
     Iterator<String> tit = targets.iterator();
     while (tit.hasNext()) {
-      System.out.println(tit.next());    
+//      System.out.println(tit.next());
     }
     
     
@@ -206,7 +206,7 @@ public class ControlTopLayout {
       if (!cf.hasACycle()) {
         dagLinks.add(nextLink);
       } else {
-        System.out.println("***remove " + nextLink);
+//        System.out.println("***remove " + nextLink);
         testLinks.remove(nextLink);
       }
     }
@@ -220,7 +220,7 @@ public class ControlTopLayout {
     List<String> retval = gs.topoSortToPartialOrdering(ts, links);
     int count = 0;
     for (String ct : retval) {
-      System.out.println("***ctrl " + count++ + " " + ct);
+//      System.out.println("***ctrl " + count++ + " " + ct);
     }
     
     //
@@ -283,7 +283,7 @@ public class ControlTopLayout {
       int medI = size / 2;
       Integer med = forSrc.get(medI);
       retval.add(new GraphSearcher.NodeDegree(src, med.intValue()));
-      System.out.println(src + ": " + forSrc.get(0) + " - " + forSrc.get(forSrc.size() - 1) + " median = " + med);
+//      System.out.println(src + ": " + forSrc.get(0) + " - " + forSrc.get(forSrc.size() - 1) + " median = " + med);
     }
     return (retval);
   }

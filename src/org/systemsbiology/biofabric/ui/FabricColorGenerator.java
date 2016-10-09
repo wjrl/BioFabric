@@ -117,7 +117,7 @@ public class FabricColorGenerator {
 	        int bb = Math.min(255, (int)Math.round((double)baseB * light));       
 	        brighter_.put(gckey, new Color(rb, gb, bb));
       	} else {
-      		System.out.println("Not light on " + nc.name);
+//      		System.out.println("Not light on " + nc.name);
       		brighter_.put(gckey, nc.color);
       	}
         int rd = Math.min(255, (int)Math.round((double)baseR * dark));

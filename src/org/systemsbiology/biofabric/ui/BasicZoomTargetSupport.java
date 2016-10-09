@@ -317,7 +317,7 @@ public class BasicZoomTargetSupport implements ZoomTarget {
       transform_.inverseTransform(ptSrc, ptDest);
       return (ptDest);
     } catch (NoninvertibleTransformException ex) {
-      System.err.println("cannot invert: " + transform_);
+//      System.err.println("cannot invert: " + transform_);
       throw new IllegalStateException();
     }
   }  

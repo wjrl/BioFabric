@@ -124,10 +124,10 @@ public class SUParser extends DefaultHandler {
       parser_.parse(fileName);
     } catch (SAXException e) {
       String msg = formatSAXExceptionMessage(e);
-      System.err.println("Got a SAX exception: " + msg);
+//      System.err.println("Got a SAX exception: " + msg);
       throw new IOException(msg);
     } catch (IOException e) {
-      System.err.println("Got an IO exception: " + e);
+//      System.err.println("Got an IO exception: " + e);
       throw rebundleIOException(e);
     }
   }
@@ -142,10 +142,10 @@ public class SUParser extends DefaultHandler {
       parser_.parse(new InputSource(source.openStream()));
     } catch (SAXException e) {
       String msg = formatSAXExceptionMessage(e);
-      System.err.println("Got a SAX exception: " + msg);
+//      System.err.println("Got a SAX exception: " + msg);
       throw new IOException(msg);
     } catch (IOException e) {
-      System.err.println("Got an IO exception: " + e);
+//      System.err.println("Got an IO exception: " + e);
       throw rebundleIOException(e);
     }
   } 
@@ -160,10 +160,10 @@ public class SUParser extends DefaultHandler {
       parser_.parse(new InputSource(stream));
     } catch (SAXException e) {
       String msg = formatSAXExceptionMessage(e);
-      System.err.println("Got a SAX exception: " + msg);
+//      System.err.println("Got a SAX exception: " + msg);
       throw new IOException(msg);
     } catch (IOException e) {
-      System.err.println("Got an IO exception: " + e);
+//      System.err.println("Got an IO exception: " + e);
       throw rebundleIOException(e);
     }
   }  
@@ -297,7 +297,7 @@ public class SUParser extends DefaultHandler {
       SUParser sup = new SUParser();
       sup.parse("FIXME");
     } catch (IOException e) {
-      System.err.println("Got an IO exception: " + e);
+//      System.err.println("Got an IO exception: " + e);
     }
   }
   
@@ -347,7 +347,7 @@ public class SUParser extends DefaultHandler {
       //  new MyEntityResolver("/org/systemsbiology/biotapestry/util/qpcr.dtd"));
  
     } catch (SAXException e) {
-      System.err.println("Got a SAX exception: " + e);
+//      System.err.println("Got a SAX exception: " + e);
    // } catch (ParserConfigurationException pcex) {
     //  System.err.println("Got a ParserConfigurationException: " + pcex);
     }
@@ -365,21 +365,21 @@ public class SUParser extends DefaultHandler {
   */
 
   private void printError(String type, SAXParseException ex) {
-    System.err.print("Error: ");
-    System.err.println(type);
-    if (ex == null) {
-      return;
-    }
-    String sid = ex.getSystemId();
-    if (sid != null) {
-      System.err.println(sid);
-    }
-    System.err.print("Line number: ");
-    System.err.println(ex.getLineNumber());
-    System.err.print("Column number:");
-    System.err.println(ex.getColumnNumber());
-    System.err.print("Message: ");
-    System.err.println(ex.getMessage());
+//    System.err.print("Error: ");
+//    System.err.println(type);
+//    if (ex == null) {
+//      return;
+//    }
+//    String sid = ex.getSystemId();
+//    if (sid != null) {
+//      System.err.println(sid);
+//    }
+//    System.err.print("Line number: ");
+//    System.err.println(ex.getLineNumber());
+//    System.err.print("Column number:");
+//    System.err.println(ex.getColumnNumber());
+//    System.err.print("Message: ");
+//    System.err.println(ex.getMessage());
     return;
   }
   

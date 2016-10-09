@@ -202,7 +202,7 @@ public class BioFabricNavAndControl extends JPanel {
       spot_.setEnabled(true);
       lfnt_.setToBlank(!show);
       double need = (double)(spot_.getWidth() - lfnt_.getMinimumSize().width) / (double)spot_.getWidth();
-      System.out.println("ret " + savedSplitFrac_ + " " + spot_.getWidth() + " " + need + " " + lfnt_.getMinimumSize().width);
+//      System.out.println("ret " + savedSplitFrac_ + " " + spot_.getWidth() + " " + need + " " + lfnt_.getMinimumSize().width);
       spot_.setDividerLocation(Math.min(savedSplitFrac_, need));
       if (lfnt_.getMinimumSize().height > this.getHeight()) {
         return (true);
@@ -211,7 +211,7 @@ public class BioFabricNavAndControl extends JPanel {
       lfnt_.setToBlank(!show);
       int lastLoc = spot_.getDividerLocation();
       savedSplitFrac_ = (double)lastLoc / (double)spot_.getWidth();
-      System.out.println(lastLoc + " " + spot_.getWidth() + " " + savedSplitFrac_);
+//      System.out.println(lastLoc + " " + spot_.getWidth() + " " + savedSplitFrac_);
       spot_.setDividerLocation(1.0);
       spot_.setEnabled(false);
     }

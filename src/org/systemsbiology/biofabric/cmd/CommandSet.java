@@ -3394,7 +3394,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           try {
             pj.print();
           } catch (PrinterException pex) {
-            System.err.println(pex);
+//            System.err.println(pex);
           }
         }
       } catch (Exception ex) {
@@ -3446,11 +3446,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
         
         Rectangle2D viewInWorld = bfp_.getViewInWorld();
-        System.out.println("VFW " + viewInWorld);
+//        System.out.println("VFW " + viewInWorld);
        // Dimension viw = new Dimension((int)(viewInWorld.getWidth() / 15.0), (int)(viewInWorld.getHeight() / 15.0));     
     //    Dimension viw = new Dimension((int)(viewInWorld.getWidth() / 10.0), (int)(viewInWorld.getHeight() / 10.0));
          Dimension viw = new Dimension((int)(viewInWorld.getWidth() / 10.0), (int)(viewInWorld.getHeight() / 10.0));
-        System.out.println("dim " + viw);
+//        System.out.println("dim " + viw);
       //  VectorGraphics g = new PDFGraphics2D(new File("/Users/bill/OutputAOa.pdf"), viw); 
      //   g.setProperties(p); 
      //   g.startExport(); 

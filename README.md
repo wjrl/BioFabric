@@ -1,7 +1,7 @@
 BioFabric
 =========
 
-This new development branch is a completely unstable wreckage. But it uses the new package organization.
+The new development branch is in an experimental stage. It uses the new package organization.
 
 
 

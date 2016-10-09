@@ -133,7 +133,7 @@ public class NodeClusterLayout {
           interClust.put(intup, icfl);
         }
         if (fl.getTrg().equals("Valjean")) {
-        	System.out.println("Link " + fl + " for " + intup + " with " + trgClust + " " + target);
+//        	System.out.println("Link " + fl + " for " + intup + " with " + trgClust + " " + target);
         }
         icfl.add(fl);
         interNodesOnly.add(fl.getSrc());

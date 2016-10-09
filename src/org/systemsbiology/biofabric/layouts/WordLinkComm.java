@@ -115,7 +115,7 @@ public class WordLinkComm {
       while ((line = in.readLine()) != null) {
         String[] tokens = line.split("\\t");
         if (tokens.length != 2) {
-          System.err.println("WARNING: Short Line: " + line);
+//          System.err.println("WARNING: Short Line: " + line);
           continue;
         } else {
           Link link = new Link(tokens[0].toUpperCase(), tokens[1].toUpperCase());
@@ -410,7 +410,7 @@ public class WordLinkComm {
         cp.dumpEDA("/users/wlongaba/XXX-G.eda", ordering);
       }     
     } catch (IOException ioex) {
-      System.err.println("IO Error " + ioex);
+//      System.err.println("IO Error " + ioex);
     } 
   }
   

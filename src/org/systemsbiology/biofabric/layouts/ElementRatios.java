@@ -184,7 +184,7 @@ public class ElementRatios {
       List<String[]> edges = cp.readERT(new File("/Users/bill/XXX.txt"));
       cp.dumpSIF("/Users/bill/XXX.sif", edges);
     } catch (IOException ioex) {
-      System.err.println("IO Error " + ioex);
+//      System.err.println("IO Error " + ioex);
     } 
   }
 }

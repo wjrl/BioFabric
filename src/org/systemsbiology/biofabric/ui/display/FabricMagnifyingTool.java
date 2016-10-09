@@ -241,7 +241,7 @@ public class FabricMagnifyingTool extends JPanel {
           toLock_.setText((ignore_) ? "Unlock: Ctrl-Space" : "Lock: Ctrl-Space");
           toLock_.invalidate();
           lockPanel_.validate();
-          System.out.println("validate KI");
+//          System.out.println("validate KI");
           repaint();
         } catch (Exception ex) {
           ExceptionHandler.getHandler().displayException(ex);

@@ -137,7 +137,7 @@ public class HierDAGLayout {
       List<String> nextBatch = findNextCandidates();
       addToPlaceList(nextBatch);
       nodesToGo.removeAll(nextBatch);
-      System.out.println("Nodes to Go = " + nodesToGo.size());
+//      System.out.println("Nodes to Go = " + nodesToGo.size());
     }
     
     return (placeList_);

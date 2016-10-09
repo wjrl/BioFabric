@@ -135,7 +135,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
       gaggleGooseCombo_.setEnabled(false);
     }    
     getContentPane().validate();
-    System.out.println("validate DC");
+//    System.out.println("validate DC");
     fc.pushDisabled(pushFlags);
   }
 
@@ -156,7 +156,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
       gaggleGooseCombo_.setEnabled(true);
     }    
     
-    System.out.println("validate REC");
+//    System.out.println("validate REC");
     getContentPane().validate();    
     
     //

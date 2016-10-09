@@ -605,14 +605,14 @@ public class AffineCombination {
     points.add(pointSet[2]);
 
     Point2D testPt = new Point2D.Double(100.0, 120.0);
-    System.out.println("Original Point = " + testPt);
+//    System.out.println("Original Point = " + testPt);
     AffineCombination.getWeights(testPt, pointSet, weights);
-    System.out.println("Weights = ");
+//    System.out.println("Weights = ");
     for (int i = 0; i < 3; i++) {
-      System.out.println(weights[i]);
+//      System.out.println(weights[i]);
     }
     Point2D newPoint = AffineCombination.combination(points, weights, 0.0);
-    System.out.println("Derived point = " + newPoint);
+//    System.out.println("Derived point = " + newPoint);
 
     ArrayList pointList = new ArrayList();
     pointList.add(new Point2D.Double(10.0, 40.0));
@@ -629,10 +629,10 @@ public class AffineCombination {
     double[] weightArray = new double[numWeights];
     for (int i = 0; i < numWeights; i++) {
       weightArray[i] = ((Double)weightList.get(i)).doubleValue();
-      System.out.println("wei" + weightArray[i]);
+//      System.out.println("wei" + weightArray[i]);
     }    
     Point2D newPoint2 = AffineCombination.combination(pointList, weightArray, 0.0);
-    System.out.println("Derived point = " + newPoint2);
+//    System.out.println("Derived point = " + newPoint2);
     return;
   }  
  

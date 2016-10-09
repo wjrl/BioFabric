@@ -107,7 +107,7 @@ public class FabricLocation extends JPanel {
     nodeName_.invalidate();
     linkName_.invalidate();
     linkZone_.invalidate();
-    System.out.println("revalidate SNAL");
+//    System.out.println("revalidate SNAL");
     revalidate();
     return;
   }   

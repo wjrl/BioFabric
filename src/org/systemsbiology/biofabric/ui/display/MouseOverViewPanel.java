@@ -170,7 +170,7 @@ public class MouseOverViewPanel extends JPanel {
 	  	try {
 	      loadAFile(nodeName);
 	  	} catch (IOException ioex) {
-	  		System.err.println("Handle file load failures: " + ioex.getLocalizedMessage());
+//	  		System.err.println("Handle file load failures: " + ioex.getLocalizedMessage());
 	  	}
   	}
     return;

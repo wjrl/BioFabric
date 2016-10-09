@@ -351,7 +351,7 @@ public class DefaultEdgeLayout {
       Integer srcRow = targToRow.get(source.toUpperCase());
       Integer trgRow = targToRow.get(target.toUpperCase());
       if ((srcRow == null) || (trgRow == null)) {
-      	System.out.println(source + " " + target + " "  + srcRow + " " + trgRow);
+//      	System.out.println(source + " " + target + " "  + srcRow + " " + trgRow);
       }
       Integer minRow;
       Integer maxRow;

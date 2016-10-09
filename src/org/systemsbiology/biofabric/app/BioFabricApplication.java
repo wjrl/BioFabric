@@ -239,12 +239,12 @@ public class BioFabricApplication {
         liveGoose.activate();
         FabricGooseManager.getManager().setGoose(liveGoose);
       } catch (ClassNotFoundException cnfex) {
-        System.err.println("BTGoose class not found");
+//        System.err.println("BTGoose class not found");
         FabricGooseManager.getManager().setGoose(new DeadFabricGoose());     
       } catch (InstantiationException iex) {
-        System.err.println("BTGoose class not instantiated");
+//        System.err.println("BTGoose class not instantiated");
       } catch (IllegalAccessException iex) {
-        System.err.println("BTGoose class not instantiated");
+//        System.err.println("BTGoose class not instantiated");
       }
     } else {
       FabricGooseManager.getManager().setGoose(new DeadFabricGoose());
