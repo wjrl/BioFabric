@@ -110,17 +110,7 @@ import org.systemsbiology.biofabric.parser.SUParser;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.ImageExporter;
-import org.systemsbiology.biofabric.ui.dialogs.BreadthFirstLayoutDialog;
-import org.systemsbiology.biofabric.ui.dialogs.ClusterLayoutSetupDialog;
-import org.systemsbiology.biofabric.ui.dialogs.NodeSimilarityLayoutSetupDialog;
-import org.systemsbiology.biofabric.ui.dialogs.CompareNodesSetupDialog;
-import org.systemsbiology.biofabric.ui.dialogs.ExportSettingsDialog;
-import org.systemsbiology.biofabric.ui.dialogs.ExportSettingsPublishDialog;
-import org.systemsbiology.biofabric.ui.dialogs.FabricDisplayOptionsDialog;
-import org.systemsbiology.biofabric.ui.dialogs.FabricSearchDialog;
-import org.systemsbiology.biofabric.ui.dialogs.LinkGroupingSetupDialog;
-import org.systemsbiology.biofabric.ui.dialogs.RelationDirectionDialog;
-import org.systemsbiology.biofabric.ui.dialogs.ReorderLayoutParamsDialog;
+import org.systemsbiology.biofabric.ui.dialogs.*;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.ui.display.FabricMagnifyingTool;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
@@ -4832,5 +4822,10 @@ forcedTop.add("RME1");
     public Object postRunCore() {
       return (null);
     } 
-  } 
+  }
+  
+  public void test() {
+    new NetworkAlignmentDialog(topWindow_);
+  }
+  
 }

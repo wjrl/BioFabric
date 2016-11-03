@@ -24,6 +24,7 @@ import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,7 +44,10 @@ import javax.swing.JSplitPane;
 import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 
+import com.sun.org.apache.bcel.internal.generic.LMUL;
+import org.systemsbiology.biofabric.analysis.NetworkAlignment;
 import org.systemsbiology.biofabric.cmd.CommandSet;
+import org.systemsbiology.biofabric.ui.dialogs.NetworkAlignmentDialog;
 import org.systemsbiology.biofabric.ui.display.BioFabricNavAndControl;
 import org.systemsbiology.biofabric.ui.display.BioFabricOverview;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
@@ -473,7 +477,17 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     lMenu.add(fc.getAction(CommandSet.HIER_DAG_LAYOUT, false, null)); 
     lMenu.add(fc.getAction(CommandSet.WORLD_BANK_LAYOUT, false, null)); 
     lMenu.add(fc.getAction(CommandSet.SET_LINK_GROUPS, false, null));
- 
+    
+//    final CommandSet a = fc;
+//    JButton b = new JButton("Net. align");
+//    b.addActionListener(new ActionListener() {
+//      @Override
+//      public void actionPerformed(ActionEvent e) {
+//        a.test();
+//      }
+//    });
+//    lMenu.add(b);
+    
     //
     // Windows Menu
     //
