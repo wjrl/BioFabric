@@ -477,17 +477,8 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     lMenu.add(fc.getAction(CommandSet.HIER_DAG_LAYOUT, false, null)); 
     lMenu.add(fc.getAction(CommandSet.WORLD_BANK_LAYOUT, false, null)); 
     lMenu.add(fc.getAction(CommandSet.SET_LINK_GROUPS, false, null));
-    
-//    final CommandSet a = fc;
-//    JButton b = new JButton("Net. align");
-//    b.addActionListener(new ActionListener() {
-//      @Override
-//      public void actionPerformed(ActionEvent e) {
-//        a.test();
-//      }
-//    });
-//    lMenu.add(b);
-    
+    lMenu.add(fc.getAction(CommandSet.LAYOUT_NETWORK_ALIGNMENT, false, null));
+
     //
     // Windows Menu
     //

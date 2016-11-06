@@ -21,17 +21,32 @@ package org.systemsbiology.biofabric.analysis;
 
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Set;
+import java.util.StringTokenizer;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 public class NetworkAlignment {
   
   private Graph small, large;
   private Alignment align;
   
-  public NetworkAlignment(File graph1, File graph2, File alignment) throws IOException {
+  public NetworkAlignment(File graph1, File graph2, File alignment) {
     
-    Graph A = new Graph(graph1), B = new Graph(graph2);
+    Graph A = null, B = null;
+    try {
+      A = new Graph(graph1);
+      B = new Graph(graph2);
+    } catch (IOException ioe) {
+      ExceptionHandler.getHandler().displayException(ioe);
+    }
+    
     if (A.edges.size() >= B.edges.size()) {
       large = A;
       small = B;
@@ -40,7 +55,11 @@ public class NetworkAlignment {
       small = A;
     }
     
-    Alignment align = new Alignment(alignment, small, large);
+    try {
+      align = new Alignment(alignment, small, large);
+    } catch (IOException ioe) {
+      ExceptionHandler.getHandler().displayException(ioe);
+    }
     
   }
   

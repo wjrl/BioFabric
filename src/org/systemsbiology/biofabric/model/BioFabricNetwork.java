@@ -29,12 +29,26 @@ import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
-import org.systemsbiology.biofabric.util.*;
+import org.systemsbiology.biofabric.util.AttributeExtractor;
+import org.systemsbiology.biofabric.util.CharacterEntityMapper;
+import org.systemsbiology.biofabric.util.DataUtil;
+import org.systemsbiology.biofabric.util.Indenter;
+import org.systemsbiology.biofabric.util.MinMax;
+import org.systemsbiology.biofabric.util.UiUtil;
 import org.xml.sax.Attributes;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 /****************************************************************************
  **
@@ -669,9 +683,9 @@ public class BioFabricNetwork {
       }
     }
     
-    if (userSpec) { // Depends if it is chosen Per Node or Per Network Link Groups
-      multipleLabels(false);
-      multipleLabels(true);
+    if (userSpec) {
+      setDrainZonesWithMultipleLabels(true);
+      setDrainZonesWithMultipleLabels(false);
     } else {
       setDrainZonesByContig(true);
       setDrainZonesByContig(false);
@@ -685,82 +699,60 @@ public class BioFabricNetwork {
    **
    */
   
-  private void multipleLabels(boolean forShadow) {
-
+  private void setDrainZonesWithMultipleLabels(boolean forShadow) {
+    
     List<LinkInfo> links = getLinkDefList(forShadow);
-    Set<Pair> pairs = new TreeSet<Pair>();
+    Map<String, List<MinMax>> nodeToZones = new TreeMap<String, List<MinMax>>();
 
     for (int startIdx = 0; startIdx < links.size(); startIdx++) {
-
+      
       LinkInfo startLI = links.get(startIdx);
-
+      
       for (int endIdx = startIdx + 1; endIdx < links.size(); endIdx++) {
         
         LinkInfo currLI = links.get(endIdx);
-
+        
         if (! isContiguous(startLI, currLI)) {
-
-          endIdx--;
-          int len = endIdx - startIdx;
-
-          MinMax mm = new MinMax(startIdx, endIdx);
-          String name = srcNode(mm, forShadow);
           
-          pairs.add(new Pair(mm, name));
-
-          startIdx += len;
+          endIdx--;  // backtrack, because end of drain zone has been reached
+          
+          MinMax mm = new MinMax(startIdx, endIdx);
+          String name = findZoneNode(mm, forShadow);
+          
+          if (nodeToZones.get(name) == null) {
+            nodeToZones.put(name, new ArrayList<MinMax>());
+          }
+          nodeToZones.get(name).add(mm);
+          
+          startIdx += (endIdx - startIdx); // add drain zone length to start index
           break;
           
         } else if (endIdx == links.size() - 1) {
-
-          int len = endIdx - startIdx;
-
+          
           MinMax mm = new MinMax(startIdx, endIdx);
-          String name = srcNode(mm, forShadow);
-  
-          pairs.add(new Pair(mm, name));
-
-          startIdx += len;
+          String name = findZoneNode(mm, forShadow);
+          
+          if (nodeToZones.get(name) == null) {
+            nodeToZones.put(name, new ArrayList<MinMax>());
+          }
+          nodeToZones.get(name).add(mm);
+          
+          startIdx += (endIdx - startIdx);
         }
+        
+      }
+    }
 
-      }
-    }
-    
-//    for (int i = 0; i < pairs.size(); i++) {
-      // MAKE IT SO N ADJACENT MINMAXES THAT ARE OF SAME NODE BECOME ONE MINMAX
-//    }
-    
-    Map<String, List<MinMax>> nodeToZones = new TreeMap<String, List<MinMax>>();
-    for (Pair p : pairs) {
-      
-      if (nodeToZones.get(p.name) == null) {
-        nodeToZones.put(p.name, new ArrayList<MinMax>());
-      }
-      nodeToZones.get(p.name).add(p.mm);
-    }
-    
-//    for (Map.Entry<String, List<MinMax>> entry : nodeToZones.entrySet()) {
-//      List<MinMax> mms = entry.getValue();
-//      for (int i = 0; i < mms.size() - 1;) {
-//        MinMax curr = mms.get(i), next = mms.get(i + 1);
-//        if (curr.max + 1 == next.min) {
-//          mms.set(i, new MinMax(curr.min, curr.max));
-//          mms.remove(i + 1);
-//        } else {
-//          i++;
-//        }
+//    for (Map.Entry<String,List<MinMax>> entry: nodeToZones.entrySet()) {
+//      String s = entry.getKey() + " ";
+//      for (MinMax mm : entry.getValue()) {
+//        s += "(" + mm.min + " " + mm.max + ")";
 //      }
+//
+//      System.out.println(s);
 //    }
+//    System.out.println('\n');
     
-    for (Map.Entry<String,List<MinMax>> entry: nodeToZones.entrySet()) {
-      String s = entry.getKey() + " ";
-      for (MinMax mm : entry.getValue()) {
-        s += "(" + mm.min + " " + mm.max + ")";
-      }
-
-      System.out.println(s);
-    }
-     
     for (Map.Entry<String, List<MinMax>> entry : nodeToZones.entrySet()) {
       
       NodeInfo ni = getNodeDefinition(entry.getKey());
@@ -770,31 +762,35 @@ public class BioFabricNetwork {
   }
   
   /***************************************************************************
-   ** Returns true if two links have same (source, target, or relation)
+   ** Returns true if two links are part of the same drain zone
    **
    */
   
-  private static boolean isContiguous(LinkInfo A, LinkInfo B) {
+  private boolean isContiguous(LinkInfo A, LinkInfo B) {
     
-    String  srcA = A.getSource(),
-            trgA = A.getTarget(),
-            relA = A.getLink().getRelation(),
-            srcB = B.getSource(),
-            trgB = B.getTarget(),
-            relB = B.getLink().getRelation();
+    String mainA;
+    if (A.isShadow()) {
+      mainA = getNodeForRow(A.bottomRow());
+    } else {
+      mainA = getNodeForRow(A.topRow());
+    }
     
-    return (srcA.equals(srcB) || srcA.equals(trgB) ||
-            trgA.equals(srcB) || trgA.equals(trgB)) &&
-            relA.equals(relB);
+    String mainB;
+    if (B.isShadow()) {
+      mainB = getNodeForRow(B.bottomRow());
+    } else {
+      mainB = getNodeForRow(B.topRow());
+    }
     
+    return mainA.equals(mainB);
   }
   
   /***************************************************************************
-   ** Given an interval (A,B), calculates the node that is the source of the
-   ** interval, or the most found node among each link's src and trg
+   ** Given an interval MinMax([A,B]) of links, calculates the node
+   ** associated with the drain zone's interval
    */
   
-  private  String srcNode(MinMax mm, boolean forShadow) {
+  private String findZoneNode(MinMax mm, boolean forShadow) {
     
     List<LinkInfo> links = getLinkDefList(forShadow);
     
@@ -802,19 +798,22 @@ public class BioFabricNetwork {
     
     for (int i = mm.min; i <= mm.max; i++) {
       
-      String src = links.get(i).getSource(), trg = links.get(i).getTarget();
+      LinkInfo li = links.get(i);
       
-      if (count.get(src) == null) {
-        count.put(src, 0);
-      }
-      if (count.get(trg) == null) {
-        count.put(trg, 0);
+      String main;
+      if (li.isShadow()) {
+        main = getNodeForRow(li.bottomRow());
+      } else {
+        main = getNodeForRow(li.topRow());
       }
       
-      count.put(src, count.get(src) + 1);
-      count.put(trg, count.get(trg) + 1);
+      if (count.get(main) == null) {
+        count.put(main, 0);
+      }
+      
+      count.put(main, count.get(main) + 1);
     }
-  
+    
     String keyMax = null;
     
     for (Map.Entry<String, Integer> entry : count.entrySet()) {
@@ -825,46 +824,6 @@ public class BioFabricNetwork {
     }
     
     return keyMax;
-  }
-  
-  /***************************************************************************
-   ** Simple Pair class (x,y) = (MinMax, Name), compared with the minimum
-   ** Minmax value
-   */
-  
-  private static final class Pair implements Comparable<Pair> {
-    
-    MinMax mm;
-    String name;
-    
-    Pair(MinMax mm, String name) {
-      this.mm = mm;
-      this.name = name;
-    }
-    
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (! (o instanceof Pair)) return false;
-      
-      Pair pair = (Pair) o;
-      
-      if (mm != null ? ! mm.equals(pair.mm) : pair.mm != null) return false;
-      if (name != null ? ! name.equals(pair.name) : pair.name != null) return false;
-      
-      return true;
-    }
-    
-    @Override
-    public int hashCode() {
-      int result = mm != null ? mm.hashCode() : 0;
-      result = 31 * result + (name != null ? name.hashCode() : 0);
-      return result;
-    }
-    
-    public int compareTo(Pair p) {
-      return this.mm.min - p.mm.min;
-    }
   }
   
   /***************************************************************************
@@ -1161,7 +1120,7 @@ public class BioFabricNetwork {
 //        }
 //      }
 //    }
-  
+
 //    System.out.println("IN GETDRAINFORCOLUMN METHOD ERROR");
     return (null);
   }
@@ -2126,7 +2085,6 @@ public class BioFabricNetwork {
     
     private MinMax colRangeSha_;
     private MinMax colRangePln_;
-//    private MinMax plainDrainZone_;
     
     private List<MinMax> shadowDrainZone_;
     private List<MinMax> plainZones_;
@@ -2149,23 +2107,22 @@ public class BioFabricNetwork {
       return (forShadow) ? new ArrayList<MinMax>(shadowDrainZone_) : new ArrayList<MinMax>(plainZones_);
     }
     
-//    public MinMax getDrainZone(boolean forShadow) {
-//            return (forShadow) ? shadowDrainZone_ : plainDrainZone_;
-//    }
-    
     public void addDrainZone(MinMax zone, boolean forShadow) {
       if (forShadow) {
         shadowDrainZone_.add(zone);
       } else {
         plainZones_.add(zone);
       }
-  
-//      System.out.println(" in  SETDRAINZONES METHOD SHOULD NOT BE HERE");
+      
       return;
     }
     
     public void setDrainZones(List<MinMax> zones, boolean forShadow) {
-      plainZones_ = new ArrayList<MinMax>(zones);
+      if (forShadow) {
+        shadowDrainZone_ = new ArrayList<MinMax>(zones);
+      } else {
+        plainZones_ = new ArrayList<MinMax>(zones);
+      }
     }
     
     public MinMax getColRange(boolean forShadow) {
@@ -2737,314 +2694,3 @@ public class BioFabricNetwork {
     }
   }
 }
-  
-
-//rivate void multLabels(boolean forShadow) {
-//
-////    for (Map.Entry<Integer, LinkInfo> entry:fullLinkDefs_.entrySet())  {
-////
-////      Integer start = entry.getKey();
-////
-////      for (int i = start+1; start< fullLinkDefs_.size(); i++) {
-////        if (full)
-////      }
-////
-////    }
-//
-////    List<LinkInfo> list = getLinkDefList(false);
-////    int i = 0;
-////    for (LinkInfo li : list  ){
-////      System.out.println(i +" " + li.getSource() + " " + li.getTarget());
-////      i++;
-////    }
-//
-////    TreeMap<Integer, LinkInfo> links= new TreeMap<Integer, LinkInfo>();
-//        List<LinkInfo> links = getLinkDefList(forShadow);
-//
-//        Set<Pair> pairs = new TreeSet<Pair>();
-//
-//        for (int startIdx = 0; startIdx < links.size(); startIdx++) {
-//
-//        LinkInfo startLI = links.get(startIdx);
-////      FabricLink startFL = startLI.getLink();
-//
-////      if (startLI.isShadow()) continue;
-//
-////      int endIdx = startIdx +1 ;
-////      while ()
-//
-//        for (int endIdx = startIdx + 1; endIdx < links.size(); endIdx++) {
-//
-//        LinkInfo currLI = links.get(endIdx);
-////        FabricLink fl = currLI.getLink();
-//
-////        if (currLI.isShadow()) continue;
-//
-//        if (!contig(startLI, currLI)) {
-//
-//        endIdx--;
-//        int len = endIdx - startIdx + 1;
-//
-//        MinMax mm = new MinMax(startIdx, endIdx);
-//
-//        String name = srcNode(mm, forShadow);
-//
-//        if (startLI.isShadow()) {
-//        pairs.add(new Pair(mm, name));
-//        } else {
-//        pairs.add(new Pair(mm, name));
-//        }
-////          if (startLI.isShadow()) {
-////            pairs.add(new Pair(mm, startLI.getTarget()));
-////          } else {
-////            pairs.add(new Pair(mm, startLI.getSource()));
-////          }
-//
-//        startIdx += len - 1;
-//        //          System.out.println(startFL.getSrc() + "\t" + mm);
-//
-////          System.out.println(mm + "    \n " + fl);
-////          System.out.println(mm + "   len: " + len + "  src: " + startFL.getSrc());
-////          System.out.println();
-//        break;
-//
-//        } else if (endIdx == links.size() - 1) {
-//
-//        int len = endIdx - startIdx + 1;
-//
-//        MinMax mm = new MinMax(startIdx, endIdx);
-//
-//        String name = srcNode(mm, forShadow);
-//
-//        if (startLI.isShadow()) {
-//        pairs.add(new Pair(mm, name));
-//        } else {
-//        pairs.add(new Pair(mm, name));
-//        }
-////          if (startLI.isShadow()) {
-////            pairs.add(new Pair(mm, startLI.getTarget()));
-////          } else {
-////            pairs.add(new Pair(mm, startLI.getSource()));
-////          }
-//
-////          System.out.println(startFL.getSrc() + "\t" + mm);
-//        startIdx += len - 1;
-//
-//        }
-//
-//        }
-////      System.out.println("\n");
-//        }
-//
-////    for (Pair p : pairs) {
-////      System.out.println(p.name + "\t" + p.mm);
-////    }
-//
-//        Map<String, List<MinMax>> nodeToZones = new TreeMap<String, List<MinMax>>();
-//        for (Pair p:pairs) {
-//
-//        nodeToZones.putIfAbsent(p.name, new ArrayList<MinMax>());
-//        nodeToZones.get(p.name).add(p.mm);
-//        }
-//
-////    System.out.println('\n');
-////
-////    for (Map.Entry<String,List<MinMax>> entry: nodeToZones.entrySet()) {
-////      String s = entry.getKey() +" ";
-////      for (MinMax mm : entry.getValue()) {
-////        s += "(" + mm.min + " " + mm.max + ")";
-////      }
-////
-////      System.out.println(s);
-////    }
-//
-//        for (Map.Entry<String, List<MinMax>> entry : nodeToZones.entrySet()) {
-//
-//        NodeInfo ni = getNodeDefinition(entry.getKey());
-//        ni.setDrainZones(entry.getValue(), forShadow);
-//        }
-//
-//
-//        }
-//
-//// do these two nodes have the same src/trg and relation?
-//private static boolean contig(LinkInfo A, LinkInfo B) {
-//
-//        String srcA = A.getSource(), trgA = A.getTarget();
-//        String srcB = B.getSource(), trgB = B.getTarget();
-//        String relA = A.getLink().getRelation(),
-//        relB = B.getLink().getRelation();
-//
-//        return (srcA.equals(srcB) || srcA.equals(trgB) ||
-//        trgA.equals(srcB) || trgA.equals(trgB)) &&
-//        relA.equals(relB);
-//
-//        }
-//
-//// decides what the src node of a MinMax range is
-//private  String srcNode(MinMax mm, boolean forShadow) {
-//
-//        List<LinkInfo> links = getLinkDefList(forShadow);
-//
-//        Map<String, Integer> count = new TreeMap<String, Integer>();
-//
-//        for (int i = mm.min; i <= mm.max;i++) {
-//
-//        String src = links.get(i).getSource(), trg = links.get(i).getTarget();
-//        count.putIfAbsent(src, 0);
-//        count.putIfAbsent(trg, 0);
-//
-//        count.put(src, count.get(src) + 1);
-//        count.put(trg, count.get(trg) + 1);
-//        }
-//
-//        String keyMax = null;
-//
-//        for (Map.Entry<String, Integer> entry:count.entrySet()) {
-//
-//        if (keyMax == null || entry.getValue() > count.get(keyMax)) {
-//        keyMax = entry.getKey();
-//        }
-//        }
-//
-//        return keyMax;
-//        }
-
-
-
-// TEST CODE THAT I DIDN'T WANT TO DELETE
-//  private void multLabels() {
-//
-////    for (Map.Entry<Integer, LinkInfo> entry:fullLinkDefs_.entrySet())  {
-////
-////      Integer start = entry.getKey();
-////
-////      for (int i = start+1; start< fullLinkDefs_.size(); i++) {
-////        if (full)
-////      }
-////
-////    }
-//
-//
-//    TreeMap<Integer, LinkInfo> links= new TreeMap<Integer, LinkInfo>();
-//    links = fullLinkDefs_;
-//
-//    Set<Pair> pairs = new TreeSet<Pair>();
-//
-//    for (int startIdx = 0; startIdx < links.size(); startIdx++) {
-//
-//      LinkInfo startLI = links.get(startIdx);
-//      FabricLink startFL = startLI.getLink();
-//
-////      if (startLI.isShadow()) continue;
-//
-//      for (int endIdx = startIdx + 1; endIdx < links.size(); endIdx++) {
-//        LinkInfo li = links.get(endIdx);
-//        FabricLink fl = li.getLink();
-//
-////        if (li.isShadow()) continue;
-//
-//        if (! ((startLI.getSource().equals(li.getSource()) ||
-//                startLI.getSource().equals(li.getTarget()))
-//                && startFL.getRelation().equals(fl.getRelation()))) {
-//
-//          endIdx--;
-//          int len = endIdx - startIdx + 1;
-//
-//          MinMax mm = new MinMax(startIdx, endIdx);
-//
-//          if (startFL.isShadow()) {
-//            pairs.add(new Pair(mm, startFL.getTrg()));
-//          } else {
-//            pairs.add(new Pair(mm, startFL.getSrc()));
-//          }
-//
-////          System.out.println(startFL.getSrc() + "\t" + mm);
-//
-//          startIdx += len - 1;
-////          System.out.println(mm + "    \n " + fl);
-////          System.out.println(mm + "   len: " + len + "  src: " + startFL.getSrc());
-////          System.out.println();
-//          break;
-//        } else if (endIdx == links.size() - 1) {
-//
-//          int len = endIdx - startIdx + 1;
-//
-//          MinMax mm = new MinMax(startIdx, endIdx);
-//          if (startFL.isShadow()) {
-//            pairs.add(new Pair(mm, startFL.getTrg()));
-//          } else {
-//            pairs.add(new Pair(mm, startFL.getSrc()));
-//          }
-//
-////          System.out.println(startFL.getSrc() + "\t" + mm);
-//
-//          startIdx += len - 1;
-//
-//        }
-//
-//
-//      }
-////      System.out.println("\n");
-//
-//      for (Pair p : pairs) {
-//        System.out.println(p.name + "\t" + p.mm);
-//      }
-//      System.out.println("HELLO WORLD");
-//
-//    }
-//
-//  }
-
-
-//  private void multLabels() {
-//
-////    for (Map.Entry<Integer, LinkInfo> entry:fullLinkDefs_.entrySet())  {
-////
-////      Integer start = entry.getKey();
-////
-////      for (int i = start+1; start< fullLinkDefs_.size(); i++) {
-////        if (full)
-////      }
-////
-////    }
-//    TreeMap<Integer, LinkInfo> links = fullLinkDefs_;
-//    List<Pair> pairs = new ArrayList<Pair>();
-//
-//    for (int startIdx = 0; startIdx < links.size(); startIdx++) {
-//
-//      LinkInfo startLI = links.get(startIdx);
-//      FabricLink startFL = startLI.getLink();
-//
-//      for (int j = startIdx; j < links.size(); j++) {
-//        LinkInfo li = links.get(j);
-//        FabricLink fl = li.getLink();
-//
-////        if (!((startLI.getSource().equals(li.getSource()) || startLI.getSource().equals(li.getTarget()))
-////                && startFL.getRelation().equals(fl.getRelation()))) {
-//        if (! ((startLI.getSource().equals(li.getSource()) ||
-//                startLI.getSource().equals(li.getTarget()))
-//                && startFL.getRelation().equals(fl.getRelation()))) {
-//
-//          int len = j - startIdx;
-//          startIdx+= len;
-//
-//          if ((len) <= 2) break;
-//
-//          MinMax mm = new MinMax(startIdx, startIdx +len);
-//
-////          System.out.println(mm + "    \n " + fl);
-//          System.out.println(mm + "   len: "+len+"  src: "+ startFL.getSrc());
-//          System.out.println();
-//
-//
-//          break;
-//        }
-//      }
-//
-//      //ITERATE THROUGH LIST OF INTERVALS HERE
-//
-//    }
-//
-//  }
-
