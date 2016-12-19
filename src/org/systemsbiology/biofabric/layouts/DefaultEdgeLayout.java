@@ -151,7 +151,7 @@ public class DefaultEdgeLayout {
         if (relOnly.equals("")) {
           relOnly = null;
         }
-        colCount = shadowLinkToColumn(topRow.intValue(), rankedLinks, relsForPair, relOnly, colCount, rowToTarg, rbd, linkOrder);     
+        colCount = shadowLinkToColumn(topRow.intValue(), rankedLinks, relsForPair, relOnly, microRels, colCount, rowToTarg, rbd, linkOrder);     
         SortedSet<Integer> perSrc = rankedLinks.get(topRow);
         if (perSrc == null) {
           continue;
@@ -170,8 +170,7 @@ public class DefaultEdgeLayout {
             while (fp1it.hasNext()) {
               FabricLink nextLink = fp1it.next();
               if (!nextLink.isShadow()) {
-                String augR = nextLink.getAugRelation().relation;
-                if ((relOnly == null) || (augR.indexOf(relOnly) == (augR.length() - relOnly.length()))) {
+               if (bestSuffixMatch(nextLink, relOnly, microRels)) {
                   Integer shadowKey = Integer.valueOf(colCount++);
                   linkOrder.put(shadowKey, nextLink);
                 }
@@ -186,8 +185,7 @@ public class DefaultEdgeLayout {
               while (fp2it.hasNext()) {
                 FabricLink nextLink = fp2it.next();
                 if (!nextLink.isShadow()) {
-                  String augR = nextLink.getAugRelation().relation;
-                  if ((relOnly == null) || (augR.indexOf(relOnly) == (augR.length() - relOnly.length()))) {
+                	if (bestSuffixMatch(nextLink, relOnly, microRels)) {
                     Integer shadowKey = Integer.valueOf(colCount++);
                     linkOrder.put(shadowKey, nextLink);
                   }
@@ -248,7 +246,7 @@ public class DefaultEdgeLayout {
 
   private int shadowLinkToColumn(int currDrainRow, SortedMap<Integer, SortedSet<Integer>> rankedLinks, 
                                   Map<Link, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair, 
-                                  String relOnly, int colCount, HashMap<Integer, String> rowToTarg,
+                                  String relOnly, List<String> allRels, int colCount, HashMap<Integer, String> rowToTarg,
                                   BioFabricNetwork.RelayoutBuildData rbd, TreeMap<Integer, FabricLink> linkOrder) {    
     
     Iterator<Integer> rlit = rankedLinks.keySet().iterator();
@@ -278,8 +276,7 @@ public class DefaultEdgeLayout {
             // But ONLY if they are shadow links:
             FabricLink nextLink = fp1it.next();
             if (nextLink.isShadow()) {
-              String augR = nextLink.getAugRelation().relation;
-              if ((relOnly == null) || (augR.indexOf(relOnly) == (augR.length() - relOnly.length()))) {
+            	if (bestSuffixMatch(nextLink, relOnly, allRels)) {
                 Integer shadowKey = Integer.valueOf(colCount++);
                 linkOrder.put(shadowKey, nextLink);
               }
@@ -295,8 +292,7 @@ public class DefaultEdgeLayout {
             while (fp2it.hasNext()) {
               FabricLink nextLink = fp2it.next();
               if (nextLink.isShadow()) {
-                String augR = nextLink.getAugRelation().relation;
-                if ((relOnly == null) || (augR.indexOf(relOnly) == (augR.length() - relOnly.length()))) {
+                if (bestSuffixMatch(nextLink, relOnly, allRels)) {
                   Integer shadowKey = Integer.valueOf(colCount++);
                   linkOrder.put(shadowKey, nextLink);
                 }
@@ -311,6 +307,41 @@ public class DefaultEdgeLayout {
     return (colCount);
   }
 
+  /***************************************************************************
+  ** 
+  ** Answer if the given relation has the best suffix match the the given match,
+  ** given all the options. Thus, "430" should match "30" instead of "0" if both
+  ** are present.
+  */
+
+  private boolean bestSuffixMatch(FabricLink nextLink, String relToMatch, List<String> allRels) {
+  	if (relToMatch == null) {
+  		return (true);
+  	}
+  	String augR = nextLink.getAugRelation().relation;
+  	int topLen = 0;
+  	String topRel = null;
+  	for (String aRel : allRels) {
+  		int matchLen = aRel.length();
+  		if (matchLen < topLen) {
+  			continue;
+  		}
+  		int ioaRel = augR.indexOf(aRel);
+  		if ((ioaRel >= 0) && ((ioaRel == (augR.length() - matchLen)))) {
+        if (topLen == matchLen) {
+        	throw new IllegalStateException();
+  		  } else if (topLen < matchLen) {
+  		    topLen = matchLen;
+          topRel = aRel;	
+  		  }
+      }	 
+  	}
+  	if (topRel == null) {
+  		throw new IllegalStateException();
+  	}
+    return (topRel.equals(relToMatch));
+  }
+  
   /***************************************************************************
   ** 
   ** Generate vertical extents for links:
