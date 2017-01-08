@@ -55,7 +55,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -105,7 +104,6 @@ import org.systemsbiology.biofabric.layouts.HierDAGLayout;
 import org.systemsbiology.biofabric.layouts.ProcessWorldBankCSV;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.model.BioFabricNetwork.LayoutMode;
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.SUParser;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -2885,23 +2883,23 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
     private boolean performOperation(Object[] args) {
   
-      System.out.println("Network ALign operation Performed!");
-      
       NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topWindow_);
       nad.setVisible(true);
       
-      File graph1 = nad.getGraph1(), graph2 = nad.getGraph2(),
-              alignment = nad.getAlignment();
+      NetworkAlignment.NetworkAlignInfo nai = nad.getNAInfo();
+      
+      NetworkAlignment na = new NetworkAlignment(nai);
   
-      NetworkAlignment na = new NetworkAlignment(graph1, graph2, alignment);
+//      System.out.println(na.getSmall().getSize());
+//      System.out.println(na.getLarge().getSize());
       
       return (true);
     }
   
-    @Override
-    protected boolean checkGuts() {
-      return (bfp_.hasAModel());
-    }
+//    @Override
+//    protected boolean checkGuts() {
+//      return (bfp_.hasAModel());
+//    }
   
   }
   
@@ -4891,10 +4889,6 @@ forcedTop.add("RME1");
     public Object postRunCore() {
       return (null);
     } 
-  }
-  
-  public void test() {
-    new NetworkAlignmentDialog(topWindow_);
   }
   
 }

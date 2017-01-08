@@ -2086,8 +2086,8 @@ public class BioFabricNetwork {
     private MinMax colRangeSha_;
     private MinMax colRangePln_;
     
-    private List<MinMax> shadowDrainZone_;
-    private List<MinMax> plainZones_;
+    private List<MinMax> shadowDrainZones_;
+    private List<MinMax> plainDrainZones_;
     
     NodeInfo(String nodeName, int nodeRow, String colorKey) {
       this.nodeName = nodeName;
@@ -2097,21 +2097,20 @@ public class BioFabricNetwork {
       colRangeSha_.init();
       colRangePln_ = new MinMax();
       colRangePln_.init();
-//      plainDrainZone_ = null;
-      shadowDrainZone_ = new ArrayList<MinMax>();
+      shadowDrainZones_ = new ArrayList<MinMax>();
       cluster_ = null;
-      plainZones_ = new ArrayList<MinMax>();
+      plainDrainZones_ = new ArrayList<MinMax>();
     }
     
     public List<MinMax> getDrainZones(boolean forShadow) {
-      return (forShadow) ? new ArrayList<MinMax>(shadowDrainZone_) : new ArrayList<MinMax>(plainZones_);
+      return (forShadow) ? new ArrayList<MinMax>(shadowDrainZones_) : new ArrayList<MinMax>(plainDrainZones_);
     }
     
     public void addDrainZone(MinMax zone, boolean forShadow) {
       if (forShadow) {
-        shadowDrainZone_.add(zone);
+        shadowDrainZones_.add(zone);
       } else {
-        plainZones_.add(zone);
+        plainDrainZones_.add(zone);
       }
       
       return;
@@ -2119,9 +2118,9 @@ public class BioFabricNetwork {
     
     public void setDrainZones(List<MinMax> zones, boolean forShadow) {
       if (forShadow) {
-        shadowDrainZone_ = new ArrayList<MinMax>(zones);
+        shadowDrainZones_ = new ArrayList<MinMax>(zones);
       } else {
-        plainZones_ = new ArrayList<MinMax>(zones);
+        plainDrainZones_ = new ArrayList<MinMax>(zones);
       }
     }
     
@@ -2146,7 +2145,8 @@ public class BioFabricNetwork {
     
     /***************************************************************************
      **
-     ** Dump the node using XML
+     ** Dump the node using XML ; XML DOESN'T FUNCTION PROPERLY HERE!!!- RISHI
+     *                            CAME BACK HERE 1/7/16
      */
     
     public void writeXML(PrintWriter out, Indenter ind, int row, String targ) {

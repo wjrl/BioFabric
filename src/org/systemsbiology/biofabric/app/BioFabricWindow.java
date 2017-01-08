@@ -388,7 +388,8 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
       fMenu.add(importMenu);    
       importMenu.add(fc.getAction(CommandSet.LOAD, false, null)); 
       importMenu.add(fc.getAction(CommandSet.LOAD_WITH_NODE_ATTRIBUTES, false, null));       
-      importMenu.add(fc.getAction(CommandSet.LOAD_WITH_EDGE_WEIGHTS, false, null));       
+      importMenu.add(fc.getAction(CommandSet.LOAD_WITH_EDGE_WEIGHTS, false, null));
+      importMenu.add(fc.getAction(CommandSet.LAYOUT_NETWORK_ALIGNMENT, false, null));
       JMenu exportMenu = new JMenu(rMan.getString("command.exportMenu"));
       exportMenu.setMnemonic(rMan.getChar("command.exportMenuMnem"));
       fMenu.add(exportMenu);    
@@ -472,12 +473,11 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     lMenu.add(fc.getAction(CommandSet.RELAYOUT_USING_SHAPE_MATCH, false, null));
     lMenu.add(fc.getAction(CommandSet.LAYOUT_NODES_VIA_ATTRIBUTES, false, null));
     lMenu.add(fc.getAction(CommandSet.LAYOUT_LINKS_VIA_ATTRIBUTES, false, null));
-    lMenu.add(fc.getAction(CommandSet.LAYOUT_VIA_NODE_CLUSTER_ASSIGN, false, null));   
-    lMenu.add(fc.getAction(CommandSet.LAYOUT_TOP_CONTROL, false, null)); 
-    lMenu.add(fc.getAction(CommandSet.HIER_DAG_LAYOUT, false, null)); 
-    lMenu.add(fc.getAction(CommandSet.WORLD_BANK_LAYOUT, false, null)); 
+    lMenu.add(fc.getAction(CommandSet.LAYOUT_VIA_NODE_CLUSTER_ASSIGN, false, null));
+    lMenu.add(fc.getAction(CommandSet.LAYOUT_TOP_CONTROL, false, null));
+    lMenu.add(fc.getAction(CommandSet.HIER_DAG_LAYOUT, false, null));
+    lMenu.add(fc.getAction(CommandSet.WORLD_BANK_LAYOUT, false, null));
     lMenu.add(fc.getAction(CommandSet.SET_LINK_GROUPS, false, null));
-    lMenu.add(fc.getAction(CommandSet.LAYOUT_NETWORK_ALIGNMENT, false, null));
 
     //
     // Windows Menu
