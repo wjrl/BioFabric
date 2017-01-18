@@ -683,7 +683,7 @@ public class BioFabricNetwork {
       }
     }
     
-    if (userSpec) {
+    if (userSpec || this.linkGrouping_!= null) { // Not sure this works 100% of the time -Rishi Desai 1/17/2017
       setDrainZonesWithMultipleLabels(true);
       setDrainZonesWithMultipleLabels(false);
     } else {

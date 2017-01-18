@@ -2097,10 +2097,12 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       Iterator<String> dnlit = drainNameLocations_.keySet().iterator(); 
       while (dnlit.hasNext()) {
         String target = dnlit.next();
-        List<Rectangle2D> nameLoc = drainNameLocations_.get(target);
-        if (nameLoc.contains(worldPt)) {
-          gotDrain = target;
-          break;
+        List<Rectangle2D> nameLocs = drainNameLocations_.get(target);
+        for (Rectangle2D zone : nameLocs) {
+          if (zone.contains(worldPt)) {
+            gotDrain = target;
+            break;
+          }
         }
       }
     }

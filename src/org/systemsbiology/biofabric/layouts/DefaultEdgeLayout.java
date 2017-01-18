@@ -170,7 +170,8 @@ public class DefaultEdgeLayout {
             while (fp1it.hasNext()) {
               FabricLink nextLink = fp1it.next();
               if (!nextLink.isShadow()) {
-                if (bestSuffixMatch(nextLink, relOnly, microRels)) {
+                String augRel = nextLink.getAugRelation().relation;
+                if (bestSuffixMatch(augRel, relOnly, microRels)) {
                   Integer shadowKey = Integer.valueOf(colCount++);
                   linkOrder.put(shadowKey, nextLink);
                 }
@@ -180,12 +181,13 @@ public class DefaultEdgeLayout {
           // With directed links from above coming before directed links from below...       
           if (!topNode.equals(botNode)) { // DO NOT DUPLICATE FEEDBACK LINKS!
             SortedMap<FabricLink.AugRelation, FabricLink> forPair2 = relsForPair.get(new Link(botNode, topNode));
-            if (forPair2 != null) {        
+            if (forPair2 != null) {
               Iterator<FabricLink> fp2it = forPair2.values().iterator();
               while (fp2it.hasNext()) {
                 FabricLink nextLink = fp2it.next();
                 if (!nextLink.isShadow()) {
-                  if (bestSuffixMatch(nextLink, relOnly, microRels)) {
+                  String augRel = nextLink.getAugRelation().relation;
+                  if (bestSuffixMatch(augRel, relOnly, microRels)) {
                     Integer shadowKey = Integer.valueOf(colCount++);
                     linkOrder.put(shadowKey, nextLink);
                   }
@@ -196,9 +198,11 @@ public class DefaultEdgeLayout {
         }
       }
     }
-    
-    if (rbd.getMode() == BioFabricNetwork.BuildMode.GROUP_PER_NETWORK_CHANGE) {
-    	orderNetworkByGroups(linkOrder, macroRels);
+    // check to see if the previous network was Per_Network, and now we're doing Default w/ respect to groups
+    if (rbd.getMode() == BioFabricNetwork.BuildMode.GROUP_PER_NETWORK_CHANGE ||
+            (macroRels != null && rbd.bfn != null && rbd.bfn.getLayoutMode()
+                    .equals(BioFabricNetwork.LayoutMode.PER_NETWORK_MODE))) {
+      orderNetworkByGroups(linkOrder, macroRels);
     }
  
     return (linkOrder);
@@ -211,7 +215,7 @@ public class DefaultEdgeLayout {
     private void orderNetworkByGroups(SortedMap<Integer, FabricLink> existingOrd, List<String> groupOrder) {
 
       Map<String, List<FabricLink>> groups = new TreeMap<String, List<FabricLink>>();
-      // String: link relation, List: all the links with that relation
+      // <String: link relation, List: all the links with that relation>
 
       for (Map.Entry<Integer, FabricLink> entry : existingOrd.entrySet()) {
 
@@ -226,15 +230,20 @@ public class DefaultEdgeLayout {
       }
 
       int rowIdx = 0;
-      for (String relation : groupOrder) {
+      for (String suffix : groupOrder) {  // note: 'groupOrder' contains the suffixes
 
-        List<FabricLink> group = groups.get(relation);
-
-        for (FabricLink fl : group) {
-          existingOrd.put(rowIdx, fl);
-          rowIdx++;                    // increment the row index
+        for (String fullRel : groups.keySet()) {  // iterate through full Relation names to find best match
+          
+          if (bestSuffixMatch(fullRel, suffix, groupOrder)) {
+  
+            List<FabricLink> group = groups.get(fullRel);
+            for (FabricLink fl : group) {
+              existingOrd.put(rowIdx, fl);
+              rowIdx++;                    // increment the row index
+            }
+          }
         }
-
+        
       }
       return;
     }
@@ -276,7 +285,8 @@ public class DefaultEdgeLayout {
             // But ONLY if they are shadow links:
             FabricLink nextLink = fp1it.next();
             if (nextLink.isShadow()) {
-              if (bestSuffixMatch(nextLink, relOnly, allRels)) {
+              String augRel = nextLink.getAugRelation().relation;
+              if (bestSuffixMatch(augRel, relOnly, allRels)) {
                 Integer shadowKey = Integer.valueOf(colCount++);
                 linkOrder.put(shadowKey, nextLink);
               }
@@ -292,7 +302,8 @@ public class DefaultEdgeLayout {
             while (fp2it.hasNext()) {
               FabricLink nextLink = fp2it.next();
               if (nextLink.isShadow()) {
-                if (bestSuffixMatch(nextLink, relOnly, allRels)) {
+                String augRel = nextLink.getAugRelation().relation;
+                if (bestSuffixMatch(augRel, relOnly, allRels)) {
                   Integer shadowKey = Integer.valueOf(colCount++);
                   linkOrder.put(shadowKey, nextLink);
                 }
@@ -309,16 +320,16 @@ public class DefaultEdgeLayout {
   
   /***************************************************************************
    **
-   ** Answer if the given relation has the best suffix match the the given match,
+   ** Answer if the given relation has the best suffix match with the given match,
    ** given all the options. Thus, "430" should match "30" instead of "0" if both
    ** are present.
    */
   
-  private boolean bestSuffixMatch(FabricLink nextLink, String relToMatch, List<String> allRels) {
+  private boolean bestSuffixMatch(String augR, String relToMatch, List<String> allRels) {
     if (relToMatch == null) {
       return (true);
     }
-    String augR = nextLink.getAugRelation().relation;
+    
     int topLen = 0;
     String topRel = null;
     for (String aRel : allRels) {
