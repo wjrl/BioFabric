@@ -188,7 +188,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   private CursorManager cursorMgr_;
   private BioFabricWindow bfw_;
   private Map<String, Rectangle2D> nodeNameLocations_;
-  private Map<String, Rectangle2D> drainNameLocations_;
+  private Map<String, List<Rectangle2D>> drainNameLocations_;
   private PopupMenuControl popCtrl_;
   private static final long serialVersionUID = 1L;
   
@@ -457,7 +457,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     floaterSet_.currSelRect = null;
     rects_.clear();
     currSel_ = -1;
-    selectionPainter_.buildObjCache(targetList_, linkList_, false, false, new HashMap<String, Rectangle2D>(), new HashMap<String, Rectangle2D>());
+    selectionPainter_.buildObjCache(targetList_, linkList_, false, false, new HashMap<String, Rectangle2D>(), new HashMap<String, List<Rectangle2D>>());
     fnt_.haveASelection(false);
     handleFloaterChange();
     EventManager mgr = EventManager.getManager();
@@ -776,15 +776,15 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     int colMin;
     int colMax;
     
-    MinMax dropZone = node.getDrainZone(showShadows);
+    List<MinMax> dropZone = node.getDrainZones(showShadows);
     MinMax nmm = null;
     if (dropZone == null) {
       nmm = node.getColRange(showShadows);
       colMin = nmm.max; // Yes, both are max
       colMax = nmm.max;
     } else {
-      colMin = dropZone.min;
-      colMax = dropZone.max;      
+      colMin = dropZone.get(0).min; // QUICK FIX WILL MAKE BETTER SOLUTION LATER
+      colMax = dropZone.get(0).max;
     }
     
     int start = colMin;
@@ -854,7 +854,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     // not-selection-bound or have a selected node:
     //
     boolean nodeAlive = (!selectedOnly) ? true : currNodeSelections_.contains(nodeName);
-    if ((inc == -1) && nodeAlive) { 
+    if ((inc == -1) && nodeAlive) {
       Rectangle2D targName = nodeNameLocations_.get(nodeName);
       Point targNameRC = worldToRowCol(new Point2D.Double(targName.getCenterX(), targName.getCenterY()));
       int useCol = targNameRC.x;
@@ -884,7 +884,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     // have a selected node:
     
     boolean nodeAlive = (!selectedOnly) ? true : currNodeSelections_.contains(nodeName);
-    if (!goRight && nodeAlive) { 
+    if (!goRight && nodeAlive) {
       Rectangle2D targName = nodeNameLocations_.get(nodeName);
       Point targNameRC = worldToRowCol(new Point2D.Double(targName.getCenterX(), targName.getCenterY()));
       useCol = targNameRC.x;
@@ -1187,9 +1187,9 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     boolean shadeNodes = fdo.getShadeNodes();
     boolean showShadows = fdo.getDisplayShadows();
     painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), shadeNodes, 
-                           showShadows, new HashMap<String, Rectangle2D>(), new HashMap<String, Rectangle2D>());
+                           showShadows, new HashMap<String, Rectangle2D>(), new HashMap<String, List<Rectangle2D>>());
     selectionPainter_.buildObjCache(targetList_, linkList_, shadeNodes, showShadows, 
-                                    new HashMap<String, Rectangle2D>(), new HashMap<String, Rectangle2D>());
+                                    new HashMap<String, Rectangle2D>(), new HashMap<String, List<Rectangle2D>>());
     handleFloaterChange();
     return;
   }
@@ -1208,9 +1208,9 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     worldDim_ = new Dimension(worldRect_.width, worldRect_.height);
     zoomSrc_.simpleSetWorkspace(new Workspace(worldRect_));
     nodeNameLocations_ = new HashMap<String, Rectangle2D>();
-    drainNameLocations_ = new HashMap<String, Rectangle2D>();    
+    drainNameLocations_ = new HashMap<String, List<Rectangle2D>>();
     painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), shadeNodes, showShadows, nodeNameLocations_, drainNameLocations_);
-    selectionPainter_.buildObjCache(new ArrayList<NodeInfo>(), new ArrayList<LinkInfo>(), shadeNodes, showShadows, new HashMap<String, Rectangle2D>(), new HashMap<String, Rectangle2D>());
+    selectionPainter_.buildObjCache(new ArrayList<NodeInfo>(), new ArrayList<LinkInfo>(), shadeNodes, showShadows, new HashMap<String, Rectangle2D>(), new HashMap<String, List<Rectangle2D>>());
     fnt_.haveAModel(true);
     return;
   }
@@ -1985,9 +1985,10 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       } else {
         Rectangle2D nnl = nodeNameLocations_.get(target.toUpperCase());
         Point2D inWorld = rowColToWorld(cprc);
-        if (nnl.contains(inWorld)) {
-          retval.nodeDesc = target;
-        }       
+        if (nnl != null)
+          if (nnl.contains(inWorld)) {
+            retval.nodeDesc = target;
+          }
       }    
     }  
     if ((src != null) && (trg != null)) {
@@ -2010,6 +2011,28 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     }  
     return (retval);
  }
+  
+  /**
+   * Iterates through each Rectangle2D in recList to see if it contains Point p
+   */
+  private Rectangle2D findPoint(List<Rectangle2D> recList, Point2D p) {
+   
+    for (int i = 0; i < recList.size(); i++) {
+      if (recList.get(i).contains(p)) return recList.get(i);
+    }
+    
+//    ExceptionHandler.getHandler().displayException(
+//            new IllegalArgumentException("findPoint(), BioFabricPanel; Point not in recList"));
+    return null;
+  }
+  
+  /**
+   * THIS METHOD IS CURRENTLY WRONG. NEED MORE INFO THAT JUST THE NAME TO FIND
+   * THE CORRECT RECTANGLE2D
+   */
+  private Rectangle2D findPoint(List<Rectangle2D> recList, String nodeName) {
+    return recList.get(0);
+  }
   
   /***************************************************************************
   **
@@ -2074,10 +2097,12 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       Iterator<String> dnlit = drainNameLocations_.keySet().iterator(); 
       while (dnlit.hasNext()) {
         String target = dnlit.next();
-        Rectangle2D nameLoc = drainNameLocations_.get(target.toUpperCase());
-        if (nameLoc.contains(worldPt)) {
-          gotDrain = target;
-          break;
+        List<Rectangle2D> nameLocs = drainNameLocations_.get(target);
+        for (Rectangle2D zone : nameLocs) {
+          if (zone.contains(worldPt)) {
+            gotDrain = target;
+            break;
+          }
         }
       }
     }
@@ -2279,7 +2304,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     bumpGuts();
     handleFloaterChange();
     selectionPainter_.buildObjCache(targetList_, linkList_, false, showShadows, 
-                                    new HashMap<String, Rectangle2D>(), new HashMap<String, Rectangle2D>());
+                                    new HashMap<String, Rectangle2D>(), new HashMap<String, List<Rectangle2D>>());
     EventManager mgr = EventManager.getManager();
     SelectionChangeEvent ev = new SelectionChangeEvent(null, null, SelectionChangeEvent.SELECTED_ELEMENT);
     mgr.sendSelectionChangeEvent(ev);  

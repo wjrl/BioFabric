@@ -513,7 +513,9 @@ public class BioFabricNetwork {
     // Ordering of links:
     //
     
-    if ((rbd.linkOrder == null) || rbd.linkOrder.isEmpty() || (mode == BuildMode.GROUP_PER_NODE_CHANGE) || (mode == BuildMode.GROUP_PER_NETWORK_CHANGE)) {
+    if ((rbd.linkOrder == null) || rbd.linkOrder.isEmpty() ||
+            (mode == BuildMode.GROUP_PER_NODE_CHANGE) || (false)) {
+      UiUtil.fixMePrintout("making last argument false is bogus");
       if ((rbd.nodeOrder == null) || rbd.nodeOrder.isEmpty()) {
         rbd.nodeOrder = new HashMap<String, String>();
         int numT = targets.size();
@@ -653,47 +655,183 @@ public class BioFabricNetwork {
       // Stated another way, non-shadows always affect top node drains.  Shadow
       // links only affect bottom node shadow drains:
       //
-
-      if (!userSpec) {
-        if (!linf.isShadow()) {       
-          MinMax dzst = nit.getDrainZone(true);     
-          if (dzst == null) {
-            dzst = (new MinMax()).init();
-            nit.setDrainZone(dzst, true);
+      
+      if (! userSpec) {
+        if (! linf.isShadow()) {
+          List<MinMax> dzst = nit.getDrainZones(true);
+          if (dzst.size() == 0) {
+            dzst = (new ArrayList<MinMax>());
+            dzst.add(new MinMax().init());
+            nit.addDrainZone(dzst.get(0), true);
           }
-          dzst.update(linf.getUseColumn(true));
-
-          MinMax dznt = nit.getDrainZone(false);     
-          if (dznt == null) {
-            dznt = (new MinMax()).init();
-            nit.setDrainZone(dznt, false);
+          dzst.get(0).update(linf.getUseColumn(true));
+          
+          List<MinMax> dznt = nit.getDrainZones(false);
+          if (dznt.size() == 0) {
+            dznt.add((new MinMax()).init());
+            nit.addDrainZone(dznt.get(0), false);
           }
-          dznt.update(linf.getUseColumn(false));              
+          dznt.get(0).update(linf.getUseColumn(false));
         } else {
-          MinMax dzsb = nib.getDrainZone(true);
-          if (dzsb == null) {
-            dzsb = (new MinMax()).init();
-            nib.setDrainZone(dzsb, true);
+          List<MinMax> dzsb = nib.getDrainZones(true);
+          if (dzsb.size() == 0) {
+            dzsb.add((new MinMax()).init());
+            nib.addDrainZone(dzsb.get(0), true);
           }
-          dzsb.update(linf.getUseColumn(true));
+          dzsb.get(0).update(linf.getUseColumn(true));
         }
       }
     }
     
-    if (userSpec) {
-      setDrainZonesByContig(true);     
-      setDrainZonesByContig(false);    
+    if (userSpec || this.linkGrouping_!= null) { // Not sure this works 100% of the time -Rishi Desai 1/17/2017
+      setDrainZonesWithMultipleLabels(true);
+      setDrainZonesWithMultipleLabels(false);
+    } else {
+      setDrainZonesByContig(true);
+      setDrainZonesByContig(false);
     }
-            
+    
     return;
   }
   
   /***************************************************************************
-  ** 
-  ** Helper
-  */
+   ** Calculates each MinMax region for every node's zero or more drain zones
+   **
+   */
+  
+  private void setDrainZonesWithMultipleLabels(boolean forShadow) {
+    
+    List<LinkInfo> links = getLinkDefList(forShadow);
+    Map<String, List<MinMax>> nodeToZones = new TreeMap<String, List<MinMax>>();
 
-  private void updateContigs(String nodeName, HashMap<String, SortedMap<Integer, MinMax>> runsPerNode, 
+    for (int startIdx = 0; startIdx < links.size(); startIdx++) {
+      
+      LinkInfo startLI = links.get(startIdx);
+      
+      for (int endIdx = startIdx + 1; endIdx < links.size(); endIdx++) {
+        
+        LinkInfo currLI = links.get(endIdx);
+        
+        if (! isContiguous(startLI, currLI)) {
+          
+          endIdx--;  // backtrack, because end of drain zone has been reached
+          
+          MinMax mm = new MinMax(startIdx, endIdx);
+          String name = findZoneNode(mm, forShadow);
+          
+          if (nodeToZones.get(name) == null) {
+            nodeToZones.put(name, new ArrayList<MinMax>());
+          }
+          nodeToZones.get(name).add(mm);
+          
+          startIdx += (endIdx - startIdx); // add drain zone length to start index
+          break;
+          
+        } else if (endIdx == links.size() - 1) {
+          
+          MinMax mm = new MinMax(startIdx, endIdx);
+          String name = findZoneNode(mm, forShadow);
+          
+          if (nodeToZones.get(name) == null) {
+            nodeToZones.put(name, new ArrayList<MinMax>());
+          }
+          nodeToZones.get(name).add(mm);
+          
+          startIdx += (endIdx - startIdx);
+        }
+        
+      }
+    }
+
+//    for (Map.Entry<String,List<MinMax>> entry: nodeToZones.entrySet()) {
+//      String s = entry.getKey() + " ";
+//      for (MinMax mm : entry.getValue()) {
+//        s += "(" + mm.min + " " + mm.max + ")";
+//      }
+//
+//      System.out.println(s);
+//    }
+//    System.out.println('\n');
+    
+    for (Map.Entry<String, List<MinMax>> entry : nodeToZones.entrySet()) {
+      
+      NodeInfo ni = getNodeDefinition(entry.getKey());
+      ni.setDrainZones(entry.getValue(), forShadow);
+    }
+    
+  }
+  
+  /***************************************************************************
+   ** Returns true if two links are part of the same drain zone
+   **
+   */
+  
+  private boolean isContiguous(LinkInfo A, LinkInfo B) {
+    
+    String mainA;
+    if (A.isShadow()) {
+      mainA = getNodeForRow(A.bottomRow());
+    } else {
+      mainA = getNodeForRow(A.topRow());
+    }
+    
+    String mainB;
+    if (B.isShadow()) {
+      mainB = getNodeForRow(B.bottomRow());
+    } else {
+      mainB = getNodeForRow(B.topRow());
+    }
+    
+    return mainA.equals(mainB);
+  }
+  
+  /***************************************************************************
+   ** Given an interval MinMax([A,B]) of links, calculates the node
+   ** associated with the drain zone's interval
+   */
+  
+  private String findZoneNode(MinMax mm, boolean forShadow) {
+    
+    List<LinkInfo> links = getLinkDefList(forShadow);
+    
+    Map<String, Integer> count = new TreeMap<String, Integer>();
+    
+    for (int i = mm.min; i <= mm.max; i++) {
+      
+      LinkInfo li = links.get(i);
+      
+      String main;
+      if (li.isShadow()) {
+        main = getNodeForRow(li.bottomRow());
+      } else {
+        main = getNodeForRow(li.topRow());
+      }
+      
+      if (count.get(main) == null) {
+        count.put(main, 0);
+      }
+      
+      count.put(main, count.get(main) + 1);
+    }
+    
+    String keyMax = null;
+    
+    for (Map.Entry<String, Integer> entry : count.entrySet()) {
+      
+      if (keyMax == null || entry.getValue() > count.get(keyMax)) {
+        keyMax = entry.getKey();
+      }
+    }
+    
+    return keyMax;
+  }
+  
+  /***************************************************************************
+   **
+   ** Helper
+   */
+  
+  private void updateContigs(String nodeName, HashMap<String, SortedMap<Integer, MinMax>> runsPerNode,
                              Integer lastCol, Integer col) {
     int colVal = col.intValue();
     SortedMap<Integer, MinMax> runs = runsPerNode.get(nodeName);
@@ -739,7 +877,7 @@ public class BioFabricNetwork {
       }
       if (maxRun != null) {
         NodeInfo nit = nodeDefs_.get(nodeName.toUpperCase());
-        nit.setDrainZone(maxRun.clone(), forShadow);
+        nit.addDrainZone(maxRun.clone(), forShadow);
       }
     }
     return;
@@ -953,33 +1091,35 @@ public class BioFabricNetwork {
   }
   
   /***************************************************************************
-  ** 
-  ** Get Drain zone For Column
-  */
-
+   **
+   ** Get Drain zone For Column
+   */
+  
   public String getDrainForColumn(Integer colVal, boolean forShadow) {
-    int col = colVal.intValue();
-    ColumnAssign useCA = (forShadow) ? shadowCols_ : normalCols_;
-    String target = useCA.columnToTarget.get(colVal);
-    String source = useCA.columnToSource.get(colVal);
-    if (target != null) {
-      NodeInfo nit = nodeDefs_.get(target.toUpperCase());
-      MinMax tdz = nit.getDrainZone(forShadow);
-      if (tdz != null) {
-        if ((col >= tdz.min) && (col <= tdz.max)) {
-          return (target);
-        }
-      }
-    }
-    if (source != null) {
-      NodeInfo nis = nodeDefs_.get(source.toUpperCase());
-      MinMax sdz = nis.getDrainZone(forShadow);
-      if (sdz != null) {
-        if ((col >= sdz.min) && (col <= sdz.max)) {
-          return (source);
-        }
-      }
-    }
+//    int col = colVal.intValue();
+//    ColumnAssign useCA = (forShadow) ? shadowCols_ : normalCols_;
+//    String target = useCA.columnToTarget.get(colVal);
+//    String source = useCA.columnToSource.get(colVal);
+//    if (target != null) {
+//      NodeInfo nit = nodeDefs_.get(target);
+//      MinMax tdz = nit.getDrainZone(forShadow);
+//      if (tdz != null) {
+//        if ((col >= tdz.min) && (col <= tdz.max)) {
+//          return (target);
+//        }
+//      }
+//    }
+//    if (source != null) {
+//      NodeInfo nis = nodeDefs_.get(source);
+//      MinMax sdz = nis.getDrainZone(forShadow);
+//      if (sdz != null) {
+//        if ((col >= sdz.min) && (col <= sdz.max)) {
+//          return (source);
+//        }
+//      }
+//    }
+
+//    System.out.println("IN GETDRAINFORCOLUMN METHOD ERROR");
     return (null);
   }
  
@@ -1554,7 +1694,7 @@ public class BioFabricNetwork {
         }        
       }
       if (srcDrain != null) {
-        srcNI.setDrainZone(srcDrain, false);
+        srcNI.addDrainZone(srcDrain, false);
       }
       
       //
@@ -1590,7 +1730,7 @@ public class BioFabricNetwork {
         }        
       }
       if (shadowSrcDrain != null) {
-        srcNI.setDrainZone(shadowSrcDrain, true);
+        srcNI.addDrainZone(shadowSrcDrain, true);
       }
     }
  
@@ -1952,8 +2092,9 @@ public class BioFabricNetwork {
         
     private MinMax colRangeSha_;
     private MinMax colRangePln_;
-    private MinMax plainDrainZone_;
-    private MinMax shadowDrainZone_;
+    
+    private List<MinMax> shadowDrainZones_;
+    private List<MinMax> plainDrainZones_;
     
     NodeInfo(String nodeName, int nodeRow, String colorKey) {
       this.nodeName = nodeName;
@@ -1963,25 +2104,33 @@ public class BioFabricNetwork {
       colRangeSha_.init();
       colRangePln_ = new MinMax();
       colRangePln_.init();
-      plainDrainZone_ = null;
-      shadowDrainZone_ = null;
+      shadowDrainZones_ = new ArrayList<MinMax>();
       cluster_ = null;
+      plainDrainZones_ = new ArrayList<MinMax>();
     }
     
-    public MinMax getDrainZone(boolean forShadow) { 
-      return (forShadow) ? shadowDrainZone_ : plainDrainZone_;
+    public List<MinMax> getDrainZones(boolean forShadow) {
+      return (forShadow) ? new ArrayList<MinMax>(shadowDrainZones_) : new ArrayList<MinMax>(plainDrainZones_);
     }
     
-    public void setDrainZone(MinMax zone, boolean forShadow) { 
+    public void addDrainZone(MinMax zone, boolean forShadow) {
       if (forShadow) {
-        shadowDrainZone_ = zone;
+        shadowDrainZones_.add(zone);
       } else {
-        plainDrainZone_ = zone;
+        plainDrainZones_.add(zone);
       }
       return;
     }
-  
-    public MinMax getColRange(boolean forShadow) { 
+    
+    public void setDrainZones(List<MinMax> zones, boolean forShadow) {
+      if (forShadow) {
+        shadowDrainZones_ = new ArrayList<MinMax>(zones);
+      } else {
+        plainDrainZones_ = new ArrayList<MinMax>(zones);
+      }
+    }
+    
+    public MinMax getColRange(boolean forShadow) {
       return (forShadow) ? colRangeSha_ : colRangePln_;
     }
       
@@ -2001,50 +2150,51 @@ public class BioFabricNetwork {
     }
     
     /***************************************************************************
-    **
-    ** Dump the node using XML
-    */
-  
-	  public void writeXML(PrintWriter out, Indenter ind, int row, String targ) {
-	    ind.indent();
-	    out.print("<node name=\"");
-	    out.print(CharacterEntityMapper.mapEntities(targ, false));
-	    out.print("\" row=\"");
-	    out.print(row);
-	    MinMax nsCols = getColRange(false);
-	    out.print("\" minCol=\"");
-	    out.print(nsCols.min);
-	    out.print("\" maxCol=\"");
-	    out.print(nsCols.max);
-	    MinMax sCols = getColRange(true);
-	    out.print("\" minColSha=\"");
-	    out.print(sCols.min);
-	    out.print("\" maxColSha=\"");
-	    out.print(sCols.max);
-	    MinMax nDrain = getDrainZone(false);
-	    if (nDrain != null) {
-	      out.print("\" drainMin=\"");
-	      out.print(nDrain.min);
-	      out.print("\" drainMax=\"");
-	      out.print(nDrain.max);
-	    }
-	    MinMax sDrain = getDrainZone(true);
-	    if (sDrain != null) {
-	      out.print("\" drainMinSha=\"");
-	      out.print(sDrain.min);
-	      out.print("\" drainMaxSha=\"");
-	      out.print(sDrain.max);
-	    }
-	    out.print("\" color=\"");
-	    out.print(colorKey);
-	    String clust = getCluster();
-	    if (clust != null) {
-	      out.print("\" cluster=\"");
-	      out.print(CharacterEntityMapper.mapEntities(clust, false));
-	    }
-	    out.println("\" />");
-	  }
-  } 
+     **
+     ** Dump the node using XML ; XML DOESN'T FUNCTION PROPERLY HERE!!!- RISHI
+     *                            CAME BACK HERE 1/7/16
+     */
+    
+    public void writeXML(PrintWriter out, Indenter ind, int row, String targ) {
+      ind.indent();
+      out.print("<node name=\"");
+      out.print(CharacterEntityMapper.mapEntities(targ, false));
+      out.print("\" row=\"");
+      out.print(row);
+      MinMax nsCols = getColRange(false);
+      out.print("\" minCol=\"");
+      out.print(nsCols.min);
+      out.print("\" maxCol=\"");
+      out.print(nsCols.max);
+      MinMax sCols = getColRange(true);
+      out.print("\" minColSha=\"");
+      out.print(sCols.min);
+      out.print("\" maxColSha=\"");
+      out.print(sCols.max);
+//      MinMax nDrain = getDrainZone(false); WILL FIX XML IO LATER - RISHI 10/3/16
+//      if (nDrain != null) {
+//        out.print("\" drainMin=\"");
+//        out.print(nDrain.min);
+//        out.print("\" drainMax=\"");
+//        out.print(nDrain.max);
+//      }
+//      MinMax sDrain = getDrainZone(true);
+//      if (sDrain != null) {
+//        out.print("\" drainMinSha=\"");
+//        out.print(sDrain.min);
+//        out.print("\" drainMaxSha=\"");
+//        out.print(sDrain.max);
+//      }
+      out.print("\" color=\"");
+      out.print(colorKey);
+      String clust = getCluster();
+      if (clust != null) {
+        out.print("\" cluster=\"");
+        out.print(CharacterEntityMapper.mapEntities(clust, false));
+      }
+      out.println("\" />");
+    }
+  }
   
   /***************************************************************************
   **
@@ -2536,12 +2686,12 @@ public class BioFabricNetwork {
         if (minDrain != null) {
           int minDrVal = Integer.valueOf(minDrain).intValue();
           int maxDrVal = Integer.valueOf(maxDrain).intValue();
-          retval.setDrainZone(new MinMax(minDrVal, maxDrVal), false);
+          retval.addDrainZone(new MinMax(minDrVal, maxDrVal), false);
         }
         if (minDrainSha != null) {
           int minDrValSha = Integer.valueOf(minDrainSha).intValue();
           int maxDrValSha = Integer.valueOf(maxDrainSha).intValue();
-          retval.setDrainZone(new MinMax(minDrValSha, maxDrValSha), true);
+          retval.addDrainZone(new MinMax(minDrValSha, maxDrValSha), true);
         }
       } catch (NumberFormatException nfex) {
         throw new IOException();

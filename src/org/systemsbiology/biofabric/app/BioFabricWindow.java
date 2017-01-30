@@ -384,7 +384,8 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
       fMenu.add(importMenu);    
       importMenu.add(fc.getAction(CommandSet.LOAD, false, null)); 
       importMenu.add(fc.getAction(CommandSet.LOAD_WITH_NODE_ATTRIBUTES, false, null));       
-      importMenu.add(fc.getAction(CommandSet.LOAD_WITH_EDGE_WEIGHTS, false, null));       
+      importMenu.add(fc.getAction(CommandSet.LOAD_WITH_EDGE_WEIGHTS, false, null));
+      importMenu.add(fc.getAction(CommandSet.LAYOUT_NETWORK_ALIGNMENT, false, null));
       JMenu exportMenu = new JMenu(rMan.getString("command.exportMenu"));
       exportMenu.setMnemonic(rMan.getChar("command.exportMenuMnem"));
       fMenu.add(exportMenu);    

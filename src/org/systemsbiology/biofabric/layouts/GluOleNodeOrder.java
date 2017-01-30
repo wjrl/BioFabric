@@ -195,7 +195,7 @@ public class GluOleNodeOrder {
       cp.runCycle(sifName, noaBase, Bintag.Mode.GLUCOSE_BASE);
       cp.runCycle(sifName, noaBase, Bintag.Mode.OLEATE_BASE);
     } catch (IOException ioex) {
-      System.err.println("IO Error " + ioex);
+//      System.err.println("IO Error " + ioex);
     } 
   }
   
