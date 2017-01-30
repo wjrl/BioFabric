@@ -174,7 +174,7 @@ public class PaintCache {
   
   public void buildObjCache(List<BioFabricNetwork.NodeInfo> targets, List<BioFabricNetwork.LinkInfo> links, 
                             boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
-                            Map<NID.WithName, Rectangle2D> drainMap) {
+                            Map<NID.WithName, List<Rectangle2D>> drainMap) {
     paintPaths_.clear();
     FontRenderContext frc = new FontRenderContext(new AffineTransform(), true, true);
    
@@ -299,47 +299,58 @@ public class PaintCache {
                               List<PaintedPath> objCache, List<PaintedPath> postPostCache, FontRenderContext frc, 
                               FabricColorGenerator colGen, Map<Integer, MinMax> linkExtents, 
                               boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
-                              Map<NID.WithName, Rectangle2D> drainMap) {
+                              Map<NID.WithName, List<Rectangle2D>> drainMap) {
         
     //
     // Drain zone sizing / rotation:
     //
     
-    int diff = 0;
-    int useFont = 0;
-    Rectangle2D dumpRect = null;
-    boolean doRotateName = false;
-    MinMax dzmm = target.getDrainZone(showShadows);
-    if (dzmm != null) {
-      diff = dzmm.max - dzmm.min;      
+    List<MinMax> zones = target.getDrainZones(showShadows);
+    
+    DrainZoneInfo[] dzis = new DrainZoneInfo[zones.size()];
+    for (int i = 0; i < dzis.length; i++) {    // initialize each entry in array
+      dzis[i] = new DrainZoneInfo(zones.get(i));
+    }
+    
+    for (int i = 0; i < zones.size(); i++) {
+      
+      DrainZoneInfo curr = dzis[i];
+      curr.doRotateName = false;
+      
+      if (curr.dzmm == null) {
+        continue;
+      }
+      
+      curr.diff = curr.dzmm.max - curr.dzmm.min;
+      
       Rectangle2D bounds = huge_.getStringBounds(target.getNodeName(), frc);
-      if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * diff)) {
-        useFont = 0;
-        dumpRect = bounds;
+      if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * curr.diff)) {
+        curr.font = 0;
+        curr.dumpRect = bounds;
       } else {
         bounds = med_.getStringBounds(target.getNodeName(), frc);
-        if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * diff)) {
-          useFont = 1;
-          dumpRect = bounds;
+        if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * curr.diff)) {
+          curr.font = 1;
+          curr.dumpRect = bounds;
         } else {
           bounds = medSmall_.getStringBounds(target.getNodeName(), frc);
-          if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * diff)) {
-            useFont = 2;
-            dumpRect = bounds;
+          if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * curr.diff)) {
+            curr.font = 2;
+            curr.dumpRect = bounds;
           } else {
             bounds = small_.getStringBounds(target.getNodeName(), frc);
-            if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * diff)) {
-              useFont = 3;
-              dumpRect = bounds;
+            if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * curr.diff)) {
+              curr.font = 3;
+              curr.dumpRect = bounds;
             } else {
               bounds = tiny_.getStringBounds(target.getNodeName(), frc);
-              if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * diff)) {
-                useFont = 4;
-                dumpRect = bounds;
+              if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * curr.diff)) {
+                curr.font = 4;
+                curr.dumpRect = bounds;
               } else {
-                useFont = 4;
-                doRotateName = true;
-                dumpRect = bounds;
+                curr.font = 4;
+                curr.dumpRect = bounds;
+                curr.doRotateName = true;
               }
             }
           }
@@ -369,65 +380,102 @@ public class PaintCache {
     //
     
     if ((colmm.max == Integer.MIN_VALUE) || (colmm.min == Integer.MAX_VALUE)) {
-      objCache.add(new PaintedPath(Color.BLACK, target.getNodeName(), 100.0F, namey, 100.0F, tnamey, 
-                                   doRotateName, useFont, labelBounds, dumpRect));
-      nameMap.put(target.getNodeIDWithName(), (Rectangle2D)labelBounds.clone());
+    	UiUtil.fixMePrintout("Does this still need to exist??");
+   //   objCache.add(new PaintedPath(Color.BLACK, target.getNodeName(), 100.0F, namey, 100.0F, tnamey, 
+    //                               doRotateName, useFont, labelBounds, dumpRect));
+   //   nameMap.put(target.getNodeIDWithName(), (Rectangle2D)labelBounds.clone());
       return;
     }
-
+    
     //
-    // Print out drain zone text _if_ there is a drain zone:
+    // Create the horizontal line and process it
     //
+    
+    int yval = (target.nodeRow * BioFabricPanel.GRID_SIZE);
+    int xStrt = (colmm.min * BioFabricPanel.GRID_SIZE);
+    int xEnd = (colmm.max * BioFabricPanel.GRID_SIZE);
+    Line2D line = new Line2D.Double(xStrt, yval, xEnd, yval);
+    Color paintCol = getColorForNode(target, colGen);
+    objCache.add(new PaintedPath(paintCol, line, Integer.MIN_VALUE, yval, new MinMax(xStrt, xEnd)));
+    nameMap.put(target.getNodeIDWithName(), (Rectangle2D) labelBounds.clone());
+    
+    objCache.add(new PaintedPath(Color.BLACK, target.getNodeName(), namex, namey, labelBounds));
+    
+    List<Rectangle2D> rectList = new ArrayList<Rectangle2D>();
+    
+    
+    for (int i = 0; i < zones.size(); i++) {
+      
+      DrainZoneInfo curr = dzis[i];
+      
+      if (curr.dzmm == null) {
+        continue;  
+      }
 
-    float tnamex = 0;
-    if (dumpRect != null) {
-      // Easiest font height hack is to scale it by ~.67:
-      double dumpScaleHeight = dumpRect.getHeight() * LABEL_FONT_HEIGHT_SCALE_;
-      if (doRotateName) {
-        tnamex = (dzmm.min * BioFabricPanel.GRID_SIZE) + 
-                 ((diff * BioFabricPanel.GRID_SIZE) / 2.0F) + 
-                 (float)(dumpScaleHeight / 2.0);
-        dumpRect.setRect(tnamex - dumpScaleHeight, tnamey - dumpRect.getWidth(), 
-                         dumpScaleHeight, dumpRect.getWidth());
-      } else {  
-        tnamex = (dzmm.min * BioFabricPanel.GRID_SIZE) + ((diff * BioFabricPanel.GRID_SIZE) / 2.0F)  - ((int)dumpRect.getWidth() / 2);
-        dumpRect.setRect(tnamex, tnamey - dumpScaleHeight, dumpRect.getWidth(), dumpScaleHeight);
-      }
-      if (shadeNodes) {
-      	Color col = ((target.nodeRow % 2) == 0) ? superLightBlue_ : superLightPink_;
-      	buildABackRect(dzmm, linkExtents, dumpRect, preCache, col);
-      }
-    }
+	    //
+	    // Print out drain zone text _if_ there is a drain zone:
+	    //
+	
+	    float tnamex = 0;
+	      if (curr.dumpRect != null) {
+	      // Easiest font height hack is to scale it by ~.67:
+	        double dumpScaleHeight = curr.dumpRect.getHeight() * LABEL_FONT_HEIGHT_SCALE_;
+	        if (curr.doRotateName) {
+	          tnamex = (curr.dzmm.min * BioFabricPanel.GRID_SIZE) +
+	                  ((curr.diff * BioFabricPanel.GRID_SIZE) / 2.0F) +
+	                 (float)(dumpScaleHeight / 2.0);
+	          curr.dumpRect.setRect(tnamex - dumpScaleHeight, tnamey - curr.dumpRect.getWidth(),
+	                  dumpScaleHeight, curr.dumpRect.getWidth());
+	      } else {  
+	          tnamex = (curr.dzmm.min * BioFabricPanel.GRID_SIZE) +
+	                  ((curr.diff * BioFabricPanel.GRID_SIZE) / 2.0F) - ((int) curr.dumpRect.getWidth() / 2);
+	          curr.dumpRect.setRect(tnamex, tnamey - dumpScaleHeight, curr.dumpRect.getWidth(), dumpScaleHeight);
+	      }
+	      if (shadeNodes) {
+	      	Color col = ((target.nodeRow % 2) == 0) ? superLightBlue_ : superLightPink_;
+	          buildABackRect(curr.dzmm, linkExtents, curr.dumpRect, preCache, col);
+	      }
+	    }
     
     //
     // Output the node label and (optional) drain zone label.  If we are using a tiny font for the drain
     // zone, it goes out last to get drawn above the links.
     //
     
-    if (useFont == 4) {
+      if (curr.font == 4) {
       
-      postPostCache.add(new PaintedPath(Color.BLACK, target.getNodeName(), namex, namey, tnamex, tnamey, 
-                                   doRotateName, useFont, labelBounds, dumpRect));
-    } else {
-      objCache.add(new PaintedPath(Color.BLACK, target.getNodeName(), namex, namey, tnamex, tnamey, 
-                                   doRotateName, useFont, labelBounds, dumpRect));
+        postPostCache.add(new PaintedPath(Color.BLACK, target.getNodeName(), namex, namey, tnamex, tnamey, 
+                  curr.doRotateName, curr.font, labelBounds, curr.dumpRect));
+      } else {
+        objCache.add(new PaintedPath(Color.BLACK, target.getNodeName(), namex, namey, tnamex, tnamey, 
+                  curr.doRotateName, curr.font, labelBounds, curr.dumpRect));
+      }
       
+      if (curr.dumpRect != null) {
+        rectList.add((Rectangle2D) curr.dumpRect.clone());
+      }
     }
-    //
-    // Output the node line:
-    //
-    int yval = (target.nodeRow * BioFabricPanel.GRID_SIZE);
-    int xStrt = (colmm.min * BioFabricPanel.GRID_SIZE);
-    int xEnd = (colmm.max * BioFabricPanel.GRID_SIZE);
-    Line2D line = new Line2D.Double(xStrt, yval, xEnd, yval);
-    Color paintCol = getColorForNode(target, colGen);     
-    objCache.add(new PaintedPath(paintCol, line, Integer.MIN_VALUE, yval, new MinMax(xStrt, xEnd)));
-    nameMap.put(target.getNodeIDWithName(), (Rectangle2D)labelBounds.clone());
-    if (dumpRect != null) {
-      drainMap.put(target.getNodeIDWithName(), (Rectangle2D)dumpRect.clone());
-    }    
+    drainMap.put(target.getNodeIDWithName(), rectList);
+    
     return;
   } 
+  
+  /***************************************************************************
+   ** Contains the properties required to draw a drain zone
+   */
+  
+  private static class DrainZoneInfo {
+    
+    private int diff, font;
+    private boolean doRotateName;
+    private Rectangle2D dumpRect;
+    private MinMax dzmm;
+    
+    DrainZoneInfo(MinMax dzmm) {
+      this.dzmm = dzmm.clone();
+    }
+    
+  }
   
   /***************************************************************************
   **
@@ -484,6 +532,18 @@ public class PaintCache {
     MinMax range;
     int font;
     Rectangle rect;
+    
+    //
+    // Used for node labels for nodes without drain zones
+    //
+    
+    PaintedPath(Color col, String name, float x, float y, Rectangle2D nameRect) {
+      this.col = col;
+      this.name = name;
+      nameX = x;
+      nameY = y;
+      this.nameRect = nameRect;
+    }
     
     //
     // Used for line drawing:
@@ -555,15 +615,15 @@ public class PaintCache {
       int didPaint = 0;
       g2.setPaint(forSelection ? Color.black : col);
       if ((name != null) && (path == null)) {
-        // NODE LABELS:
-        if ((bounds == null) ||
+        // NODE LABELS: only PaintedPaths that use the "node labels only" constructor can draw node labels
+        if (((nameRect == null) && (dumpRect == null)) || (bounds == null) ||
             ((nameRect.getMaxX() > bounds.getMinX()) && 
              (nameRect.getMinX() < bounds.getMaxX()) && 
              (nameRect.getMaxY() > bounds.getMinY()) && 
              (nameRect.getMinY() < bounds.getMaxY()))) { 
           //g2.drawLine((int)nameRect.getMinX(), (int)nameRect.getMinY(), (int)nameRect.getMaxX(), (int)nameRect.getMaxY());     
           g2.setFont(tiny_);
-          g2.drawString(name, nameX, nameY);
+          g2.drawString(name, nameX, nameY); // name next to horiz line
           didPaint++;
         }
         // DRAIN ZONES:
@@ -600,7 +660,7 @@ public class PaintCache {
                   throw new IllegalArgumentException();
               }
               g2.setFont(useit);
-              g2.drawString(name, tnameX, tnameY);
+              g2.drawString(name, tnameX, tnameY);   // zone node names
               didPaint++;
             }
           }

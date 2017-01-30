@@ -75,6 +75,7 @@ import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.filechooser.FileFilter;
 
+import org.systemsbiology.biofabric.analysis.NetworkAlignment;
 //import org.freehep.graphics2d.VectorGraphics;
 //import org.freehep.graphicsio.PageConstants;
 //import org.freehep.graphicsio.pdf.PDFGraphics2D;
@@ -109,6 +110,7 @@ import org.systemsbiology.biofabric.ui.dialogs.ExportSettingsPublishDialog;
 import org.systemsbiology.biofabric.ui.dialogs.FabricDisplayOptionsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.FabricSearchDialog;
 import org.systemsbiology.biofabric.ui.dialogs.LinkGroupingSetupDialog;
+import org.systemsbiology.biofabric.ui.dialogs.NetworkAlignmentDialog;
 import org.systemsbiology.biofabric.ui.dialogs.RelationDirectionDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ReorderLayoutParamsDialog;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
@@ -215,6 +217,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public static final int HIER_DAG_LAYOUT              = 51;
   public static final int WORLD_BANK_LAYOUT            = 52;
   public static final int LOAD_WITH_EDGE_WEIGHTS       = 53;
+  public static final int LAYOUT_NETWORK_ALIGNMENT     = 54;
   
   
   
@@ -508,6 +511,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         case SET_LINK_GROUPS:
           retval = new SetLinkGroupsAction(withIcon);
           break;  
+        case LAYOUT_NETWORK_ALIGNMENT:
+          retval = new LayoutNetworkAlignment(withIcon);
+          break;
         case COMPARE_NODES:
           retval = new CompareNodesAction(withIcon);           
           break;
@@ -2669,6 +2675,59 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }  
   }
  
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+   
+  private class LayoutNetworkAlignment extends ChecksForEnabled {
+  
+    private static final long serialVersionUID = 1L;
+    
+    LayoutNetworkAlignment(boolean doIcon) {
+      ResourceManager rMan = ResourceManager.getManager();
+      putValue(Action.NAME, rMan.getString("command.LayoutNetworkAlignment"));
+      if (doIcon) {
+        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.LayoutNetworkAlignment"));
+        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/FIXME24.gif");
+        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
+      } else {
+        char mnem = rMan.getChar("command.LayoutNetworkAlignmentMnem");
+        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
+      }
+    }
+  
+    public void actionPerformed(ActionEvent e) {
+      try {
+        performOperation(null);
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }
+      return;
+    }
+  
+    private boolean performOperation(Object[] args) {
+  
+      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topWindow_);
+      nad.setVisible(true);
+      
+      NetworkAlignment.NetworkAlignInfo nai = nad.getNAInfo();
+      
+      NetworkAlignment na = new NetworkAlignment(nai);
+  
+//      System.out.println(na.getSmall().getSize());
+//      System.out.println(na.getLarge().getSize());
+      
+      return (true);
+    }
+  
+//    @Override
+//    protected boolean checkGuts() {
+//      return (bfp_.hasAModel());
+//    }
+  
+  }
+  
   /***************************************************************************
   **
   ** Command
