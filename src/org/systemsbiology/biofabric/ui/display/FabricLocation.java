@@ -100,14 +100,13 @@ public class FabricLocation extends JPanel {
   */
 
   public void setNodeAndLink(BioFabricPanel.MouseLocInfo mlo) {
-    UiUtil.fixMePrintout("This baby is causing e.g. magnifier validation on every mouse move!");
+    UiUtil.fixMePrintout("This baby is causing e.g. *magnifier* validation on EVERY mouse move!");
     nodeName_.setText("Mouse Over Node Row: " + mlo.nodeDesc);
     linkName_.setText("Mouse Over Link: " + mlo.linkDesc);
     linkZone_.setText("Mouse Over Node Link Zone: " + mlo.zoneDesc);
     nodeName_.invalidate();
     linkName_.invalidate();
     linkZone_.invalidate();
-    System.out.println("revalidate SNAL");
     revalidate();
     return;
   }   

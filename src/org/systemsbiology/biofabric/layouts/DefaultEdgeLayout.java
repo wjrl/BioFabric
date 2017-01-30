@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -30,9 +30,10 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.systemsbiology.biofabric.analysis.Link;
+import org.systemsbiology.biofabric.analysis.NIDLink;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
 **
@@ -75,19 +76,19 @@ public class DefaultEdgeLayout {
   
   public void layoutEdges(BioFabricNetwork.RelayoutBuildData rbd) {
     
-    Map<String, String> nodeOrder = rbd.nodeOrder;
+    Map<NID.WithName, Integer> nodeOrder = rbd.nodeOrder;
     
     //
     // Build target->row maps and the inverse:
     //
-    HashMap<String, Integer> targToRow = new HashMap<String, Integer>();
-    HashMap<Integer, String> rowToTarg = new HashMap<Integer, String>();
-    Iterator<String> trit = nodeOrder.keySet().iterator();
+    HashMap<NID.WithName, Integer> targToRow = new HashMap<NID.WithName, Integer>();
+    HashMap<Integer, NID.WithName> rowToTarg = new HashMap<Integer, NID.WithName>();
+    Iterator<NID.WithName> trit = nodeOrder.keySet().iterator();
     while (trit.hasNext()) {
-      String target = trit.next();
-      Integer rowObj = Integer.valueOf(nodeOrder.get(target.toUpperCase()));
-      targToRow.put(target.toUpperCase(), rowObj);
-      rowToTarg.put(rowObj, target.toUpperCase());
+      NID.WithName target = trit.next();
+      Integer rowObj = nodeOrder.get(target);
+      targToRow.put(target, rowObj);
+      rowToTarg.put(rowObj, target);
     }
     
     //
@@ -95,7 +96,8 @@ public class DefaultEdgeLayout {
     //
     
     TreeMap<Integer, SortedSet<Integer>> rankedLinks = new TreeMap<Integer, SortedSet<Integer>>();
-    Map<Link, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair = generateLinkExtents(rbd.allLinks, targToRow, rankedLinks);
+    Map<NIDLink, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair = 
+    	generateLinkExtents(rbd.allLinks, targToRow, rankedLinks);
     
     //
     // Ordering of links:
@@ -113,8 +115,8 @@ public class DefaultEdgeLayout {
   */
 
   private SortedMap<Integer, FabricLink> defaultLinkToColumn(SortedMap<Integer, SortedSet<Integer>> rankedLinks,         
-                                                             Map<Link, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair,
-                                                             HashMap<Integer, String> rowToTarg,
+                                                             Map<NIDLink, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair,
+                                                             HashMap<Integer, NID.WithName> rowToTarg,
                                                              BioFabricNetwork.RelayoutBuildData rbd) {    
   
     TreeMap<Integer, FabricLink> linkOrder = new TreeMap<Integer, FabricLink>();
@@ -161,10 +163,10 @@ public class DefaultEdgeLayout {
         // Drain the bottom rows, in increasing order...
         while (psit.hasNext()) {
           Integer botRow = psit.next();
-          String topNode = rowToTarg.get(topRow);
-          String botNode = rowToTarg.get(botRow);
+          NID.WithName topNode = rowToTarg.get(topRow);
+          NID.WithName botNode = rowToTarg.get(botRow);
           // Dumping links in order of the relation sort (alphabetical)...
-          SortedMap<FabricLink.AugRelation, FabricLink> forPair1 = relsForPair.get(new Link(topNode, botNode));
+          SortedMap<FabricLink.AugRelation, FabricLink> forPair1 = relsForPair.get(new NIDLink(topNode, botNode));
           if (forPair1 != null) {
             Iterator<FabricLink> fp1it = forPair1.values().iterator();
             while (fp1it.hasNext()) {
@@ -179,7 +181,7 @@ public class DefaultEdgeLayout {
           }
           // With directed links from above coming before directed links from below...       
           if (!topNode.equals(botNode)) { // DO NOT DUPLICATE FEEDBACK LINKS!
-            SortedMap<FabricLink.AugRelation, FabricLink> forPair2 = relsForPair.get(new Link(botNode, topNode));
+            SortedMap<FabricLink.AugRelation, FabricLink> forPair2 = relsForPair.get(new NIDLink(botNode, topNode));
             if (forPair2 != null) {        
               Iterator<FabricLink> fp2it = forPair2.values().iterator();
               while (fp2it.hasNext()) {
@@ -245,8 +247,8 @@ public class DefaultEdgeLayout {
   */
 
   private int shadowLinkToColumn(int currDrainRow, SortedMap<Integer, SortedSet<Integer>> rankedLinks, 
-                                  Map<Link, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair, 
-                                  String relOnly, List<String> allRels, int colCount, HashMap<Integer, String> rowToTarg,
+                                  Map<NIDLink, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair, 
+                                  String relOnly, List<String> allRels, int colCount, HashMap<Integer, NID.WithName> rowToTarg,
                                   BioFabricNetwork.RelayoutBuildData rbd, TreeMap<Integer, FabricLink> linkOrder) {    
     
     Iterator<Integer> rlit = rankedLinks.keySet().iterator();
@@ -266,10 +268,10 @@ public class DefaultEdgeLayout {
           continue;
         }
         
-        String topNode = rowToTarg.get(topRow);
-        String botNode = rowToTarg.get(botRow);
+        NID.WithName topNode = rowToTarg.get(topRow);
+        NID.WithName botNode = rowToTarg.get(botRow);
         // Dumping links in order of the relation sort (alphabetical)...
-        SortedMap<FabricLink.AugRelation, FabricLink> forPair1 = relsForPair.get(new Link(topNode, botNode));
+        SortedMap<FabricLink.AugRelation, FabricLink> forPair1 = relsForPair.get(new NIDLink(topNode, botNode));
         if (forPair1 != null) {
           Iterator<FabricLink> fp1it = forPair1.values().iterator();
           while (fp1it.hasNext()) {
@@ -286,7 +288,7 @@ public class DefaultEdgeLayout {
         // With directed links from above coming before directed links from below... 
         // This test should now always be true, given we are never doing feedback....
         if (!topNode.equals(botNode)) { // DO NOT DUPLICATE FEEDBACK LINKS!
-          SortedMap<FabricLink.AugRelation, FabricLink> forPair2 = relsForPair.get(new Link(botNode, topNode));
+          SortedMap<FabricLink.AugRelation, FabricLink> forPair2 = relsForPair.get(new NIDLink(botNode, topNode));
           if (forPair2 != null) {        
             Iterator<FabricLink> fp2it = forPair2.values().iterator();
             while (fp2it.hasNext()) {
@@ -355,35 +357,32 @@ public class DefaultEdgeLayout {
   **  Maps each top link row to an ordered set of link maximums 
   */
 
-  private Map<Link, SortedMap<FabricLink.AugRelation, FabricLink>> generateLinkExtents(Set<FabricLink> allLinks,
-                                                                                       HashMap<String, Integer> targToRow,
+  private Map<NIDLink, SortedMap<FabricLink.AugRelation, FabricLink>> generateLinkExtents(Set<FabricLink> allLinks,
+                                                                                       HashMap<NID.WithName, Integer> targToRow,
                                                                                        TreeMap<Integer, SortedSet<Integer>> rankedLinks) {
     //
     // Now each link is given a vertical extent.
     //
     
-    HashMap<Link, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair 
-      = new HashMap<Link, SortedMap<FabricLink.AugRelation, FabricLink>>();
+    HashMap<NIDLink, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair 
+      = new HashMap<NIDLink, SortedMap<FabricLink.AugRelation, FabricLink>>();
   //  HashMap directedMap = new HashMap();
     Iterator<FabricLink> alit = allLinks.iterator();
     while (alit.hasNext()) {
       FabricLink nextLink = alit.next();
-      String source = nextLink.getSrc();
-      String target = nextLink.getTrg();
+      NID.WithName source = nextLink.getSrcID();
+      NID.WithName target = nextLink.getTrgID();
    //   boolean directed = nextLink.isDirected();
   //    directedMap.put(new Link(source, target), new Boolean(directed));
-      Link key = new Link(source.toUpperCase(), target.toUpperCase());
+      NIDLink key = new NIDLink(source, target);
       SortedMap<FabricLink.AugRelation, FabricLink> rels = relsForPair.get(key);
       if (rels == null) {
         rels = new TreeMap<FabricLink.AugRelation, FabricLink>();
         relsForPair.put(key, rels);
       }
       rels.put(nextLink.getAugRelation(), nextLink);   
-      Integer srcRow = targToRow.get(source.toUpperCase());
-      Integer trgRow = targToRow.get(target.toUpperCase());       
-      if ((srcRow == null) || (trgRow == null)) {
-      	System.out.println(source + " " + target + " "  + srcRow + " " + trgRow);
-      }
+      Integer srcRow = targToRow.get(source);
+      Integer trgRow = targToRow.get(target);
       Integer minRow;
       Integer maxRow;
       if (srcRow.intValue() < trgRow.intValue()) {

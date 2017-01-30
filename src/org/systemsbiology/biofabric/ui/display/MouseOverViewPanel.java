@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -67,10 +67,12 @@ public class MouseOverViewPanel extends JPanel {
   private HashMap<String, BufferedImage> imgs_;
   private BufferedImage img_;
   private BufferedImage scaledImg_;
-  private String currKey_;
   private Point scaledImgOrigin_;
   private CardLayout myCard_;
   private ImagePanel pPan_;
+  private String path_ ;
+  private String filePrefix_;
+  private String fileSuffix_ ;
   
   private static final long serialVersionUID = 1L;
   
@@ -88,7 +90,6 @@ public class MouseOverViewPanel extends JPanel {
   public MouseOverViewPanel() {
     setBackground(Color.white);
     imgs_ = new HashMap<String, BufferedImage>();
-    currKey_ = null;
     scaledImg_ = null;
     scaledImgOrigin_ = new Point(0, 0);
     img_ = null;
@@ -141,7 +142,19 @@ public class MouseOverViewPanel extends JPanel {
     repaint();
     return;
   } 
-  
+ 
+  /***************************************************************************
+  **
+  ** Set the fragments of file to show: path + filePrefix + nodeName + fileSuffix.
+  */
+
+  public void setFileLocations(String path, String filePrefix, String fileSuffix) {
+    path_ = path;
+    filePrefix_ = filePrefix;
+    fileSuffix_ = fileSuffix;
+    return;
+  }
+
   /***************************************************************************
   **
   ** Show or hide the view
@@ -158,7 +171,6 @@ public class MouseOverViewPanel extends JPanel {
   */
 
   public void showForNode(String nodeName) {
-  	currKey_ = nodeName;
   	if (nodeName == null) {
   		installImage(null);
   		return;
@@ -182,19 +194,10 @@ public class MouseOverViewPanel extends JPanel {
   */
 
   private void loadAFile(String nodeName) throws IOException {
-  	File forFoo = null;
-  	if (nodeName.indexOf("1") != -1) {
-      forFoo = new File("/Users/bill/MouseFile1-" + nodeName + ".png");  		
-  	} else if (nodeName.indexOf("2") != -1) {
-      forFoo = new File("/Users/bill/MouseFile2-" + nodeName + ".png");
-  	}
-  	if (forFoo != null) {
-      BufferedImage mvi = readImageFromFile(forFoo);
-      imgs_.put(nodeName, mvi);
-      installImage(mvi);
-  	} else {
-  		installImage(null);
-  	}
+  	File forFoo = new File(path_ + filePrefix_ + nodeName + fileSuffix_);
+    BufferedImage mvi = readImageFromFile(forFoo);
+    imgs_.put(nodeName, mvi);
+    installImage(mvi);
     return;
   }
   

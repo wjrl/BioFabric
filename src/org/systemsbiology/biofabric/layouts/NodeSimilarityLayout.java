@@ -37,13 +37,13 @@ import java.util.Vector;
 import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AffineCombination;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.ChoiceContent;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.DoubMinMax;
 import org.systemsbiology.biofabric.util.MinMax;
+import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 
@@ -104,15 +104,15 @@ public class NodeSimilarityLayout {
                               double endFrac) throws AsynchExitRequestException { 
 
   	BioFabricNetwork bfn = rbd.bfn;
-  	HashMap<String, Integer> targToRow = new HashMap<String, Integer>();
+  	HashMap<NID.WithName, Integer> targToRow = new HashMap<NID.WithName, Integer>();
     SortedMap<Integer, SortedSet<Integer>>  connVecs = getConnectionVectors(rbd, targToRow);
    
     NodeSimilarityLayout.ResortParams rp = (NodeSimilarityLayout.ResortParams)params;
     
-    List<String> ordered = new ArrayList<String>();
+    List<Integer> ordered = new ArrayList<Integer>();
     int numRows = bfn.getRowCount();
     for (int i = 0; i < numRows; i++) {
-      ordered.add(Integer.toString(i));
+      ordered.add(Integer.valueOf(i));
     }
     
     double currStart = startFrac;
@@ -125,7 +125,7 @@ public class NodeSimilarityLayout {
     
     for (int i = 0; i < rp.passCount; i++) {
       monitor.updateRankings(rankings);
-      List<String> nextOrdered = resort(cprep, monitor, currStart, currEnd);
+      List<Integer> nextOrdered = resort(cprep, monitor, currStart, currEnd);
       currStart = currEnd;
       currEnd = currStart + inc;
       cprep = setupForResort(bfn, connVecs, nextOrdered, rankings);
@@ -142,7 +142,7 @@ public class NodeSimilarityLayout {
     }
     
     monitor.updateRankings(rankings);
-    Map<String, String>  orderedNames = convertOrderToMap(bfn, ordered);
+    Map<NID.WithName, Integer> orderedNames = convertOrderToMap(bfn, ordered);
     rbd.setNodeOrder(orderedNames);
    
     return;
@@ -158,8 +158,8 @@ public class NodeSimilarityLayout {
                                 BTProgressMonitor monitor, 
                                 double startFrac, double endFrac) throws AsynchExitRequestException {   
  
-    List<String> ordered = doClusteredLayoutOrder(rbd, params, monitor, startFrac, endFrac);
-    Map<String, String> orderedNames = convertOrderToMap(rbd.bfn, ordered);
+    List<Integer> ordered = doClusteredLayoutOrder(rbd, params, monitor, startFrac, endFrac);
+    Map<NID.WithName, Integer> orderedNames = convertOrderToMap(rbd.bfn, ordered);
     rbd.setNodeOrder(orderedNames);
     return;
   }
@@ -169,18 +169,18 @@ public class NodeSimilarityLayout {
   ** Clustered Layout Ordering only
   */   
 
-  public List<String> doClusteredLayoutOrder(BioFabricNetwork.RelayoutBuildData rbd, 
-				                                     NodeSimilarityLayout.CRParams params,
-				                                     BTProgressMonitor monitor, 
-				                                     double startFrac, double endFrac) throws AsynchExitRequestException {   
+  public List<Integer> doClusteredLayoutOrder(BioFabricNetwork.RelayoutBuildData rbd, 
+							                                NodeSimilarityLayout.CRParams params,
+							                                BTProgressMonitor monitor, 
+							                                double startFrac, double endFrac) throws AsynchExitRequestException {   
  
   	//BioFabricNetwork bfn = rbd.bfn;
     NodeSimilarityLayout.ClusterParams cp = (NodeSimilarityLayout.ClusterParams)params;
-    HashMap<String, Integer> targToRow = new HashMap<String, Integer>();
+    HashMap<NID.WithName, Integer> targToRow = new HashMap<NID.WithName, Integer>();
     SortedMap<Integer, SortedSet<Integer>> connVecs = getConnectionVectors(rbd, targToRow);
 
     TreeMap<Double, SortedSet<Link>> dists = new TreeMap<Double, SortedSet<Link>>(Collections.reverseOrder());
-    HashMap<String, Integer> degMag = new HashMap<String, Integer>();
+    HashMap<Integer, Integer> degMag = new HashMap<Integer, Integer>();
     
     Integer highestDegree = (cp.distanceMethod == NodeSimilarityLayout.ClusterParams.COSINES) ?
                              getCosines(connVecs, dists, degMag, rbd, targToRow) :
@@ -190,13 +190,18 @@ public class NodeSimilarityLayout {
     ArrayList<Integer> jumpLog = new ArrayList<Integer>();
     
     
-    HashMap<Integer, String> rowToTarg = new HashMap<Integer, String>();
-    for (String targ : targToRow.keySet()) {
+    HashMap<Integer, NID.WithName> rowToTarg = new HashMap<Integer, NID.WithName>();
+    for (NID.WithName targ : targToRow.keySet()) {
     	rowToTarg.put(targToRow.get(targ), targ);
     }
-    List<String> ordered = orderByDistanceChained(rowToTarg, highestDegree, dists, 
-                                                 degMag, linkTrace, cp.chainLength, 
-                                                 cp.tolerance, jumpLog, monitor, startFrac, endFrac);
+    List<Integer> ordered = orderByDistanceChained(rowToTarg, highestDegree, dists, 
+                                                        degMag, linkTrace, cp.chainLength, 
+                                                        cp.tolerance, jumpLog, monitor, startFrac, endFrac);
+    
+    
+    
+    
+    
     return (ordered);
   }
 
@@ -212,12 +217,12 @@ public class NodeSimilarityLayout {
   */
 
   private SortedMap<Integer, SortedSet<Integer>> getConnectionVectors(BioFabricNetwork.RelayoutBuildData rbd, 
-  		                                                                Map<String, Integer> targToRow) { 
+  		                                                                Map<NID.WithName, Integer> targToRow) { 
     
-    Iterator<String> rtit = rbd.existingOrder.iterator();
+    Iterator<NID.WithName> rtit = rbd.existingIDOrder.iterator();
     int count = 0;
     while (rtit.hasNext()) {
-      String node = rtit.next();
+      NID.WithName node = rtit.next();
       targToRow.put(node, Integer.valueOf(count++));
     }
     
@@ -229,9 +234,9 @@ public class NodeSimilarityLayout {
       	continue;
       }
     //  BioFabricNetwork.LinkInfo linf = bfn.getLinkDefinition(col, false);
-      String srcName = fl.getSrc(); //linf.getSource();
+      NID.WithName srcName = fl.getSrcID(); //linf.getSource();
       Integer srcRow = targToRow.get(srcName);
-      String trgName = fl.getTrg(); //.getTarget();
+      NID.WithName trgName = fl.getTrgID(); //.getTarget();
       Integer trgRow = targToRow.get(trgName);
 
       SortedSet<Integer> forRetval = retval.get(srcRow);
@@ -258,9 +263,9 @@ public class NodeSimilarityLayout {
 
   private Integer getCosines(SortedMap<Integer, SortedSet<Integer>> connVec, 
                              SortedMap<Double, SortedSet<Link>> retval, 
-                             Map<String, Integer> connMag, 
-                             BioFabricNetwork.RelayoutBuildData rbd, Map<String, Integer> targToRow) {
-    int rowCount = rbd.allNodes.size();
+                             Map<Integer, Integer> connMag, 
+                             BioFabricNetwork.RelayoutBuildData rbd, Map<NID.WithName, Integer> targToRow) {
+    int rowCount = rbd.allNodeIDs.size();
     Integer[] icache = new Integer[rowCount];
     String[] scache = new String[rowCount];
     for (int i = 0; i < rowCount; i++) {
@@ -280,9 +285,9 @@ public class NodeSimilarityLayout {
       if (fl.isShadow()) {
       	continue;
       }
-      String srcName = fl.getSrc();
+      NID.WithName srcName = fl.getSrcID();
       Integer srcRow = targToRow.get(srcName);
-      String trgName = fl.getTrg();
+      NID.WithName trgName = fl.getTrgID();
       Integer trgRow = targToRow.get(trgName);
       SortedSet<Integer> srcVec = connVec.get(srcRow);     
       int srcSize = srcVec.size();
@@ -296,8 +301,8 @@ public class NodeSimilarityLayout {
         biggestMag = trgSize;
         highestDegree = trgRow;
       }
-      connMag.put(scache[srcRow.intValue()], icache[srcSize]);
-      connMag.put(scache[trgRow.intValue()], icache[trgSize]);
+      connMag.put(icache[srcRow.intValue()], icache[srcSize]);
+      connMag.put(icache[trgRow.intValue()], icache[trgSize]);
      
       double sqrs = Math.sqrt(srcSize);
       double sqrt = Math.sqrt(trgSize);
@@ -345,10 +350,10 @@ public class NodeSimilarityLayout {
   
   private Integer getJaccard(SortedMap<Integer, SortedSet<Integer>> connVec, 
                             SortedMap<Double, SortedSet<Link>> retval, 
-                            Map<String, Integer> connMag, 
-                            BioFabricNetwork.RelayoutBuildData rbd, Map<String, Integer> targToRow) {
+                            Map<Integer, Integer> connMag, 
+                            BioFabricNetwork.RelayoutBuildData rbd, Map<NID.WithName, Integer> targToRow) {
 
-    int rowCount = rbd.allNodes.size();
+    int rowCount = rbd.allNodeIDs.size();
     Integer[] icache = new Integer[rowCount];
     String[] scache = new String[rowCount];
     for (int i = 0; i < rowCount; i++) {
@@ -369,9 +374,9 @@ public class NodeSimilarityLayout {
       if (fl.isShadow()) {
       	continue;
       }
-      String srcName = fl.getSrc();
+      NID.WithName srcName = fl.getSrcID();
       Integer srcRow = targToRow.get(srcName);
-      String trgName = fl.getTrg();
+      NID.WithName trgName = fl.getTrgID();
       Integer trgRow = targToRow.get(trgName);
       SortedSet<Integer> srcVec = connVec.get(srcRow);     
       int srcSize = srcVec.size();
@@ -385,8 +390,8 @@ public class NodeSimilarityLayout {
         biggestMag = trgSize;
         highestDegree = trgRow;
       }
-      connMag.put(scache[srcRow.intValue()], icache[srcSize]);
-      connMag.put(scache[trgRow.intValue()], icache[trgSize]);
+      connMag.put(icache[srcRow.intValue()], icache[srcSize]);
+      connMag.put(icache[trgRow.intValue()], icache[trgSize]);
      
       union.clear();
       DataUtil.union(srcVec, trgVec, union);
@@ -415,17 +420,17 @@ public class NodeSimilarityLayout {
   ** set of nodes.
   */
 
-  private List<String> orderByDistanceChained(Map<Integer, String> rowToTarg, Integer start, SortedMap<Double, SortedSet<Link>> cosines, 
-                                             Map<String, Integer> connMag, List<Link> linkTrace, 
-                                             int limit, double tol, List<Integer> jumpLog,
-                                             BTProgressMonitor monitor, double startFrac, double endFrac) 
-                                               throws AsynchExitRequestException { 
+  private List<Integer> orderByDistanceChained(Map<Integer, NID.WithName> rowToTarg, 
+  		                                             Integer start, SortedMap<Double, SortedSet<Link>> cosines, 
+			                                             Map<Integer, Integer> connMag, List<Link> linkTrace, 
+			                                             int limit, double tol, List<Integer> jumpLog,
+			                                             BTProgressMonitor monitor, double startFrac, double endFrac) 
+			                                               throws AsynchExitRequestException { 
     int rowCount = rowToTarg.size();
-    ArrayList<String> retval = new ArrayList<String>();
-    HashSet<String> seen = new HashSet<String>();  
-    String startNode = Integer.toString(start.intValue());
-    retval.add(startNode);
-    seen.add(startNode);
+    ArrayList<Integer> retval = new ArrayList<Integer>();
+    HashSet<Integer> seen = new HashSet<Integer>();  
+    retval.add(start);
+    seen.add(start);
     
     //
     // Tried running multiple chains, with the idea of being able to
@@ -436,8 +441,8 @@ public class NodeSimilarityLayout {
     // we went to reclaim another chain to start over.  Seems to
     // be little benefit, and big speed hit.
   
-    ArrayList<String> currentChain = new ArrayList<String>();
-    currentChain.add(startNode);
+    ArrayList<Integer> currentChain = new ArrayList<Integer>();
+    currentChain.add(start);
     int switchCount = 0;
     int stayCount = 0;
 
@@ -495,16 +500,16 @@ public class NodeSimilarityLayout {
   ** Maintain  the recent used chain
   */
 
-  private void maintainChain(List<String> chain, DoubleRanked bestChainedHop, int limit) {
+  private void maintainChain(List<Integer> chain, DoubleRanked bestChainedHop, int limit) {
     //
     // The guy who established the link goes first.  The newly added guy goes second.
     // If we hit the limit, the last guys are tossed
     //
     
-    String bySrc = bestChainedHop.byLink.getSrc();
-    String byTrg = bestChainedHop.byLink.getTrg();
+    Integer bySrc = Integer.valueOf(bestChainedHop.byLink.getSrc());
+    Integer byTrg = Integer.valueOf(bestChainedHop.byLink.getTrg());
         
-    String bridge = (bySrc.equals(bestChainedHop.id)) ? byTrg : bySrc;    
+    Integer bridge = (bySrc.equals(bestChainedHop.id)) ? byTrg : bySrc;    
     chain.remove(bridge);
     chain.add(0, bestChainedHop.id);
     chain.add(0, bridge);
@@ -522,9 +527,9 @@ public class NodeSimilarityLayout {
   ** another node.  That node then becomes the next to search on.
   */
 
-  private DoubleRanked findBestUnseenHop(Map<Integer, String> nodeForRow, SortedMap<Double, SortedSet<Link>> cosines, 
-                                         Map<String, Integer> degMag, HashSet<String> seen, 
-                                         List<String> launchNodes, List<String> currentOrder) { 
+  private DoubleRanked findBestUnseenHop(Map<Integer, NID.WithName> nodeForRow, SortedMap<Double, SortedSet<Link>> cosines, 
+                                         Map<Integer, Integer> degMag, HashSet<Integer> seen, 
+                                         List<Integer> launchNodes, List<Integer> currentOrder) { 
     if ((launchNodes != null) && launchNodes.isEmpty()) {
       return (null);
     }
@@ -535,10 +540,10 @@ public class NodeSimilarityLayout {
     //
     
     String maxDegNodeName = null;
-    String maxDegNode = null;
+    Integer maxDegNode = null;
     Integer maxDegDeg = null;
     Integer maxDegMinOther = null;
-    String maxDegOtherNode = null;
+    Integer maxDegOtherNode = null;
     ArrayList<Link> candConnects = new ArrayList<Link>();
     
     while (dotIt.hasNext()) {       
@@ -549,10 +554,10 @@ public class NodeSimilarityLayout {
       // Each cosine magnitude has a list of links.  Find ones that span from the
       // set of placed nodes to the set of unplaced nodes:
       for (Link nextLink : forDot) {
-        String src = nextLink.getSrc();
-        String trg = nextLink.getTrg();
-        String cand = null;
-        String other = null;
+        Integer src = Integer.valueOf(nextLink.getSrc());
+        Integer trg = Integer.valueOf(nextLink.getTrg());
+        Integer cand = null;
+        Integer other = null;
         if (seen.contains(src) && !seen.contains(trg)) {
           if ((launchNodes == null) || launchNodes.contains(src)) {
             cand = trg;
@@ -570,7 +575,7 @@ public class NodeSimilarityLayout {
         if (cand != null) {
           Integer degVal = degMag.get(cand);
           UiUtil.fixMePrintout("current degmag counts src->trg and trg->src directed links as only degree 1");
-          String n4r = nodeForRow.get(Integer.valueOf(cand));
+          String n4r = nodeForRow.get(cand).getName();
           Integer r4o = Integer.valueOf(currentOrder.indexOf(other));
           boolean gtCon = (maxDegDeg == null) || (maxDegDeg.intValue() < degVal.intValue());
           boolean eqCon = (maxDegDeg != null) && (maxDegDeg.intValue() == degVal.intValue());
@@ -622,27 +627,27 @@ public class NodeSimilarityLayout {
   ** Handle the fallback case.
   */
 
-  private void handleFallbacks(Map<Integer, String> rowToNode, Map<String, Integer> degMag, List<Link> linkTrace, 
-                                HashSet<String> seen, List<String> retval) { 
-    String nextBest = getHighestDegreeRemaining(rowToNode, seen, degMag);
+  private void handleFallbacks(Map<Integer, NID.WithName> rowToNode, Map<Integer, Integer> degMag, List<Link> linkTrace, 
+                                HashSet<Integer> seen, List<Integer> retval) { 
+    Integer nextBest = getHighestDegreeRemaining(rowToNode, seen, degMag);
     if (nextBest != null) {        
       retval.add(nextBest);
       seen.add(nextBest);
-      linkTrace.add(new Link(nextBest, nextBest));
+      linkTrace.add(new Link(nextBest.toString(), nextBest.toString()));
     } else {
       // Nodes not connected need to be flushed
-      TreeSet<String> remainingTargs = new TreeSet<String>();
+      TreeSet<Integer> remainingTargs = new TreeSet<Integer>();
       Iterator<Integer> rtkit = rowToNode.keySet().iterator();
       while (rtkit.hasNext()) {       
         Integer row = rtkit.next();
-        remainingTargs.add(row.toString());
+        remainingTargs.add(row);
       }       
       remainingTargs.removeAll(retval);
-      Iterator<String> rtit = remainingTargs.iterator();
+      Iterator<Integer> rtit = remainingTargs.iterator();
       while (rtit.hasNext()) {
-        String rTrg = rtit.next();
+        Integer rTrg = rtit.next();
         retval.add(rTrg);
-        linkTrace.add(new Link(rTrg, rTrg));
+        linkTrace.add(new Link(rTrg.toString(), rTrg.toString()));
       }
     }
     return;
@@ -653,18 +658,18 @@ public class NodeSimilarityLayout {
   ** When we run out of connected nodes, go get the best one remaining
   */
 
-  private String getHighestDegreeRemaining(Map<Integer, String> rowToNode, Set<String> seen, Map<String, Integer> degMag) { 
-    String maxDegNode = null;
+  private Integer getHighestDegreeRemaining(Map<Integer, NID.WithName> rowToNode, Set<Integer> seen, Map<Integer, Integer> degMag) { 
+    Integer maxDegNode = null;
     String maxDegNodeName = null;
     Integer maxDegDeg = null;
-    Iterator<String> degIt = degMag.keySet().iterator();
+    Iterator<Integer> degIt = degMag.keySet().iterator();
     while (degIt.hasNext()) {       
-      String cand = degIt.next();
+      Integer cand = degIt.next();
       if (seen.contains(cand)) {
         continue;
       }
       Integer degVal = degMag.get(cand);
-      String n4r = rowToNode.get(Integer.valueOf(cand));
+      String n4r = rowToNode.get(cand).getName();
       boolean gtCon = (maxDegDeg == null) || (maxDegDeg.intValue() < degVal.intValue());
       boolean eqCon = (maxDegDeg != null) && (maxDegDeg.intValue() == degVal.intValue());
       boolean ltName = (maxDegNodeName == null) || (maxDegNodeName.compareToIgnoreCase(n4r) > 0);
@@ -683,14 +688,14 @@ public class NodeSimilarityLayout {
   ** Utility conversion
   */
 
-  public List<String> convertOrder(BioFabricNetwork bfn, List<String> orderedStringRows) { 
-    ArrayList<String> retval = new ArrayList<String>();
+  public List<NID.WithName> convertOrder(BioFabricNetwork bfn, List<String> orderedStringRows) { 
+    ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
     int numOsr = orderedStringRows.size();
     for (int i = 0; i < numOsr; i++) {
       String sval = orderedStringRows.get(i);
       try {
         Integer intval = Integer.valueOf(sval);
-        retval.add(bfn.getNodeForRow(intval));
+        retval.add(bfn.getNodeIDForRow(intval));
       } catch (NumberFormatException nfex) {
         throw new IllegalStateException();
       }
@@ -703,17 +708,12 @@ public class NodeSimilarityLayout {
   ** Utility conversion
   */
 
-  public Map<String, String> convertOrderToMap(BioFabricNetwork bfn, List<String> orderedStringRows) { 
-    HashMap<String, String> retval = new HashMap<String, String>();
+  public Map<NID.WithName, Integer> convertOrderToMap(BioFabricNetwork bfn, List<Integer> orderedStringRows) { 
+    HashMap<NID.WithName, Integer> retval = new HashMap<NID.WithName, Integer>();
     int numOsr = orderedStringRows.size();
     for (int i = 0; i < numOsr; i++) {
-      String sval = orderedStringRows.get(i);
-      try {
-        Integer intval = Integer.valueOf(sval);
-        retval.put(bfn.getNodeForRow(intval).toUpperCase(), Integer.toString(i));
-      } catch (NumberFormatException nfex) {
-        throw new IllegalStateException();
-      }
+      Integer intval = orderedStringRows.get(i);
+      retval.put(bfn.getNodeIDForRow(intval), Integer.valueOf(i));
     }
     return (retval);
   }
@@ -723,12 +723,12 @@ public class NodeSimilarityLayout {
   ** Utility conversion
   */
 
-  public void orderToMaps(List<String> orderedStringRows, Map<Integer, Integer> forward, Map<Integer, Integer> backward) { 
+  public void orderToMaps(List<Integer> orderedStringRows, Map<Integer, Integer> forward, Map<Integer, Integer> backward) { 
     int numOsr = orderedStringRows.size();
     for (int i = 0; i < numOsr; i++) {
-      String sval = orderedStringRows.get(i);
+      Integer sval = orderedStringRows.get(i);
       try {
-        Integer newPos = Integer.valueOf(sval);
+        Integer newPos = sval;
         Integer oldPos = Integer.valueOf(i);
         forward.put(oldPos, newPos);
         backward.put(newPos, oldPos);
@@ -845,7 +845,7 @@ public class NodeSimilarityLayout {
   */
 
   public ClusterPrep setupForResort(BioFabricNetwork bfn, SortedMap<Integer, SortedSet<Integer>> connVec, 
-                                    List<String> orderedStringRows, SortedMap<Integer, Double> rankings) {
+                                    List<Integer> orderedStringRows, SortedMap<Integer, Double> rankings) {
 
     ClusterPrep retval = new ClusterPrep(orderedStringRows.size()); 
  
@@ -892,7 +892,7 @@ public class NodeSimilarityLayout {
   ** Resort to group shapes:
   */
 
-  public List<String> resort(ClusterPrep prep, BTProgressMonitor monitor, double startFrac, double endFrac) 
+  public List<Integer> resort(ClusterPrep prep, BTProgressMonitor monitor, double startFrac, double endFrac) 
                                throws AsynchExitRequestException { 
 
     /*
@@ -1021,12 +1021,12 @@ public class NodeSimilarityLayout {
     // Convert and leave:
     //
     
-    ArrayList<String> retval = new ArrayList<String>();
+    ArrayList<Integer> retval = new ArrayList<Integer>();
     Iterator<Integer> o2nit = prep.oldToNew.values().iterator();
     while (o2nit.hasNext()) {
       Integer newRow = o2nit.next();
       Integer mappedRow = results.get(newRow);
-      retval.add(mappedRow.toString());
+      retval.add(mappedRow);
     }
     return (retval);
   } 
@@ -1160,7 +1160,7 @@ public class NodeSimilarityLayout {
       xBuf.clear();
       xBuf.addAll(curve.keySet());
       MinMax bounds = DataUtil.boundingInts(xBuf, xVal.intValue());
-      boolean areDiff = AffineCombination.getWeights(bounds.min, bounds.max, xVal.doubleValue(), weights);
+      boolean areDiff = getWeights(bounds.min, bounds.max, xVal.doubleValue(), weights);
       if (areDiff) {        
         Integer mappedEndLo = Integer.valueOf(bounds.min);
         Integer mappedEndHi = Integer.valueOf(bounds.max);
@@ -1182,10 +1182,10 @@ public class NodeSimilarityLayout {
   
   static class DoubleRanked  {
      double rank;
-     String id;
+     Integer id;
      Link byLink;
 
-    DoubleRanked(double rank, String id, Link byLink) {
+    DoubleRanked(double rank, Integer id, Link byLink) {
       this.rank = rank;
       this.id = id;
       this.byLink = byLink;
@@ -1293,5 +1293,22 @@ public class NodeSimilarityLayout {
       passCount = 10;
       terminateAtIncrease = false;    
     }
-  }   
+  }
+  
+  /***************************************************************************
+  **
+  ** Affine coords in a single dimension
+  */
+  
+  private boolean getWeights(double val1, double val2, double calcForVal, double[] toFill) {
+    if (val1 == val2) {
+      return (false);
+    }
+    toFill[0] = (calcForVal - val2) / (val1 - val2);
+    toFill[1] = 1.0 - toFill[0];
+    return (true);
+  }
+  
+  
+  
 }

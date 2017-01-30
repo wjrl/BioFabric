@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -34,6 +34,7 @@ import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
 **
@@ -96,9 +97,9 @@ public class ProcessWorldBankCSV {
   ** Relayout the network!
   */
   
-  public List<String> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd) {
+  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd) {
     
-    List<String> targets = calcNodeOrder(rbd.allLinks, rbd.loneNodes);       
+    List<NID.WithName> targets = calcNodeOrder(rbd.allLinks, rbd.loneNodeIDs);       
 
     //
     // Now have the ordered list of targets we are going to display.
@@ -114,7 +115,7 @@ public class ProcessWorldBankCSV {
   ** Bump count
   */
 
-  public void bumpDaCount(Map<String, Integer> countMap, String dNode) {    
+  public void bumpDaCount(Map<NID.WithName, Integer> countMap, NID.WithName dNode) {    
     Integer inc = countMap.get(dNode);
     if (inc == null) {
       countMap.put(dNode, Integer.valueOf(1));
@@ -129,10 +130,10 @@ public class ProcessWorldBankCSV {
   ** Track neighbors
   */
 
-  public void addANeighbor(Map<String, SortedSet<String>> neighMap, String daNode, String daNeigh) {    
-    SortedSet<String> forNode = neighMap.get(daNode);
+  public void addANeighbor(Map<NID.WithName, SortedSet<NID.WithName>> neighMap, NID.WithName daNode, NID.WithName daNeigh) {    
+    SortedSet<NID.WithName> forNode = neighMap.get(daNode);
     if (forNode == null) {
-      forNode = new TreeSet<String>();
+      forNode = new TreeSet<NID.WithName>();
       neighMap.put(daNode, forNode);
     }
     forNode.add(daNeigh);
@@ -144,15 +145,15 @@ public class ProcessWorldBankCSV {
   ** Invert a map
   */
 
-  public SortedMap<Integer, SortedSet<String>> invertDaCount(Map<String, Integer> countMap) { 
-    TreeMap<Integer, SortedSet<String>> retval = new TreeMap<Integer, SortedSet<String>>(Collections.reverseOrder());
-    Iterator<String> cmit = countMap.keySet().iterator();
+  public SortedMap<Integer, SortedSet<NID.WithName>> invertDaCount(Map<NID.WithName, Integer> countMap) { 
+    TreeMap<Integer, SortedSet<NID.WithName>> retval = new TreeMap<Integer, SortedSet<NID.WithName>>(Collections.reverseOrder());
+    Iterator<NID.WithName> cmit = countMap.keySet().iterator();
     while (cmit.hasNext()) {
-      String daKey = cmit.next();
+      NID.WithName daKey = cmit.next();
       Integer daCount = countMap.get(daKey);
-      SortedSet<String> forCount = retval.get(daCount);
+      SortedSet<NID.WithName> forCount = retval.get(daCount);
       if (forCount == null) {
-        forCount = new TreeSet<String>();
+        forCount = new TreeSet<NID.WithName>();
         retval.put(daCount, forCount);
       }
       forCount.add(daKey);
@@ -165,9 +166,9 @@ public class ProcessWorldBankCSV {
   ** Flatten a map
   */
 
-  public List<String> flattenDaCount(SortedMap<Integer, SortedSet<String>> invCountMap) { 
-    ArrayList<String> retval = new ArrayList<String>();
-    Iterator<SortedSet<String>> icmit = invCountMap.values().iterator();
+  public List<NID.WithName> flattenDaCount(SortedMap<Integer, SortedSet<NID.WithName>> invCountMap) { 
+    ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
+    Iterator<SortedSet<NID.WithName>> icmit = invCountMap.values().iterator();
     while (icmit.hasNext()) {
       retval.addAll(icmit.next());
     }
@@ -179,18 +180,18 @@ public class ProcessWorldBankCSV {
   ** Calculate node order
   */
 
-  public List<String> calcNodeOrder(Set<FabricLink> allLinks, Set<String> loneNodes) {    
+  public List<NID.WithName> calcNodeOrder(Set<FabricLink> allLinks, Set<NID.WithName> loneNodes) {    
  
-    ArrayList<String> targets = new ArrayList<String>();
-    HashMap<String, Integer> node2Degree = new HashMap<String, Integer>();
-    HashMap<String, SortedSet<String>> node2Neighbor = new HashMap<String, SortedSet<String>>(); 
-    HashSet<String> allNodes = new HashSet<String>();
+    ArrayList<NID.WithName> targets = new ArrayList<NID.WithName>();
+    HashMap<NID.WithName, Integer> node2Degree = new HashMap<NID.WithName, Integer>();
+    HashMap<NID.WithName, SortedSet<NID.WithName>> node2Neighbor = new HashMap<NID.WithName, SortedSet<NID.WithName>>(); 
+    HashSet<NID.WithName> allNodes = new HashSet<NID.WithName>();
     
     Iterator<FabricLink> alit = allLinks.iterator();
     while (alit.hasNext()) {
       FabricLink nextLink = alit.next();
-      String source = nextLink.getSrc();
-      String target = nextLink.getTrg();
+      NID.WithName source = nextLink.getSrcID();
+      NID.WithName target = nextLink.getTrgID();
  
       allNodes.add(source);
       allNodes.add(target);
@@ -202,22 +203,22 @@ public class ProcessWorldBankCSV {
       addANeighbor(node2Neighbor, target, source);
     }
     
-    SortedMap<Integer, SortedSet<String>> degree2Nodes = invertDaCount(node2Degree);
+    SortedMap<Integer, SortedSet<NID.WithName>> degree2Nodes = invertDaCount(node2Degree);
      
     //
     // For nodes that have one neighbor, collect those popular neighbors:
     //
     
-    HashMap<String, Set<String>> oneNeighbor = new HashMap<String, Set<String>>();
-    Iterator<String> nit = node2Neighbor.keySet().iterator();
+    HashMap<NID.WithName, Set<NID.WithName>> oneNeighbor = new HashMap<NID.WithName, Set<NID.WithName>>();
+    Iterator<NID.WithName> nit = node2Neighbor.keySet().iterator();
     while (nit.hasNext()) {
-      String node = nit.next();
-      SortedSet<String> nextDoor = node2Neighbor.get(node);
+      NID.WithName node = nit.next();
+      SortedSet<NID.WithName> nextDoor = node2Neighbor.get(node);
       if (nextDoor.size() == 1) {        
-        String popular = nextDoor.first();
-        Set<String> popFriends = oneNeighbor.get(popular);
+        NID.WithName popular = nextDoor.first();
+        Set<NID.WithName> popFriends = oneNeighbor.get(popular);
         if (popFriends == null) {
-          popFriends = new HashSet<String>();
+          popFriends = new HashSet<NID.WithName>();
           oneNeighbor.put(popular, popFriends);
         }
         popFriends.add(node);
@@ -227,35 +228,35 @@ public class ProcessWorldBankCSV {
     Iterator<Integer> degit = degree2Nodes.keySet().iterator();
     while (degit.hasNext()) {
       Integer deg = degit.next();
-      SortedSet<String> forDeg = degree2Nodes.get(deg);
-      Iterator<String> fdit = forDeg.iterator();
+      SortedSet<NID.WithName> forDeg = degree2Nodes.get(deg);
+      Iterator<NID.WithName> fdit = forDeg.iterator();
       while (fdit.hasNext()) {
-        String degNode = fdit.next();
+        NID.WithName degNode = fdit.next();
         if (oneNeighbor.keySet().contains(degNode)) {
           targets.add(degNode);
-          HashMap<String, Integer> forDaPop = new HashMap<String, Integer>();
-          Set<String> unpopFriends = oneNeighbor.get(degNode);
-          Iterator<String> upfit = unpopFriends.iterator();
+          HashMap<NID.WithName, Integer> forDaPop = new HashMap<NID.WithName, Integer>();
+          Set<NID.WithName> unpopFriends = oneNeighbor.get(degNode);
+          Iterator<NID.WithName> upfit = unpopFriends.iterator();
           while (upfit.hasNext()) {
-            String unPop = upfit.next();
+            NID.WithName unPop = upfit.next();
             Integer upd = node2Degree.get(unPop);
             forDaPop.put(unPop, upd);            
           }
-          SortedMap<Integer, SortedSet<String>> invFor = invertDaCount(forDaPop);
+          SortedMap<Integer, SortedSet<NID.WithName>> invFor = invertDaCount(forDaPop);
           targets.addAll(flattenDaCount(invFor));         
         }
       }
     }
         
-    HashSet<String> stillToPlace = new HashSet<String>(allNodes);
+    HashSet<NID.WithName> stillToPlace = new HashSet<NID.WithName>(allNodes);
     stillToPlace.removeAll(targets);
 
-    Iterator<SortedSet<String>> icmit = degree2Nodes.values().iterator();
+    Iterator<SortedSet<NID.WithName>> icmit = degree2Nodes.values().iterator();
     while (icmit.hasNext()) {
-      SortedSet<String> fdeg = icmit.next();
-      Iterator<String> fdit = fdeg.iterator();
+      SortedSet<NID.WithName> fdeg = icmit.next();
+      Iterator<NID.WithName> fdit = fdeg.iterator();
       while (fdit.hasNext()) {
-        String chkNode = fdit.next();
+        NID.WithName chkNode = fdit.next();
         if (stillToPlace.contains(chkNode)) {
           targets.add(chkNode);
         }
@@ -268,9 +269,9 @@ public class ProcessWorldBankCSV {
     // we drop it:
     //
     
-    HashSet<String> remains = new HashSet<String>(loneNodes);
+    HashSet<NID.WithName> remains = new HashSet<NID.WithName>(loneNodes);
     remains.removeAll(targets);
-    targets.addAll(new TreeSet<String>(remains));
+    targets.addAll(new TreeSet<NID.WithName>(remains));
     return (targets);
   } 
 }

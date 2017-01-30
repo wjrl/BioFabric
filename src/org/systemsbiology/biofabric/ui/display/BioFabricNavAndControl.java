@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2011 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -24,10 +24,6 @@ import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.GridLayout;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -100,8 +96,17 @@ public class BioFabricNavAndControl extends JPanel {
     bfo_ = new BioFabricOverview();
     fmt_.setFabricOverview(bfo_);
     
+    // This is a new feature that has no place to live, and no UI to install the needed data.
+    // It was used for showing brain region images corresponding to nodes in a demo. When the
+    // user runs the mouse over a node, it would show an image corresponding to a node. Over a link,
+    // the images corresponding to endpoints. One place to put this is to let the user choose whether
+    // to show the tour panel or the overview. It will need the user to provide the location of where
+    // to find the image files, plus the filename pieces before and after the node name.
+    //
     mvo_ = new MouseOverView();
-    
+    mvo_.setIsAlive(false); 
+    mvo_.setFileLocations("path", "filePrefix", "fileSuffix");
+   
     JPanel fopan = new JPanel();
     fopan.setLayout(new BorderLayout());
     fopan.setBorder(new LineBorder(Color.black, 2));
@@ -117,12 +122,15 @@ public class BioFabricNavAndControl extends JPanel {
     fnt_ = lfnt_.getFabricNavTool();
      
     spot_ = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, fopan, lfnt_);
-    //JPanel dmvo = new JPanel();
-   // dmvo.setLayout(new GridLayout(1, 2));
-   // dmvo.add(mvo_.getPanel(0));
-   // dmvo.add(mvo_.getPanel(1));
-  
-    //spot_ = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, fopan, dmvo);
+    
+    // See above comment about new mvo_ option. This is the code to directly replace the tour with the
+    // mouse overview.
+    // JPanel dmvo = new JPanel();
+    // dmvo.setLayout(new GridLayout(1, 2));
+    // dmvo.add(mvo_.getPanel(0));
+    // dmvo.add(mvo_.getPanel(1));
+    // spot_ = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, fopan, dmvo);
+    
     spot_.setBorder(new EmptyBorder(0,0,0,0));
     spot_.setResizeWeight(1.0);
 
@@ -202,7 +210,6 @@ public class BioFabricNavAndControl extends JPanel {
       spot_.setEnabled(true);
       lfnt_.setToBlank(!show);
       double need = (double)(spot_.getWidth() - lfnt_.getMinimumSize().width) / (double)spot_.getWidth();
-      System.out.println("ret " + savedSplitFrac_ + " " + spot_.getWidth() + " " + need + " " + lfnt_.getMinimumSize().width);
       spot_.setDividerLocation(Math.min(savedSplitFrac_, need));
       if (lfnt_.getMinimumSize().height > this.getHeight()) {
         return (true);
@@ -211,7 +218,6 @@ public class BioFabricNavAndControl extends JPanel {
       lfnt_.setToBlank(!show);
       int lastLoc = spot_.getDividerLocation();
       savedSplitFrac_ = (double)lastLoc / (double)spot_.getWidth();
-      System.out.println(lastLoc + " " + spot_.getWidth() + " " + savedSplitFrac_);
       spot_.setDividerLocation(1.0);
       spot_.setEnabled(false);
     }

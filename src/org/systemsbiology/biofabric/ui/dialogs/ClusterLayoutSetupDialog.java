@@ -26,6 +26,7 @@ import java.io.File;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -39,8 +40,10 @@ import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
+import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
+import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.TrueObjChoiceContent;
 
@@ -70,7 +73,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
   private JComboBox interCombo_;
   private JComboBox cLayoutCombo_;
   private JCheckBox saveAssignBox_;
-  private String currSel_;
+  private NID.WithName currSel_;
   private JLabel nameLabel_;
   private JTextField userName_;
   private BioFabricNetwork bfn_;
@@ -88,7 +91,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
   ** Constructor 
   */ 
   
-  public ClusterLayoutSetupDialog(JFrame parent, BioFabricNetwork bfn, String selNode) {     
+  public ClusterLayoutSetupDialog(JFrame parent, BioFabricNetwork bfn, NID.WithName selNode) {     
     super(parent, "nodeClusterLayout.title", new Dimension(600, 350), 2);
     results_ = null;
     bfn_ = bfn;
@@ -134,7 +137,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
       }
     });
     
-    userName_ = new JTextField((currSel_ == null) ? "" : currSel_.trim());
+    userName_ = new JTextField((currSel_ == null) ? "" : currSel_.getName().trim());
     nameLabel_ = new JLabel("bFirst.selectName");
  //   userName_.setEnabled(userSpec_.isSelected());
    // nameLabel_.setEnabled(userSpec_.isSelected());   
@@ -200,7 +203,10 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
     String selName = userName_.getText();
     if ((selName != null) && !selName.trim().equals("")) {
     	String cand = selName.trim();
-    	if (bfn_.getNodeDefinition(cand) == null) {
+    	Map<String, Set<NID.WithName>> nn2ids = bfn_.getNormNameToIDs();
+      Map<String, NID.WithName> nn2id = BioFabricNetwork.reduceNameSetToOne(nn2ids);
+      NID.WithName nidCand = nn2id.get(DataUtil.normKey(cand));
+    	if (bfn_.getNodeDefinition(nidCand) == null) {
         ResourceManager rMan = ResourceManager.getManager();
         JOptionPane.showMessageDialog(parent_, 
                                       rMan.getString("nodeClusterLayout.nodeDoesNotExist"),
@@ -208,7 +214,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
                                       JOptionPane.ERROR_MESSAGE);
         return (false);
     	}
-    	results_.startNode = cand;
+    	results_.startNode = nidCand;
     } else {
     	results_.startNode = null;
     }
@@ -279,7 +285,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
     if (file == null) {
       return (true);
     }
-    Map<AttributeLoader.AttributeKey, String> nodeAttributes = cset.loadTheFile(file, true);
+    Map<AttributeLoader.AttributeKey, String> nodeAttributes = cset.loadTheFile(file, null, true);
     if (nodeAttributes == null) {
       return (false);
     }
@@ -289,9 +295,9 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
     //
     
     HashSet<AttributeLoader.AttributeKey> asUpper = new HashSet<AttributeLoader.AttributeKey>();
-    Iterator<String> rttvit = bfn.getNodeSet().iterator();
+    Iterator<NID.WithName> rttvit = bfn.getNodeSetIDs().iterator();
     while (rttvit.hasNext()) {
-      asUpper.add(new AttributeLoader.StringKey(rttvit.next().toUpperCase()));
+      asUpper.add(new AttributeLoader.StringKey(rttvit.next().getName()));
     }
     if (!asUpper.equals(new HashSet<AttributeLoader.AttributeKey>(nodeAttributes.keySet()))) {
       ResourceManager rMan = ResourceManager.getManager();
@@ -300,7 +306,9 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
                                     JOptionPane.WARNING_MESSAGE);
       return (false);
     }
-    params.install(nodeAttributes);
+    Map<String, Set<NID.WithName>> nn2ids = bfn.getNormNameToIDs();
+    Map<String, NID.WithName> nn2id = BioFabricNetwork.reduceNameSetToOne(nn2ids);
+    params.install(nodeAttributes, nn2id);
     return (true);
   }
 }

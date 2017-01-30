@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
 **
@@ -52,9 +53,9 @@ public class CycleFinder {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  private Set<String> nodes_;
+  private Set<NID.WithName> nodes_;
   private Set<FabricLink> links_;
-  private HashMap<String, Set<FabricLink>> linksForNode_;  
+  private HashMap<NID.WithName, Set<FabricLink>> linksForNode_;  
   private Integer white_;
   private Integer grey_;
   private Integer black_;
@@ -70,17 +71,17 @@ public class CycleFinder {
   ** Constructor
   */
 
-  public CycleFinder(Set<String> nodes, Set<FabricLink> links) {
+  public CycleFinder(Set<NID.WithName> nodes, Set<FabricLink> links) {
     nodes_ = nodes;
     links_ = links;
-    linksForNode_ = new HashMap<String, Set<FabricLink>>();
+    linksForNode_ = new HashMap<NID.WithName, Set<FabricLink>>();
     Iterator<FabricLink> lit = links_.iterator();
     while (lit.hasNext()) {
       FabricLink link = lit.next();
-      Set<FabricLink> linksForSrc = linksForNode_.get(link.getSrc());
+      Set<FabricLink> linksForSrc = linksForNode_.get(link.getSrcID());
       if (linksForSrc == null) {
         linksForSrc = new HashSet<FabricLink>();
-        linksForNode_.put(link.getSrc(), linksForSrc);
+        linksForNode_.put(link.getSrcID(), linksForSrc);
       }
       linksForSrc.add(link);
     }
@@ -106,10 +107,10 @@ public class CycleFinder {
     // Color vertices white:
     //
     
-    HashMap<String, Integer> colors = new HashMap<String, Integer>();
-    Iterator<String> vit = nodes_.iterator();
+    HashMap<NID.WithName, Integer> colors = new HashMap<NID.WithName, Integer>();
+    Iterator<NID.WithName> vit = nodes_.iterator();
     while (vit.hasNext()) {
-      String node = vit.next();
+      NID.WithName node = vit.next();
       colors.put(node, white_);
     }
     
@@ -119,7 +120,7 @@ public class CycleFinder {
     
     vit = nodes_.iterator();
     while (vit.hasNext()) {
-      String node = vit.next();
+      NID.WithName node = vit.next();
       Integer color = colors.get(node);
       if (color.equals(white_)) {
         if (visit(node, colors)) {
@@ -136,18 +137,18 @@ public class CycleFinder {
   ** Visit a node.  Return true if a cycle
   */
 
-  private boolean visit(String vertex, Map<String, Integer> colors) {
+  private boolean visit(NID.WithName vertex, Map<NID.WithName, Integer> colors) {
     colors.put(vertex, grey_);
     Set<FabricLink> linksForVertex = linksForNode_.get(vertex);
     if (linksForVertex != null) {
       Iterator<FabricLink> lit = linksForVertex.iterator();
       while (lit.hasNext()) {
         FabricLink link = lit.next();
-        Integer targColor = colors.get(link.getTrg());
+        Integer targColor = colors.get(link.getTrgID());
         if (targColor.equals(grey_)) {
           return (true);
         } else if (targColor.equals(white_)) {
-          if (visit(link.getTrg(), colors)) {
+          if (visit(link.getTrgID(), colors)) {
             return (true);
           }
         }

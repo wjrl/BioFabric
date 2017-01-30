@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -39,6 +39,8 @@ import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.util.MinMax;
+import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -120,7 +122,6 @@ public class PaintCache {
   */
   
   public boolean needToPaint() {
-  	System.out.println("paint paths = " + paintPaths_.size());
     return (!paintPaths_.isEmpty());
   }
   
@@ -172,8 +173,8 @@ public class PaintCache {
   */
   
   public void buildObjCache(List<BioFabricNetwork.NodeInfo> targets, List<BioFabricNetwork.LinkInfo> links, 
-                            boolean shadeNodes, boolean showShadows, Map<String, Rectangle2D> nameMap, 
-                            Map<String, Rectangle2D> drainMap) {
+                            boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
+                            Map<NID.WithName, Rectangle2D> drainMap) {
     paintPaths_.clear();
     FontRenderContext frc = new FontRenderContext(new AffineTransform(), true, true);
    
@@ -297,8 +298,8 @@ public class PaintCache {
   private void buildALineHorz(BioFabricNetwork.NodeInfo target, List<PaintedPath> preCache, 
                               List<PaintedPath> objCache, List<PaintedPath> postPostCache, FontRenderContext frc, 
                               FabricColorGenerator colGen, Map<Integer, MinMax> linkExtents, 
-                              boolean shadeNodes, boolean showShadows, Map<String, Rectangle2D> nameMap, 
-                              Map<String, Rectangle2D> drainMap) {
+                              boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
+                              Map<NID.WithName, Rectangle2D> drainMap) {
         
     //
     // Drain zone sizing / rotation:
@@ -311,27 +312,27 @@ public class PaintCache {
     MinMax dzmm = target.getDrainZone(showShadows);
     if (dzmm != null) {
       diff = dzmm.max - dzmm.min;      
-      Rectangle2D bounds = huge_.getStringBounds(target.nodeName, frc);
+      Rectangle2D bounds = huge_.getStringBounds(target.getNodeName(), frc);
       if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * diff)) {
         useFont = 0;
         dumpRect = bounds;
       } else {
-        bounds = med_.getStringBounds(target.nodeName, frc);
+        bounds = med_.getStringBounds(target.getNodeName(), frc);
         if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * diff)) {
           useFont = 1;
           dumpRect = bounds;
         } else {
-          bounds = medSmall_.getStringBounds(target.nodeName, frc);
+          bounds = medSmall_.getStringBounds(target.getNodeName(), frc);
           if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * diff)) {
             useFont = 2;
             dumpRect = bounds;
           } else {
-            bounds = small_.getStringBounds(target.nodeName, frc);
+            bounds = small_.getStringBounds(target.getNodeName(), frc);
             if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * diff)) {
               useFont = 3;
               dumpRect = bounds;
             } else {
-              bounds = tiny_.getStringBounds(target.nodeName, frc);
+              bounds = tiny_.getStringBounds(target.getNodeName(), frc);
               if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * diff)) {
                 useFont = 4;
                 dumpRect = bounds;
@@ -356,7 +357,7 @@ public class PaintCache {
     // Node label sizing and Y:
     //
     
-    Rectangle2D labelBounds = tiny_.getStringBounds(target.nodeName, frc);
+    Rectangle2D labelBounds = tiny_.getStringBounds(target.getNodeName(), frc);
     // Easiest font height hack is to scale it by ~.67: 
     double scaleHeight = labelBounds.getHeight() * LABEL_FONT_HEIGHT_SCALE_;
     float namey = (target.nodeRow * BioFabricPanel.GRID_SIZE) + (float)(scaleHeight / 2.0);
@@ -368,9 +369,9 @@ public class PaintCache {
     //
     
     if ((colmm.max == Integer.MIN_VALUE) || (colmm.min == Integer.MAX_VALUE)) {
-      objCache.add(new PaintedPath(Color.BLACK, target.nodeName, 100.0F, namey, 100.0F, tnamey, 
+      objCache.add(new PaintedPath(Color.BLACK, target.getNodeName(), 100.0F, namey, 100.0F, tnamey, 
                                    doRotateName, useFont, labelBounds, dumpRect));
-      nameMap.put(target.nodeName.toUpperCase(), (Rectangle2D)labelBounds.clone());
+      nameMap.put(target.getNodeIDWithName(), (Rectangle2D)labelBounds.clone());
       return;
     }
 
@@ -405,10 +406,10 @@ public class PaintCache {
     
     if (useFont == 4) {
       
-      postPostCache.add(new PaintedPath(Color.BLACK, target.nodeName, namex, namey, tnamex, tnamey, 
+      postPostCache.add(new PaintedPath(Color.BLACK, target.getNodeName(), namex, namey, tnamex, tnamey, 
                                    doRotateName, useFont, labelBounds, dumpRect));
     } else {
-      objCache.add(new PaintedPath(Color.BLACK, target.nodeName, namex, namey, tnamex, tnamey, 
+      objCache.add(new PaintedPath(Color.BLACK, target.getNodeName(), namex, namey, tnamex, tnamey, 
                                    doRotateName, useFont, labelBounds, dumpRect));
       
     }
@@ -421,9 +422,9 @@ public class PaintCache {
     Line2D line = new Line2D.Double(xStrt, yval, xEnd, yval);
     Color paintCol = getColorForNode(target, colGen);     
     objCache.add(new PaintedPath(paintCol, line, Integer.MIN_VALUE, yval, new MinMax(xStrt, xEnd)));
-    nameMap.put(target.nodeName.toUpperCase(), (Rectangle2D)labelBounds.clone());
+    nameMap.put(target.getNodeIDWithName(), (Rectangle2D)labelBounds.clone());
     if (dumpRect != null) {
-      drainMap.put(target.nodeName.toUpperCase(), (Rectangle2D)dumpRect.clone());
+      drainMap.put(target.getNodeIDWithName(), (Rectangle2D)dumpRect.clone());
     }    
     return;
   } 
@@ -656,7 +657,8 @@ public class PaintCache {
             }
           }
         } else if (py == Integer.MIN_VALUE) { // Vert line
-          if ((bounds == null) || ((px > bounds.x) && (px < (bounds.x + bounds.width)))) { 
+        	UiUtil.fixMePrintout("using equals here to fix seam problem. Works? Expand to all other cases");
+          if ((bounds == null) || ((px >= bounds.x) && (px <= (bounds.x + bounds.width)))) { 
             if ((bounds != null) && ((range.max < bounds.y) || (range.min > (bounds.y + bounds.height)))) {
               // do nothing
             } else {

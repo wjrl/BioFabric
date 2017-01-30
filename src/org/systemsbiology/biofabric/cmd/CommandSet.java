@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -55,7 +55,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -63,14 +62,10 @@ import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.Box;
 import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JComboBox;
 import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JMenu;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -89,10 +84,6 @@ import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.event.SelectionChangeListener;
-import org.systemsbiology.biofabric.gaggle.FabricGooseInterface;
-import org.systemsbiology.biofabric.gaggle.FabricGooseManager;
-import org.systemsbiology.biofabric.gaggle.InboundGaggleOp;
-import org.systemsbiology.biofabric.gaggle.SelectionSupport;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.io.FabricSIFLoader;
@@ -104,7 +95,6 @@ import org.systemsbiology.biofabric.layouts.HierDAGLayout;
 import org.systemsbiology.biofabric.layouts.ProcessWorldBankCSV;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.model.BioFabricNetwork.LayoutMode;
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.SUParser;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -133,9 +123,10 @@ import org.systemsbiology.biofabric.util.FileExtensionFilters;
 import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.InvalidInputException;
-import org.systemsbiology.biofabric.util.ObjChoiceContent;
+import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
+import org.systemsbiology.biofabric.util.UniqueLabeller;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 /****************************************************************************
@@ -193,14 +184,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public static final int BUILD_SELECT        = 15;
   public static final int SET_DISPLAY_OPTIONS = 16;
   
-  public static final int GAGGLE_GOOSE_UPDATE    = 17;
-  public static final int GAGGLE_RAISE_GOOSE     = 18;
-  public static final int GAGGLE_LOWER_GOOSE     = 19;
-  public static final int GAGGLE_SEND_NETWORK    = 20;
-  public static final int GAGGLE_SEND_NAMELIST   = 21;
-  public static final int GAGGLE_PROCESS_INBOUND = 22; 
-  public static final int GAGGLE_CONNECT         = 23; 
-  public static final int GAGGLE_DISCONNECT      = 24;
+  // Former Gaggle Commands 17-24 dropped
+  
   public static final int ABOUT                  = 25;
   public static final int CENTER_ON_NEXT_SELECTION = 26;  
   public static final int CENTER_ON_PREVIOUS_SELECTION = 27;  
@@ -247,13 +232,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   private BioFabricApplication bfa_;
   private BioFabricPanel bfp_;
   private File currentFile_;
-  private JButton gaggleButton_;
-  private JButton gaggleUpdateGooseButton_;
-  private Color gaggleButtonOffColor_;
   private boolean isAMac_;
-  private JMenu gaggleGooseChooseMenu_;
-  private JComboBox gaggleGooseCombo_;
-  private boolean managingGaggleControls_;
   private boolean isForMain_;
   private boolean showNav_;
   
@@ -389,115 +368,6 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
   /***************************************************************************
   **
-  ** Hold gaggle button data
-  */ 
-  
-  public void setGaggleButtons(JButton button, JButton gooseButton, Color defaultColor) {
-    gaggleButton_ = button;
-    gaggleButtonOffColor_ = defaultColor;
-    gaggleUpdateGooseButton_ = gooseButton;
-    return;
-  }  
-  
-  /***************************************************************************
-  **
-  ** Call to let us know gaggle buttons need work.
-  */    
-  
-  public void triggerGaggleState(int whichAction, boolean activate) {
-    if (whichAction == GAGGLE_PROCESS_INBOUND) {
-      GaggleProcessInbound gpi = (GaggleProcessInbound)withIcons_.get(Integer.valueOf(GAGGLE_PROCESS_INBOUND));
-      gpi.setButtonCondition(activate);
-    } else if (whichAction == GAGGLE_GOOSE_UPDATE) {
-      GaggleUpdateGeese gug = (GaggleUpdateGeese)withIcons_.get(Integer.valueOf(GAGGLE_GOOSE_UPDATE));
-      gug.setButtonCondition(activate);
-    } else {
-      throw new IllegalArgumentException();
-    }
-    return;
-  } 
-  
-  /***************************************************************************
-  **
-  ** Update the controls for gaggle 
-  */ 
-    
-  public void updateGaggleTargetActions() {
-    FabricGooseInterface goose = FabricGooseManager.getManager().getGoose();
-    if ((goose != null) && goose.isActivated()) {
-      managingGaggleControls_ = true;
-      SelectionSupport ss = goose.getSelectionSupport();
-      List targets = ss.getGooseList();
-      int numTarg = targets.size();
-      
-      if (gaggleGooseChooseMenu_ != null) {
-        gaggleGooseChooseMenu_.removeAll();
-        SetCurrentGaggleTargetAction scupa = new SetCurrentGaggleTargetAction(FabricGooseInterface.BOSS_NAME, 0); 
-        JCheckBoxMenuItem jcb = new JCheckBoxMenuItem(scupa);
-        gaggleGooseChooseMenu_.add(jcb);   
-      }
-
-      if (gaggleGooseCombo_ != null) {
-        gaggleGooseCombo_.removeAllItems();
-        gaggleGooseCombo_.addItem(new ObjChoiceContent(FabricGooseInterface.BOSS_NAME, FabricGooseInterface.BOSS_NAME)); 
-      }
-
-      for (int i = 0; i < numTarg; i++) {
-        String gooseName = (String)targets.get(i);
-        ObjChoiceContent occ = new ObjChoiceContent(gooseName, gooseName);
-        if (gaggleGooseChooseMenu_ != null) {
-          SetCurrentGaggleTargetAction scupa = new SetCurrentGaggleTargetAction(occ.val, i + 1); 
-          JCheckBoxMenuItem jcb = new JCheckBoxMenuItem(scupa);
-          gaggleGooseChooseMenu_.add(jcb);
-        }
-        if (gaggleGooseCombo_ != null) {
-          gaggleGooseCombo_.addItem(occ);
-        }      
-      }
-      
-      if (gaggleGooseChooseMenu_ != null) {        
-        JCheckBoxMenuItem jcbmi = (JCheckBoxMenuItem)gaggleGooseChooseMenu_.getItem(0);
-        jcbmi.setSelected(true);
-      }
-
-      if (gaggleGooseCombo_ != null) {
-        gaggleGooseCombo_.setSelectedIndex(0); 
-        gaggleGooseCombo_.invalidate();
-        gaggleGooseCombo_.validate(); 
-      }
-      
-      managingGaggleControls_ = false;
-    }
-    return;
-  }  
-
-  /***************************************************************************
-  **
-  ** Update the controls for user paths
-  */ 
-    
-  public void setCurrentGaggleTarget(int index) {
-    managingGaggleControls_ = true;
-    
-    if (gaggleGooseChooseMenu_ != null) {
-      int numUpm = gaggleGooseChooseMenu_.getItemCount();
-      for (int i = 0; i < numUpm; i++) {
-        JCheckBoxMenuItem jcbmi = (JCheckBoxMenuItem)gaggleGooseChooseMenu_.getItem(i);
-        jcbmi.setSelected(i == index);
-      }
-    }
-    if (gaggleGooseCombo_ != null) {
-      gaggleGooseCombo_.setSelectedIndex(index); 
-      gaggleGooseCombo_.invalidate();
-      gaggleGooseCombo_.validate(); 
-    }
-       
-    managingGaggleControls_ = false;
-    return;    
-  }   
-  
-  /***************************************************************************
-  **
   ** Command
   */ 
     
@@ -617,30 +487,6 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         case SET_DISPLAY_OPTIONS:
           retval = new SetDisplayOptionsAction(withIcon); 
           break;
-        case GAGGLE_GOOSE_UPDATE:
-          retval = new GaggleUpdateGeese(withIcon); 
-          break;
-        case GAGGLE_RAISE_GOOSE:
-          retval = new GaggleRaiseGoose(withIcon); 
-          break;            
-        case GAGGLE_LOWER_GOOSE:
-          retval = new GaggleLowerGoose(withIcon); 
-          break;              
-        case GAGGLE_SEND_NETWORK:
-          retval = new GaggleSendNetwork(withIcon); 
-          break;  
-        case GAGGLE_SEND_NAMELIST:
-          retval = new GaggleSendNameList(withIcon); 
-          break;              
-        case GAGGLE_PROCESS_INBOUND:
-          retval = new GaggleProcessInbound(withIcon); 
-          break;  
-        case GAGGLE_CONNECT:
-          retval = new GaggleConnect(withIcon, true); 
-          break;      
-        case GAGGLE_DISCONNECT:
-          retval = new GaggleConnect(withIcon, false); 
-          break; 
         case LAYOUT_NODES_VIA_ATTRIBUTES:
           retval = new LayoutNodesViaAttributesAction(withIcon); 
           break;
@@ -693,9 +539,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   ** Common load operations.  Take your pick of input sources
   */ 
     
-  private boolean loadFromSifSource(File file, Map<AttributeLoader.AttributeKey, String> nameMap, Integer magBins) {  
+  private boolean loadFromSifSource(File file, Map<AttributeLoader.AttributeKey, String> nameMap, Integer magBins, 
+  		                              UniqueLabeller idGen) {  
     ArrayList<FabricLink> links = new ArrayList<FabricLink>();
-    HashSet<String> loneNodes = new HashSet<String>();
+    HashSet<NID.WithName> loneNodes = new HashSet<NID.WithName>();
     HashMap<String, String> nodeNames = null;
     if (nameMap != null) {
       nodeNames = new HashMap<String, String>();
@@ -708,12 +555,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     if (file.length() > 500000) {
       sss = new FabricSIFLoader.SIFStats();
       BackgroundFileReader br = new BackgroundFileReader();
-      br.doBackgroundSIFRead(file, links, loneNodes, nodeNames, sss, magBins);
+      br.doBackgroundSIFRead(file, idGen, links, loneNodes, nodeNames, sss, magBins);
       return (true);
     } else {
       try { 
-        sss = (new FabricSIFLoader()).readSIF(file, links, loneNodes, nodeNames, magBins); 
-        return (finishLoadFromSIFSource(file, sss, links, loneNodes, (magBins != null)));
+        sss = (new FabricSIFLoader()).readSIF(file, idGen, links, loneNodes, nodeNames, magBins); 
+        return (finishLoadFromSIFSource(file, idGen, sss, links, loneNodes, (magBins != null)));
       } catch (IOException ioe) {
         displayFileInputError(ioe);
         return (false);              
@@ -727,9 +574,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   /***************************************************************************
   **
   ** Common load operations.
-  */ 
+  */
     
-  private boolean finishLoadFromSIFSource(File file, FabricSIFLoader.SIFStats sss, List<FabricLink> links, Set<String> loneNodes, boolean binMag) {
+  private boolean finishLoadFromSIFSource(File file, UniqueLabeller idGen, FabricSIFLoader.SIFStats sss, List<FabricLink> links, Set<NID.WithName> loneNodeIDs, boolean binMag) {
     ResourceManager rMan = ResourceManager.getManager();
     try {
       if (!sss.badLines.isEmpty()) {        
@@ -751,7 +598,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         if (fileEda == null) {
           return (true);
         }
-        Map<AttributeLoader.AttributeKey, String> relAttributes = loadTheFile(fileEda, true);  // Use the simple a = b format of node attributes
+        Map<AttributeLoader.AttributeKey, String> relAttributes = loadTheFile(fileEda, null, true);  // Use the simple a = b format of node attributes
         if (relAttributes == null) {
           return (true);
         }
@@ -837,7 +684,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         }
       }
       
-      BioFabricNetwork.RelayoutBuildData bfn = new BioFabricNetwork.RelayoutBuildData(reducedLinks, loneNodes, colGen_, 
+      BioFabricNetwork.RelayoutBuildData bfn = new BioFabricNetwork.RelayoutBuildData(idGen, reducedLinks, loneNodeIDs,
+                                                                                      new HashMap<NID.WithName, String>(), colGen_,                                                               
                                                                                       BioFabricNetwork.BuildMode.BUILD_FROM_SIF);
       NetworkBuilder nb = new NetworkBuilder(); 
       nb.doNetworkBuild(bfn, true);            
@@ -900,7 +748,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   ** Load network from gaggle
   */ 
     
-  public boolean loadFromGaggle(List<FabricLink> links, List<String> singles) { 
+  public boolean loadFromGaggle(List<FabricLink> links, List<NID.WithName> singleIDs, UniqueLabeller uLab, Map<NID.WithName, String> idToName) { 
     HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
     HashSet<FabricLink> culledLinks = new HashSet<FabricLink>();
     BioFabricNetwork.preprocessLinks(links, reducedLinks, culledLinks);
@@ -913,8 +761,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                                     rMan.getString("fabricRead.dupLinkTitle"),
                                     JOptionPane.WARNING_MESSAGE);
     }
-    BioFabricNetwork.RelayoutBuildData bfnbd = new BioFabricNetwork.RelayoutBuildData(reducedLinks, new HashSet<String>(singles), 
-                                                                                      colGen_, BioFabricNetwork.BuildMode.BUILD_FROM_GAGGLE);
+    BioFabricNetwork.RelayoutBuildData bfnbd = 
+    		new BioFabricNetwork.RelayoutBuildData(uLab, reducedLinks, new HashSet<NID.WithName>(singleIDs),
+    				                                   new HashMap<NID.WithName, String>(), 
+                                               colGen_, BioFabricNetwork.BuildMode.BUILD_FROM_GAGGLE);
     NetworkBuilder nb = new NetworkBuilder(); 
     nb.doNetworkBuild(bfnbd, true);
     manageWindowTitle("Gaggle");
@@ -1039,6 +889,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         filter = new FileExtensionFilters.DoubleExtensionFilter(ext1, ext2, desc);
       }     
       chooser.addChoosableFileFilter(filter);
+      chooser.setAcceptAllFileFilterUsed(true);
+      chooser.setFileFilter(filter);
       if (filename != null) {
         File startDir = new File(filename);
         if (startDir.exists()) {
@@ -1069,12 +921,13 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   ** Load the file. Map keys are strings or Links
   */
      
-  public Map<AttributeLoader.AttributeKey, String> loadTheFile(File file, boolean forNodes) {
+  public Map<AttributeLoader.AttributeKey, String> loadTheFile(File file, Map<String, Set<NID.WithName>> nameToIDs, boolean forNodes) {
     HashMap<AttributeLoader.AttributeKey, String> attributes = new HashMap<AttributeLoader.AttributeKey, String>();   
     try {    
       AttributeLoader.ReadStats stats = new AttributeLoader.ReadStats();
-      AttributeLoader alod = new AttributeLoader();
-      alod.readAttributes(file, forNodes, attributes, stats);
+      AttributeLoader alod = new AttributeLoader(); 
+      Map<String, NID.WithName> nameToID = (!forNodes) ? BioFabricNetwork.reduceNameSetToOne(nameToIDs) : null;
+      alod.readAttributes(file, forNodes, attributes, nameToID, stats);
       if (!stats.badLines.isEmpty()) {
         ResourceManager rMan = ResourceManager.getManager();
         String badLineFormat = rMan.getString("attribRead.badLineFormat");
@@ -1240,7 +1093,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       String dirName = FabricCommands.getPreference("LoadDirectory");
       while (file == null) {
         JFileChooser chooser = new JFileChooser();
-        chooser.addChoosableFileFilter(new FileExtensionFilters.SimpleFilter(".bif", "filterName.bif"));    
+        FileExtensionFilters.SimpleFilter sf = new FileExtensionFilters.SimpleFilter(".bif", "filterName.bif");
+        chooser.addChoosableFileFilter(sf);
+        chooser.setAcceptAllFileFilterUsed(true);
+        chooser.setFileFilter(sf);
         if (dirName != null) {
           File startDir = new File(dirName);
           if (startDir.exists()) {
@@ -1440,41 +1296,6 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     return;
   }
 
-  /***************************************************************************
-  **
-  ** Gaggle setup
-  */ 
-  
-  public void setGaggleElements(JMenu gaggleGooseChooseMenu, JComboBox gaggleGooseCombo) {    
-    //
-    // Controls for Gaggle:
-    //
-    if ((gaggleGooseChooseMenu != null) && (gaggleGooseCombo != null)) {
-      gaggleGooseChooseMenu_ = gaggleGooseChooseMenu;
-      gaggleGooseCombo_ = gaggleGooseCombo;
-      gaggleGooseCombo_.addActionListener(new ActionListener() {
-        public void actionPerformed(ActionEvent ev) {
-          try {
-            if (managingGaggleControls_) {
-              return;
-            }
-            FabricGooseInterface goose = FabricGooseManager.getManager().getGoose();
-            if ((goose != null) && goose.isActivated()) {
-              ObjChoiceContent occ = (ObjChoiceContent)gaggleGooseCombo_.getSelectedItem();
-              goose.setCurrentGaggleTarget((occ == null) ? null : occ.val);
-              setCurrentGaggleTarget(gaggleGooseCombo_.getSelectedIndex());
-            }
-          } catch (Exception ex) {
-            ExceptionHandler.getHandler().displayException(ex);
-          }
-          return;
-        }
-      });
-    }
-    return;
-  }
-  
-  
   /***************************************************************************
   **
   ** Set the current file
@@ -2215,7 +2036,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                                                         haveSelection, buildingSels);      
         fsd.setVisible(true);
         if (fsd.itemWasFound()) {
-          Set<String> matches = fsd.getMatches();
+          Set<NID.WithName> matches = fsd.getMatches();
           boolean doDiscard = fsd.discardSelections();
           topWindow_.getFabricPanel().installSearchResult(matches, doDiscard);
         }
@@ -2255,11 +2076,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     public void actionPerformed(ActionEvent e) {
       try {
-        Set<String> allNodes = bfp_.getNetwork().getNodeSet();
-        CompareNodesSetupDialog fsd = new CompareNodesSetupDialog(topWindow_, allNodes);      
+        Set<NID.WithName> allNodeIDs = bfp_.getNetwork().getNodeSetIDs();
+        Map<String, Set<NID.WithName>> normNameToIDs = bfp_.getNetwork().getNormNameToIDs();
+        CompareNodesSetupDialog fsd = new CompareNodesSetupDialog(topWindow_, allNodeIDs, normNameToIDs);      
         fsd.setVisible(true);
         if (fsd.haveResult()) {
-          Set<String> result = fsd.getResults();
+          Set<NID.WithName> result = fsd.getResults();
           bfp_.installSearchResult(result, true);          
           bfp_.addFirstNeighbors();
           bfp_.selectionsToSubmodel();
@@ -2365,7 +2187,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       if (file == null) {
         return (true);
       }
-      Map<AttributeLoader.AttributeKey, String> nodeAttributes = loadTheFile(file, true);
+      Map<AttributeLoader.AttributeKey, String> nodeAttributes = loadTheFile(file, null, true);
       if (nodeAttributes == null) {
         return (true);
       }
@@ -2407,7 +2229,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       if (file == null) {
         return (true);
       }
-      Map<AttributeLoader.AttributeKey, String> edgeAttributes = loadTheFile(file, false);
+      Map<String, Set<NID.WithName>> nameToIDs = bfp_.getNetwork().getNormNameToIDs();
+      Map<AttributeLoader.AttributeKey, String> edgeAttributes = loadTheFile(file, nameToIDs, false);
       if (edgeAttributes == null) {
         return (true);
       }
@@ -2514,8 +2337,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     protected boolean performOperation() {
-    	Set<String> sels = bfp_.getNodeSelections();
-      String selNode = (sels.size() == 1) ? sels.iterator().next() : null;
+    	Set<NID.WithName> sels = bfp_.getNodeSelections();
+      NID.WithName selNode = (sels.size() == 1) ? sels.iterator().next() : null;
     	
     	ClusterLayoutSetupDialog clsd = new ClusterLayoutSetupDialog(topWindow_, bfp_.getNetwork(), selNode);
       clsd.setVisible(true);      
@@ -2605,8 +2428,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         
     public void actionPerformed(ActionEvent e) {
       try {
-        Set<String> sels = bfp_.getNodeSelections();
-        String selNode = (sels.size() == 1) ? sels.iterator().next() : null;
+        Set<NID.WithName> sels = bfp_.getNodeSelections();
+        NID.WithName selNode = (sels.size() == 1) ? sels.iterator().next() : null;
         BreadthFirstLayoutDialog bfl = new BreadthFirstLayoutDialog(topWindow_, selNode, topWindow_.getFabricPanel().getNetwork());
         bfl.setVisible(true);
            
@@ -2885,7 +2708,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       String filename = FabricCommands.getPreference("LoadDirectory");
       while (file == null) {
         JFileChooser chooser = new JFileChooser(); 
-        chooser.addChoosableFileFilter(new FileExtensionFilters.SimpleFilter(".sif", "filterName.sif"));
+        FileExtensionFilters.SimpleFilter sf = new FileExtensionFilters.SimpleFilter(".sif", "filterName.sif");
+        chooser.addChoosableFileFilter(sf);
+        chooser.setAcceptAllFileFilterUsed(true);
+        chooser.setFileFilter(sf);
+
         if (filename != null) {
           File startDir = new File(filename);
           if (startDir.exists()) {
@@ -2909,7 +2736,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         }
       }
       Integer magBins = (doWeights_) ? Integer.valueOf(4) : null;
-      return (loadFromSifSource(file, null, magBins));
+      return (loadFromSifSource(file, null, magBins, new UniqueLabeller()));
     }
   }
   
@@ -2952,7 +2779,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       String filename = FabricCommands.getPreference("LoadDirectory");
       while (file == null) {
         JFileChooser chooser = new JFileChooser(); 
-        chooser.addChoosableFileFilter(new FileExtensionFilters.SimpleFilter(".bif", "filterName.bif"));
+        FileExtensionFilters.SimpleFilter sf = new FileExtensionFilters.SimpleFilter(".bif", "filterName.bif");
+        chooser.addChoosableFileFilter(sf);
+        chooser.setAcceptAllFileFilterUsed(true);
+        chooser.setFileFilter(sf);
+
         if (filename != null) {
           File startDir = new File(filename);
           if (startDir.exists()) {
@@ -3015,7 +2846,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       String filename = FabricCommands.getPreference("LoadDirectory");
       while (file == null) {
         JFileChooser chooser = new JFileChooser(); 
-        chooser.addChoosableFileFilter(new FileExtensionFilters.SimpleFilter(".sif", "filterName.sif"));
+        FileExtensionFilters.SimpleFilter sf = new FileExtensionFilters.SimpleFilter(".sif", "filterName.sif");
+        chooser.addChoosableFileFilter(sf);
+        chooser.setAcceptAllFileFilterUsed(true);
+        chooser.setFileFilter(sf);
         if (filename != null) {
           File startDir = new File(filename);
           if (startDir.exists()) {
@@ -3044,12 +2878,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         return (true);
       }
   
-      Map<AttributeLoader.AttributeKey, String> attribs = loadTheFile(attribFile, true);
+      Map<AttributeLoader.AttributeKey, String> attribs = loadTheFile(attribFile, null, true);
       if (attribs == null) {
         return (true);
       }
  
-      return (loadFromSifSource(file, attribs, null));
+      return (loadFromSifSource(file, attribs, null, new UniqueLabeller()));
     }
   }
   
@@ -3195,6 +3029,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       String dirName = FabricCommands.getPreference("AttribDirectory");
       while (file == null) {
         JFileChooser chooser = new JFileChooser();
+        FileFilter sf = getFilter();
+        chooser.addChoosableFileFilter(sf);
+        chooser.setAcceptAllFileFilterUsed(true);
+        chooser.setFileFilter(sf);
+        
         chooser.addChoosableFileFilter(getFilter());    
         if (dirName != null) {
           File startDir = new File(dirName);
@@ -3341,11 +3180,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     protected void writeItOut(File file) throws IOException {
       PrintWriter out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8")));        
-      Set<String> sels = bfp_.getNodeSelections();
-      Iterator<String> sit = sels.iterator();
+      Set<NID.WithName> sels = bfp_.getNodeSelections();
+      Iterator<NID.WithName> sit = sels.iterator();
       while (sit.hasNext()) {
-        String node = sit.next();
-        out.println(node);
+        NID.WithName node = sit.next();
+        out.println(node.getName());
       }
       out.close();
       return;
@@ -3446,11 +3285,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
         
         Rectangle2D viewInWorld = bfp_.getViewInWorld();
-        System.out.println("VFW " + viewInWorld);
-       // Dimension viw = new Dimension((int)(viewInWorld.getWidth() / 15.0), (int)(viewInWorld.getHeight() / 15.0));     
-    //    Dimension viw = new Dimension((int)(viewInWorld.getWidth() / 10.0), (int)(viewInWorld.getHeight() / 10.0));
-         Dimension viw = new Dimension((int)(viewInWorld.getWidth() / 10.0), (int)(viewInWorld.getHeight() / 10.0));
-        System.out.println("dim " + viw);
+        Dimension viw = new Dimension((int)(viewInWorld.getWidth() / 10.0), (int)(viewInWorld.getHeight() / 10.0));
       //  VectorGraphics g = new PDFGraphics2D(new File("/Users/bill/OutputAOa.pdf"), viw); 
      //   g.setProperties(p); 
      //   g.startExport(); 
@@ -3672,8 +3507,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     public void actionPerformed(ActionEvent e) {
       try {
         manageWindowTitle(null);
-        BioFabricNetwork.RelayoutBuildData obd = new BioFabricNetwork.RelayoutBuildData(new HashSet<FabricLink>(), 
-                                                                                        new HashSet<String>(), colGen_, 
+          
+        BioFabricNetwork.RelayoutBuildData obd = new BioFabricNetwork.RelayoutBuildData(new UniqueLabeller(),
+        		                                                                            new HashSet<FabricLink>(), 
+                                                                                        new HashSet<NID.WithName>(), 
+                                                                                        new HashMap<NID.WithName, String>(),
+                                                                                        colGen_, 
                                                                                         BioFabricNetwork.BuildMode.BUILD_FROM_SIF);
         newModelOperations(obd, true);
       } catch (Exception ex) {
@@ -3718,359 +3557,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       }
       return;
     }
-  }  
-   
-  /***************************************************************************
-  **
-  ** Command
-  */ 
-   
-  public class SetCurrentGaggleTargetAction extends ChecksForEnabled {
-     
-    private static final long serialVersionUID = 1L;
-    
-    private String gooseName_;
-    private int gooseIndex_;
-    
-    public SetCurrentGaggleTargetAction(String gooseName, int gooseIndex) {
-      gooseName_ = gooseName;
-      gooseIndex_ = gooseIndex;
-      putValue(Action.NAME, gooseName);
-    }
-    
-    public void actionPerformed(ActionEvent e) {
-      try {
-        FabricGooseInterface goose = FabricGooseManager.getManager().getGoose();
-        if ((goose != null) && goose.isActivated()) {
-          goose.setCurrentGaggleTarget(gooseName_);
-        }
-        setCurrentGaggleTarget(gooseIndex_);
-      } catch (Exception ex) {
-        ExceptionHandler.getHandler().displayException(ex);
-      }
-      return;
-    }  
-  }      
-  
-  /***************************************************************************
-  **
-  ** Command
-  */ 
-    
-  private class GaggleUpdateGeese extends ChecksForEnabled {
-    
-    private static final long serialVersionUID = 1L;
-    private ImageIcon standard_;
-    private ImageIcon inbound_;
-    
-    GaggleUpdateGeese(boolean doIcon) {
-      ResourceManager rMan = ResourceManager.getManager(); 
-      putValue(Action.NAME, rMan.getString("command.GaggleUpdateGeese"));
-      if (doIcon) {
-        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.GaggleUpdateGeese"));
-        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/U24.gif");
-        standard_ = new ImageIcon(ugif);
-        if (isAMac_) {
-          ugif = getClass().getResource("/org/systemsbiology/biofabric/images/U24Selected.gif");
-          inbound_ = new ImageIcon(ugif);
-        }
-        putValue(Action.SMALL_ICON, standard_);
-      } else {
-        char mnem = rMan.getChar("command.GaggleUpdateGeeseMnem"); 
-        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
-      }
-    }
-
-    public void actionPerformed(ActionEvent e) {
-      try {
-        FabricGooseInterface goose = FabricGooseManager.getManager().getGoose();
-        if ((goose != null) && goose.isActivated()) {
-          setButtonCondition(false);
-          updateGaggleTargetActions();
-        }        
-      } catch (Exception ex) {
-        ExceptionHandler.getHandler().displayException(ex);
-      }
-      return;
-    }
-    
-    public void setButtonCondition(boolean activate) {
-      if (isAMac_) {
-        putValue(Action.SMALL_ICON, (activate) ? inbound_ : standard_);
-        gaggleUpdateGooseButton_.validate();
-      } else {
-        gaggleUpdateGooseButton_.setBackground((activate) ? Color.orange : gaggleButtonOffColor_);
-      }
-      return;
-    }
-  }  
-  
-
-  /***************************************************************************
-  **
-  ** Command
-  */ 
-    
-  private class GaggleRaiseGoose extends ChecksForEnabled {
-    
-    private static final long serialVersionUID = 1L;
-    
-    GaggleRaiseGoose(boolean doIcon) {
-      ResourceManager rMan = ResourceManager.getManager(); 
-      putValue(Action.NAME, rMan.getString("command.GaggleRaiseGoose"));
-      if (doIcon) {
-        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.GaggleRaiseGoose"));        
-        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/S24.gif");  
-        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
-      } else {
-        char mnem = rMan.getChar("command.GaggleRaiseGooseMnem"); 
-        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
-      }
-    }
-
-    public void actionPerformed(ActionEvent e) {
-      try {
-        FabricGooseInterface goose = FabricGooseManager.getManager().getGoose();
-        if ((goose != null) && goose.isActivated()) {
-          goose.raiseCurrentTarget();
-        }        
-      } catch (Exception ex) {
-        ExceptionHandler.getHandler().displayException(ex);
-      }
-      return;
-    }
-  }
-  
-  /***************************************************************************
-  **
-  ** Command
-  */ 
-    
-  private class GaggleLowerGoose extends ChecksForEnabled {
-    
-    private static final long serialVersionUID = 1L;
-    
-    GaggleLowerGoose(boolean doIcon) {
-      ResourceManager rMan = ResourceManager.getManager(); 
-      putValue(Action.NAME, rMan.getString("command.GaggleLowerGoose"));
-      if (doIcon) {
-        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.GaggleLowerGoose"));        
-        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/H24.gif");  
-        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
-      } else {
-        char mnem = rMan.getChar("command.GaggleLowerGooseMnem"); 
-        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
-      }
-    }
-
-    public void actionPerformed(ActionEvent e) {
-      try {
-        FabricGooseInterface goose = FabricGooseManager.getManager().getGoose();
-        if ((goose != null) && goose.isActivated()) {
-          goose.hideCurrentTarget();
-        }        
-      } catch (Exception ex) {
-        ExceptionHandler.getHandler().displayException(ex);
-      }
-      return;
-    }
-  }  
-  
-  /***************************************************************************
-  **
-  ** Command
-  */ 
-    
-  private class GaggleSendNetwork extends ChecksForEnabled {
-    
-    private static final long serialVersionUID = 1L;
-    
-    GaggleSendNetwork(boolean doIcon) {
-      ResourceManager rMan = ResourceManager.getManager(); 
-      putValue(Action.NAME, rMan.getString("command.GaggleSendNetwork"));
-      if (doIcon) {
-        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.GaggleSendNetwork"));        
-        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/N24.gif");  
-        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
-      } else {
-        char mnem = rMan.getChar("command.GaggleSendNetworkMnem"); 
-        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
-      }
-    }
-
-    public void actionPerformed(ActionEvent e) {
-      try {
-        FabricGooseInterface goose = FabricGooseManager.getManager().getGoose();
-        if ((goose != null) && goose.isActivated()) {
-          SelectionSupport ss = goose.getSelectionSupport();
-          SelectionSupport.NetworkForSpecies net = ss.getOutboundNetwork();
-          if ((net == null) || net.getLinks().isEmpty()) {
-            return;
-          }   
-          goose.transmitNetwork(net);
-        }                  
-      } catch (Exception ex) {
-        ExceptionHandler.getHandler().displayException(ex);
-      }
-      return;
-    }  
-  }
-  
-  /***************************************************************************
-  **
-  ** Command
-  */ 
-    
-  private class GaggleSendNameList extends ChecksForEnabled {
-    
-    private static final long serialVersionUID = 1L;
-    
-    GaggleSendNameList(boolean doIcon) {
-      ResourceManager rMan = ResourceManager.getManager(); 
-      putValue(Action.NAME, rMan.getString("command.GaggleSendNameList"));
-      if (doIcon) {
-        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.GaggleSendNameList"));        
-        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/L24.gif");  
-        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
-      } else {
-        char mnem = rMan.getChar("command.GaggleSendNameListMnem"); 
-        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
-      }
-    }
-
-    public void actionPerformed(ActionEvent e) {
-      try {
-        FabricGooseInterface goose = FabricGooseManager.getManager().getGoose();
-        if ((goose != null) && goose.isActivated()) {
-          goose.transmitSelections();
-        }                  
-      } catch (Exception ex) {
-        ExceptionHandler.getHandler().displayException(ex);
-      }
-      return;
-    } 
-  }  
-          
-  /***************************************************************************
-  **
-  ** Command
-  */ 
-    
-  private class GaggleProcessInbound extends ChecksForEnabled {
-    
-    private static final long serialVersionUID = 1L;
-    private ImageIcon standard_;
-    private ImageIcon inbound_;
-    
-    GaggleProcessInbound(boolean doIcon) {
-      ResourceManager rMan = ResourceManager.getManager(); 
-      putValue(Action.NAME, rMan.getString("command.GaggleProcessInbound"));
-      if (doIcon) {
-        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.GaggleProcessInbound"));        
-        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/P24.gif");
-        standard_ = new ImageIcon(ugif);
-        if (isAMac_) {
-          ugif = getClass().getResource("/org/systemsbiology/biofabric/images/P24Selected.gif");
-          inbound_ = new ImageIcon(ugif);
-        }       
-        putValue(Action.SMALL_ICON, standard_);
-      } else {
-        char mnem = rMan.getChar("command.GaggleProcessInboundMnem"); 
-        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
-      }
-    }
-
-    public void actionPerformed(ActionEvent e) {
-      try {
-        FabricGooseInterface goose = FabricGooseManager.getManager().getGoose();
-        if ((goose != null) && goose.isActivated()) {   
-          // Will be on background thread for awhile; don't lose incoming commands
-          //gaggleButton_.setBackground(gaggleButtonOffColor_);
-          setButtonCondition(false);
-          SelectionSupport ss = goose.getSelectionSupport();
-          // Kinda hackish.  First time in, set the targets when this button is pressed!
-          List targets = ss.getGooseList();
-          int numTarg = targets.size();
-          if (numTarg != gaggleGooseCombo_.getItemCount()) {
-            updateGaggleTargetActions();
-          }
-          List<InboundGaggleOp> pending = ss.getPendingCommands();         
-          Iterator<InboundGaggleOp> pit = pending.iterator();
-          while (pit.hasNext()) {
-            InboundGaggleOp op = pit.next();
-            op.executeOp();
-          }
-        }
-      } catch (Exception ex) {
-        ExceptionHandler.getHandler().displayException(ex);
-      }
-      return;
-    }
-    
-    public void setButtonCondition(boolean activate) {
-      if (isAMac_) {
-        putValue(Action.SMALL_ICON, (activate) ? inbound_ : standard_);
-        gaggleButton_.validate();
-      } else {
-        gaggleButton_.setBackground((activate) ? Color.orange : gaggleButtonOffColor_);
-      }
-      return;
-    }
-  }
-  
-  /***************************************************************************
-  **
-  ** Command
-  */ 
-    
-  private class GaggleConnect extends ChecksForEnabled {
-   
-    private static final long serialVersionUID = 1L;
-    private boolean forConnect_;
-    
-    GaggleConnect(boolean doIcon, boolean forConnect) {
-      forConnect_ = forConnect;
-      ResourceManager rMan = ResourceManager.getManager(); 
-      putValue(Action.NAME, rMan.getString((forConnect) ? "command.GaggleConnect" : "command.GaggleDisconnect"));
-      if (doIcon) {
-        putValue(Action.SHORT_DESCRIPTION, rMan.getString((forConnect) ? "command.GaggleConnect" 
-                                                                       : "command.GaggleDisconnect"));        
-        URL ugif = getClass().getResource((forConnect) ? "/org/systemsbiology/biofabric/images/C24.gif" : "/org/systemsbiology/biofabric/images/D24.gif");  
-        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
-      } else {
-        char mnem = rMan.getChar((forConnect) ? "command.GaggleConnectMnem" : "command.GaggleDisconnectMnem"); 
-        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
-      }
-    }
-
-    public void actionPerformed(ActionEvent e) {
-      try {
-        FabricGooseInterface goose = FabricGooseManager.getManager().getGoose();
-        if ((goose != null) && goose.isActivated()) {
-          if (forConnect_) {
-            goose.connect();
-          } else {
-            goose.disconnect();
-          }
-        }                  
-      } catch (Exception ex) {
-        ExceptionHandler.getHandler().displayException(ex);
-      }
-      return;
-    }
-    
-    protected boolean checkGuts() {
-      FabricGooseInterface goose = FabricGooseManager.getManager().getGoose();
-      if ((goose != null) && goose.isActivated()) {
-        if (forConnect_) {
-          return (!goose.isConnected());
-        } else {
-          return (goose.isConnected());
-        }
-      }     
-      return (false);
-    } 
-  }
+  }       
   
   /***************************************************************************
   **
@@ -4249,9 +3736,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       BioFabricNetwork.BuildData ubd;
       if (restore_ != null) {
         ubd = restore_;
-      } else {
-        ubd = new BioFabricNetwork.RelayoutBuildData(new HashSet<FabricLink>(), new HashSet<String>(), colGen_, BioFabricNetwork.BuildMode.BUILD_FROM_SIF);
-      }
+      } else {	
+        ubd = new BioFabricNetwork.RelayoutBuildData(new UniqueLabeller(),
+    		                                             new HashSet<FabricLink>(), new HashSet<NID.WithName>(),
+    		                                             new HashMap<NID.WithName, String>(), 
+    		                                             colGen_, BioFabricNetwork.BuildMode.BUILD_FROM_SIF);
+        }
       try {
         newModelOperations(ubd, true);
       } catch (IOException ioex) {
@@ -4329,9 +3819,14 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       BioFabricNetwork.BuildData ubd;
       if (restore_ != null) {
         ubd = restore_;
-      } else {
-        ubd = new BioFabricNetwork.RelayoutBuildData(new HashSet<FabricLink>(), new HashSet<String>(), colGen_, 
+      } else {     
+        ubd = new BioFabricNetwork.RelayoutBuildData(new UniqueLabeller(),
+                                                     new HashSet<FabricLink>(), 
+                                                     new HashSet<NID.WithName>(), 
+                                                     new HashMap<NID.WithName, String>(),
+                                                     colGen_, 
                                                      BioFabricNetwork.BuildMode.BUILD_FROM_SIF);
+
       }
       try {
         newModelOperations(ubd, true);
@@ -4373,19 +3868,22 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     private File file_; 
     private List<FabricLink> links_; 
-    private Set<String> loneNodes_;
+    private Set<NID.WithName> loneNodeIDs_;
+    private UniqueLabeller idGen_;
     private FabricSIFLoader.SIFStats sss_;
     private Integer magBins_;
      
-    public void doBackgroundSIFRead(File file, List<FabricLink> links, Set<String> loneNodes, 
+    public void doBackgroundSIFRead(File file, UniqueLabeller idGen,
+    		                            List<FabricLink> links, Set<NID.WithName> loneNodeIDs, 
     		                            Map<String, String> nameMap, FabricSIFLoader.SIFStats sss, Integer magBins) {
       file_ = file;
       links_ = links;
-      loneNodes_ = loneNodes;
+      loneNodeIDs_ = loneNodeIDs;
+      idGen_ = idGen;
       sss_ = sss;
       magBins_ = magBins;
       try {       
-        SIFReaderRunner runner = new SIFReaderRunner(file, links, loneNodes, nameMap, sss, magBins);                                                        
+        SIFReaderRunner runner = new SIFReaderRunner(file, idGen, links, loneNodeIDs, nameMap, sss, magBins);                                                        
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
                                                                  "fileLoad.waitTitle", "fileLoad.wait", null, false);
         runner.setClient(bwc);
@@ -4441,7 +3939,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         setCurrentXMLFile(file_);
         postXMLLoad(ff_, file_.getName());
       } else {
-        finishLoadFromSIFSource(file_, sss_, links_, loneNodes_, (magBins_ != null));
+        finishLoadFromSIFSource(file_, idGen_, sss_, links_, loneNodeIDs_, (magBins_ != null));
       }
       return;
     }
@@ -4608,63 +4106,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
             (new DefaultLayout()).doLayout(rbd_, params_);
             break;
           case CONTROL_TOP_LAYOUT:
-            List<String> forcedTop = new ArrayList<String>();
-           // forcedTop.add("VIM");
-          //  forcedTop.add("HSPA8");
-          //  forcedTop.add("HIV-1 Nef");
-          ////  forcedTop.add("HSPA9");
-          //  forcedTop.add("MYH10");
-          //  forcedTop.add("PACS1");
-            
-           // this has to be FORCED; the layers after the first are laid out in a crap fashion!
-            forcedTop.add("MBP1");
-forcedTop.add("FKH2");
-forcedTop.add("SWI6");
-forcedTop.add("MCM1");
-forcedTop.add("REB1");
-forcedTop.add("IXR1");
-forcedTop.add("PDR1");
-forcedTop.add("SOK2");
-forcedTop.add("RPN4");
-forcedTop.add("YRR1");
-forcedTop.add("YAP6");
-forcedTop.add("HAP4");
-forcedTop.add("MOT3");
-forcedTop.add("TYE7");
-forcedTop.add("HAC1");
-forcedTop.add("SUM1");
-forcedTop.add("STB2");
-forcedTop.add("YAP7");
-
-forcedTop.add("BAS1");
-forcedTop.add("RLM1");
-forcedTop.add("DIG1");
-forcedTop.add("CAD1");
-forcedTop.add("ASH1");
-forcedTop.add("PHD1");
-forcedTop.add("STB1");
-forcedTop.add("CIN5");
-forcedTop.add("NDD1");
-forcedTop.add("SWI4");
-forcedTop.add("PUT3");
-forcedTop.add("FKH1");
-forcedTop.add("YOX1");
-forcedTop.add("RME1");
-
-
-
-
-
-
-
-
-
-
-
-            
-            
-            
-            
+            List<NID.WithName> forcedTop = new ArrayList<NID.WithName>();
+            // forcedTop.add("VIM");
+            //  forcedTop.add("PACS1");    
+            // this has to be FORCED; the layers after the first are laid out in a crap fashion!
+            UiUtil.fixMePrintout("Gotta handle the forced top!");
             (new ControlTopLayout()).doLayout(rbd_, forcedTop);
             break;
           case HIER_DAG_LAYOUT:
@@ -4776,17 +4222,20 @@ forcedTop.add("RME1");
    
     private File myFile_;
     private List<FabricLink> links_;
-    private Set<String> loneNodes_;
+    private Set<NID.WithName> loneNodeIDs_;
+    private UniqueLabeller idGen_; 
     private Map<String, String> nameMap_;
     private FabricSIFLoader.SIFStats sss_;
     private Integer magBins_;
     
-    public SIFReaderRunner(File file, List<FabricLink> links, Set<String> loneNodes, Map<String, String> nameMap, 
+    public SIFReaderRunner(File file, UniqueLabeller idGen, List<FabricLink> links, 
+    		                   Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, 
     		                   FabricSIFLoader.SIFStats sss, Integer magBins) {
       super("Early Result");
       myFile_ = file;
       links_ = links;
-      loneNodes_ = loneNodes;
+      loneNodeIDs_ = loneNodeIDs;
+      idGen_ = idGen;
       nameMap_ = nameMap;
       sss_ = sss;
       magBins_ = magBins;
@@ -4794,7 +4243,7 @@ forcedTop.add("RME1");
     
     public Object runCore() throws AsynchExitRequestException {
       try {
-        FabricSIFLoader.SIFStats sss = (new FabricSIFLoader()).readSIF(myFile_, links_, loneNodes_, nameMap_, magBins_);
+        FabricSIFLoader.SIFStats sss = (new FabricSIFLoader()).readSIF(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_);
         sss_.copyInto(sss);
         return (new Boolean(true));
       } catch (IOException ioe) {

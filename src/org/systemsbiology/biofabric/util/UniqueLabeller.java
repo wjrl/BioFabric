@@ -243,6 +243,14 @@ public class UniqueLabeller implements Cloneable {
     return (legacy_.isEmpty() && existing_.isEmpty());
   }
  
+  /***************************************************************************
+  **
+  ** Get a unique node ID. 
+  */
+  
+  public NID getNextOID() {
+  	return (new NID(getNextLabel()));
+  }
   
   /***************************************************************************
   **

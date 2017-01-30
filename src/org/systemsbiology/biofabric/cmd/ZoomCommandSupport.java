@@ -181,7 +181,7 @@ public class ZoomCommandSupport {
     
     Dimension dim;
     if (chosen == null) {
-      dim = sup_.getBasicSize(true, false, ZoomTarget.VISIBLE_MODULES);
+      dim = sup_.getBasicSize();
     } else {
       dim = new Dimension(chosen.width, chosen.height);
     }
@@ -321,7 +321,6 @@ public class ZoomCommandSupport {
     view.setViewPosition(boundedViewPos(center, vDim, view));
     view.invalidate();
     jsp_.validate();
-    System.out.println("validate VU");
     return;
   }  
 
@@ -461,14 +460,11 @@ public class ZoomCommandSupport {
   private void setCurrentZoom(ZoomResult zres) {
     /*
     int delay = 100;
-    System.out.println("Setting a timer");
     Timer zoomTimer = new Timer(delay, new ActionListener() {
       public void actionPerformed(ActionEvent evt) {
-        System.out.println("action " + evt);
       }
     });
     zoomTimer.start();
-    System.out.println("Started a timer");
     */
      
     if (zres.doCustom) {
@@ -742,7 +738,7 @@ public class ZoomCommandSupport {
   */ 
     
   public void zoomToModel() {
-    Rectangle bounds = sup_.getCurrentBasicBounds(true, false, ZoomTarget.VISIBLE_MODULES);
+    Rectangle bounds = sup_.getCurrentBasicBounds();
     Rectangle wsBounds = sup_.getWorkspaceBounds();
     Rectangle union = wsBounds.union(bounds);
     if (!union.equals(wsBounds)) { // i.e. part of model outside of workspace: we will center on workspace

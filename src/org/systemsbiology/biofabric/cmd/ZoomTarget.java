@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2012 Institute for Systems Biology 
+**    Copyright (C) 2003-2016 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -39,15 +39,7 @@ public interface ZoomTarget {
   // PUBLIC CONSTANTS
   //
   ////////////////////////////////////////////////////////////////////////////  
-
-  //
-  // Handling options for bounding with modules:
-  //
   
-  public static final int NO_MODULES      = 0;
-  public static final int VISIBLE_MODULES = 1;
-  public static final int ALL_MODULES     = 2;
-   
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC INSTANCE METHODS
@@ -71,11 +63,11 @@ public interface ZoomTarget {
   public Dimension getPreferredSize();
   public void fixCenterPoint(boolean doComplete, UndoSupport support, boolean closeIt);
   public void repaint();
-  public Dimension getBasicSize(boolean doComplete, boolean doBuffer, int moduleHandling);
+  public Dimension getBasicSize();
   public Point2D viewToWorld(Point vPt);    
   public void setWideZoomFactor(double newZoomVal, Dimension vDim);
   public double getWorkspaceZoom(Dimension viewportDim, double percent);
-  public Rectangle getCurrentBasicBounds(boolean doComplete, boolean doBuffer, int moduleHandling);
+  public Rectangle getCurrentBasicBounds();
   public Rectangle getAllModelBounds();
   public void adjustWideZoomForSize(Dimension dims);
   public Point getCenterPoint();

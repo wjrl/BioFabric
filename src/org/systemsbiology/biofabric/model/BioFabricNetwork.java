@@ -51,7 +51,9 @@ import org.systemsbiology.biofabric.util.CharacterEntityMapper;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.MinMax;
+import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
+import org.systemsbiology.biofabric.util.UniqueLabeller;
 
 /****************************************************************************
 **
@@ -128,7 +130,7 @@ public class BioFabricNetwork {
   // For mapping of selections:
   //
   
-  private HashMap<Integer, String> rowToTarg_;
+  private HashMap<Integer, NID.WithName> rowToTargID_;
   private int rowCount_;
   
   //
@@ -137,7 +139,7 @@ public class BioFabricNetwork {
   
   private TreeMap<Integer, LinkInfo> fullLinkDefs_;
   private TreeMap<Integer, Integer> nonShadowedLinkMap_;
-  private HashMap<String, NodeInfo> nodeDefs_;
+  private HashMap<NID.WithName, NodeInfo> nodeDefs_;
   
   //
   // Grouping for links:
@@ -161,7 +163,9 @@ public class BioFabricNetwork {
   //
 
   private LayoutMode layoutMode_;
-   
+  
+  private UniqueLabeller nodeIDGenerator_;
+ 
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTRUCTORS
@@ -174,6 +178,7 @@ public class BioFabricNetwork {
   */
 
   public BioFabricNetwork(BuildData bd) {
+  	nodeIDGenerator_ = new UniqueLabeller();
   	layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
     BuildMode mode = bd.getMode();
     
@@ -192,10 +197,10 @@ public class BioFabricNetwork {
         RelayoutBuildData rbd = (RelayoutBuildData)bd;
         normalCols_ = new ColumnAssign();
         shadowCols_ = new ColumnAssign();
-        rowToTarg_ = new HashMap<Integer, String>(); 
+        rowToTargID_ = new HashMap<Integer, NID.WithName>(); 
         fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
         nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
-        nodeDefs_ = new HashMap<String, NodeInfo>();
+        nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
         linkGrouping_ = new ArrayList<String>(rbd.linkGroups);
         colGen_ = rbd.colGen;
         layoutMode_ = rbd.layoutMode;
@@ -213,7 +218,7 @@ public class BioFabricNetwork {
         BioFabricNetwork built = ((PreBuiltBuildData)bd).bfn;
         this.normalCols_ = built.normalCols_;
         this.shadowCols_ = built.shadowCols_;
-        this.rowToTarg_ = built.rowToTarg_; 
+        this.rowToTargID_ = built.rowToTargID_; 
         this.fullLinkDefs_ = built.fullLinkDefs_;
         this.nonShadowedLinkMap_ = built.nonShadowedLinkMap_;
         this.nodeDefs_ = built.nodeDefs_;
@@ -227,10 +232,10 @@ public class BioFabricNetwork {
         RelayoutBuildData obd = (RelayoutBuildData)bd;    
         normalCols_ = new ColumnAssign();
         shadowCols_ = new ColumnAssign();
-        rowToTarg_ = new HashMap<Integer, String>(); 
+        rowToTargID_ = new HashMap<Integer, NID.WithName>(); 
         fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
         nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
-        nodeDefs_ = new HashMap<String, NodeInfo>();
+        nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
         linkGrouping_ = new ArrayList<String>();
         layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
         colGen_ = obd.colGen;
@@ -247,6 +252,29 @@ public class BioFabricNetwork {
   //
   ////////////////////////////////////////////////////////////////////////////
 
+  /***************************************************************************
+  ** 
+  ** Get map from normalized name to IDs (Moving to Cytoscape SUIDs, there
+  *  can be multiple nodes for one name)
+  */
+
+  public Map<String, Set<NID.WithName>> getNormNameToIDs() {
+  	HashMap<String, Set<NID.WithName>> retval = new HashMap<String, Set<NID.WithName>>();
+  	Iterator<NID.WithName> kit = nodeDefs_.keySet().iterator();
+  	while (kit.hasNext()) {
+  		NID.WithName key = kit.next();
+  		NodeInfo forKey = nodeDefs_.get(key);
+  		String nameNorm = DataUtil.normKey(forKey.getNodeName());
+  		Set<NID.WithName> forName = retval.get(nameNorm);
+  		if (forName == null) {
+  			forName = new HashSet<NID.WithName>();
+  			retval.put(nameNorm, forName);
+  		}
+  		forName.add(key);
+  	}
+    return (retval);
+  }
+  
   /***************************************************************************
   ** 
   ** Install link grouping
@@ -271,24 +299,34 @@ public class BioFabricNetwork {
   ** Given an attribute list giving node order, confirm it is valid:
   */
 
-  public boolean checkNewNodeOrder(Map<AttributeLoader.AttributeKey, String> nodeRows) { 
+  public boolean checkNewNodeOrder(Map<AttributeLoader.AttributeKey, String> nodeAttributes) { 
     
     //
     // All existing targets must have a row, and all existing
     // rows need a target assigned!
     //
     
-    HashSet<AttributeLoader.AttributeKey> asUpper = new HashSet<AttributeLoader.AttributeKey>();
-    Iterator<String> rttvit = rowToTarg_.values().iterator();
+    HashSet<String> normedNames = new HashSet<String>();
+    Iterator<NID.WithName> rttvit = rowToTargID_.values().iterator();
     while (rttvit.hasNext()) {
-      asUpper.add(new AttributeLoader.StringKey(rttvit.next().toUpperCase()));
+    	NID.WithName key = rttvit.next();
+    	NodeInfo ni = nodeDefs_.get(key);
+      normedNames.add(DataUtil.normKey(ni.getNodeName()));
     }
-    if (!asUpper.equals(new HashSet<AttributeLoader.AttributeKey>(nodeRows.keySet()))) {
+     
+    HashSet<String> normedKeys = new HashSet<String>();
+    Iterator<AttributeLoader.AttributeKey> akit = nodeAttributes.keySet().iterator();
+    while (akit.hasNext()) {
+    	AttributeLoader.AttributeKey key = akit.next();
+      normedKeys.add(DataUtil.normKey(key.toString()));
+    }
+  
+    if (!normedNames.equals(normedKeys)) {
       return (false);
     }
     
     TreeSet<Integer> asInts = new TreeSet<Integer>();
-    Iterator<String> nrvit = nodeRows.values().iterator();
+    Iterator<String> nrvit = nodeAttributes.values().iterator();
     while (nrvit.hasNext()) {
       String asStr = nrvit.next();
       try {
@@ -297,7 +335,8 @@ public class BioFabricNetwork {
         return (false);
       }
     }
-    if (!asInts.equals(new TreeSet<Integer>(rowToTarg_.keySet()))) {
+    
+    if (!asInts.equals(new TreeSet<Integer>(rowToTargID_.keySet()))) {
       return (false);
     }
     
@@ -316,11 +355,31 @@ public class BioFabricNetwork {
     //
     
     HashSet<AttributeLoader.AttributeKey> asUpper = new HashSet<AttributeLoader.AttributeKey>();
-    Iterator<String> rttvit = rowToTarg_.values().iterator();
-    while (rttvit.hasNext()) {
+    Iterator<NID.WithName> rttvit = rowToTargID_.values().iterator();
+    /*
+    while (rttvit.hasNext()) { 	
+    	
       asUpper.add(new AttributeLoader.StringKey(rttvit.next().toUpperCase()));
-    }
-    UiUtil.fixMePrintout("Actually do somehitng");
+      
+      
+      this.nodeOrder = new HashMap<NID, Integer>();
+      Map<String, Set<NID>> nameToID = genNormNameToID();
+      for (AttributeLoader.AttributeKey key : nodeOrder.keySet()) {
+        try {
+          Integer newRow = Integer.valueOf(nodeOrder.get(key));
+          String normName = DataUtil.normKey(((AttributeLoader.StringKey)key).key);
+          Set<NID> ids = nameToID.get(normName);
+          if (ids.size() != 1) {
+          	throw new IllegalStateException();
+          }
+          NID id = ids.iterator().next();
+          this.nodeOrder.put(id, newRow);
+        } catch (NumberFormatException nfex) {
+          throw new IllegalStateException();
+        }
+      }
+    }*/
+    UiUtil.fixMePrintout("Actually do something");
  //   if (!asUpper.equals(new HashSet<AttributeLoader.AttributeKey>(nodeClusters.keySet()))) {
   //    return (false);
   //  }
@@ -447,13 +506,13 @@ public class BioFabricNetwork {
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
     //
        
-    List<String> targets =  (new DefaultLayout()).doNodeLayout(rbd, null);
+    List<NID.WithName> targetIDs =  (new DefaultLayout()).doNodeLayout(rbd, null);
     
     //
     // Now have the ordered list of targets we are going to display.
     //
     
-    fillNodesFromOrder(targets, rbd.colGen, rbd.clustAssign);
+    fillNodesFromOrder(targetIDs, rbd.colGen, rbd.clustAssign);
 
     //
     // This now assigns the link to its column.  Note that we order them
@@ -474,7 +533,7 @@ public class BioFabricNetwork {
     // For the lone nodes, they are assigned into the last column:
     //
     
-    loneNodesToLastColumn(rbd.loneNodes);
+    loneNodesToLastColumn(rbd.loneNodeIDs);
     return;
   }
   
@@ -495,11 +554,11 @@ public class BioFabricNetwork {
                                  (mode == BuildMode.NODE_CLUSTER_LAYOUT) || 
                                  (mode == BuildMode.CLUSTERED_LAYOUT) || 
                                  (mode == BuildMode.REORDER_LAYOUT);          
-    List<String> targets;
+    List<NID.WithName> targetIDs;
     if (specifiedNodeOrder) {
-      targets = specifiedOrder(rbd.allNodes, rbd.nodeOrder);
+      targetIDs = specifiedIDOrder(rbd.allNodeIDs, rbd.nodeOrder);
     } else {       
-      targets = rbd.existingOrder;
+      targetIDs = rbd.existingIDOrder;
     }
    
     //
@@ -507,7 +566,7 @@ public class BioFabricNetwork {
     // Build target->row maps and the inverse:
     //
     
-    fillNodesFromOrder(targets, rbd.colGen, rbd.clustAssign);
+    fillNodesFromOrder(targetIDs, rbd.colGen, rbd.clustAssign);
 
     //
     // Ordering of links:
@@ -515,11 +574,11 @@ public class BioFabricNetwork {
     
     if ((rbd.linkOrder == null) || rbd.linkOrder.isEmpty() || (mode == BuildMode.GROUP_PER_NODE_CHANGE) || (mode == BuildMode.GROUP_PER_NETWORK_CHANGE)) {
       if ((rbd.nodeOrder == null) || rbd.nodeOrder.isEmpty()) {
-        rbd.nodeOrder = new HashMap<String, String>();
-        int numT = targets.size();
+        rbd.nodeOrder = new HashMap<NID.WithName, Integer>();
+        int numT = targetIDs.size();
         for (int i = 0; i < numT; i++) {
-          String targName = targets.get(i);
-          rbd.nodeOrder.put(targName.toUpperCase(), Integer.toString(i));
+          NID.WithName targID = targetIDs.get(i);
+          rbd.nodeOrder.put(targID, Integer.valueOf(i));
         }
       }
       (new DefaultEdgeLayout()).layoutEdges(rbd);
@@ -545,32 +604,24 @@ public class BioFabricNetwork {
     // For the lone nodes, they are assigned into the last column:
     //
 
-    loneNodesToLastColumn(rbd.loneNodes);
+    loneNodesToLastColumn(rbd.loneNodeIDs);
     return;
   }
   
   /***************************************************************************
   **
-  ** Get specified node order list from attribute map
+  ** Get specified node ID order list from attribute map
   */
   
-  private List<String> specifiedOrder(Set<String> allNodes, Map<String, String> newOrder) { 
-   
-    TreeMap<Integer, String> forRetval = new TreeMap<Integer, String>();
-    Iterator<String> rttvit = allNodes.iterator();
+  private List<NID.WithName> specifiedIDOrder(Set<NID.WithName> allNodeIDs, Map<NID.WithName, Integer> newOrder) { 
+    TreeMap<Integer, NID.WithName> forRetval = new TreeMap<Integer, NID.WithName>();
+    Iterator<NID.WithName> rttvit = allNodeIDs.iterator();
     while (rttvit.hasNext()) {
-      String key = rttvit.next();
-      String asUpperKey = key.toUpperCase();
-      String valAsStr = newOrder.get(asUpperKey);
-      try {
-        Integer newRow = Integer.valueOf(valAsStr);
-        forRetval.put(newRow, key);
-      } catch (NumberFormatException nfex) {
-        System.err.println("Bad Number: " + valAsStr + " >" + asUpperKey + "<");
-        throw new IllegalStateException();
-      }
+      NID.WithName key = rttvit.next();
+      Integer val = newOrder.get(key);
+      forRetval.put(val, key);
     }
-    return (new ArrayList<String>(forRetval.values()));
+    return (new ArrayList<NID.WithName>(forRetval.values()));
   }
  
   /***************************************************************************
@@ -578,13 +629,13 @@ public class BioFabricNetwork {
   ** Get existing order
   */
   
-  public List<String> existingOrder() {  
-    ArrayList<String> retval = new ArrayList<String>();
-    Iterator<Integer> rtit = new TreeSet<Integer>(rowToTarg_.keySet()).iterator();
+  public List<NID.WithName> existingIDOrder() {  
+    ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
+    Iterator<Integer> rtit = new TreeSet<Integer>(rowToTargID_.keySet()).iterator();
     while (rtit.hasNext()) {
       Integer row = rtit.next();
-      String node = rowToTarg_.get(row);
-      retval.add(node);
+      NID.WithName nodeID = rowToTargID_.get(row);
+      retval.add(nodeID);
     }
     return (retval);
   }
@@ -612,7 +663,7 @@ public class BioFabricNetwork {
   */
   
   public Iterator<Integer> getRows() {
-    return (rowToTarg_.keySet().iterator());
+    return (rowToTargID_.keySet().iterator());
   }
 
   /***************************************************************************
@@ -637,11 +688,11 @@ public class BioFabricNetwork {
       }
       
       LinkInfo linf = getLinkDefinition(useForSDef, true);
-      String topNodeName = rowToTarg_.get(Integer.valueOf(linf.topRow()));
-      String botNodeName = rowToTarg_.get(Integer.valueOf(linf.bottomRow()));
+      NID.WithName topNodeID = rowToTargID_.get(Integer.valueOf(linf.topRow()));
+      NID.WithName botNodeID = rowToTargID_.get(Integer.valueOf(linf.bottomRow()));
       
-      NodeInfo nit = nodeDefs_.get(topNodeName.toUpperCase());
-      NodeInfo nib = nodeDefs_.get(botNodeName.toUpperCase());
+      NodeInfo nit = nodeDefs_.get(topNodeID);
+      NodeInfo nib = nodeDefs_.get(botNodeID);
       
       //
       // When displaying shadows, drain zone of top node is only mod 
@@ -693,13 +744,13 @@ public class BioFabricNetwork {
   ** Helper
   */
 
-  private void updateContigs(String nodeName, HashMap<String, SortedMap<Integer, MinMax>> runsPerNode, 
+  private void updateContigs(NID.WithName nodeID, HashMap<NID.WithName, SortedMap<Integer, MinMax>> runsPerNode, 
                              Integer lastCol, Integer col) {
     int colVal = col.intValue();
-    SortedMap<Integer, MinMax> runs = runsPerNode.get(nodeName);
+    SortedMap<Integer, MinMax> runs = runsPerNode.get(nodeID);
     if (runs == null) {
       runs = new TreeMap<Integer, MinMax>();
-      runsPerNode.put(nodeName, runs);        
+      runsPerNode.put(nodeID, runs);        
     }
     MinMax currRun = runs.get(lastCol);
     if (currRun == null) {
@@ -719,11 +770,11 @@ public class BioFabricNetwork {
   ** by leftmost largest contiguous set of links.
   */
 
-  private void runsToDrain(HashMap<String, SortedMap<Integer, MinMax>> runsPerNode, boolean forShadow) {  
-    Iterator<String> rpnit = runsPerNode.keySet().iterator();
+  private void runsToDrain(HashMap<NID.WithName, SortedMap<Integer, MinMax>> runsPerNode, boolean forShadow) {  
+    Iterator<NID.WithName> rpnit = runsPerNode.keySet().iterator();
     while (rpnit.hasNext()) {  
-      String nodeName = rpnit.next();      
-      SortedMap<Integer, MinMax> runs = runsPerNode.get(nodeName);
+      NID.WithName nodeID = rpnit.next();      
+      SortedMap<Integer, MinMax> runs = runsPerNode.get(nodeID);
       MinMax maxRun = null;
       int maxSize = Integer.MIN_VALUE;
       Iterator<MinMax> rit = runs.values().iterator();
@@ -738,7 +789,7 @@ public class BioFabricNetwork {
         }
       }
       if (maxRun != null) {
-        NodeInfo nit = nodeDefs_.get(nodeName.toUpperCase());
+        NodeInfo nit = nodeDefs_.get(nodeID);
         nit.setDrainZone(maxRun.clone(), forShadow);
       }
     }
@@ -753,18 +804,18 @@ public class BioFabricNetwork {
 
   private void setDrainZonesByContig(boolean withShadows) {
     
-    HashMap<String, SortedMap<Integer, MinMax>> runsPerNode = new HashMap<String, SortedMap<Integer, MinMax>>();
+    HashMap<NID.WithName, SortedMap<Integer, MinMax>> runsPerNode = new HashMap<NID.WithName, SortedMap<Integer, MinMax>>();
          
     Iterator<Integer> olit = getOrderedLinkInfo(withShadows);
     Integer lastCol = Integer.valueOf(-1);
     while (olit.hasNext()) {
       Integer col = olit.next();
       LinkInfo linf = getLinkDefinition(col, withShadows);
-      String topNodeName = rowToTarg_.get(Integer.valueOf(linf.topRow()));
-      updateContigs(topNodeName, runsPerNode, lastCol, col);
+      NID.WithName topNodeID = rowToTargID_.get(Integer.valueOf(linf.topRow()));
+      updateContigs(topNodeID, runsPerNode, lastCol, col);
       if (withShadows && linf.isShadow()) {
-        String botNodeName = rowToTarg_.get(Integer.valueOf(linf.bottomRow()));     
-        updateContigs(botNodeName, runsPerNode, lastCol, col);
+        NID.WithName botNodeID = rowToTargID_.get(Integer.valueOf(linf.bottomRow()));     
+        updateContigs(botNodeID, runsPerNode, lastCol, col);
       }
       lastCol = col;
     } 
@@ -794,15 +845,15 @@ public class BioFabricNetwork {
     // Dump the nodes, then the links:
     //  
     
-    Iterator<Integer> r2tit = (new TreeSet<Integer>(rowToTarg_.keySet())).iterator();
+    Iterator<Integer> r2tit = (new TreeSet<Integer>(rowToTargID_.keySet())).iterator();
     ind.indent();
     out.println("<nodes>");
     ind.up();
     while (r2tit.hasNext()) {
       Integer row = r2tit.next();
-      String targ = rowToTarg_.get(row);
-      NodeInfo ni = getNodeDefinition(targ);
-      ni.writeXML(out, ind, row.intValue(), targ);
+      NID.WithName nodeID = rowToTargID_.get(row);
+      NodeInfo ni = getNodeDefinition(nodeID);
+      ni.writeXML(out, ind, row.intValue());
     }
     ind.down().indent();
     out.println("</nodes>");
@@ -842,10 +893,10 @@ public class BioFabricNetwork {
       LinkInfo li = getLinkDefinition(col, true);
       FabricLink link = li.getLink();
       ind.indent();
-      out.print("<link src=\"");
-      out.print(CharacterEntityMapper.mapEntities(link.getSrc(), false));
-      out.print("\" trg=\"");
-      out.print(CharacterEntityMapper.mapEntities(link.getTrg(), false));
+      out.print("<link srcID=\"");
+      out.print(link.getSrcID().getNID().getInternal());
+      out.print("\" trgID=\"");
+      out.print(link.getTrgID().getNID().getInternal());
       out.print("\" rel=\"");
       FabricLink.AugRelation augr = link.getAugRelation();
       out.print(CharacterEntityMapper.mapEntities(augr.relation, false));
@@ -882,11 +933,12 @@ public class BioFabricNetwork {
   
   public void writeNOA(PrintWriter out) {    
     out.println("Node Row");
-    Iterator<Integer> r2tit = new TreeSet<Integer>(rowToTarg_.keySet()).iterator();
+    Iterator<Integer> r2tit = new TreeSet<Integer>(rowToTargID_.keySet()).iterator();
     while (r2tit.hasNext()) {
       Integer row = r2tit.next();
-      String targ = rowToTarg_.get(row);
-      out.print(targ);
+      NID.WithName nodeID = rowToTargID_.get(row);
+      NodeInfo ni = getNodeDefinition(nodeID);
+      out.print(ni.getNodeName());
       out.print(" = ");
       out.println(row);
     } 
@@ -905,7 +957,7 @@ public class BioFabricNetwork {
       Integer col = ldit.next();
       LinkInfo li = getLinkDefinition(col, true);
       FabricLink link = li.getLink();
-      out.print(link.toEOAString());
+      out.print(link.toEOAString(nodeDefs_));
       out.print(" = ");
       out.println(col);
     }
@@ -917,8 +969,8 @@ public class BioFabricNetwork {
   ** Get Node Definition
   */
 
-  public NodeInfo getNodeDefinition(String targ) {
-    NodeInfo node = nodeDefs_.get(targ.toUpperCase());
+  public NodeInfo getNodeDefinition(NID.WithName targID) {
+    NodeInfo node = nodeDefs_.get(targID);
     return (node);
   }
   
@@ -946,9 +998,9 @@ public class BioFabricNetwork {
   ** Get Target For Column
   */
 
-  public String getTargetForColumn(Integer colVal, boolean forShadow) {
+  public NID.WithName getTargetIDForColumn(Integer colVal, boolean forShadow) {
     ColumnAssign useCA = (forShadow) ? shadowCols_ : normalCols_;
-    String target = useCA.columnToTarget.get(colVal);
+    NID.WithName target = useCA.columnToTarget.get(colVal);
     return (target);
   }
   
@@ -957,26 +1009,26 @@ public class BioFabricNetwork {
   ** Get Drain zone For Column
   */
 
-  public String getDrainForColumn(Integer colVal, boolean forShadow) {
+  public NID.WithName getDrainForColumn(Integer colVal, boolean forShadow) {
     int col = colVal.intValue();
     ColumnAssign useCA = (forShadow) ? shadowCols_ : normalCols_;
-    String target = useCA.columnToTarget.get(colVal);
-    String source = useCA.columnToSource.get(colVal);
-    if (target != null) {
-      NodeInfo nit = nodeDefs_.get(target.toUpperCase());
+    NID.WithName targetID = useCA.columnToTarget.get(colVal);
+    NID.WithName sourceID = useCA.columnToSource.get(colVal);
+    if (targetID != null) {
+      NodeInfo nit = nodeDefs_.get(targetID);
       MinMax tdz = nit.getDrainZone(forShadow);
       if (tdz != null) {
         if ((col >= tdz.min) && (col <= tdz.max)) {
-          return (target);
+          return (targetID);
         }
       }
     }
-    if (source != null) {
-      NodeInfo nis = nodeDefs_.get(source.toUpperCase());
+    if (sourceID != null) {
+      NodeInfo nis = nodeDefs_.get(sourceID);
       MinMax sdz = nis.getDrainZone(forShadow);
       if (sdz != null) {
         if ((col >= sdz.min) && (col <= sdz.max)) {
-          return (source);
+          return (sourceID);
         }
       }
     }
@@ -988,9 +1040,9 @@ public class BioFabricNetwork {
   ** Get Source For Column
   */
 
-  public String getSourceForColumn(Integer colVal, boolean forShadow) {
+  public NID.WithName getSourceIDForColumn(Integer colVal, boolean forShadow) {
     ColumnAssign useCA = (forShadow) ? shadowCols_ : normalCols_;
-    String source = useCA.columnToSource.get(colVal);
+    NID.WithName source = useCA.columnToSource.get(colVal);
     return (source);
   }
   
@@ -999,8 +1051,8 @@ public class BioFabricNetwork {
   ** Get node for row
   */
 
-  public String getNodeForRow(Integer rowObj) {
-    String node = rowToTarg_.get(rowObj);
+  public NID.WithName getNodeIDForRow(Integer rowObj) {
+    NID.WithName node = rowToTargID_.get(rowObj);
     return (node);
   }
   
@@ -1046,12 +1098,12 @@ public class BioFabricNetwork {
   ** Get all node names
   */
 
-  public Set<String> getNodeSet() {
-  	HashSet<String> retval = new HashSet<String>();
+  public Set<NID.WithName> getNodeSetIDs() {
+  	HashSet<NID.WithName> retval = new HashSet<NID.WithName>();
   	Iterator<NodeInfo> nsit = nodeDefs_.values().iterator();
     while (nsit.hasNext()) {
     	NodeInfo ni = nsit.next();
-      retval.add(ni.nodeName);
+      retval.add(new NID.WithName(ni.getNodeID(), ni.getNodeName()));
     }
     return (retval);
   }  
@@ -1099,13 +1151,14 @@ public class BioFabricNetwork {
   ** Get node matches
   */
 
-  public Set<String> nodeMatches(boolean fullMatch, String searchString) {
-    HashSet<String> retval = new HashSet<String>();
-    Iterator<String> nkit = nodeDefs_.keySet().iterator();
+  public Set<NID.WithName> nodeMatches(boolean fullMatch, String searchString) {
+    HashSet<NID.WithName> retval = new HashSet<NID.WithName>();
+    Iterator<NID.WithName> nkit = nodeDefs_.keySet().iterator();
     while (nkit.hasNext()) {
-      String nodeName = nkit.next();
+      NID.WithName nodeID = nkit.next();
+      String nodeName = nodeDefs_.get(nodeID).getNodeName();
       if (matches(searchString, nodeName, fullMatch)) {
-        retval.add(nodeName);
+        retval.add(nodeID);
       }
     }    
     return (retval);
@@ -1116,22 +1169,22 @@ public class BioFabricNetwork {
   ** Get first neighbors of node, along with info blocks
   */
 
-  public void getFirstNeighbors(String nodeName, Set<String> nodeSet, List<NodeInfo> nodes, List<LinkInfo> links) {
+  public void getFirstNeighbors(NID.WithName nodeID, Set<NID.WithName> nodeSet, List<NodeInfo> nodes, List<LinkInfo> links) {
     Iterator<LinkInfo> ldit = fullLinkDefs_.values().iterator();
     while (ldit.hasNext()) {
       LinkInfo linf = ldit.next();
-      if (linf.getSource().equals(nodeName)) {
+      if (linf.getSource().equals(nodeID)) {
         nodeSet.add(linf.getTarget());
         links.add(linf);
-      } else if (linf.getTarget().equals(nodeName)) {
+      } else if (linf.getTarget().equals(nodeID)) {
         nodeSet.add(linf.getSource());
         links.add(linf);
       }
     }
-    Iterator<String> nsit = nodeSet.iterator();
+    Iterator<NID.WithName> nsit = nodeSet.iterator();
     while (nsit.hasNext()) {
-      String name = nsit.next();
-      nodes.add(nodeDefs_.get(name.toUpperCase()));
+      NID.WithName nextID = nsit.next();
+      nodes.add(nodeDefs_.get(nextID));
     }
     return;
   }
@@ -1141,14 +1194,14 @@ public class BioFabricNetwork {
   ** Get first neighbors of node
   */
 
-  public Set<String> getFirstNeighbors(String nodeName) {
-    HashSet<String> nodeSet = new HashSet<String>();
+  public Set<NID.WithName> getFirstNeighbors(NID.WithName nodeID) {
+    HashSet<NID.WithName> nodeSet = new HashSet<NID.WithName>();
     Iterator<LinkInfo> ldit = fullLinkDefs_.values().iterator();
     while (ldit.hasNext()) {
       LinkInfo linf = ldit.next();
-      if (linf.getSource().equals(nodeName)) {
+      if (linf.getSource().equals(nodeID)) {
         nodeSet.add(linf.getTarget());
-      } else if (linf.getTarget().equals(nodeName)) {
+      } else if (linf.getTarget().equals(nodeID)) {
         nodeSet.add(linf.getSource());
       }
     }
@@ -1160,8 +1213,8 @@ public class BioFabricNetwork {
   ** Add first neighbors of node set
   */
 
-  public void addFirstNeighbors(Set<String> nodeSet, Set<Integer> columnSet, Set<FabricLink> linkSet, boolean forShadow) {
-    HashSet<String> newNodes = new HashSet<String>();
+  public void addFirstNeighbors(Set<NID.WithName> nodeSet, Set<Integer> columnSet, Set<FabricLink> linkSet, boolean forShadow) {
+    HashSet<NID.WithName> newNodes = new HashSet<NID.WithName>();
     Iterator<LinkInfo> ldit = fullLinkDefs_.values().iterator();
     while (ldit.hasNext()) {
       LinkInfo linf = ldit.next();
@@ -1198,19 +1251,18 @@ public class BioFabricNetwork {
     }
   }
 
-  
   /***************************************************************************
   **
   ** Count of links per targ:
   */
 
-  private Map<String, Integer> linkCountPerTarg(Set<String> targets, List<LinkInfo> linkList) {
-    HashMap<String, Integer> retval = new HashMap<String, Integer>();
+  private Map<NID.WithName, Integer> linkCountPerTarg(Set<NID.WithName> targets, List<LinkInfo> linkList) {
+    HashMap<NID.WithName, Integer> retval = new HashMap<NID.WithName, Integer>();
     Iterator<LinkInfo> lcit = linkList.iterator();
     while (lcit.hasNext()) {
       LinkInfo linf = lcit.next();
-      String src = linf.getSource();
-      String trg = linf.getTarget();      
+      NID.WithName src = linf.getSource();
+      NID.WithName trg = linf.getTarget();      
       if (targets.contains(src)) {
         Integer count = retval.get(src);
         if (count == null) {
@@ -1240,23 +1292,23 @@ public class BioFabricNetwork {
 
   private List<LinkInfo> pruneToMinSubModel(BioFabricNetwork bfn, List<NodeInfo> targetList, List<LinkInfo> linkList) {
           
-    HashSet<String> targSet = new HashSet<String>();
+    HashSet<NID.WithName> targSet = new HashSet<NID.WithName>();
     Iterator<NodeInfo> tlit = targetList.iterator();
     while (tlit.hasNext()) {
       NodeInfo ninf = tlit.next();
-      targSet.add(ninf.nodeName);
+      targSet.add(new NID.WithName(ninf.getNodeID(), ninf.getNodeName()));
     }   
 
-    Map<String, Integer> subCounts = linkCountPerTarg(targSet, linkList);
-    Map<String, Integer> fullCounts = linkCountPerTarg(bfn.getNodeSet(), bfn.getLinkDefList(true));
+    Map<NID.WithName, Integer> subCounts = linkCountPerTarg(targSet, linkList);
+    Map<NID.WithName, Integer> fullCounts = linkCountPerTarg(bfn.getNodeSetIDs(), bfn.getLinkDefList(true));
     
     HashSet<Integer> skipThem = new HashSet<Integer>();
     HashSet<Integer> ditchThem = new HashSet<Integer>();
     Iterator<LinkInfo> lcit = linkList.iterator();
     while (lcit.hasNext()) {
       LinkInfo linf = lcit.next();
-      String topNode = bfn.getNodeForRow(Integer.valueOf(linf.topRow()));
-      String botNode = bfn.getNodeForRow(Integer.valueOf(linf.bottomRow()));
+      NID.WithName topNode = bfn.getNodeIDForRow(Integer.valueOf(linf.topRow()));
+      NID.WithName botNode = bfn.getNodeIDForRow(Integer.valueOf(linf.bottomRow()));
       boolean topStays = subCounts.get(topNode).equals(fullCounts.get(topNode));
       boolean botStays = subCounts.get(botNode).equals(fullCounts.get(botNode));
       if ((topStays && botStays) || (!topStays && !botStays)) {  // Nobody gets ditched!
@@ -1305,8 +1357,8 @@ public class BioFabricNetwork {
       linkList = pruneToMinSubModel(bfn, targetList, linkList);
     }
       
-    HashMap<String, Integer> lastColForNode = new HashMap<String, Integer>();
-    HashMap<String, Integer> lastShadColForNode = new HashMap<String, Integer>();
+    HashMap<NID.WithName, Integer> lastColForNode = new HashMap<NID.WithName, Integer>();
+    HashMap<NID.WithName, Integer> lastShadColForNode = new HashMap<NID.WithName, Integer>();
     Iterator<LinkInfo> lcit = linkList.iterator();
     while (lcit.hasNext()) {
       LinkInfo linf = lcit.next();
@@ -1434,7 +1486,7 @@ public class BioFabricNetwork {
     while (tgit.hasNext()) {
       NodeInfo infoFull = tgit.next();
       Integer miniRowObj = rowMap.get(Integer.valueOf(infoFull.nodeRow));
-      NodeInfo infoMini = new NodeInfo(infoFull.nodeName, miniRowObj.intValue(), infoFull.colorKey);
+      NodeInfo infoMini = new NodeInfo(infoFull.getNodeID(), infoFull.getNodeName(), miniRowObj.intValue(), infoFull.colorKey);
 
       Integer minCol = columnMap.get(Integer.valueOf(infoFull.getColRange(false).min));
       infoMini.updateMinMaxCol(minCol.intValue(), false);
@@ -1451,7 +1503,7 @@ public class BioFabricNetwork {
       }
    
       int maxCol;        
-      Integer lastCol = lastColForNode.get(infoFull.nodeName);
+      Integer lastCol = lastColForNode.get(infoFull.getNodeID());
       if (lastCol == null) {
         maxCol = maxLinkCol;
       } else {
@@ -1461,7 +1513,7 @@ public class BioFabricNetwork {
       infoMini.updateMinMaxCol(maxCol, false);
       
       int maxShadCol;        
-      Integer lastShadCol = lastShadColForNode.get(infoFull.nodeName);
+      Integer lastShadCol = lastShadColForNode.get(infoFull.getNodeID());
       if (lastShadCol == null) {
         maxShadCol = maxShadLinkCol;
       } else {
@@ -1476,13 +1528,14 @@ public class BioFabricNetwork {
       minTrgCol = 0;
     }
     
-    rowToTarg_ = new HashMap<Integer, String>();
-    nodeDefs_ = new HashMap<String, NodeInfo>();
+    rowToTargID_ = new HashMap<Integer, NID.WithName>();
+    nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
     rowCount_ = modTargetList.size();
     for (int i = 0; i < rowCount_; i++) {
       NodeInfo infoMini = modTargetList.get(i);
-      rowToTarg_.put(Integer.valueOf(infoMini.nodeRow), infoMini.nodeName);
-      nodeDefs_.put(infoMini.nodeName.toUpperCase(), infoMini);
+      NID.WithName nwn = new NID.WithName(infoMini.getNodeID(), infoMini.getNodeName());
+      rowToTargID_.put(Integer.valueOf(infoMini.nodeRow), nwn);
+      nodeDefs_.put(nwn, infoMini);
     }
     
     normalCols_ = new ColumnAssign();
@@ -1523,9 +1576,9 @@ public class BioFabricNetwork {
     // with a link has a drain zone
     //
     
-    Iterator<String> ndkit = nodeDefs_.keySet().iterator();
+    Iterator<NID.WithName> ndkit = nodeDefs_.keySet().iterator();
     while (ndkit.hasNext()) {
-      String node = ndkit.next();
+      NID.WithName node = ndkit.next();
       NodeInfo srcNI = nodeDefs_.get(node);
       
       //
@@ -1603,7 +1656,8 @@ public class BioFabricNetwork {
   ** Fill out node info from order
   */
 
-  private void fillNodesFromOrder(List<String> targets, FabricColorGenerator colGen, Map<String, String> clustAssign) {
+  private void fillNodesFromOrder(List<NID.WithName> targetIDs, 
+  		                            FabricColorGenerator colGen, Map<NID.WithName, String> clustAssign) {
     //
     // Now have the ordered list of targets we are going to display.
     // Build target->row maps and the inverse:
@@ -1612,20 +1666,19 @@ public class BioFabricNetwork {
     int numColors = colGen.getNumColors();
 
     int currRow = 0;
-    Iterator<String> trit = targets.iterator();
+    Iterator<NID.WithName> trit = targetIDs.iterator();
     while (trit.hasNext()) {
-      String target = trit.next();
+      NID.WithName targetID = trit.next();
       Integer rowObj = Integer.valueOf(currRow);
-      rowToTarg_.put(rowObj, target.toUpperCase());
+      rowToTargID_.put(rowObj, targetID);
       String colorKey = colGen.getGeneColor(currRow % numColors);
-
-      NodeInfo nextNI = new NodeInfo(target, currRow++, colorKey);
+      NodeInfo nextNI = new NodeInfo(targetID.getNID(), targetID.getName(), currRow++, colorKey);
       if (clustAssign != null) {
-      	nextNI.setCluster(clustAssign.get(target.toUpperCase()));
+      	nextNI.setCluster(clustAssign.get(targetID));
       }
-      nodeDefs_.put(target.toUpperCase(), nextNI);
+      nodeDefs_.put(targetID, nextNI);
     }
-    rowCount_ = targets.size();
+    rowCount_ = targetIDs.size();
     return;
   }
   
@@ -1635,9 +1688,10 @@ public class BioFabricNetwork {
   */
   
   void addNodeInfoForIO(NodeInfo nif) {
-    nodeDefs_.put(nif.nodeName.toUpperCase(), nif);
+  	NID.WithName nwn = new NID.WithName(nif.getNodeID(), nif.getNodeName());
+    nodeDefs_.put(nwn, nif);
     rowCount_ = nodeDefs_.size();   
-    rowToTarg_.put(Integer.valueOf(nif.nodeRow), nif.nodeName);
+    rowToTargID_.put(Integer.valueOf(nif.nodeRow), nwn);
     return;
   }
   
@@ -1654,8 +1708,8 @@ public class BioFabricNetwork {
       LinkInfo li = fullLinkDefs_.get(colNum);
       shadowCols_.columnToSource.put(colNum, li.getSource());
       shadowCols_.columnToTarget.put(colNum, li.getTarget());
-      NodeInfo srcNI = nodeDefs_.get(li.getSource().toUpperCase());    
-      NodeInfo trgNI = nodeDefs_.get(li.getTarget().toUpperCase()); 
+      NodeInfo srcNI = nodeDefs_.get(li.getSource());    
+      NodeInfo trgNI = nodeDefs_.get(li.getTarget()); 
       srcNI.updateMinMaxCol(colNum.intValue(), true);
       trgNI.updateMinMaxCol(colNum.intValue(), true);
     }
@@ -1666,8 +1720,8 @@ public class BioFabricNetwork {
       LinkInfo li = fullLinkDefs_.get(mappedCol);
       normalCols_.columnToSource.put(colNum, li.getSource());
       normalCols_.columnToTarget.put(colNum, li.getTarget());
-      NodeInfo srcNI = nodeDefs_.get(li.getSource().toUpperCase());    
-      NodeInfo trgNI = nodeDefs_.get(li.getTarget().toUpperCase());    
+      NodeInfo srcNI = nodeDefs_.get(li.getSource());    
+      NodeInfo trgNI = nodeDefs_.get(li.getTarget());    
       srcNI.updateMinMaxCol(colNum.intValue(), false);
       trgNI.updateMinMaxCol(colNum.intValue(), false);
     }
@@ -1679,11 +1733,11 @@ public class BioFabricNetwork {
   ** For the lone nodes, they are assigned into the last column:
   */
 
-  private void loneNodesToLastColumn(Set<String> loneNodes) {
-    Iterator<String> lnit = loneNodes.iterator();
+  private void loneNodesToLastColumn(Set<NID.WithName> loneNodeIDs) {
+    Iterator<NID.WithName> lnit = loneNodeIDs.iterator();
     while (lnit.hasNext()) {
-      String lone = lnit.next();
-      NodeInfo loneNI = nodeDefs_.get(lone.toUpperCase());     
+      NID.WithName loneID = lnit.next();
+      NodeInfo loneNI = nodeDefs_.get(loneID);     
       loneNI.updateMinMaxCol(normalCols_.columnCount - 1, false);
       loneNI.updateMinMaxCol(shadowCols_.columnCount - 1, true);
     }    
@@ -1695,13 +1749,13 @@ public class BioFabricNetwork {
   ** Pretty icky hack:
   */
 
-  private Set<String> getLoneNodes() {
-    HashSet<String> retval = new HashSet<String>();
-    Iterator<String> lnit = nodeDefs_.keySet().iterator();
+  private Set<NID.WithName> getLoneNodes() {
+    HashSet<NID.WithName> retval = new HashSet<NID.WithName>();
+    Iterator<NID.WithName> lnit = nodeDefs_.keySet().iterator();
     boolean checkDone = false;
     while (lnit.hasNext()) {
-      String lone = lnit.next();
-      NodeInfo loneNI = nodeDefs_.get(lone);
+      NID.WithName loneID = lnit.next();
+      NodeInfo loneNI = nodeDefs_.get(loneID);
       int min = loneNI.getColRange(true).min;
       int max = loneNI.getColRange(true).max;
       
@@ -1713,7 +1767,7 @@ public class BioFabricNetwork {
             checkDone = true;
           }
         }
-        retval.add(loneNI.nodeName);
+        retval.add(loneID);
       }    
     }    
     return (retval);
@@ -1729,8 +1783,8 @@ public class BioFabricNetwork {
   private Integer[] addLinkDef(FabricLink nextLink, int numColors, int noShadowCol, int shadowCol, FabricColorGenerator colGen) {
     Integer[] retval = new Integer[2]; 
     String key = colGen.getGeneColor(shadowCol % numColors);
-    int srcRow = nodeDefs_.get(nextLink.getSrc().toUpperCase()).nodeRow;
-    int trgRow = nodeDefs_.get(nextLink.getTrg().toUpperCase()).nodeRow;
+    int srcRow = nodeDefs_.get(nextLink.getSrcID()).nodeRow;
+    int trgRow = nodeDefs_.get(nextLink.getTrgID()).nodeRow;
     LinkInfo linf = new LinkInfo(nextLink, srcRow, trgRow, noShadowCol, shadowCol, key);
     Integer shadowKey = Integer.valueOf(shadowCol);
     fullLinkDefs_.put(shadowKey, linf);
@@ -1808,8 +1862,8 @@ public class BioFabricNetwork {
   ** Return node cluster assignment
   */
   
-  public Map<String, String> nodeClusterAssigment() {
-  	HashMap<String, String> retval = new HashMap<String, String>();
+  public Map<NID.WithName, String> nodeClusterAssigment() {
+  	HashMap<NID.WithName, String> retval = new HashMap<NID.WithName, String>();
   	if (nodeDefs_.isEmpty()) {
   		return (retval);
   	}
@@ -1818,7 +1872,7 @@ public class BioFabricNetwork {
     	if (cluster == null) {
     		throw new IllegalStateException();
     	}
-    	retval.put(ni.nodeName.toUpperCase(), cluster);
+    	retval.put(new NID.WithName(ni.getNodeID(), ni.getNodeName()), cluster);
     }
     return (retval);    
   } 
@@ -1828,12 +1882,12 @@ public class BioFabricNetwork {
   ** Set node cluster assignment
   */
   
-  public void setNodeClusterAssigment(Map<String, String> assign) {
+  public void setNodeClusterAssigment(Map<NID, String> assign) {
   	if (nodeDefs_.isEmpty()) {
   		throw new IllegalStateException();
   	}
     for (NodeInfo ni : nodeDefs_.values()) {
-    	String cluster = assign.get(ni.nodeName.toUpperCase());
+    	String cluster = assign.get(ni.getNodeID());
     	if (cluster == null) {
     		throw new IllegalArgumentException();
     	}
@@ -1841,8 +1895,6 @@ public class BioFabricNetwork {
     }
     return;    
   } 
-  
-
   
   /***************************************************************************
   **
@@ -1852,10 +1904,10 @@ public class BioFabricNetwork {
   BioFabricNetwork() { 
     normalCols_ = new ColumnAssign();
     shadowCols_ = new ColumnAssign();
-    rowToTarg_ = new HashMap<Integer, String>(); 
+    rowToTargID_ = new HashMap<Integer, NID.WithName>(); 
     fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
     nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
-    nodeDefs_ = new HashMap<String, NodeInfo>();
+    nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
     linkGrouping_ = new ArrayList<String>();
     colGen_ = null;
   }
@@ -1906,12 +1958,12 @@ public class BioFabricNetwork {
       return (myLink_);
     }    
     
-    public String getSource() {
-      return (myLink_.getSrc());
+    public NID.WithName getSource() {
+      return (myLink_.getSrcID());
     }
     
-    public String getTarget() {
-      return (myLink_.getTrg());
+    public NID.WithName getTarget() {
+      return (myLink_.getTrgID());
     }
     
     public FabricLink.AugRelation getAugRelation() {
@@ -1945,7 +1997,8 @@ public class BioFabricNetwork {
   */  
   
   public static class NodeInfo {
-    public String nodeName;
+  	private NID nodeID_;
+    private String nodeName_;
     public int nodeRow;
     public String colorKey;
     private String cluster_;
@@ -1955,8 +2008,9 @@ public class BioFabricNetwork {
     private MinMax plainDrainZone_;
     private MinMax shadowDrainZone_;
     
-    NodeInfo(String nodeName, int nodeRow, String colorKey) {
-      this.nodeName = nodeName;
+    NodeInfo(NID nodeID, String nodeName, int nodeRow, String colorKey) {
+    	nodeID_ = nodeID;
+      nodeName_ = nodeName;
       this.nodeRow = nodeRow;
       this.colorKey = colorKey;
       colRangeSha_ = new MinMax();
@@ -1967,7 +2021,19 @@ public class BioFabricNetwork {
       shadowDrainZone_ = null;
       cluster_ = null;
     }
+      
+    public String getNodeName() { 
+      return (nodeName_);
+    }
     
+    public NID getNodeID() { 
+      return (nodeID_);
+    } 
+    
+    public NID.WithName getNodeIDWithName() { 
+      return (new NID.WithName(nodeID_, nodeName_));
+    } 
+ 
     public MinMax getDrainZone(boolean forShadow) { 
       return (forShadow) ? shadowDrainZone_ : plainDrainZone_;
     }
@@ -2005,10 +2071,12 @@ public class BioFabricNetwork {
     ** Dump the node using XML
     */
   
-	  public void writeXML(PrintWriter out, Indenter ind, int row, String targ) {
+	  public void writeXML(PrintWriter out, Indenter ind, int row) {
 	    ind.indent();
 	    out.print("<node name=\"");
-	    out.print(CharacterEntityMapper.mapEntities(targ, false));
+	    out.print(CharacterEntityMapper.mapEntities(nodeName_, false));
+	    out.print("\" nid=\"");
+	    out.print(nodeID_.getInternal());
 	    out.print("\" row=\"");
 	    out.print(row);
 	    MinMax nsCols = getColRange(false);
@@ -2089,15 +2157,16 @@ public class BioFabricNetwork {
   public static class RelayoutBuildData extends BuildData {
     public BioFabricNetwork bfn;
     public Set<FabricLink> allLinks;
-    public Set<String> loneNodes;
+    public Set<NID.WithName> loneNodeIDs;
     public FabricColorGenerator colGen;
-    public Map<String, String> nodeOrder;
-    public List<String> existingOrder;
+    public Map<NID.WithName, Integer> nodeOrder;
+    public List<NID.WithName> existingIDOrder;
     public SortedMap<Integer, FabricLink> linkOrder;
     public List<String> linkGroups;
-    public Set<String> allNodes;
-    public Map<String, String> clustAssign;
+    public Set<NID.WithName> allNodeIDs;
+    public Map<NID.WithName, String> clustAssign;
     public LayoutMode layoutMode;
+    public UniqueLabeller idGen; 
     
     public RelayoutBuildData(BioFabricNetwork fullNet, BuildMode mode) {
       super(mode);
@@ -2105,38 +2174,74 @@ public class BioFabricNetwork {
       this.allLinks = fullNet.getAllLinks(true);
       this.colGen = fullNet.colGen_;
       this.nodeOrder = null;
-      this.existingOrder = fullNet.existingOrder();
+      this.existingIDOrder = fullNet.existingIDOrder();
       this.linkOrder = null;
       this.linkGroups = fullNet.linkGrouping_;
-      this.loneNodes = fullNet.getLoneNodes();
-      this.allNodes = fullNet.nodeDefs_.keySet();
+      this.loneNodeIDs = fullNet.getLoneNodes();
+      this.allNodeIDs = fullNet.nodeDefs_.keySet();
       this.clustAssign = (fullNet.nodeClustersAssigned()) ? fullNet.nodeClusterAssigment() : null;
       this.layoutMode = fullNet.getLayoutMode();
+      this.idGen = fullNet.nodeIDGenerator_;
     }
     
-    public RelayoutBuildData(Set<FabricLink> allLinks, Set<String> loneNodes, FabricColorGenerator colGen, BuildMode mode) {
+    public RelayoutBuildData(UniqueLabeller idGen,
+    		                     Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs, 
+    		                     Map<NID.WithName, String> clustAssign, 
+    		                     FabricColorGenerator colGen, BuildMode mode) {
       super(mode);
       this.bfn = null;
       this.allLinks = allLinks;
       this.colGen = colGen;
       this.nodeOrder = null;
-      this.existingOrder = null;
+      this.existingIDOrder = null;
       this.linkOrder = null;
       this.linkGroups = new ArrayList<String>();
-      this.loneNodes = loneNodes;
-      this.allNodes = null;
-      this.layoutMode = LayoutMode.PER_NODE_MODE;
+      this.clustAssign = clustAssign;
+      this.loneNodeIDs = loneNodeIDs;
+      this.allNodeIDs = null;
+      this.layoutMode = LayoutMode.PER_NODE_MODE;   
+      this.idGen = idGen; 
     } 
 
-    public void setNodeOrderFromAttrib(Map<AttributeLoader.AttributeKey, String> nodeOrder) {
-      this.nodeOrder = new HashMap<String, String>();
-      for (AttributeLoader.AttributeKey key : nodeOrder.keySet()) {
-        this.nodeOrder.put(((AttributeLoader.StringKey)key).key, nodeOrder.get(key));
+    public Map<String, Set<NID.WithName>> genNormNameToID() {
+    	HashMap<String, Set<NID.WithName>> retval = new HashMap<String, Set<NID.WithName>>();
+    	Iterator<NID.WithName> nit = this.allNodeIDs.iterator();
+    	while (nit.hasNext()) {
+    		NID.WithName nodeID = nit.next();
+    		String name = nodeID.getName();
+  		  String nameNorm = DataUtil.normKey(name);
+  	   	Set<NID.WithName> forName = retval.get(nameNorm);
+  		  if (forName == null) {
+  			  forName = new HashSet<NID.WithName>();
+  			  retval.put(nameNorm, forName);
+  		  }
+  		  forName.add(nodeID);
+  	  }
+      return (retval);	
+    }
+    
+    public void setNodeOrderFromAttrib(Map<AttributeLoader.AttributeKey, String> nodeOrderIn) {
+      this.nodeOrder = new HashMap<NID.WithName, Integer>();
+      Map<String, Set<NID.WithName>> nameToID = genNormNameToID();
+      for (AttributeLoader.AttributeKey key : nodeOrderIn.keySet()) {
+        try {
+          Integer newRow = Integer.valueOf(nodeOrderIn.get(key));
+          String keyName = ((AttributeLoader.StringKey)key).key;
+          String normName = DataUtil.normKey(keyName);        
+          Set<NID.WithName> ids = nameToID.get(normName);
+          if (ids.size() != 1) {
+          	throw new IllegalStateException();
+          }
+          NID.WithName id = ids.iterator().next();
+          this.nodeOrder.put(id, newRow);
+        } catch (NumberFormatException nfex) {
+          throw new IllegalStateException();
+        }
       }
       return;
     }
     
-    public void setNodeOrder(Map<String, String> nodeOrder) {
+    public void setNodeOrder(Map<NID.WithName, Integer> nodeOrder) {
       this.nodeOrder = nodeOrder;
       return;
     }
@@ -2151,8 +2256,6 @@ public class BioFabricNetwork {
       this.layoutMode = mode;
       return;
     }
-    
-
   }
  
   /***************************************************************************
@@ -2196,13 +2299,13 @@ public class BioFabricNetwork {
   */  
   
   public static class ColumnAssign  {
-    public HashMap<Integer, String> columnToSource;
-    public HashMap<Integer, String> columnToTarget;
+    public HashMap<Integer, NID.WithName> columnToSource;
+    public HashMap<Integer, NID.WithName> columnToTarget;
     public int columnCount;
 
     ColumnAssign() {
-      this.columnToSource = new HashMap<Integer, String>();
-      this.columnToTarget = new HashMap<Integer, String>();
+      this.columnToSource = new HashMap<Integer, NID.WithName>();
+      this.columnToTarget = new HashMap<Integer, NID.WithName>();
       this.columnCount = 0;
     } 
   }
@@ -2231,7 +2334,7 @@ public class BioFabricNetwork {
         if (flipSet.contains(flipLink)) {
           flipRels.add(relation);
         } else {
-          flipSet.add(flipLink);
+          flipSet.add(nextLink);
         }
       }
       rels.add(relation);
@@ -2271,12 +2374,32 @@ public class BioFabricNetwork {
   
   /***************************************************************************
   ** 
+  ** Helper to drop to map to single name: useful
+  */
+
+  public static Map<String, NID.WithName> reduceNameSetToOne(Map<String, Set<NID.WithName>> mapsToSets) { 
+  	HashMap<String, NID.WithName> retval = new HashMap<String, NID.WithName>();
+    Iterator<String> alit = mapsToSets.keySet().iterator();
+    while (alit.hasNext()) {
+      String nextName = alit.next();
+      Set<NID.WithName> forName = mapsToSets.get(nextName);
+      if (forName.size() != 1) {
+      	throw new IllegalStateException();
+      }
+      retval.put(nextName, forName.iterator().next());
+    }
+    return (retval);
+  }  
+  
+  /***************************************************************************
+  ** 
   ** This culls a set of links to remove non-directional synonymous and
   ** duplicate links.  Note that shadow links have already been created
   ** and added to the allLinks list. 
   */
 
   public static void preprocessLinks(List<FabricLink> allLinks, Set<FabricLink> retval, Set<FabricLink> culled) {
+  	FabricLink.FabLinkComparator flc = new FabricLink.FabLinkComparator();
     Iterator<FabricLink> alit = allLinks.iterator();
     while (alit.hasNext()) {
       FabricLink nextLink = alit.next();
@@ -2287,7 +2410,7 @@ public class BioFabricNetwork {
           FabricLink flipLink = nextLink.flipped();
           if (retval.contains(flipLink)) {
             // Make the order consistent for a given src & pair!
-            if (nextLink.compareTo(flipLink) < 0) {
+            if (flc.compare(nextLink, flipLink) < 0) {
               retval.remove(flipLink);
               culled.add(flipLink);
               retval.add(nextLink);
@@ -2411,23 +2534,46 @@ public class BioFabricNetwork {
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
       Object retval = null;
       FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard)this.sharedWhiteboard_;    
-      board.linkInfo = buildFromXML(elemName, attrs);
+      board.linkInfo = buildFromXML(elemName, attrs, board);
       retval = board.linkInfo;
       return (retval);     
     }  
     
-    private LinkInfo buildFromXML(String elemName, Attributes attrs) throws IOException { 
-      String src = AttributeExtractor.extractAttribute(elemName, attrs, "link", "src", true);
+    private LinkInfo buildFromXML(String elemName, Attributes attrs, FabricFactory.FactoryWhiteboard board) throws IOException { 
+      String src = AttributeExtractor.extractAttribute(elemName, attrs, "link", "src", false);
       src = CharacterEntityMapper.unmapEntities(src, false);
-      String trg = AttributeExtractor.extractAttribute(elemName, attrs, "link", "trg", true);
+      String trg = AttributeExtractor.extractAttribute(elemName, attrs, "link", "trg", false);
       trg = CharacterEntityMapper.unmapEntities(trg, false);
+        
+      String srcID = AttributeExtractor.extractAttribute(elemName, attrs, "link", "srcID", false);
+      
+      String trgID = AttributeExtractor.extractAttribute(elemName, attrs, "link", "trgID", false);
+      
+      NID.WithName srcNID;
+      if (src != null) {
+      	srcNID = board.legacyMap.get(src);	
+      } else if (srcID != null) {
+      	srcNID = board.wnMap.get(new NID(srcID));
+      } else {
+      	throw new IOException();
+      }
+      
+      NID.WithName trgNID;
+      if (trg != null) {
+      	trgNID = board.legacyMap.get(trg);	
+      } else if (trgID != null) {
+      	trgNID = board.wnMap.get(new NID(trgID));
+      } else {
+      	throw new IOException();
+      }
+      
       String rel = AttributeExtractor.extractAttribute(elemName, attrs, "link", "rel", true);
       rel = CharacterEntityMapper.unmapEntities(rel, false);
       String directed = AttributeExtractor.extractAttribute(elemName, attrs, "link", "directed", true);
       Boolean dirObj = Boolean.valueOf(directed);
       String shadow = AttributeExtractor.extractAttribute(elemName, attrs, "link", "shadow", true);
       Boolean shadObj = Boolean.valueOf(shadow);
-      FabricLink flink = new FabricLink(src, trg, rel, shadObj.booleanValue(), dirObj);
+      FabricLink flink = new FabricLink(srcNID, trgNID, rel, shadObj.booleanValue(), dirObj);
       String col = AttributeExtractor.extractAttribute(elemName, attrs, "link", "column", false);
       String shadowCol = AttributeExtractor.extractAttribute(elemName, attrs, "link", "shadowCol", true);
       String srcRow = AttributeExtractor.extractAttribute(elemName, attrs, "link", "srcRow", true);
@@ -2485,6 +2631,7 @@ public class BioFabricNetwork {
       
   public static class NodeInfoWorker extends AbstractFactoryClient {
     
+  	
     public NodeInfoWorker(FabricFactory.FactoryWhiteboard board) {
       super(board);
       myKeys_.add("node");
@@ -2493,14 +2640,33 @@ public class BioFabricNetwork {
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
       Object retval = null;
       FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard)this.sharedWhiteboard_;
-      board.nodeInfo = buildFromXML(elemName, attrs);
+      board.nodeInfo = buildFromXML(elemName, attrs, board);
       retval = board.nodeInfo;
       return (retval);     
     }  
     
-    private NodeInfo buildFromXML(String elemName, Attributes attrs) throws IOException { 
+    private NodeInfo buildFromXML(String elemName, Attributes attrs, FabricFactory.FactoryWhiteboard board) throws IOException { 
       String name = AttributeExtractor.extractAttribute(elemName, attrs, "node", "name", true);
       name = CharacterEntityMapper.unmapEntities(name, false);
+      
+      String nidStr = AttributeExtractor.extractAttribute(elemName, attrs, "node", "nid", false);
+      
+      NID nid;
+      NID.WithName nwn;
+      if (nidStr != null) {
+      	boolean ok = board.ulb.addExistingLabel(nidStr);
+      	if (!ok) {
+      		throw new IOException();
+      	}
+      	nid = new NID(nidStr);
+      	nwn = new NID.WithName(nid, name);
+      } else {
+      	nid = board.ulb.getNextOID();
+      	nwn = new NID.WithName(nid, name);
+      	board.legacyMap.put(DataUtil.normKey(name), nwn);
+      }
+      board.wnMap.put(nid, nwn);
+ 
       String row = AttributeExtractor.extractAttribute(elemName, attrs, "node", "row", true);
       String minCol = AttributeExtractor.extractAttribute(elemName, attrs, "node", "minCol", true);
       String maxCol = AttributeExtractor.extractAttribute(elemName, attrs, "node", "maxCol", true);
@@ -2517,7 +2683,7 @@ public class BioFabricNetwork {
       NodeInfo retval;
       try {
         int nodeRow = Integer.valueOf(row).intValue();
-        retval = new NodeInfo(name, nodeRow, color);
+        retval = new NodeInfo(nid, name, nodeRow, color);
         if (cluster != null) {
         	UiUtil.fixMePrintout("Make cluster assign a list");
         	retval.setCluster(cluster);

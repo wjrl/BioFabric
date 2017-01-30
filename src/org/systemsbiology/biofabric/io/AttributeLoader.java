@@ -30,6 +30,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.DataUtil;
+import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
 **
@@ -83,7 +85,8 @@ public class AttributeLoader {
   ** Process an attribute input
   */
 
-  public String readAttributes(File infile, boolean forNodes, Map<AttributeKey, String> results, ReadStats stats) throws IOException {
+  public String readAttributes(File infile, boolean forNodes, Map<AttributeKey, String> results, 
+  		                         Map<String, NID.WithName> nodes, ReadStats stats) throws IOException {
     
     Pattern nodePat = Pattern.compile("(.*)=(.*)");
     Pattern linkPat = Pattern.compile("(.*\\S) (.*)\\((.*)\\) (\\S.*)=(.*)"); 
@@ -126,7 +129,9 @@ public class AttributeLoader {
         if (isShadow) {
           stats.shadowsPresent = true;
         }
-        FabricLink nextLink = new FabricLink(src, trg, rel, isShadow);
+        NID.WithName srcID = nodes.get(DataUtil.normKey(src));
+        NID.WithName trgID = nodes.get(DataUtil.normKey(trg));
+        FabricLink nextLink = new FabricLink(srcID, trgID, rel, isShadow);
         if (results.containsKey(nextLink)) {
           stats.dupLines.add(line);
           continue;
@@ -155,13 +160,14 @@ public class AttributeLoader {
 
   public static class StringKey implements AttributeKey {
     public String key;
+    
     public StringKey(String key) {
       this.key = key;
     } 
     
     @Override
     public String toString() {
-      return ("SKey: " + key);
+      return (key);
     }
     
     @Override
@@ -181,7 +187,7 @@ public class AttributeLoader {
         return (false);
       }
       StringKey otherT = (StringKey)other;
-      return ((this.key.toUpperCase().equals(otherT.key.toUpperCase())));
+      return (DataUtil.normKey(this.key).equals(DataUtil.normKey(otherT.key)));
     }
   }
    

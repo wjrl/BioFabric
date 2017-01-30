@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2016 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -19,40 +19,45 @@
 
 package org.systemsbiology.biofabric.model;
 
+import java.util.Comparator;
+import java.util.Map;
+
 import org.systemsbiology.biofabric.io.AttributeLoader;
+import org.systemsbiology.biofabric.util.DataUtil;
+import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
 **
 ** A Class
 */
 
-public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeLoader.AttributeKey {
-  private String src_;
-  private String trg_;
+public class FabricLink implements Cloneable, AttributeLoader.AttributeKey {
+  private NID.WithName srcID_;
+  private NID.WithName trgID_;
   private String relation_;
   private Boolean directed_;
   private boolean isShadow_;
 
-  public FabricLink(String src, String trg, String relation, boolean isShadow, Boolean directed) {
-    if ((src == null) || (trg == null) || (relation == null)) {
+  public FabricLink(NID.WithName srcID, NID.WithName trgID, String relation, boolean isShadow, Boolean directed) {
+    if ((srcID == null) || (trgID == null) || (relation == null)) {
       throw new IllegalArgumentException();
     }
-    src_ = src;
-    trg_ = trg;
+    srcID_ = srcID;
+    trgID_ = trgID;
     relation_ = relation;
     isShadow_ = isShadow;
     directed_ = directed;
   }
   
-  public FabricLink(String src, String trg, String relation, boolean isShadow) {
-    this(src, trg, relation, isShadow, null);
+  public FabricLink(NID.WithName srcID, NID.WithName trgID, String relation, boolean isShadow) {
+    this(srcID, trgID, relation, isShadow, null);
   }
     
   public FabricLink flipped() {
     if (isFeedback()) {
       throw new IllegalStateException();
     }
-    return (new FabricLink(trg_, src_, relation_, isShadow_, directed_)); 
+    return (new FabricLink(trgID_, srcID_, relation_, isShadow_, directed_)); 
   }
   
   public boolean directionFrozen() {
@@ -85,12 +90,12 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
     return;
   }
   
-  public String getTrg() {
-    return (trg_);
+  public NID.WithName getTrgID() {
+    return (trgID_);
   }
 
-  public String getSrc() {
-    return (src_);
+  public NID.WithName getSrcID() {
+    return (srcID_);
   } 
   
   public String getRelation() {
@@ -109,23 +114,23 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
   } 
     
   public boolean isFeedback() {
-    return (src_.toUpperCase().equals(trg_.toUpperCase()));
+    return (srcID_.equals(trgID_));
   } 
   
   @Override
   public int hashCode() {
-    return (src_.toUpperCase().hashCode() + trg_.toUpperCase().hashCode() + relation_.toUpperCase().hashCode() + ((isShadow_) ? 17 : 31) + 
+    return (srcID_.hashCode() + trgID_.hashCode() + DataUtil.normKey(relation_).hashCode() + ((isShadow_) ? 17 : 31) + 
             ((directed_ == null) ? 0 : directed_.hashCode()));
   }
 
   @Override
   public String toString() {
-    return ("src = " + src_ + " trg = " + trg_ + "rel = " + relation_ + " directed_ = " + directed_ + " isShadow_ = " + isShadow_);
+    return ("srcID = " + srcID_ + " trgID = " + trgID_ + "rel = " + relation_ + " directed_ = " + directed_ + " isShadow_ = " + isShadow_);
   }
  
   public String toDisplayString() {
     StringBuffer buf = new StringBuffer();
-    buf.append(src_);
+    buf.append(srcID_.getName());
     buf.append((isDirected()) ? '-' : '\u2190');
     if (isShadow_) {
       buf.append("shdw");
@@ -134,13 +139,13 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
     buf.append(relation_);
     buf.append(")");  
     buf.append('\u2192');  // For bidirectional '\u2194'
-    buf.append(trg_);
+    buf.append(trgID_.getName());
     return (buf.toString());
   }
   
-  public String toEOAString() {
+  public String toEOAString(Map<NID.WithName, BioFabricNetwork.NodeInfo> nodeInfo) {
     StringBuffer buf = new StringBuffer();
-    buf.append(src_);
+    buf.append(nodeInfo.get(srcID_).getNodeName());
     if (isShadow_) {
       buf.append(" shdw");
     } else {
@@ -149,7 +154,7 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
     buf.append("(");
     buf.append(relation_);
     buf.append(") ");
-    buf.append(trg_);
+    buf.append(nodeInfo.get(trgID_).getNodeName());
     return (buf.toString());
   }
    
@@ -166,10 +171,10 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
     }
     FabricLink otherLink = (FabricLink)other;
   
-    if (!this.src_.toUpperCase().equals(otherLink.src_.toUpperCase())) {
+    if (!this.srcID_.equals(otherLink.srcID_)) {
       return (false);
     }
-    if (!this.trg_.toUpperCase().equals(otherLink.trg_.toUpperCase())) {
+    if (!this.trgID_.equals(otherLink.trgID_)) {
       return (false);
     }
     
@@ -177,7 +182,7 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
       return (false);
     }
     
-    if (!this.relation_.toUpperCase().equals(otherLink.relation_.toUpperCase())) {
+    if (!DataUtil.normKey(this.relation_).equals(DataUtil.normKey(otherLink.relation_))) {
       return (false);
     }
     
@@ -195,29 +200,29 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
     if (this.isDirected() || other.isDirected()) {
       return (false);
     }
-    if (!this.relation_.toUpperCase().equals(other.relation_.toUpperCase())) {
+    if (!DataUtil.normKey(this.relation_).equals(DataUtil.normKey(other.relation_))) {
       return (false);
     }
     if (this.isShadow_ != other.isShadow_) {
       return (false);
     }    
-    if (!this.src_.toUpperCase().equals(other.trg_.toUpperCase())) {
+    if (!this.srcID_.equals(other.trgID_)) {
       return (false);
     }
-    return (this.trg_.toUpperCase().equals(other.src_.toUpperCase()));
+    return (this.trgID_.equals(other.srcID_));
   }
    
    public boolean shadowPair(FabricLink other) {
     if (this.equals(other)) {
       return (false);
     }
-    if (!this.src_.toUpperCase().equals(other.src_.toUpperCase())) {
+    if (!this.srcID_.equals(other.srcID_)) {
       return (false);
     }
-    if (!this.trg_.toUpperCase().equals(other.trg_.toUpperCase())) {
+    if (!this.trgID_.equals(other.trgID_)) {
       return (false);
     }   
-    if (!this.relation_.toUpperCase().equals(other.relation_.toUpperCase())) {
+    if (!DataUtil.normKey(this.relation_).equals(DataUtil.normKey(other.relation_))) {
       return (false);
     }
     
@@ -234,24 +239,51 @@ public class FabricLink implements Cloneable, Comparable<FabricLink>, AttributeL
     return (true);   
   }
 
-  public int compareTo(FabricLink otherLink) {
-    if (this.equals(otherLink)) {
-      return (0);
-    }
+  /***************************************************************************
+  **
+  ** Comparator for Fabric Links
+  */  
+  
+  public static class FabLinkComparator implements Comparator<FabricLink> {
+    
+    public int compare(FabricLink one, FabricLink otherLink) {
+	    if (one.equals(otherLink)) {
+	      return (0);
+	    }
+	    
+	    String srcOne = DataUtil.normKey(one.srcID_.getName());
+	    String trgOne = DataUtil.normKey(one.trgID_.getName());
+	    String srcTwo = DataUtil.normKey(otherLink.srcID_.getName());
+	    String trgTwo = DataUtil.normKey(otherLink.trgID_.getName());
+	    
+	    if (!srcOne.equals(srcTwo)) {
+	      return (srcOne.compareTo(srcTwo));
+	    }    
+	    if (!trgOne.equals(trgTwo)) {
+	      return (trgOne.compareTo(trgTwo));
+	    } 
+	    if (one.isShadow_ != otherLink.isShadow_) {
+	      return ((one.isShadow_) ? -1 : 1);
+	    }  
+	    if (!DataUtil.normKey(one.relation_).equals(DataUtil.normKey(otherLink.relation_))) {
+	      return (one.relation_.compareToIgnoreCase(otherLink.relation_));
+	    }
+	   
+	    //
+	    // Gatta catch the far-out case where two links with same source and target node names but different
+	    // internal IDs get to here. Can't let it fall through
+	    //
+	    
+	    if (!one.srcID_.equals(otherLink.srcID_)) {
+         return (one.srcID_.compareTo(otherLink.srcID_));
+      }
+      if (!one.trgID_.equals(otherLink.trgID_)) {
+        return (one.trgID_.compareTo(otherLink.trgID_));
+      }
 
-    if (!this.src_.toUpperCase().equals(otherLink.src_.toUpperCase())) {
-      return (this.src_.compareToIgnoreCase(otherLink.src_));
-    }    
-    if (!this.trg_.toUpperCase().equals(otherLink.trg_.toUpperCase())) {
-      return (this.trg_.compareToIgnoreCase(otherLink.trg_));
-    }
-    if (this.isShadow_ != otherLink.isShadow_) {
-      return ((this.isShadow_) ? -1 : 1);
-    }   
-    if (!this.relation_.toUpperCase().equals(otherLink.relation_.toUpperCase())) {
-      return (this.relation_.compareToIgnoreCase(otherLink.relation_));
-    }
-    throw new IllegalStateException();
+	    throw new IllegalStateException();
+	  }
+    	
   }
   
   /***************************************************************************

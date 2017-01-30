@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2011 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -111,18 +111,18 @@ public class FabricColorGenerator {
         float db = Math.min(1.0F, hsbvals[2] * (float)dark);
         darker_.put(gckey, Color.getHSBColor(hsbvals[0], hsbvals[1], db));
       } else {
+      	// These three standard colors get TOO light if we apply the operation. So keep them as is:
       	if ((nc.name.indexOf("Gold") == -1) && (nc.name.indexOf("Dark Wheat") == -1) &&  (nc.name.indexOf("Pale Goldenrod") == -1)) {
-	        int rb = Math.min(255, (int)Math.round((double)baseR * light));
-	        int gb = Math.min(255, (int)Math.round((double)baseG * light));
-	        int bb = Math.min(255, (int)Math.round((double)baseB * light));       
+	        int rb = Math.min(255, (int)Math.round(baseR * light));
+	        int gb = Math.min(255, (int)Math.round(baseG * light));
+	        int bb = Math.min(255, (int)Math.round(baseB * light));       
 	        brighter_.put(gckey, new Color(rb, gb, bb));
       	} else {
-      		System.out.println("Not light on " + nc.name);
       		brighter_.put(gckey, nc.color);
       	}
-        int rd = Math.min(255, (int)Math.round((double)baseR * dark));
-        int gd = Math.min(255, (int)Math.round((double)baseG * dark));
-        int bd = Math.min(255, (int)Math.round((double)baseB * dark));
+        int rd = Math.min(255, (int)Math.round(baseR * dark));
+        int gd = Math.min(255, (int)Math.round(baseG * dark));
+        int bd = Math.min(255, (int)Math.round(baseB * dark));
         darker_.put(gckey, new Color(rd, gd, bd));
       }
     }
@@ -234,16 +234,16 @@ public class FabricColorGenerator {
   **
   */
   
-  private void writeColorsForType(PrintWriter out, Indenter ind, String type, Map colMap) {
+  private void writeColorsForType(PrintWriter out, Indenter ind, String type, Map<String, Color> colMap) {
     ind.indent();
     out.print("<colorSet usage=\"");
     out.print(type);
     out.println("\">");
     ind.up();
-    Iterator colors = colMap.keySet().iterator();
+    Iterator<String> colors = colMap.keySet().iterator();
     while (colors.hasNext()) {
-      String key = (String)colors.next();
-      Color c = (Color)colMap.get(key);
+      String key = colors.next();
+      Color c = colMap.get(key);
       ind.indent();
       out.print("<color ");
       out.print("color=\"");

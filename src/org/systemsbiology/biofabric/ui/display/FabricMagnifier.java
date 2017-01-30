@@ -179,7 +179,6 @@ public class FabricMagnifier extends JPanel {
   @Override
   public void setBounds(int x, int y, int width, int height) {
     super.setBounds(x, y, width, height);
-    System.out.println("SetBounds to " + height);
     setMiniZoom();
     repaint();
     return;
@@ -208,7 +207,6 @@ public class FabricMagnifier extends JPanel {
     if (newSize < miniSize_) {
       newSize = miniSize_;
     }
-    System.out.println("BGS to " + newSize);
     setZoom(newSize);
     return;
   }
@@ -365,7 +363,6 @@ public class FabricMagnifier extends JPanel {
 
   public void setMiniZoom() {
     Dimension screenDim = getSize();
-    System.out.println("CS IS " + currSize_);
     int worldWidth = (currSize_ * BioFabricPanel.GRID_SIZE);
     int worldHeight  = (currSize_ * BioFabricPanel.GRID_SIZE);
     worldRec_ = new Rectangle((int)center_.getX() - (worldWidth / 2), 
@@ -419,7 +416,7 @@ public class FabricMagnifier extends JPanel {
     painter_.paintIt(g2, true, clipRec_, false);
     g2.setTransform(saveTrans);
     if (selectionPainter_.needToPaint()) {
-    	System.out.println("YA NEED");
+    	System.out.println("THIS IS NEEDED");
   //    drawSelections(g2, clipRec_);
     }    
     if (floaters_ != null) {
