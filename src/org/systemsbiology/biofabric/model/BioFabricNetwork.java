@@ -515,7 +515,7 @@ public class BioFabricNetwork {
     
     if ((rbd.linkOrder == null) || rbd.linkOrder.isEmpty() ||
             (mode == BuildMode.GROUP_PER_NODE_CHANGE) || (false)) {
-      UiUtil.fixMePrintout("making last argument false is bogus");
+      UiUtil.fixMePrintout("This change is of last argument to false is suspect! Compare to fixes at DefaultEdgeLayout line 202 and BioFabricNetwork line 686");
       if ((rbd.nodeOrder == null) || rbd.nodeOrder.isEmpty()) {
         rbd.nodeOrder = new HashMap<String, String>();
         int numT = targets.size();
@@ -683,6 +683,7 @@ public class BioFabricNetwork {
       }
     }
     
+    UiUtil.fixMePrintout("This change needs review");
     if (userSpec || this.linkGrouping_!= null) { // Not sure this works 100% of the time -Rishi Desai 1/17/2017
       setDrainZonesWithMultipleLabels(true);
       setDrainZonesWithMultipleLabels(false);
@@ -2171,6 +2172,8 @@ public class BioFabricNetwork {
       out.print(sCols.min);
       out.print("\" maxColSha=\"");
       out.print(sCols.max);
+      UiUtil.fixMePrintout("DRAIN ZONES NOT GOING OUT TO XML");
+
 //      MinMax nDrain = getDrainZone(false); WILL FIX XML IO LATER - RISHI 10/3/16
 //      if (nDrain != null) {
 //        out.print("\" drainMin=\"");

@@ -204,7 +204,7 @@ public class DefaultEdgeLayout {
             (macroRels != null && rbd.bfn != null && rbd.bfn.getLayoutMode()
                     .equals(BioFabricNetwork.LayoutMode.PER_NETWORK_MODE))) {
       orderNetworkByGroups(linkOrder, macroRels);
-      UiUtil.fixMePrintout("NOT LIKING THIS FIX");
+      UiUtil.fixMePrintout("This fix needs a review");
     }
  
     return (linkOrder);
