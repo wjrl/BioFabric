@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -49,7 +49,7 @@ public class MouseOverView {
    
   private MouseOverViewPanel pan1_;
   private MouseOverViewPanel pan2_;
-  
+  private boolean isAlive_;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -65,6 +65,7 @@ public class MouseOverView {
   public MouseOverView() {
     pan1_ = new MouseOverViewPanel();
     pan2_ = new MouseOverViewPanel();
+    isAlive_ = false;
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -72,7 +73,28 @@ public class MouseOverView {
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
+
+  /***************************************************************************
+  **
+  ** Show or hide the view
+  */
+
+  public void setIsAlive(boolean alive) {
+  	isAlive_ = alive;
+    return;
+  }
   
+  /***************************************************************************
+  **
+  ** Set file locations to use for image files
+  */
+
+  public void setFileLocations(String path, String filePrefix, String fileSuffix)  {
+  	pan1_.setFileLocations(path, filePrefix, fileSuffix);
+    pan2_.setFileLocations(path, filePrefix, fileSuffix);
+    return;
+  } 
+ 
   /***************************************************************************
   **
   ** Show or hide the view
@@ -83,8 +105,7 @@ public class MouseOverView {
     pan2_.showView(enabled);
     return;
   }
-  
-  
+   
   /***************************************************************************
   **
   ** SGet the view
@@ -100,6 +121,9 @@ public class MouseOverView {
   */
 
   public void showForNode(BioFabricPanel.MouseLocInfo mlo) {
+  	if (!isAlive_) {
+  		return;
+  	}
   	pan1_.showForNode(mlo.zoneDesc.equals("<none>") ? null : mlo.zoneDesc);
   	if (mlo.linkDesc.equals("<none>")) {
   	  pan2_.showForNode(null);

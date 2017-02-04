@@ -105,11 +105,11 @@ public class BrowserLauncher {
             } 
           }
           if (used == null) {
-//            System.err.println("Browser launch failed");
+            System.err.println("Browser launch failed");
           }
         }
       } catch (Exception e) { 
-//        System.err.println("Browser launch failed");
+        System.err.println("Browser launch failed");
       }
     }
     return;

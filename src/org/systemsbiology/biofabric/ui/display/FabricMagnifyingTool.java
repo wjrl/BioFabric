@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -61,6 +61,7 @@ import org.systemsbiology.biofabric.ui.render.PaintCache;
 import org.systemsbiology.biofabric.util.ColorListRenderer;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.MinMax;
+import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 
 
@@ -241,7 +242,6 @@ public class FabricMagnifyingTool extends JPanel {
           toLock_.setText((ignore_) ? "Unlock: Ctrl-Space" : "Lock: Ctrl-Space");
           toLock_.invalidate();
           lockPanel_.validate();
-//          System.out.println("validate KI");
           repaint();
         } catch (Exception ex) {
           ExceptionHandler.getHandler().displayException(ex);
@@ -614,17 +614,17 @@ public class FabricMagnifyingTool extends JPanel {
       int startCen = myCen.y - (currSize_ / 2) - 1;
       int endCen = myCen.y + (currSize_ / 2) + 1;   
       for (int i = startCen; i <= endCen; i++) {
-        String node = model_.getNodeForRow(Integer.valueOf(i));
+        NID.WithName node = model_.getNodeIDForRow(Integer.valueOf(i));
         if (node == null) {
           continue;
         }
         BioFabricNetwork.NodeInfo ni = model_.getNodeDefinition(node);
         MinMax nimm = ni.getColRange(showShadows);
         if ((nimm.min <= myCen.x + (currSize_ / 2)) && (nimm.max >= myCen.x - (currSize_ / 2))) {
-          Rectangle2D bounds = tiny_.getStringBounds(node, frc);
+          Rectangle2D bounds = tiny_.getStringBounds(node.getName(), frc);
           atPoint.setLocation(0.0, (double)(i * BioFabricPanel.GRID_SIZE));
           ac.transform(atPoint, drawPoint);
-          g2.drawString(node, getWidth() - (float)bounds.getWidth() - 5.0F, (float)drawPoint.getY() + ((float)bounds.getHeight() / 3.0F)); 
+          g2.drawString(node.getName(), getWidth() - (float)bounds.getWidth() - 5.0F, (float)drawPoint.getY() + ((float)bounds.getHeight() / 3.0F)); 
         } 
       }
       return;
@@ -696,8 +696,8 @@ public class FabricMagnifyingTool extends JPanel {
       for (int i = startCen; i <= endCen; i++) {
         count++;
         Integer colObj = Integer.valueOf(i);
-        String src = model_.getSourceForColumn(colObj, showShadows);
-        String trg = model_.getTargetForColumn(colObj, showShadows);
+        NID.WithName src = model_.getSourceIDForColumn(colObj, showShadows);
+        NID.WithName trg = model_.getTargetIDForColumn(colObj, showShadows);
         if ((src == null) || (trg == null)) {
           continue;
         }
@@ -797,7 +797,7 @@ public class FabricMagnifyingTool extends JPanel {
    
       for (int i = startCen; i <= endCen; i++) {
         Integer colObj = Integer.valueOf(i);
-        String src = model_.getSourceForColumn(colObj, showShadows);
+        NID.WithName src = model_.getSourceIDForColumn(colObj, showShadows);
         if (src == null) {
           continue;
         }

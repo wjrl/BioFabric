@@ -19,11 +19,13 @@
 
 package org.systemsbiology.biofabric.ui.render;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.PixelGrabber;
@@ -272,6 +274,7 @@ public class BufferBuilder {
     WorldPieceOffering wpo = worldForSize.get(worldPiece);
     // FIX METhis is assuming that write to handle is atomic???
     if (wpo.cacheHandle == null) {
+    	System.out.println("Build lo res " + size + " " + worldPiece);
       buildLoResSlice(bbZooms_[size.intValue()], screenDim_, worldDim_, worldPiece, worldForSize);
       if (biw_ != null) {
         biw_.bumpRequest(new QueueRequest(size, worldPiece));
@@ -299,21 +302,24 @@ public class BufferBuilder {
     //
     boolean wIsMin = false;
     boolean hIsMin = false;
-    
+ 
+    System.out.println("These resets create the tearing on the Issue17BIFasTXT.txt test file");
+
     int worldWInc = worldDim.width / zoomNum;
     if ((worldWInc < MIN_DIM_) && !force) {
-//      System.out.println("WMIN HIT " + worldWInc);
       worldWInc = MIN_DIM_;
       wIsMin = true;     
     }
     
     int worldHInc = worldDim.height / zoomNum;
     if ((worldHInc < MIN_DIM_) && !force) {
-//      System.out.println("HMIN HIT " + worldHInc);
       worldHInc = MIN_DIM_;
       hIsMin = true;
     }
-       
+     
+    System.out.println("No! When floored, This creates rectangles far beyond the right/bottom end of the network. Bigger size means we don't need them all");
+    System.out.println("Plus system makes images too small, since it expects increments to match zoomNum value.");
+
     for (int x = 0; x < zoomNum; x++) {
       for (int y = 0; y < zoomNum; y++) {
         Rectangle worldPiece = new Rectangle(-200 + (x * worldWInc), -200 + (y * worldHInc), worldWInc, worldHInc);
@@ -436,6 +442,7 @@ public class BufferBuilder {
       }
     }
   
+    System.out.println("Crappy lo-res segmentation occurs here!");
     BufferedImage chunk = bi1.getSubimage((xInc * screenWInc), (yInc * screenHInc), useWidth, useHeight);
     BufferedImage scaled = new BufferedImage(screenDim.width, screenDim.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_INT_RGB);
     Graphics2D g2 = scaled.createGraphics();
@@ -463,21 +470,25 @@ public class BufferBuilder {
   */
   
   private void buildHiResSlice(Dimension screenDim, Integer key, Rectangle worldPiece) throws IOException {
-     
+  	System.out.println("Here is the problem. If the world piece is bigger than the zoom level expects, the fixed screenDim is wrong");
+  	
+  	
+    System.out.println("BHRS " + screenDim + " " + key + " for " + worldPiece); 
     BufferedImage bi = new BufferedImage(screenDim.width, screenDim.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_INT_RGB);
     Graphics2D g2 = bi.createGraphics();
     g2.setColor(Color.WHITE);
-    //g2.setColor(Color.RED); Debug sizing problems
+    g2.setColor(Color.RED); //Debug sizing problems
     g2.fillRect(0, 0, screenDim.width, screenDim.height + SLICE_HEIGHT_HACK_);
+    System.out.println(screenDim);
     boolean didDraw = drawer_.drawForBuffer(g2, worldPiece, screenDim, worldPiece);
     
     // Debug sizing problems:
-    //AffineTransform transform = new AffineTransform();
-    //g2.setTransform(transform);
-    //BasicStroke selectedStroke = new BasicStroke(1, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
-    //g2.setStroke(selectedStroke);  
-    //g2.setColor(Color.GREEN);
-    //g2.drawRect(0, 0, screenDim.width - 1, screenDim.height + SLICE_HEIGHT_HACK_ - 1);
+    AffineTransform transform = new AffineTransform();
+    g2.setTransform(transform);
+    BasicStroke selectedStroke = new BasicStroke(1, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
+    g2.setStroke(selectedStroke);  
+    g2.setColor(Color.GREEN);
+    g2.drawRect(0, 0, screenDim.width - 1, screenDim.height + SLICE_HEIGHT_HACK_ - 1);
     
     
     g2.dispose();

@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2012 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -43,6 +43,7 @@ import org.systemsbiology.biofabric.util.ChoiceContent;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
+import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 
@@ -76,7 +77,7 @@ public class FabricSearchDialog extends JDialog {
   private JComboBox matchTypeCombo_;
   private JCheckBox discardSelections_;
   private BioFabricNetwork bfn_;
-  private Set<String> result_;
+  private Set<NID.WithName> result_;
   private boolean doDiscard_;
 
   ////////////////////////////////////////////////////////////////////////////
@@ -171,7 +172,7 @@ public class FabricSearchDialog extends JDialog {
   ** 
   */
   
-  public Set<String> getMatches() {
+  public Set<NID.WithName> getMatches() {
     return (result_);
   }
   

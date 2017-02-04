@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -30,9 +30,10 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.systemsbiology.biofabric.analysis.Link;
+import org.systemsbiology.biofabric.analysis.NIDLink;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
 **
@@ -75,17 +76,17 @@ public class DefaultEdgeLayout {
   
   public void layoutEdges(BioFabricNetwork.RelayoutBuildData rbd) {
     
-    Map<String, String> nodeOrder = rbd.nodeOrder;
+    Map<NID.WithName, Integer> nodeOrder = rbd.nodeOrder;
     
     //
     // Build target->row maps and the inverse:
     //
-    HashMap<String, Integer> targToRow = new HashMap<String, Integer>();
-    HashMap<Integer, String> rowToTarg = new HashMap<Integer, String>();
-    Iterator<String> trit = nodeOrder.keySet().iterator();
+    HashMap<NID.WithName, Integer> targToRow = new HashMap<NID.WithName, Integer>();
+    HashMap<Integer, NID.WithName> rowToTarg = new HashMap<Integer, NID.WithName>();
+    Iterator<NID.WithName> trit = nodeOrder.keySet().iterator();
     while (trit.hasNext()) {
-      String target = trit.next();
-      Integer rowObj = Integer.valueOf(nodeOrder.get(target));
+      NID.WithName target = trit.next();
+      Integer rowObj = nodeOrder.get(target);
       targToRow.put(target, rowObj);
       rowToTarg.put(rowObj, target);
     }
@@ -95,7 +96,8 @@ public class DefaultEdgeLayout {
     //
     
     TreeMap<Integer, SortedSet<Integer>> rankedLinks = new TreeMap<Integer, SortedSet<Integer>>();
-    Map<Link, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair = generateLinkExtents(rbd.allLinks, targToRow, rankedLinks);
+    Map<NIDLink, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair = 
+    	generateLinkExtents(rbd.allLinks, targToRow, rankedLinks);
     
     //
     // Ordering of links:
@@ -113,8 +115,8 @@ public class DefaultEdgeLayout {
   */
 
   private SortedMap<Integer, FabricLink> defaultLinkToColumn(SortedMap<Integer, SortedSet<Integer>> rankedLinks,         
-                                                             Map<Link, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair,
-                                                             HashMap<Integer, String> rowToTarg,
+                                                             Map<NIDLink, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair,
+                                                             HashMap<Integer, NID.WithName> rowToTarg,
                                                              BioFabricNetwork.RelayoutBuildData rbd) {    
   
     TreeMap<Integer, FabricLink> linkOrder = new TreeMap<Integer, FabricLink>();
@@ -151,7 +153,7 @@ public class DefaultEdgeLayout {
         if (relOnly.equals("")) {
           relOnly = null;
         }
-        colCount = shadowLinkToColumn(topRow.intValue(), rankedLinks, relsForPair, relOnly,microRels, colCount, rowToTarg, rbd, linkOrder);
+        colCount = shadowLinkToColumn(topRow.intValue(), rankedLinks, relsForPair, relOnly, microRels, colCount, rowToTarg, rbd, linkOrder);     
         SortedSet<Integer> perSrc = rankedLinks.get(topRow);
         if (perSrc == null) {
           continue;
@@ -161,10 +163,10 @@ public class DefaultEdgeLayout {
         // Drain the bottom rows, in increasing order...
         while (psit.hasNext()) {
           Integer botRow = psit.next();
-          String topNode = rowToTarg.get(topRow);
-          String botNode = rowToTarg.get(botRow);
+          NID.WithName topNode = rowToTarg.get(topRow);
+          NID.WithName botNode = rowToTarg.get(botRow);
           // Dumping links in order of the relation sort (alphabetical)...
-          SortedMap<FabricLink.AugRelation, FabricLink> forPair1 = relsForPair.get(new Link(topNode, botNode));
+          SortedMap<FabricLink.AugRelation, FabricLink> forPair1 = relsForPair.get(new NIDLink(topNode, botNode));
           if (forPair1 != null) {
             Iterator<FabricLink> fp1it = forPair1.values().iterator();
             while (fp1it.hasNext()) {
@@ -180,8 +182,8 @@ public class DefaultEdgeLayout {
           }
           // With directed links from above coming before directed links from below...       
           if (!topNode.equals(botNode)) { // DO NOT DUPLICATE FEEDBACK LINKS!
-            SortedMap<FabricLink.AugRelation, FabricLink> forPair2 = relsForPair.get(new Link(botNode, topNode));
-            if (forPair2 != null) {
+            SortedMap<FabricLink.AugRelation, FabricLink> forPair2 = relsForPair.get(new NIDLink(botNode, topNode));
+            if (forPair2 != null) {        
               Iterator<FabricLink> fp2it = forPair2.values().iterator();
               while (fp2it.hasNext()) {
                 FabricLink nextLink = fp2it.next();
@@ -198,11 +200,21 @@ public class DefaultEdgeLayout {
         }
       }
     }
-    // check to see if the previous network was Per_Network, and now we're doing Default w/ respect to groups
+    /*
+        // check to see if the previous network was Per_Network, and now we're doing Default w/ respect to groups
     if (rbd.getMode() == BioFabricNetwork.BuildMode.GROUP_PER_NETWORK_CHANGE ||
             (macroRels != null && rbd.bfn != null && rbd.bfn.getLayoutMode()
                     .equals(BioFabricNetwork.LayoutMode.PER_NETWORK_MODE))) {
       orderNetworkByGroups(linkOrder, macroRels);
+      UiUtil.fixMePrintout("This fix needs a review");
+    }
+    */
+    
+    
+    
+    
+    if (rbd.getMode() == BioFabricNetwork.BuildMode.GROUP_PER_NETWORK_CHANGE) {
+    	orderNetworkByGroups(linkOrder, macroRels);
     }
  
     return (linkOrder);
@@ -215,7 +227,7 @@ public class DefaultEdgeLayout {
     private void orderNetworkByGroups(SortedMap<Integer, FabricLink> existingOrd, List<String> groupOrder) {
 
       Map<String, List<FabricLink>> groups = new TreeMap<String, List<FabricLink>>();
-      // <String: link relation, List: all the links with that relation>
+      // String: link relation, List: all the links with that relation
 
       for (Map.Entry<Integer, FabricLink> entry : existingOrd.entrySet()) {
 
@@ -233,17 +245,17 @@ public class DefaultEdgeLayout {
       for (String suffix : groupOrder) {  // note: 'groupOrder' contains the suffixes
 
         for (String fullRel : groups.keySet()) {  // iterate through full Relation names to find best match
-          
+
           if (bestSuffixMatch(fullRel, suffix, groupOrder)) {
-  
+
             List<FabricLink> group = groups.get(fullRel);
-            for (FabricLink fl : group) {
-              existingOrd.put(rowIdx, fl);
-              rowIdx++;                    // increment the row index
-            }
+        for (FabricLink fl : group) {
+          existingOrd.put(rowIdx, fl);
+          rowIdx++;                    // increment the row index
+        }
           }
         }
-        
+
       }
       return;
     }
@@ -254,8 +266,8 @@ public class DefaultEdgeLayout {
   */
 
   private int shadowLinkToColumn(int currDrainRow, SortedMap<Integer, SortedSet<Integer>> rankedLinks, 
-                                  Map<Link, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair, 
-                                  String relOnly, List<String> allRels, int colCount, HashMap<Integer, String> rowToTarg,
+                                  Map<NIDLink, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair, 
+                                  String relOnly, List<String> allRels, int colCount, HashMap<Integer, NID.WithName> rowToTarg,
                                   BioFabricNetwork.RelayoutBuildData rbd, TreeMap<Integer, FabricLink> linkOrder) {    
     
     Iterator<Integer> rlit = rankedLinks.keySet().iterator();
@@ -275,10 +287,10 @@ public class DefaultEdgeLayout {
           continue;
         }
         
-        String topNode = rowToTarg.get(topRow);
-        String botNode = rowToTarg.get(botRow);
+        NID.WithName topNode = rowToTarg.get(topRow);
+        NID.WithName botNode = rowToTarg.get(botRow);
         // Dumping links in order of the relation sort (alphabetical)...
-        SortedMap<FabricLink.AugRelation, FabricLink> forPair1 = relsForPair.get(new Link(topNode, botNode));
+        SortedMap<FabricLink.AugRelation, FabricLink> forPair1 = relsForPair.get(new NIDLink(topNode, botNode));
         if (forPair1 != null) {
           Iterator<FabricLink> fp1it = forPair1.values().iterator();
           while (fp1it.hasNext()) {
@@ -296,7 +308,7 @@ public class DefaultEdgeLayout {
         // With directed links from above coming before directed links from below... 
         // This test should now always be true, given we are never doing feedback....
         if (!topNode.equals(botNode)) { // DO NOT DUPLICATE FEEDBACK LINKS!
-          SortedMap<FabricLink.AugRelation, FabricLink> forPair2 = relsForPair.get(new Link(botNode, topNode));
+          SortedMap<FabricLink.AugRelation, FabricLink> forPair2 = relsForPair.get(new NIDLink(botNode, topNode));
           if (forPair2 != null) {        
             Iterator<FabricLink> fp2it = forPair2.values().iterator();
             while (fp2it.hasNext()) {
@@ -317,39 +329,38 @@ public class DefaultEdgeLayout {
     }
     return (colCount);
   }
-  
+
   /***************************************************************************
-   **
+  ** 
    ** Answer if the given relation has the best suffix match with the given match,
-   ** given all the options. Thus, "430" should match "30" instead of "0" if both
-   ** are present.
-   */
-  
+  ** given all the options. Thus, "430" should match "30" instead of "0" if both
+  ** are present.
+  */
+
   private boolean bestSuffixMatch(String augR, String relToMatch, List<String> allRels) {
-    if (relToMatch == null) {
-      return (true);
-    }
-    
-    int topLen = 0;
-    String topRel = null;
-    for (String aRel : allRels) {
-      int matchLen = aRel.length();
-      if (matchLen < topLen) {
-        continue;
-      }
-      int ioaRel = augR.indexOf(aRel);
-      if ((ioaRel >= 0) && ((ioaRel == (augR.length() - matchLen)))) {
+  	if (relToMatch == null) {
+  		return (true);
+  	}
+  	int topLen = 0;
+  	String topRel = null;
+  	for (String aRel : allRels) {
+  		int matchLen = aRel.length();
+  		if (matchLen < topLen) {
+  			continue;
+  		}
+  		int ioaRel = augR.indexOf(aRel);
+  		if ((ioaRel >= 0) && ((ioaRel == (augR.length() - matchLen)))) {
         if (topLen == matchLen) {
-          throw new IllegalStateException();
-        } else if (topLen < matchLen) {
-          topLen = matchLen;
-          topRel = aRel;
-        }
-      }
-    }
-    if (topRel == null) {
-      throw new IllegalStateException();
-    }
+        	throw new IllegalStateException();
+  		  } else if (topLen < matchLen) {
+  		    topLen = matchLen;
+          topRel = aRel;	
+  		  }
+      }	 
+  	}
+  	if (topRel == null) {
+  		throw new IllegalStateException();
+  	}
     return (topRel.equals(relToMatch));
   }
   
@@ -366,35 +377,32 @@ public class DefaultEdgeLayout {
   **  Maps each top link row to an ordered set of link maximums 
   */
 
-  private Map<Link, SortedMap<FabricLink.AugRelation, FabricLink>> generateLinkExtents(Set<FabricLink> allLinks,
-                                                                                       HashMap<String, Integer> targToRow,
+  private Map<NIDLink, SortedMap<FabricLink.AugRelation, FabricLink>> generateLinkExtents(Set<FabricLink> allLinks,
+                                                                                       HashMap<NID.WithName, Integer> targToRow,
                                                                                        TreeMap<Integer, SortedSet<Integer>> rankedLinks) {
     //
     // Now each link is given a vertical extent.
     //
     
-    HashMap<Link, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair 
-      = new HashMap<Link, SortedMap<FabricLink.AugRelation, FabricLink>>();
+    HashMap<NIDLink, SortedMap<FabricLink.AugRelation, FabricLink>> relsForPair 
+      = new HashMap<NIDLink, SortedMap<FabricLink.AugRelation, FabricLink>>();
   //  HashMap directedMap = new HashMap();
     Iterator<FabricLink> alit = allLinks.iterator();
     while (alit.hasNext()) {
       FabricLink nextLink = alit.next();
-      String source = nextLink.getSrc();
-      String target = nextLink.getTrg();
+      NID.WithName source = nextLink.getSrcID();
+      NID.WithName target = nextLink.getTrgID();
    //   boolean directed = nextLink.isDirected();
   //    directedMap.put(new Link(source, target), new Boolean(directed));
-      Link key = new Link(source.toUpperCase(), target.toUpperCase());
+      NIDLink key = new NIDLink(source, target);
       SortedMap<FabricLink.AugRelation, FabricLink> rels = relsForPair.get(key);
       if (rels == null) {
         rels = new TreeMap<FabricLink.AugRelation, FabricLink>();
         relsForPair.put(key, rels);
       }
-      rels.put(nextLink.getAugRelation(), nextLink);
-      Integer srcRow = targToRow.get(source.toUpperCase());
-      Integer trgRow = targToRow.get(target.toUpperCase());
-      if ((srcRow == null) || (trgRow == null)) {
-//      	System.out.println(source + " " + target + " "  + srcRow + " " + trgRow);
-      }
+      rels.put(nextLink.getAugRelation(), nextLink);   
+      Integer srcRow = targToRow.get(source);
+      Integer trgRow = targToRow.get(target);
       Integer minRow;
       Integer maxRow;
       if (srcRow.intValue() < trgRow.intValue()) {
@@ -408,7 +416,7 @@ public class DefaultEdgeLayout {
       if (perSrc == null) {
         perSrc = new TreeSet<Integer>();
         rankedLinks.put(minRow, perSrc);
-      }
+      }   
       perSrc.add(maxRow);  // Have the ordered set of link maxes
     }
     return (relsForPair);

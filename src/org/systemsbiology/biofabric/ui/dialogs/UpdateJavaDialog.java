@@ -103,7 +103,7 @@ public class UpdateJavaDialog extends JDialog {
           UpdateJavaDialog.this.setVisible(false);
           UpdateJavaDialog.this.dispose();
         } catch (Exception ex) {
-//          System.err.println("Caught exception");
+          System.err.println("Caught exception");
         }
       }
     });     
@@ -115,7 +115,7 @@ public class UpdateJavaDialog extends JDialog {
           UpdateJavaDialog.this.setVisible(false);
           UpdateJavaDialog.this.dispose();
         } catch (Exception ex) {
-//          System.err.println("Caught exception");
+          System.err.println("Caught exception");
         }
       }
     });     

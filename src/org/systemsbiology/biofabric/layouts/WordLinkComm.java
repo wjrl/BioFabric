@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -48,6 +48,7 @@ import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.MinMax;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -115,7 +116,7 @@ public class WordLinkComm {
       while ((line = in.readLine()) != null) {
         String[] tokens = line.split("\\t");
         if (tokens.length != 2) {
-//          System.err.println("WARNING: Short Line: " + line);
+          System.err.println("WARNING: Short Line: " + line);
           continue;
         } else {
           Link link = new Link(tokens[0].toUpperCase(), tokens[1].toUpperCase());
@@ -170,7 +171,9 @@ public class WordLinkComm {
             String gj = genes[j].replaceAll(" ", "_");
             Link testLink = new Link(gi, gj);
             Link testLinkR = new Link(gj, gi);
-            if ((trueLinks == null) || (trueLinks.contains(testLink) || trueLinks.contains(testLinkR))) { 
+            if ((trueLinks == null) || (trueLinks.contains(testLink) || trueLinks.contains(testLinkR))) {
+            	UiUtil.fixMePrintout("Restore this");
+            	/*
               FabricLink nfl = new FabricLink(gi, gj, comName.toString(), false);
               if (!nodeOrder.isEmpty()) {
                 forGrp.update((Integer.parseInt((String)nodeOrder.get(gi))));
@@ -180,6 +183,7 @@ public class WordLinkComm {
               links.add(nfl);
               FabricLink snfl = new FabricLink(gi, gj, comName.toString(), true);
               links.add(snfl);
+              */
             }
           }         
         }
@@ -272,7 +276,8 @@ public class WordLinkComm {
     HashMap attributes = new HashMap();   
     AttributeLoader.ReadStats stats = new AttributeLoader.ReadStats();
     AttributeLoader alod = new AttributeLoader();
-    alod.readAttributes(file, false, attributes, stats);
+    UiUtil.fixMePrintout("Restore this");
+    //alod.readAttributes(file, false, attributes, stats);
     return (attributes);
   }
   
@@ -285,7 +290,8 @@ public class WordLinkComm {
     HashMap attributes = new HashMap();   
     AttributeLoader.ReadStats stats = new AttributeLoader.ReadStats();
     AttributeLoader alod = new AttributeLoader();
-    alod.readAttributes(file, true, attributes, stats);
+    UiUtil.fixMePrintout("Restore this");
+   // alod.readAttributes(file, true, attributes, stats);
     return (attributes);
   }
   
@@ -320,11 +326,11 @@ public class WordLinkComm {
     Iterator onit = allLinks.iterator();
     while (onit.hasNext()) {
       FabricLink nfl = (FabricLink)onit.next();
-      out.print(nfl.getSrc());
+      out.print(nfl.getSrcID());
       out.print("\t");
       out.print(nfl.getAugRelation().relation);
       out.print("\t");
-      out.println(nfl.getTrg());
+      out.println(nfl.getTrgID());
     }
     out.close();   
     return;
@@ -388,7 +394,7 @@ public class WordLinkComm {
             String col = (String)origOrder.get(nextLink);
             String rel = nextLink.getAugRelation().relation;
             String pref = (nextLink.getAugRelation().isShadow) ? "shdw(" : "(";
-            String asText = nextLink.getSrc() + " " + pref + rel + ") " + nextLink.getTrg();
+            String asText = nextLink.getSrcID() + " " + pref + rel + ") " + nextLink.getTrgID();
             Integer colI = Integer.valueOf(col);
             perGrp.put(colI, asText);          
           }
@@ -410,7 +416,7 @@ public class WordLinkComm {
         cp.dumpEDA("/users/wlongaba/XXX-G.eda", ordering);
       }     
     } catch (IOException ioex) {
-//      System.err.println("IO Error " + ioex);
+      System.err.println("IO Error " + ioex);
     } 
   }
   

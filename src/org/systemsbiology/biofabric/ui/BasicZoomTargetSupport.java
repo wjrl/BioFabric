@@ -217,10 +217,8 @@ public class BasicZoomTargetSupport implements ZoomTarget {
   ** Get the basic (unzoomed) image size: X Override for complex behavior
   */
   
-  public Dimension getBasicSize(boolean doComplete, boolean doBuffer, int moduleHandling) {
-    Rectangle origRect = myGenomePre_.getRequiredSize(genomeKey_, layout_, doComplete, 
-                                                      doBuffer, false, false, 
-                                                      null, null, null);
+  public Dimension getBasicSize() {
+    Rectangle origRect = myGenomePre_.getRequiredSize(genomeKey_, layout_);
     return (new Dimension(origRect.width, origRect.height));
   }
   
@@ -229,9 +227,8 @@ public class BasicZoomTargetSupport implements ZoomTarget {
   ** Get the basic model bounds X.  Override for complex behavior
   */
   
-  public Rectangle getCurrentBasicBounds(boolean doComplete, boolean doBuffer, int moduleHandling) {
-    return (myGenomePre_.getRequiredSize(genomeKey_, layout_, doComplete, doBuffer, false, false, 
-                                         null, null, null));  
+  public Rectangle getCurrentBasicBounds() {
+    return (myGenomePre_.getRequiredSize(genomeKey_, layout_));  
   }  
  
   /***************************************************************************
@@ -317,7 +314,7 @@ public class BasicZoomTargetSupport implements ZoomTarget {
       transform_.inverseTransform(ptSrc, ptDest);
       return (ptDest);
     } catch (NoninvertibleTransformException ex) {
-//      System.err.println("cannot invert: " + transform_);
+      System.err.println("cannot invert: " + transform_);
       throw new IllegalStateException();
     }
   }  

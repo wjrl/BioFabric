@@ -47,10 +47,7 @@ public interface ZoomPresentation {
   ** Return the required size of the layout
   */
   
-  public Rectangle getRequiredSize(String genomeKey, String layoutKey, 
-                                   boolean doComplete, boolean useBuffer, 
-                                   boolean doModules, boolean doModuleLinks, 
-                                   String ovrKey, TaggedSet modSet, Map allKeys);
+  public Rectangle getRequiredSize(String genomeKey, String layoutKey);
  
   /***************************************************************************
   **

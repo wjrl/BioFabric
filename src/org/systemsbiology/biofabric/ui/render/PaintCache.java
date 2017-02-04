@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -19,11 +19,6 @@
 
 package org.systemsbiology.biofabric.ui.render;
 
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.ui.FabricColorGenerator;
-import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
-import org.systemsbiology.biofabric.util.MinMax;
-
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
@@ -40,10 +35,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.ui.FabricColorGenerator;
+import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
+import org.systemsbiology.biofabric.util.MinMax;
+import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.UiUtil;
+
 /****************************************************************************
- **
- ** This is the cache of simple paint objects
- */
+**
+** This is the cache of simple paint objects
+*/
 
 public class PaintCache {
   
@@ -59,7 +61,7 @@ public class PaintCache {
   private final static float DRAIN_ZONE_ROW_OFFSET_ = 0.5F; // Lifts drain zone text above the node line & boxes
   private final static float NODE_LABEL_X_SHIM_ = 5.0F;
   private final static double LABEL_FONT_HEIGHT_SCALE_ = 2.0 / 3.0;
-  
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTANTS
@@ -73,7 +75,7 @@ public class PaintCache {
   // PRIVATE INSTANCE MEMBERS
   //
   ////////////////////////////////////////////////////////////////////////////
-  
+   
   private Font tiny_;
   private Font huge_;
   private Font med_;
@@ -90,12 +92,12 @@ public class PaintCache {
   // PUBLIC CONSTRUCTORS
   //
   ////////////////////////////////////////////////////////////////////////////
-  
+
   /***************************************************************************
-   **
-   ** Constructor
-   */
-  
+  **
+  ** Constructor
+  */
+
   public PaintCache(FabricColorGenerator colGen) {
     tiny_ = new Font("SansSerif", Font.PLAIN, 10);
     huge_ = new Font("SansSerif", Font.PLAIN, 200);
@@ -107,27 +109,26 @@ public class PaintCache {
     superLightPink_ = new Color(255, 244, 244);
     superLightBlue_ = new Color(244, 244, 255);
   }
-  
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-  
+
   /***************************************************************************
-   **
-   **  Answer if we have something to do...
-   */
+  **
+  **  Answer if we have something to do...
+  */
   
   public boolean needToPaint() {
-//  	System.out.println("paint paths = " + paintPaths_.size());
-    return (! paintPaths_.isEmpty());
+    return (!paintPaths_.isEmpty());
   }
   
   /***************************************************************************
-   **
-   **  paint it
-   */
+  **
+  **  paint it
+  */
   
   public boolean paintIt(Graphics2D g2, boolean doBoxes, Rectangle clip, boolean forSelection) {
     boolean retval = false;
@@ -141,42 +142,42 @@ public class PaintCache {
   }
   
   /***************************************************************************
-   **
-   ** Drawing core
-   */
+  **
+  ** Drawing core
+  */
   
   public void drawFloater(Graphics2D g2, FloaterSet floaters) {
     if ((floaters.floater == null) && (floaters.tourRect == null) && (floaters.currSelRect == null)) {
       return;
-    }
-    BasicStroke selectedStroke = new BasicStroke(6, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);
-    g2.setStroke(selectedStroke);
+    }       
+    BasicStroke selectedStroke = new BasicStroke(6, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
+    g2.setStroke(selectedStroke);    
     g2.setPaint(Color.BLACK);
     if (floaters.floater != null) {
-      g2.drawRect(floaters.floater.x, floaters.floater.y, floaters.floater.width, floaters.floater.height);
-    }
+      g2.drawRect(floaters.floater.x, floaters.floater.y, floaters.floater.width, floaters.floater.height); 
+    }  
     if (floaters.tourRect != null) {
       g2.setPaint(new Color(0, 0, 255, 125));
-      g2.drawArc(floaters.tourRect.x, floaters.tourRect.y, floaters.tourRect.width, floaters.tourRect.height, 0, 360);
+      g2.drawArc(floaters.tourRect.x, floaters.tourRect.y, floaters.tourRect.width, floaters.tourRect.height, 0, 360); 
     }
     if (floaters.currSelRect != null) {
       g2.setPaint(new Color(Color.orange.getRed(), Color.orange.getGreen(), Color.orange.getBlue(), 125));
-      g2.drawArc(floaters.currSelRect.x, floaters.currSelRect.y, floaters.currSelRect.width, floaters.currSelRect.height, 0, 360);
+      g2.drawArc(floaters.currSelRect.x, floaters.currSelRect.y, floaters.currSelRect.width, floaters.currSelRect.height, 0, 360); 
     }
     return;
   }
-  
+ 
   /***************************************************************************
-   **
-   ** Build objcache
-   */
+  **
+  ** Build objcache
+  */
   
-  public void buildObjCache(List<BioFabricNetwork.NodeInfo> targets, List<BioFabricNetwork.LinkInfo> links,
-                            boolean shadeNodes, boolean showShadows, Map<String, Rectangle2D> nameMap,
-                            Map<String, List<Rectangle2D>> drainMap) {
+  public void buildObjCache(List<BioFabricNetwork.NodeInfo> targets, List<BioFabricNetwork.LinkInfo> links, 
+                            boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
+                            Map<NID.WithName, List<Rectangle2D>> drainMap) {
     paintPaths_.clear();
     FontRenderContext frc = new FontRenderContext(new AffineTransform(), true, true);
-    
+   
     int numLinks = links.size();
     
     HashMap<Integer, MinMax> linkExtents = new HashMap<Integer, MinMax>();
@@ -186,15 +187,15 @@ public class PaintCache {
       int sRow = link.topRow();
       int eRow = link.bottomRow();
       linkExtents.put(Integer.valueOf(num), new MinMax(sRow, eRow));
-    }
-    
+    } 
+       
     ArrayList<PaintedPath> postPaths = new ArrayList<PaintedPath>();
     ArrayList<PaintedPath> postPostPaths = new ArrayList<PaintedPath>();
     Iterator<BioFabricNetwork.NodeInfo> trit = targets.iterator();
     while (trit.hasNext()) {
       BioFabricNetwork.NodeInfo target = trit.next();
-      buildALineHorz(target, paintPaths_, postPaths, postPostPaths, frc,
-              colGen_, linkExtents, shadeNodes, showShadows, nameMap, drainMap);
+      buildALineHorz(target, paintPaths_, postPaths, postPostPaths, frc, 
+                     colGen_, linkExtents, shadeNodes, showShadows, nameMap, drainMap);
     }
     paintPaths_.addAll(postPaths);
     for (int i = 0; i < numLinks; i++) {
@@ -203,48 +204,49 @@ public class PaintCache {
     }
     paintPaths_.addAll(postPostPaths);
     
-    
+
+
     return;
   }
-  
+ 
   /***************************************************************************
-   **
-   ** Get detail panel
-   */
-  
+  ** 
+  ** Get detail panel
+  */
+
   public Color getColorForLink(BioFabricNetwork.LinkInfo link, FabricColorGenerator colGen) {
-    return (colGen.getModifiedColor(link.getColorKey(), FabricColorGenerator.DARKER));
+    return (colGen.getModifiedColor(link.getColorKey(), FabricColorGenerator.DARKER)); 
   }
   
   /***************************************************************************
-   **
-   ** Get detail panel
-   */
-  
+  ** 
+  ** Get detail panel
+  */
+
   public Color getColorForNode(BioFabricNetwork.NodeInfo node, FabricColorGenerator colGen) {
-    return (colGen.getModifiedColor(node.colorKey, FabricColorGenerator.BRIGHTER));
+    return (colGen.getModifiedColor(node.colorKey, FabricColorGenerator.BRIGHTER)); 
   }
-  
+
   /***************************************************************************
-   **
-   ** Build a line
-   */
+  **
+  ** Build a line
+  */
   
   private void buildALineVert(BioFabricNetwork.LinkInfo link, List<PaintedPath> objCache, FabricColorGenerator colGen, boolean showShadows) {
-    
+ 
     int num = link.getUseColumn(showShadows);
     int sRow = link.topRow();
     int eRow = link.bottomRow();
     Color paintCol = getColorForLink(link, colGen);
-    
+       
     int yStrt = sRow * BioFabricPanel.GRID_SIZE;
     int yEnd = eRow * BioFabricPanel.GRID_SIZE;
     int x = num * BioFabricPanel.GRID_SIZE;
     
     Line2D line = new Line2D.Double(x, yStrt, x, yEnd);
-    
+  
     PaintedPath boxPath;
-    if (! link.isDirected()) {
+    if (!link.isDirected()) {
       boxPath = buildABox(paintCol, x, yStrt, yEnd);
     } else {
       int ySrc = link.getStartRow() * BioFabricPanel.GRID_SIZE;
@@ -254,28 +256,28 @@ public class PaintCache {
     objCache.add(new PaintedPath(paintCol, line, x, Integer.MIN_VALUE, new MinMax(yStrt, yEnd)));
     objCache.add(boxPath);
     return;
-  }
-  
+  }  
+
   /***************************************************************************
-   **
-   ** buildABox
-   */
+  **
+  ** buildABox
+  */
   
   private PaintedPath buildABox(Color color, int x, int yStrt, int yEnd) {
     Rectangle2D circ = new Rectangle2D.Double(x - BB_RADIUS_, yStrt - BB_RADIUS_, 2.0 * BB_RADIUS_, 2.0 * BB_RADIUS_);
-    Rectangle2D circ2 = new Rectangle2D.Double(x - BB_RADIUS_, yEnd - BB_RADIUS_, 2.0 * BB_RADIUS_, 2.0 * BB_RADIUS_);
+    Rectangle2D circ2 = new Rectangle2D.Double(x - BB_RADIUS_, yEnd - BB_RADIUS_, 2.0 * BB_RADIUS_, 2.0 * BB_RADIUS_);    
     return (new PaintedPath(color, circ, circ2));
   }
   
   /***************************************************************************
-   **
-   ** buildABox
-   */
+  **
+  ** buildABox
+  */
   
   private PaintedPath buildAnArrow(Color color, int x, int yStrt, int yEnd) {
     Rectangle2D circ = new Rectangle2D.Double(x - BB_RADIUS_, yStrt - BB_RADIUS_, 2.0 * BB_RADIUS_, 2.0 * BB_RADIUS_);
     GeneralPath gp = new GeneralPath();
-    float yoff = (yStrt < yEnd) ? - BB_RADIUS_ : BB_RADIUS_;
+    float yoff = (yStrt < yEnd) ? -BB_RADIUS_ : BB_RADIUS_;
     gp.moveTo(x - BB_RADIUS_, yEnd + 2.0F * yoff);
     gp.lineTo(x, (yEnd + yoff));
     gp.lineTo((x - BB_RADIUS_), (yEnd + yoff));
@@ -286,23 +288,23 @@ public class PaintCache {
     gp.lineTo((x + BB_RADIUS_), (yEnd + 2.0F * yoff));
     gp.closePath();
     return (new PaintedPath(color, circ, gp));
-  }
-  
+  }   
+   
   /***************************************************************************
-   **
-   ** Build a line
-   */
+  **
+  ** Build a line
+  */
   
-  private void buildALineHorz(BioFabricNetwork.NodeInfo target, List<PaintedPath> preCache,
-                              List<PaintedPath> objCache, List<PaintedPath> postPostCache, FontRenderContext frc,
-                              FabricColorGenerator colGen, Map<Integer, MinMax> linkExtents,
-                              boolean shadeNodes, boolean showShadows, Map<String, Rectangle2D> nameMap,
-                              Map<String, List<Rectangle2D>> drainMap) {
-    
+  private void buildALineHorz(BioFabricNetwork.NodeInfo target, List<PaintedPath> preCache, 
+                              List<PaintedPath> objCache, List<PaintedPath> postPostCache, FontRenderContext frc, 
+                              FabricColorGenerator colGen, Map<Integer, MinMax> linkExtents, 
+                              boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
+                              Map<NID.WithName, List<Rectangle2D>> drainMap) {
+        
     //
     // Drain zone sizing / rotation:
     //
-
+    
     List<MinMax> zones = target.getDrainZones(showShadows);
     
     DrainZoneInfo[] dzis = new DrainZoneInfo[zones.size()];
@@ -321,27 +323,27 @@ public class PaintCache {
       
       curr.diff = curr.dzmm.max - curr.dzmm.min;
       
-      Rectangle2D bounds = huge_.getStringBounds(target.nodeName, frc);
+      Rectangle2D bounds = huge_.getStringBounds(target.getNodeName(), frc);
       if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * curr.diff)) {
         curr.font = 0;
         curr.dumpRect = bounds;
       } else {
-        bounds = med_.getStringBounds(target.nodeName, frc);
+        bounds = med_.getStringBounds(target.getNodeName(), frc);
         if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * curr.diff)) {
           curr.font = 1;
           curr.dumpRect = bounds;
         } else {
-          bounds = medSmall_.getStringBounds(target.nodeName, frc);
+          bounds = medSmall_.getStringBounds(target.getNodeName(), frc);
           if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * curr.diff)) {
             curr.font = 2;
             curr.dumpRect = bounds;
           } else {
-            bounds = small_.getStringBounds(target.nodeName, frc);
+            bounds = small_.getStringBounds(target.getNodeName(), frc);
             if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * curr.diff)) {
               curr.font = 3;
               curr.dumpRect = bounds;
             } else {
-              bounds = tiny_.getStringBounds(target.nodeName, frc);
+              bounds = tiny_.getStringBounds(target.getNodeName(), frc);
               if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * curr.diff)) {
                 curr.font = 4;
                 curr.dumpRect = bounds;
@@ -366,16 +368,24 @@ public class PaintCache {
     // Node label sizing and Y:
     //
     
-    Rectangle2D labelBounds = tiny_.getStringBounds(target.nodeName, frc);
-    // Easiest font height hack is to scale it by ~.67:
+    Rectangle2D labelBounds = tiny_.getStringBounds(target.getNodeName(), frc);
+    // Easiest font height hack is to scale it by ~.67: 
     double scaleHeight = labelBounds.getHeight() * LABEL_FONT_HEIGHT_SCALE_;
-    float namey = (target.nodeRow * BioFabricPanel.GRID_SIZE) + (float) (scaleHeight / 2.0);
-    float namex = (colmm.min * BioFabricPanel.GRID_SIZE) - (float) labelBounds.getWidth() - BB_RADIUS_ - NODE_LABEL_X_SHIM_;
+    float namey = (target.nodeRow * BioFabricPanel.GRID_SIZE) + (float)(scaleHeight / 2.0);
+    float namex = (colmm.min * BioFabricPanel.GRID_SIZE) - (float)labelBounds.getWidth() - BB_RADIUS_ - NODE_LABEL_X_SHIM_;      
     labelBounds.setRect(namex, namey - scaleHeight, labelBounds.getWidth(), scaleHeight);
-    
+
     //
     // Bogus non-link safety:
     //
+    
+    if ((colmm.max == Integer.MIN_VALUE) || (colmm.min == Integer.MAX_VALUE)) {
+    	UiUtil.fixMePrintout("Does this still need to exist??");
+   //   objCache.add(new PaintedPath(Color.BLACK, target.getNodeName(), 100.0F, namey, 100.0F, tnamey, 
+    //                               doRotateName, useFont, labelBounds, dumpRect));
+   //   nameMap.put(target.getNodeIDWithName(), (Rectangle2D)labelBounds.clone());
+      return;
+    }
     
     //
     // Create the horizontal line and process it
@@ -387,9 +397,9 @@ public class PaintCache {
     Line2D line = new Line2D.Double(xStrt, yval, xEnd, yval);
     Color paintCol = getColorForNode(target, colGen);
     objCache.add(new PaintedPath(paintCol, line, Integer.MIN_VALUE, yval, new MinMax(xStrt, xEnd)));
-    nameMap.put(target.nodeName, (Rectangle2D) labelBounds.clone());
+    nameMap.put(target.getNodeIDWithName(), (Rectangle2D) labelBounds.clone());
     
-    objCache.add(new PaintedPath(Color.BLACK, target.nodeName, namex, namey, labelBounds));
+    objCache.add(new PaintedPath(Color.BLACK, target.getNodeName(), namex, namey, labelBounds));
     
     List<Rectangle2D> rectList = new ArrayList<Rectangle2D>();
     
@@ -399,57 +409,56 @@ public class PaintCache {
       DrainZoneInfo curr = dzis[i];
       
       if (curr.dzmm == null) {
-        continue;
+        continue;  
       }
-      
-      //
-      // Print out drain zone text _if_ there is a drain zone:
-      //
-      
-      float tnamex = 0;
-      if (curr.dumpRect != null) {
-        // Easiest font height hack is to scale it by ~.67:
-        double dumpScaleHeight = curr.dumpRect.getHeight() * LABEL_FONT_HEIGHT_SCALE_;
-        if (curr.doRotateName) {
-          tnamex = (curr.dzmm.min * BioFabricPanel.GRID_SIZE) +
-                  ((curr.diff * BioFabricPanel.GRID_SIZE) / 2.0F) +
-                  (float) (dumpScaleHeight / 2.0);
-          curr.dumpRect.setRect(tnamex - dumpScaleHeight, tnamey - curr.dumpRect.getWidth(),
-                  dumpScaleHeight, curr.dumpRect.getWidth());
-        } else {
-          tnamex = (curr.dzmm.min * BioFabricPanel.GRID_SIZE) +
-                  ((curr.diff * BioFabricPanel.GRID_SIZE) / 2.0F) - ((int) curr.dumpRect.getWidth() / 2);
-          curr.dumpRect.setRect(tnamex, tnamey - dumpScaleHeight, curr.dumpRect.getWidth(), dumpScaleHeight);
-        }
-        if (shadeNodes) {
-          Color col = ((target.nodeRow % 2) == 0) ? superLightBlue_ : superLightPink_;
-          buildABackRect(curr.dzmm, linkExtents, curr.dumpRect, preCache, col);
-        }
-      }
-      
-      //
-      // Output the node label and (optional) drain zone label.  If we are using a tiny font for the drain
-      // zone, it goes out last to get drawn above the links.
-      //
-      
+
+	    //
+	    // Print out drain zone text _if_ there is a drain zone:
+	    //
+	
+	    float tnamex = 0;
+	      if (curr.dumpRect != null) {
+	      // Easiest font height hack is to scale it by ~.67:
+	        double dumpScaleHeight = curr.dumpRect.getHeight() * LABEL_FONT_HEIGHT_SCALE_;
+	        if (curr.doRotateName) {
+	          tnamex = (curr.dzmm.min * BioFabricPanel.GRID_SIZE) +
+	                  ((curr.diff * BioFabricPanel.GRID_SIZE) / 2.0F) +
+	                 (float)(dumpScaleHeight / 2.0);
+	          curr.dumpRect.setRect(tnamex - dumpScaleHeight, tnamey - curr.dumpRect.getWidth(),
+	                  dumpScaleHeight, curr.dumpRect.getWidth());
+	      } else {  
+	          tnamex = (curr.dzmm.min * BioFabricPanel.GRID_SIZE) +
+	                  ((curr.diff * BioFabricPanel.GRID_SIZE) / 2.0F) - ((int) curr.dumpRect.getWidth() / 2);
+	          curr.dumpRect.setRect(tnamex, tnamey - dumpScaleHeight, curr.dumpRect.getWidth(), dumpScaleHeight);
+	      }
+	      if (shadeNodes) {
+	      	Color col = ((target.nodeRow % 2) == 0) ? superLightBlue_ : superLightPink_;
+	          buildABackRect(curr.dzmm, linkExtents, curr.dumpRect, preCache, col);
+	      }
+	    }
+    
+    //
+    // Output the node label and (optional) drain zone label.  If we are using a tiny font for the drain
+    // zone, it goes out last to get drawn above the links.
+    //
+    
       if (curr.font == 4) {
-        
-        postPostCache.add(new PaintedPath(Color.BLACK, target.nodeName, namex, namey, tnamex, tnamey,
-                curr.doRotateName, curr.font, labelBounds, curr.dumpRect));
+      
+        postPostCache.add(new PaintedPath(Color.BLACK, target.getNodeName(), namex, namey, tnamex, tnamey, 
+                  curr.doRotateName, curr.font, labelBounds, curr.dumpRect));
       } else {
-        objCache.add(new PaintedPath(Color.BLACK, target.nodeName, namex, namey, tnamex, tnamey,
-                curr.doRotateName, curr.font, labelBounds, curr.dumpRect));
+        objCache.add(new PaintedPath(Color.BLACK, target.getNodeName(), namex, namey, tnamex, tnamey, 
+                  curr.doRotateName, curr.font, labelBounds, curr.dumpRect));
       }
       
       if (curr.dumpRect != null) {
         rectList.add((Rectangle2D) curr.dumpRect.clone());
       }
     }
-    
-    drainMap.put(target.nodeName, rectList);
+    drainMap.put(target.getNodeIDWithName(), rectList);
     
     return;
-  }
+  } 
   
   /***************************************************************************
    ** Contains the properties required to draw a drain zone
@@ -469,13 +478,13 @@ public class PaintCache {
   }
   
   /***************************************************************************
-   **
-   ** Build a backRect
-   */
+  **
+  ** Build a backRect
+  */
   
-  private void buildABackRect(MinMax dzmm, Map<Integer, MinMax> linkExtents, Rectangle2D dumpRect, List<PaintedPath> preCache, Color col) {
+  private void buildABackRect(MinMax dzmm, Map<Integer, MinMax> linkExtents, Rectangle2D dumpRect, List<PaintedPath> preCache, Color col) {  
     int minRow = Integer.MAX_VALUE;
-    int maxRow = Integer.MIN_VALUE;
+    int maxRow = Integer.MIN_VALUE;       
     for (int i = dzmm.min; i <= dzmm.max; i++) {
       MinMax range = linkExtents.get(Integer.valueOf(i));
       if (range != null) {
@@ -487,12 +496,12 @@ public class PaintCache {
         }
       }
     }
-    int rectLeft = (int) Math.floor((double) (dzmm.min * BioFabricPanel.GRID_SIZE) - BB_RADIUS_ - (STROKE_SIZE / 2.0));
-    int topRow = (int) Math.floor((double) (minRow * BioFabricPanel.GRID_SIZE) - BB_RADIUS_ - (STROKE_SIZE / 2.0));
-    int rectTop = (dumpRect == null) ? topRow : Math.min((int) dumpRect.getMinY(), topRow);
-    int rectRight = (int) Math.ceil((double) (dzmm.max * BioFabricPanel.GRID_SIZE) + BB_RADIUS_ + (STROKE_SIZE / 2.0));
+    int rectLeft = (int)Math.floor((double)(dzmm.min * BioFabricPanel.GRID_SIZE) - BB_RADIUS_ - (STROKE_SIZE / 2.0));
+    int topRow = (int)Math.floor((double)(minRow * BioFabricPanel.GRID_SIZE) - BB_RADIUS_ - (STROKE_SIZE / 2.0));
+    int rectTop = (dumpRect == null) ? topRow : Math.min((int)dumpRect.getMinY(), topRow);
+    int rectRight = (int)Math.ceil((double)(dzmm.max * BioFabricPanel.GRID_SIZE) + BB_RADIUS_ + (STROKE_SIZE / 2.0));
     int rectWidth = rectRight - rectLeft;
-    int rectBot = (int) Math.floor((double) (maxRow * BioFabricPanel.GRID_SIZE) + BB_RADIUS_ + (STROKE_SIZE / 2.0));
+    int rectBot = (int)Math.floor((double)(maxRow * BioFabricPanel.GRID_SIZE) + BB_RADIUS_ + (STROKE_SIZE / 2.0));
     int rectHeight = rectBot - rectTop;
     Rectangle rect = new Rectangle(rectLeft, rectTop, rectWidth, rectHeight);
     preCache.add(new PaintedPath(col, rect));
@@ -500,9 +509,9 @@ public class PaintCache {
   }
   
   /***************************************************************************
-   **
-   ** Draw Object
-   */
+  **
+  ** Draw Object
+  */  
   
   private class PaintedPath {
     Color col;
@@ -539,7 +548,7 @@ public class PaintCache {
     //
     // Used for line drawing:
     //
-    
+
     PaintedPath(Color col, Line2D path, int x, int y, MinMax range) {
       this.col = col;
       this.path = path;
@@ -548,21 +557,21 @@ public class PaintCache {
       this.range = range;
     }
     
-    //
+   //
     // Used for shadow drawing:
     //
-    
+
     PaintedPath(Color col, Rectangle rect) {
       this.col = col;
       this.rect = rect;
     }
-    
+ 
     //
     // Used for text drawing:
     //
     
-    PaintedPath(Color col, String name, float x, float y,
-                float tx, float ty, boolean doRotateName, int font,
+    PaintedPath(Color col, String name, float x, float y, 
+                float tx, float ty, boolean doRotateName, int font, 
                 Rectangle2D nameRect, Rectangle2D dumpRect) {
       this.col = col;
       this.name = name;
@@ -574,44 +583,44 @@ public class PaintCache {
       this.font = font;
       this.nameRect = nameRect;
       this.dumpRect = dumpRect;
-    }
+    }  
     
     PaintedPath(Color col, Rectangle2D circ, Rectangle2D circ2) {
       this.col = col;
       this.circ = circ;
       this.circ2 = circ2;
-    }
+    }   
     
-    PaintedPath(Color col, Rectangle2D circ, GeneralPath circ2) {
+     PaintedPath(Color col, Rectangle2D circ, GeneralPath circ2) {
       this.col = col;
       this.circ = circ;
       this.gp = circ2;
-    }
-    
-    
+    }   
+       
+          
     private void drawRotString(Graphics2D g2, String name, double x, double y, double ptx, double pty) {
       AffineTransform sav = g2.getTransform();
-      AffineTransform forRot = (AffineTransform) sav.clone();
+      AffineTransform forRot = (AffineTransform)sav.clone();
       if ((ptx != 0.0) || (pty != 0.0)) {
         forRot.translate(ptx, pty);
       }
-      forRot.rotate(- Math.PI / 2.0, x, y);
+      forRot.rotate(-Math.PI / 2.0, x, y);
       g2.setTransform(forRot);
-      g2.drawString(name, (float) x, (float) y);
+      g2.drawString(name, (float)x, (float)y);
       g2.setTransform(sav);
       return;
-    }
-    
+    }  
+      
     int paint(Graphics2D g2, boolean doBoxes, Rectangle bounds, boolean forSelection) {
       int didPaint = 0;
       g2.setPaint(forSelection ? Color.black : col);
       if ((name != null) && (path == null)) {
         // NODE LABELS: only PaintedPaths that use the "node labels only" constructor can draw node labels
         if (((nameRect == null) && (dumpRect == null)) || (bounds == null) ||
-                ((nameRect.getMaxX() > bounds.getMinX()) &&
-                        (nameRect.getMinX() < bounds.getMaxX()) &&
-                        (nameRect.getMaxY() > bounds.getMinY()) &&
-                        (nameRect.getMinY() < bounds.getMaxY()))) {
+            ((nameRect.getMaxX() > bounds.getMinX()) && 
+             (nameRect.getMinX() < bounds.getMaxX()) && 
+             (nameRect.getMaxY() > bounds.getMinY()) && 
+             (nameRect.getMinY() < bounds.getMaxY()))) { 
           //g2.drawLine((int)nameRect.getMinX(), (int)nameRect.getMinY(), (int)nameRect.getMaxX(), (int)nameRect.getMaxY());     
           g2.setFont(tiny_);
           g2.drawString(name, nameX, nameY); // name next to horiz line
@@ -620,15 +629,15 @@ public class PaintCache {
         // DRAIN ZONES:
         if (dumpRect != null) {
           if ((bounds == null) ||
-                  ((dumpRect.getMaxX() > bounds.getMinX()) &&
-                          (dumpRect.getMinX() < bounds.getMaxX()) &&
-                          (dumpRect.getMaxY() > bounds.getMinY()) &&
-                          (dumpRect.getMinY() < bounds.getMaxY()))) {
+              ((dumpRect.getMaxX() > bounds.getMinX()) && 
+               (dumpRect.getMinX() < bounds.getMaxX()) && 
+               (dumpRect.getMaxY() > bounds.getMinY()) && 
+               (dumpRect.getMinY() < bounds.getMaxY()))) {          
             //g2.drawLine((int)dumpRect.getMinX(), (int)dumpRect.getMinY(), (int)dumpRect.getMaxX(), (int)dumpRect.getMaxY());
             if (doRotateName) {
               g2.setFont(tiny_);
               drawRotString(g2, name, tnameX, tnameY, 0.0, 0.0);
-              didPaint++;
+              didPaint++;         
             } else {
               Font useit;
               switch (font) {
@@ -659,23 +668,23 @@ public class PaintCache {
       } else if (circ != null) {
         g2.setFont(tiny_);
         if ((bounds == null) ||
-                ((circ.getMaxX() > bounds.getMinX()) &&
-                        (circ.getMinX() < bounds.getMaxX()) &&
-                        (circ.getMaxY() > bounds.getMinY()) &&
-                        (circ.getMinY() < bounds.getMaxY()))) {
-          g2.fill(circ);
+            ((circ.getMaxX() > bounds.getMinX()) && 
+             (circ.getMinX() < bounds.getMaxX()) && 
+             (circ.getMaxY() > bounds.getMinY()) && 
+             (circ.getMinY() < bounds.getMaxY()))) {          
+          g2.fill(circ);     
           g2.setPaint(Color.BLACK);
           g2.draw(circ);
-          didPaint++;
+          didPaint++;    
         }
         if (circ2 != null) {
           if ((bounds == null) ||
-                  ((circ2.getMaxX() > bounds.getMinX()) &&
-                          (circ2.getMinX() < bounds.getMaxX()) &&
-                          (circ2.getMaxY() > bounds.getMinY()) &&
-                          (circ2.getMinY() < bounds.getMaxY()))) {
+              ((circ2.getMaxX() > bounds.getMinX()) && 
+              (circ2.getMinX() < bounds.getMaxX()) && 
+              (circ2.getMaxY() > bounds.getMinY()) && 
+              (circ2.getMinY() < bounds.getMaxY()))) {         
             g2.setPaint(forSelection ? Color.black : col);
-            g2.fill(circ2);
+            g2.fill(circ2);     
             g2.setPaint(Color.BLACK);
             g2.draw(circ2);
             didPaint++;
@@ -683,12 +692,12 @@ public class PaintCache {
         } else {
           Rectangle arrow = gp.getBounds();
           if ((bounds == null) ||
-                  ((arrow.getMaxX() > bounds.getMinX()) &&
-                          (arrow.getMinX() < bounds.getMaxX()) &&
-                          (arrow.getMaxY() > bounds.getMinY()) &&
-                          (arrow.getMinY() < bounds.getMaxY()))) {
+              ((arrow.getMaxX() > bounds.getMinX()) && 
+               (arrow.getMinX() < bounds.getMaxX()) && 
+               (arrow.getMaxY() > bounds.getMinY()) && 
+               (arrow.getMinY() < bounds.getMaxY()))) {         
             g2.setPaint(forSelection ? Color.black : col);
-            g2.fill(gp);
+            g2.fill(gp);     
             g2.setPaint(Color.BLACK);
             g2.draw(gp);
             didPaint++;
@@ -697,7 +706,7 @@ public class PaintCache {
       } else if (rect != null) {
         g2.setPaint(col);
         g2.fill(rect);
-      } else {
+      } else {        
         if (px == Integer.MIN_VALUE) { // Horiz line         
           if ((bounds == null) || ((py > bounds.y) && (py < (bounds.y + bounds.height)))) {
             if ((bounds != null) && ((range.max < bounds.x) || (range.min > (bounds.x + bounds.width)))) {
@@ -708,31 +717,32 @@ public class PaintCache {
             }
           }
         } else if (py == Integer.MIN_VALUE) { // Vert line
-          if ((bounds == null) || ((px > bounds.x) && (px < (bounds.x + bounds.width)))) {
+        	UiUtil.fixMePrintout("using equals here to fix seam problem. Works? Expand to all other cases");
+          if ((bounds == null) || ((px >= bounds.x) && (px <= (bounds.x + bounds.width)))) { 
             if ((bounds != null) && ((range.max < bounds.y) || (range.min > (bounds.y + bounds.height)))) {
               // do nothing
             } else {
-              g2.draw(path);
-              didPaint++;
+              g2.draw(path);     
+              didPaint++;        
             }
           }
         }
       }
       return (didPaint);
-    }
-  }
+    } 
+  }  
   
-  
+ 
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC INNER CLASSES
   //
   ////////////////////////////////////////////////////////////////////////////
-  
+
   /***************************************************************************
-   **
-   ** Floaters
-   */
+  **
+  ** Floaters
+  */  
   
   public static class FloaterSet {
     public Rectangle floater;
@@ -742,7 +752,7 @@ public class PaintCache {
     public FloaterSet(Rectangle floater, Rectangle tourRect, Rectangle currSelRect) {
       this.floater = floater;
       this.tourRect = tourRect;
-      this.currSelRect = currSelRect;
+      this.currSelRect = currSelRect;    
     }
     
     public void clear() {
@@ -756,6 +766,6 @@ public class PaintCache {
       return ((floater == null) &&
               (tourRect == null) &&
               (currSelRect == null));
-    }
-  }
+    }   
+  } 
 }

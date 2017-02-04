@@ -34,6 +34,7 @@ import org.systemsbiology.biofabric.analysis.CycleFinder;
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
@@ -87,7 +88,7 @@ public class ControlTopLayout {
   ** Relayout the network!
   */
   
-  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd, List<String> forcedTop) {   
+  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd, List<NID.WithName> forcedTop) {   
     doNodeLayout(rbd, forcedTop);
     (new DefaultEdgeLayout()).layoutEdges(rbd);
     return;
@@ -98,20 +99,13 @@ public class ControlTopLayout {
   ** Relayout the network!
   */
   
-  public List<String> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, List<String> forcedTop) {
+  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, List<NID.WithName> forcedTop) {
     
-    List<String> targets = orderByNodeDegree(rbd, forcedTop);       
-
+    List<NID.WithName> targets = orderByNodeDegree(rbd, forcedTop);       
     //
     // Now have the ordered list of targets we are going to display.
     // Build target->row maps and the inverse:
     //
-    Iterator<String> tit = targets.iterator();
-    while (tit.hasNext()) {
-//      System.out.println(tit.next());
-    }
-    
-    
     (new DefaultLayout()).installNodeOrder(targets, rbd);
     return (targets);
   }
@@ -122,27 +116,27 @@ public class ControlTopLayout {
   ** to "odometer" thru the inputs
   */
   
-   private List<String> orderByNodeDegree(BioFabricNetwork.RelayoutBuildData rbd, List<String> forcedTop) {
+   private List<NID.WithName> orderByNodeDegree(BioFabricNetwork.RelayoutBuildData rbd, List<NID.WithName> forcedTop) {
    
-    List<String> snSorted = (forcedTop == null) ? controlSort(rbd.allNodes, rbd.allLinks) : forcedTop;
-    HashSet<String> snSortSet = new HashSet<String>(snSorted);
-    ArrayList<String> outList = new ArrayList<String>();
+    List<NID.WithName> snSorted = (forcedTop == null) ? controlSort(rbd.allNodeIDs, rbd.allLinks) : forcedTop;
+    HashSet<NID.WithName> snSortSet = new HashSet<NID.WithName>(snSorted);
+    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
     outList.addAll(snSorted);
     
-    UiUtil.fixMePrintout("UGH HACK");
+    UiUtil.fixMePrintout("UGLY HACK");
     
     HashSet<FabricLink> repLin = new HashSet<FabricLink>();
     Iterator<FabricLink> alit = rbd.allLinks.iterator();
     while (alit.hasNext()) {
       FabricLink nLink = alit.next();
-      if ((forcedTop != null) && !forcedTop.contains(nLink.getSrc()) && !nLink.isFeedback()) {
+      if ((forcedTop != null) && !forcedTop.contains(nLink.getSrcID()) && !nLink.isFeedback()) {
         repLin.add(nLink.flipped());
       } else {
         repLin.add(nLink);
       }
     }
     
-    GraphSearcher gs = new GraphSearcher(rbd.allNodes, repLin); //rbd.allLinks); 
+    GraphSearcher gs = new GraphSearcher(rbd.allNodeIDs, repLin); //rbd.allLinks); 
     SortedSet<GraphSearcher.SourcedNodeDegree> snds = gs.nodeDegreeSetWithSource(snSorted);
       
     Iterator<GraphSearcher.SourcedNodeDegree> dfit = snds.iterator();
@@ -161,17 +155,17 @@ public class ControlTopLayout {
   ** are currently broken arbitrarily:
   */
 
-  private List<String> controlSort(Set<String> nodes, Set<FabricLink> links) { 
+  private List<NID.WithName> controlSort(Set<NID.WithName> nodes, Set<FabricLink> links) { 
     
     //
     // Create a set of all the source nodes:
     //
     
-    HashSet<String> srcs = new HashSet<String>();
+    HashSet<NID.WithName> srcs = new HashSet<NID.WithName>();
     Iterator<FabricLink> lit = links.iterator();
     while (lit.hasNext()) {
       FabricLink nextLink = lit.next();
-      srcs.add(nextLink.getSrc());
+      srcs.add(nextLink.getSrcID());
     }     
     
     //
@@ -183,7 +177,7 @@ public class ControlTopLayout {
     lit = links.iterator();
     while (lit.hasNext()) {
       FabricLink nextLink = lit.next();
-      if (srcs.contains(nextLink.getTrg())) {
+      if (srcs.contains(nextLink.getTrgID())) {
         ctrlLinks.add(nextLink);
       }
     }   
@@ -206,7 +200,6 @@ public class ControlTopLayout {
       if (!cf.hasACycle()) {
         dagLinks.add(nextLink);
       } else {
-//        System.out.println("***remove " + nextLink);
         testLinks.remove(nextLink);
       }
     }
@@ -216,12 +209,8 @@ public class ControlTopLayout {
     //
  
     GraphSearcher gs = new GraphSearcher(srcs, dagLinks);
-    Map<String, Integer> ts = gs.topoSort(false);
-    List<String> retval = gs.topoSortToPartialOrdering(ts, links);
-    int count = 0;
-    for (String ct : retval) {
-//      System.out.println("***ctrl " + count++ + " " + ct);
-    }
+    Map<NID.WithName, Integer> ts = gs.topoSort(false);
+    List<NID.WithName> retval = gs.topoSortToPartialOrdering(ts, links);
     
     //
     // Nodes that were dropped due to cycles still need to be added as 
@@ -229,7 +218,7 @@ public class ControlTopLayout {
     //
     //
     
-    TreeSet<String> remaining = new TreeSet<String>(srcs);
+    TreeSet<NID.WithName> remaining = new TreeSet<NID.WithName>(srcs);
     remaining.removeAll(retval);
     retval.addAll(remaining);
  
@@ -241,9 +230,9 @@ public class ControlTopLayout {
   ** Calculate an ordering of nodes that puts the highest degree nodes first:
   */
 
-  private List<String> allNodeOrder(Set<String> nodes, Set<FabricLink> links) {    
+  private List<NID.WithName> allNodeOrder(Set<NID.WithName> nodes, Set<FabricLink> links) {    
     GraphSearcher gs = new GraphSearcher(nodes, links); 
-    List<String> retval = gs.nodeDegreeOrder();
+    List<NID.WithName> retval = gs.nodeDegreeOrder();
     Collections.reverse(retval);
     return (retval);
   }
@@ -253,17 +242,17 @@ public class ControlTopLayout {
   ** Order source nodes by median target degree
   */
 
-  private SortedSet<GraphSearcher.NodeDegree> medianTargetDegree(Set<String> nodes, Set<FabricLink> links) { 
+  private SortedSet<GraphSearcher.NodeDegree> medianTargetDegree(Set<NID.WithName> nodes, Set<FabricLink> links) { 
     
     GraphSearcher gs = new GraphSearcher(nodes, links); 
-    Map<String, Integer> nDeg = gs.nodeDegree(true);
+    Map<NID.WithName, Integer> nDeg = gs.nodeDegree(true);
     
-    HashMap<String, List<Integer>> deg = new HashMap<String, List<Integer>>();
+    HashMap<NID.WithName, List<Integer>> deg = new HashMap<NID.WithName, List<Integer>>();
     Iterator<FabricLink> lit = links.iterator();
     while (lit.hasNext()) {
       FabricLink nextLink = lit.next();
-      String src = nextLink.getSrc();
-      String trg = nextLink.getTrg();
+      NID.WithName src = nextLink.getSrcID();
+      NID.WithName trg = nextLink.getTrgID();
       Integer trgDeg = nDeg.get(trg);
       List<Integer> forSrc = deg.get(src);
       if (forSrc == null) {
@@ -274,16 +263,15 @@ public class ControlTopLayout {
     }  
         
     TreeSet<GraphSearcher.NodeDegree> retval = new TreeSet<GraphSearcher.NodeDegree>();
-    Iterator<String> sit = deg.keySet().iterator();
+    Iterator<NID.WithName> sit = deg.keySet().iterator();
     while (sit.hasNext()) {
-      String src = sit.next();
+      NID.WithName src = sit.next();
       List<Integer> forSrc = deg.get(src);
       Collections.sort(forSrc);
       int size = forSrc.size();    
       int medI = size / 2;
       Integer med = forSrc.get(medI);
       retval.add(new GraphSearcher.NodeDegree(src, med.intValue()));
-//      System.out.println(src + ": " + forSrc.get(0) + " - " + forSrc.get(forSrc.size() - 1) + " median = " + med);
     }
     return (retval);
   }
@@ -293,26 +281,26 @@ public class ControlTopLayout {
   ** Calculate control node order
   */
 
-  private List<String> controlSortDegreeOnly(Set<String> nodes, Set<FabricLink> links) { 
+  private List<NID.WithName> controlSortDegreeOnly(Set<NID.WithName> nodes, Set<FabricLink> links) { 
     
-    HashSet<String> srcs = new HashSet<String>();
+    HashSet<NID.WithName> srcs = new HashSet<NID.WithName>();
     Iterator<FabricLink> lit = links.iterator();
     while (lit.hasNext()) {
       FabricLink nextLink = lit.next();
-      srcs.add(nextLink.getSrc());
+      srcs.add(nextLink.getSrcID());
     }  
        
     HashSet<FabricLink> ctrlLinks = new HashSet<FabricLink>();
     lit = links.iterator();
     while (lit.hasNext()) {
       FabricLink nextLink = lit.next();
-      if (srcs.contains(nextLink.getTrg())) {
+      if (srcs.contains(nextLink.getTrgID())) {
         ctrlLinks.add(nextLink);
       }
     }   
  
     GraphSearcher gs = new GraphSearcher(srcs, ctrlLinks); 
-    List<String> retval = gs.nodeDegreeOrder();
+    List<NID.WithName> retval = gs.nodeDegreeOrder();
     Collections.reverse(retval);
     return (retval);
   }
@@ -322,13 +310,13 @@ public class ControlTopLayout {
   ** Return source nodes
   */
 
-  private Set<String> controlNodes(Set<String> nodes, Set<FabricLink> links) { 
+  private Set<NID.WithName> controlNodes(Set<NID.WithName> nodes, Set<FabricLink> links) { 
     
-    HashSet<String> srcs = new HashSet<String>();
+    HashSet<NID.WithName> srcs = new HashSet<NID.WithName>();
     Iterator<FabricLink> lit = links.iterator();
     while (lit.hasNext()) {
       FabricLink nextLink = lit.next();
-      srcs.add(nextLink.getSrc());
+      srcs.add(nextLink.getSrcID());
     }  
     return (srcs);
   }
@@ -338,18 +326,18 @@ public class ControlTopLayout {
   ** Generate breadth-first-order
   */
 
-  private List<String> orderBreadth(Set<String> nodes, Set<FabricLink> links) {
+  private List<NID.WithName> orderBreadth(Set<NID.WithName> nodes, Set<FabricLink> links) {
    
    //   List<String> controlNodes  = cp.controlSortDegreeOnly(nodes, links); //cp.controlSort(nodes, links);
       
-    ArrayList<String> ctrlList = new ArrayList<String>();
-    Set<String> cnSet = controlNodes(nodes, links);
+    ArrayList<NID.WithName> ctrlList = new ArrayList<NID.WithName>();
+    Set<NID.WithName> cnSet = controlNodes(nodes, links);
     
     
-    List<String> dfo = allNodeOrder(nodes, links);
-    Iterator<String> dfit = dfo.iterator();
+    List<NID.WithName> dfo = allNodeOrder(nodes, links);
+    Iterator<NID.WithName> dfit = dfo.iterator();
     while (dfit.hasNext()) {
-      String node = dfit.next();
+      NID.WithName node = dfit.next();
       if (cnSet.contains(node)) {
         ctrlList.add(node);
       }
@@ -358,7 +346,7 @@ public class ControlTopLayout {
     GraphSearcher gs = new GraphSearcher(nodes, links);
     List<GraphSearcher.QueueEntry> queue = gs.breadthSearch(ctrlList);
     
-    ArrayList<String> outList = new ArrayList<String>();
+    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
     Iterator<GraphSearcher.QueueEntry> qit = queue.iterator();
     while (qit.hasNext()) {
       GraphSearcher.QueueEntry qe = qit.next();
@@ -372,22 +360,22 @@ public class ControlTopLayout {
   ** Test frame
   */
 
-  private List<String> orderPureDegree(Set<String> nodes, Set<FabricLink> links) {
+  private List<NID.WithName> orderPureDegree(Set<NID.WithName> nodes, Set<FabricLink> links) {
        
-    Set<String> cnSet = controlNodes(nodes, links);           
-    ArrayList<String> outList = new ArrayList<String>();
+    Set<NID.WithName> cnSet = controlNodes(nodes, links);           
+    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
 
-    List<String> dfo = allNodeOrder(nodes, links);
-    Iterator<String> dfit = dfo.iterator();
+    List<NID.WithName> dfo = allNodeOrder(nodes, links);
+    Iterator<NID.WithName> dfit = dfo.iterator();
     while (dfit.hasNext()) {
-      String node = dfit.next();
+      NID.WithName node = dfit.next();
       if (cnSet.contains(node)) {
         outList.add(node);
       }
     }
     dfit = dfo.iterator();
     while (dfit.hasNext()) {
-      String node = dfit.next();
+      NID.WithName node = dfit.next();
       if (!cnSet.contains(node)) {
         outList.add(node);
       }
@@ -400,10 +388,10 @@ public class ControlTopLayout {
   ** Test frame
   */
 
-  private List<String> orderCtrlMedianTargetDegree(Set<String> nodes, Set<FabricLink> links) {
+  private List<NID.WithName> orderCtrlMedianTargetDegree(Set<NID.WithName> nodes, Set<FabricLink> links) {
  
-    Set<String> cnSet = controlNodes(nodes, links);           
-    ArrayList<String> outList = new ArrayList<String>();
+    Set<NID.WithName> cnSet = controlNodes(nodes, links);           
+    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
     
     SortedSet<GraphSearcher.NodeDegree> ctrlMed = medianTargetDegree(nodes, links);
     Iterator<GraphSearcher.NodeDegree> ndit = ctrlMed.iterator();
@@ -413,10 +401,10 @@ public class ControlTopLayout {
     }
     Collections.reverse(outList);
       
-    List<String> dfo = allNodeOrder(nodes, links);
-    Iterator<String> dfit = dfo.iterator();
+    List<NID.WithName> dfo = allNodeOrder(nodes, links);
+    Iterator<NID.WithName> dfit = dfo.iterator();
     while (dfit.hasNext()) {
-      String node = dfit.next();
+      NID.WithName node = dfit.next();
       if (!cnSet.contains(node)) {
         outList.add(node);
       }
@@ -429,11 +417,11 @@ public class ControlTopLayout {
   ** Test frame
   */
 
-  private List<String> mainSourceSortedTargs(Set<String> nodes, Set<FabricLink> links) {
+  private List<NID.WithName> mainSourceSortedTargs(Set<NID.WithName> nodes, Set<FabricLink> links) {
   
-    List<String> snSorted = controlSort(nodes, links);
-    HashSet<String> snSortSet = new HashSet<String>(snSorted);
-    ArrayList<String> outList = new ArrayList<String>();
+    List<NID.WithName> snSorted = controlSort(nodes, links);
+    HashSet<NID.WithName> snSortSet = new HashSet<NID.WithName>(snSorted);
+    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
     outList.addAll(snSorted);
     
     GraphSearcher gs = new GraphSearcher(nodes, links); 

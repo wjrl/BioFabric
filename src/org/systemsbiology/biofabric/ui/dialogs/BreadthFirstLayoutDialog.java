@@ -37,6 +37,7 @@ import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
+import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 
 /****************************************************************************
@@ -79,7 +80,7 @@ public class BreadthFirstLayoutDialog extends BTStashResultsDialog {
   ** Constructor 
   */ 
   
-  public BreadthFirstLayoutDialog(JFrame parent, String currSel, BioFabricNetwork bfn) {     
+  public BreadthFirstLayoutDialog(JFrame parent, NID.WithName currSel, BioFabricNetwork bfn) {     
     super(parent, "breadthFirstLayout.title", new Dimension(600, 350), 2);
     params_ = null;
     bfn_ = bfn;
@@ -116,8 +117,8 @@ public class BreadthFirstLayoutDialog extends BTStashResultsDialog {
     group.add(useDefault_);
     group.add(userSpec_);
     
-    userName_ = new JTextField((currSel == null) ? "" : currSel.trim());
-    nameLabel_ = new JLabel("bFirst.selectName");
+    userName_ = new JTextField((currSel == null) ? "" : currSel.getName().trim());
+    nameLabel_ = new JLabel(rMan_.getString("bFirst.selectName"));
     userName_.setEnabled(userSpec_.isSelected());
     nameLabel_.setEnabled(userSpec_.isSelected());   
     addLabeledWidget(nameLabel_, userName_, false, false); 
@@ -158,7 +159,7 @@ public class BreadthFirstLayoutDialog extends BTStashResultsDialog {
     
     if (useSelected) {
       String search = DataUtil.normKey(userName_.getText().trim());
-      Set<String> result = bfn_.nodeMatches(true, search);
+      Set<NID.WithName> result = bfn_.nodeMatches(true, search);
       if (result.size() != 1) {
         ResourceManager rMan = ResourceManager.getManager();
         JOptionPane.showMessageDialog(parent_, 
@@ -167,7 +168,7 @@ public class BreadthFirstLayoutDialog extends BTStashResultsDialog {
                                       JOptionPane.ERROR_MESSAGE);
         return (false);
       }
-      ArrayList<String> starts = new ArrayList<String>();
+      ArrayList<NID.WithName> starts = new ArrayList<NID.WithName>();
       starts.add(result.iterator().next());
       params_ = new DefaultLayout.Params(starts);
     } else {

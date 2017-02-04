@@ -69,18 +69,18 @@ public class ExceptionHandler {
       if (inProcess_) {
         throw new HeadlessException(ex);
       } else {
-//        System.err.println(version);
+        System.err.println(version);
         ex.printStackTrace();
         return;
       }
     }      
     if (topWindow_ == null) {
-//      System.err.println("Exception reporter not initialized");
-//      System.err.println(version);
+      System.err.println("Exception reporter not initialized");
+      System.err.println(version);
       ex.printStackTrace();
       return;
     }
-//    System.err.println(version);
+    System.err.println(version);
     ex.printStackTrace();
     ExceptionDialog ed = new ExceptionDialog(topWindow_, ex, version);
     ed.setVisible(true);
@@ -98,7 +98,7 @@ public class ExceptionHandler {
       throw oom;  
     }    
     if (topWindow_ == null) {
-//      System.err.println("Out of memory (Exception reporter not initialized)");
+      System.err.println("Out of memory (Exception reporter not initialized)");
       oom.printStackTrace();
       throw oom;
     }
@@ -115,7 +115,7 @@ public class ExceptionHandler {
 
   public void displayPaintException(Exception ex) {
     if (paintException_) {
-//      System.err.println("Extra paint exceptions continue");
+      System.err.println("Extra paint exceptions continue");
       ex.printStackTrace();
       return;
     }

@@ -31,6 +31,7 @@ import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
 **
@@ -57,10 +58,10 @@ public class HierDAGLayout {
   //
   ////////////////////////////////////////////////////////////////////////////
 
-   private Map<String, Set<String>> l2s_;
-   private Map<String, Integer> inDegs_;
-   private Map<String, Integer> outDegs_;
-   private ArrayList<String> placeList_;
+   private Map<NID.WithName, Set<NID.WithName>> l2s_;
+   private Map<NID.WithName, Integer> inDegs_;
+   private Map<NID.WithName, Integer> outDegs_;
+   private ArrayList<NID.WithName> placeList_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -74,10 +75,10 @@ public class HierDAGLayout {
   */
 
   public HierDAGLayout() {
-     l2s_ = new HashMap<String, Set<String>>();
-     inDegs_ = new HashMap<String, Integer>();
-     outDegs_ = new HashMap<String, Integer>();
-     placeList_ = new ArrayList<String>();
+     l2s_ = new HashMap<NID.WithName, Set<NID.WithName>>();
+     inDegs_ = new HashMap<NID.WithName, Integer>();
+     outDegs_ = new HashMap<NID.WithName, Integer>();
+     placeList_ = new ArrayList<NID.WithName>();
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -102,9 +103,9 @@ public class HierDAGLayout {
   ** Relayout the network!
   */
   
-  public List<String> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd) {
+  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd) {
     
-    List<String> targets = orderByNodeDegree(rbd);       
+    List<NID.WithName> targets = orderByNodeDegree(rbd);       
 
     //
     // Now have the ordered list of targets we are going to display.
@@ -121,11 +122,11 @@ public class HierDAGLayout {
   ** Relayout the network!
   */
   
-  public List<String> orderByNodeDegree(BioFabricNetwork.RelayoutBuildData rbd) {
+  public List<NID.WithName> orderByNodeDegree(BioFabricNetwork.RelayoutBuildData rbd) {
     
-    HashSet<String> nodesToGo = new HashSet<String>(rbd.allNodes);      
-    linksToSources(rbd.allNodes, rbd.allLinks);
-    List<String> placeList = extractRoots();
+    HashSet<NID.WithName> nodesToGo = new HashSet<NID.WithName>(rbd.allNodeIDs);      
+    linksToSources(rbd.allNodeIDs, rbd.allLinks);
+    List<NID.WithName> placeList = extractRoots();
     addToPlaceList(placeList);
     nodesToGo.removeAll(placeList);
     
@@ -134,10 +135,9 @@ public class HierDAGLayout {
     //
     
     while (!nodesToGo.isEmpty()) {     
-      List<String> nextBatch = findNextCandidates();
+      List<NID.WithName> nextBatch = findNextCandidates();
       addToPlaceList(nextBatch);
       nodesToGo.removeAll(nextBatch);
-//      System.out.println("Nodes to Go = " + nodesToGo.size());
     }
     
     return (placeList_);
@@ -149,27 +149,27 @@ public class HierDAGLayout {
   ** Build the set of guys we are looking at and degrees
   */
 
-  public Map<String, Set<String>> linksToSources(Set<String> nodeList, Set<FabricLink> linkList) {   
+  public Map<NID.WithName, Set<NID.WithName>> linksToSources(Set<NID.WithName> nodeList, Set<FabricLink> linkList) {   
       
-    Iterator<String> nit = nodeList.iterator();
+    Iterator<NID.WithName> nit = nodeList.iterator();
     while (nit.hasNext()) {
-      String node = nit.next();
-      l2s_.put(node, new HashSet<String>());
-      inDegs_.put(node, new Integer(0));
-      outDegs_.put(node, new Integer(0));
+      NID.WithName node = nit.next();
+      l2s_.put(node, new HashSet<NID.WithName>());
+      inDegs_.put(node, Integer.valueOf(0));
+      outDegs_.put(node, Integer.valueOf(0));
     } 
     
     Iterator<FabricLink> llit = linkList.iterator();
     while (llit.hasNext()) {
       FabricLink link = llit.next();
-      String src = link.getSrc();
-      String trg = link.getTrg();
-      Set<String> toTarg = l2s_.get(src);
+      NID.WithName src = link.getSrcID();
+      NID.WithName trg = link.getTrgID();
+      Set<NID.WithName> toTarg = l2s_.get(src);
       toTarg.add(trg);
       Integer deg = outDegs_.get(src);
-      outDegs_.put(src, new Integer(deg.intValue() + 1));
+      outDegs_.put(src, Integer.valueOf(deg.intValue() + 1));
       deg = inDegs_.get(trg);
-      inDegs_.put(trg, new Integer(deg.intValue() + 1)); 
+      inDegs_.put(trg, Integer.valueOf(deg.intValue() + 1)); 
     } 
     return (l2s_);
   }
@@ -179,7 +179,7 @@ public class HierDAGLayout {
   ** Add to list to place
   */
 
-  public void addToPlaceList(List<String> nextBatch) {         
+  public void addToPlaceList(List<NID.WithName> nextBatch) {         
     placeList_.addAll(nextBatch);
     return;
   }
@@ -189,42 +189,42 @@ public class HierDAGLayout {
   ** Extract the root nodes in order from highest degree to low
   */
 
-  public List<String> extractRoots() {
+  public List<NID.WithName> extractRoots() {
  
-    Map<String, Integer> roots = new HashMap<String, Integer>();
+    Map<NID.WithName, Integer> roots = new HashMap<NID.WithName, Integer>();
       
-    Iterator<String> lit = l2s_.keySet().iterator();
+    Iterator<NID.WithName> lit = l2s_.keySet().iterator();
     while (lit.hasNext()) {
-      String node = lit.next();
-      Set<String> fn = l2s_.get(node);
+      NID.WithName node = lit.next();
+      Set<NID.WithName> fn = l2s_.get(node);
       if (fn.isEmpty()) {
-        roots.put(node, new Integer(0));
+        roots.put(node, Integer.valueOf(0));
       }
     } 
     
     lit = l2s_.keySet().iterator();
     while (lit.hasNext()) {
-      String node = lit.next();
-      Set<String> fn = l2s_.get(node);
-      Iterator<String> sit = fn.iterator();
+      NID.WithName node = lit.next();
+      Set<NID.WithName> fn = l2s_.get(node);
+      Iterator<NID.WithName> sit = fn.iterator();
       while (sit.hasNext()) {
-        String trg = sit.next();
+        NID.WithName trg = sit.next();
         Integer rs = roots.get(trg);
         if (rs != null) {
-          roots.put(trg, new Integer(rs.intValue() + 1));          
+          roots.put(trg, Integer.valueOf(rs.intValue() + 1));          
         }
       }
     } 
     
-    ArrayList<String> buildList = new ArrayList<String>();
+    ArrayList<NID.WithName> buildList = new ArrayList<NID.WithName>();
     
     int count = 1;
     while (buildList.size() < roots.size()) {
-      TreeSet<String> alpha = new TreeSet<String>(Collections.reverseOrder());
+      TreeSet<NID.WithName> alpha = new TreeSet<NID.WithName>(Collections.reverseOrder());
       alpha.addAll(roots.keySet());
-      Iterator<String> rit = alpha.iterator();
+      Iterator<NID.WithName> rit = alpha.iterator();
       while (rit.hasNext()) {
-        String node = rit.next();
+        NID.WithName node = rit.next();
         Integer val = roots.get(node);
         if (val.intValue() == count) {
           buildList.add(node);
@@ -242,23 +242,23 @@ public class HierDAGLayout {
   ** Find the next guys to go:
   */
 
-  public List<String> findNextCandidates() {
+  public List<NID.WithName> findNextCandidates() {
  
-    HashSet<String> quickie = new HashSet<String>(placeList_);
+    HashSet<NID.WithName> quickie = new HashSet<NID.WithName>(placeList_);
      
     TreeSet<SourcedNode> nextOut = new TreeSet<SourcedNode>(Collections.reverseOrder());
     
-    Iterator<String> lit = l2s_.keySet().iterator();
+    Iterator<NID.WithName> lit = l2s_.keySet().iterator();
     while (lit.hasNext()) {
-      String node = lit.next();
+      NID.WithName node = lit.next();
       if (quickie.contains(node)) {
         continue;
       }
-      Set<String> fn = l2s_.get(node);
+      Set<NID.WithName> fn = l2s_.get(node);
       boolean allThere = true;
-      Iterator<String> sit = fn.iterator();
+      Iterator<NID.WithName> sit = fn.iterator();
       while (sit.hasNext()) {
-        String trg = sit.next();
+        NID.WithName trg = sit.next();
         if (!quickie.contains(trg)) {
           allThere = false;
           break;
@@ -269,7 +269,7 @@ public class HierDAGLayout {
       }
     } 
   
-    ArrayList<String> retval = new ArrayList<String>();
+    ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
     Iterator<SourcedNode> noit = nextOut.iterator();
     while (noit.hasNext()) {
       SourcedNode sn = noit.next();
@@ -291,14 +291,14 @@ public class HierDAGLayout {
   
   public class SourcedNode implements Comparable<SourcedNode> {
     
-    private String node_;
+    private NID.WithName node_;
 
     
-    public SourcedNode(String node) {
+    public SourcedNode(NID.WithName node) {
       node_ = node;
     }
     
-    public String getNode() {
+    public NID.WithName getNode() {
       return (node_);
     }
     
@@ -331,14 +331,14 @@ public class HierDAGLayout {
         return (0);
       }
       
-      Set<String> mySet = l2s_.get(this.node_);
-      Set<String> hisSet = l2s_.get(otherDeg.node_);
+      Set<NID.WithName> mySet = l2s_.get(this.node_);
+      Set<NID.WithName> hisSet = l2s_.get(otherDeg.node_);
       
       TreeSet<Integer> myOrder = new TreeSet<Integer>(); 
       TreeSet<Integer> hisOrder = new TreeSet<Integer>(); 
       int numNode = placeList_.size();
       for (int i = 0; i < numNode; i++) {
-        String node = placeList_.get(i);
+        NID.WithName node = placeList_.get(i);
         if (mySet.contains(node)) {
           myOrder.add(new Integer(i));
         }

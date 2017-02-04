@@ -163,7 +163,7 @@ public class UniqueLabeller implements Cloneable {
     String stringVal = null;
     
     if ((label == null) || label.trim().equals("")) {
-//      System.err.println("bad label " + label);
+      System.err.println("bad label " + label);
       throw new IllegalArgumentException();
     }
     
@@ -184,7 +184,7 @@ public class UniqueLabeller implements Cloneable {
     if (fixedPrefix_ != null) {
       if (label.indexOf(fixedPrefix_) != 0) {
         if (!legacy_.contains(label)) {
-//          System.err.println("label " + label + " fixedPrefix = " + fixedPrefix_);
+          System.err.println("label " + label + " fixedPrefix = " + fixedPrefix_);
           throw new IllegalArgumentException();
         } else {
           return (false);
@@ -224,7 +224,7 @@ public class UniqueLabeller implements Cloneable {
     String stringVal = null;
     
     if ((label == null) || label.trim().equals("")) {
-//      System.err.println("bad label " + label);
+      System.err.println("bad label " + label);
       throw new IllegalArgumentException();
     }
     if (isNumeric_) {
@@ -243,6 +243,14 @@ public class UniqueLabeller implements Cloneable {
     return (legacy_.isEmpty() && existing_.isEmpty());
   }
  
+  /***************************************************************************
+  **
+  ** Get a unique node ID. 
+  */
+  
+  public NID getNextOID() {
+  	return (new NID(getNextLabel()));
+  }
   
   /***************************************************************************
   **
@@ -298,7 +306,7 @@ public class UniqueLabeller implements Cloneable {
       }
       boolean replaced = existing_.add(newVal);
       if (!replaced) {
-//        System.err.println("Not replaced " + newVal);
+        System.err.println("Not replaced " + newVal);
         throw new IllegalStateException();
       }
       if (fixedPrefix_ != null) {
@@ -350,7 +358,7 @@ public class UniqueLabeller implements Cloneable {
       } catch (NumberFormatException nfe) {
         // FIX ME: SEEN an exception here removing rmic/delta link segment 11-18-03
         // BECAUSE attempting to remove from an empty list does that! 4-27-04 (See above fix)
-//        System.err.println(existing_ + " " + label);
+        System.err.println(existing_ + " " + label);
         throw new IllegalArgumentException();
       }
     } else {
@@ -549,7 +557,7 @@ public class UniqueLabeller implements Cloneable {
       holdLabNew.add("zz_newColor_0d");
       in.close();
       for (int j = 0; j < 80; j++) {
-//        System.out.println("Reload " + j);
+        System.out.println("Reload " + j);
         UniqueLabeller lab = new UniqueLabeller();
         lab.setFixedPrefix("zz_newColor_0");
         Iterator hlit = holdLegLab.iterator();
@@ -564,13 +572,13 @@ public class UniqueLabeller implements Cloneable {
         }
         for (int i = 0; i < 50; i++) {
           String nextLab = lab.getNextLabel();
-//          System.out.println("Next Label " + nextLab);
+          System.out.println("Next Label " + nextLab);
           holdLabNew.add(nextLab);
         }      
       }
       
     } catch (Exception ex) {
-//      System.err.println("Exception " + ex);
+      System.err.println("Exception " + ex);
     }
   }
   

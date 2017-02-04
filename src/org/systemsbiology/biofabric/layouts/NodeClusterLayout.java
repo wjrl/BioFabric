@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -40,9 +40,12 @@ import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.DataUtil;
+import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.TrueObjChoiceContent;
 import org.systemsbiology.biofabric.util.UiUtil;
+import org.systemsbiology.biofabric.util.UniqueLabeller;
 
 /****************************************************************************
 **
@@ -88,13 +91,12 @@ public class NodeClusterLayout {
     
     TreeMap<String, BioFabricNetwork.RelayoutBuildData> perClust = new TreeMap<String, BioFabricNetwork.RelayoutBuildData>();
     HashMap<Tuple, List<FabricLink>> interClust = new HashMap<Tuple, List<FabricLink>>();
-    HashSet<String> interNodesOnly = new HashSet<String>();
+    HashSet<NID.WithName> interNodesOnly = new HashSet<NID.WithName>();
     
-    HashMap<String, Integer> fullNodeDegree = null;
+    HashMap<NID.WithName, Integer> fullNodeDegree = null;
     if (params.cLay == ClusterParams.ClustLayout.BREADTH_CONN_FIRST) {
-      fullNodeDegree = new HashMap<String, Integer>();
+      fullNodeDegree = new HashMap<NID.WithName, Integer>();
     } 	
-	
     
     BioFabricNetwork.BuildMode intraLay = (params.cLay == ClusterParams.ClustLayout.SIMILAR) ? BioFabricNetwork.BuildMode.CLUSTERED_LAYOUT
             																																								 : BioFabricNetwork.BuildMode.DEFAULT_LAYOUT;
@@ -102,8 +104,8 @@ public class NodeClusterLayout {
     Iterator<FabricLink> flit = rbd.allLinks.iterator();
     while (flit.hasNext()) {
       FabricLink fl = flit.next();
-      String source = fl.getSrc().toUpperCase();
-      String target = fl.getTrg().toUpperCase();
+      NID.WithName source = fl.getSrcID();
+      NID.WithName target = fl.getTrgID();
       if (fullNodeDegree != null) {
       	Integer count = fullNodeDegree.get(source);
         count = (count == null) ? Integer.valueOf(1) : Integer.valueOf(count.intValue() + 1);
@@ -118,13 +120,15 @@ public class NodeClusterLayout {
       if (srcClust.equals(trgClust)) {
         BioFabricNetwork.RelayoutBuildData rbdpc = perClust.get(srcClust);
         if (rbdpc == null) {
-          rbdpc = new BioFabricNetwork.RelayoutBuildData(new HashSet<FabricLink>(), new HashSet<String>(), rbd.colGen, intraLay);
-          rbdpc.allNodes = new HashSet<String>();
+          rbdpc = new BioFabricNetwork.RelayoutBuildData(new UniqueLabeller(),
+    		                                                 new HashSet<FabricLink>(), new HashSet<NID.WithName>(),
+    		                                                 new HashMap<NID.WithName, String>(), rbd.colGen, intraLay);
+          rbdpc.allNodeIDs = new HashSet<NID.WithName>();
           perClust.put(srcClust, rbdpc);
         }
         rbdpc.allLinks.add(fl);
-        rbdpc.allNodes.add(fl.getSrc());
-        rbdpc.allNodes.add(fl.getTrg());
+        addClusterNode(rbdpc, source); 
+        addClusterNode(rbdpc, target);
       } else {
         Tuple intup = new Tuple(srcClust, trgClust); // Tuples reordered so val1 < val2!
         List<FabricLink> icfl = interClust.get(intup);
@@ -132,12 +136,9 @@ public class NodeClusterLayout {
           icfl = new ArrayList<FabricLink>();
           interClust.put(intup, icfl);
         }
-        if (fl.getTrg().equals("Valjean")) {
-//        	System.out.println("Link " + fl + " for " + intup + " with " + trgClust + " " + target);
-        }
         icfl.add(fl);
-        interNodesOnly.add(fl.getSrc());
-        interNodesOnly.add(fl.getTrg());
+        interNodesOnly.add(source);
+        interNodesOnly.add(target);
       }
     }
     
@@ -145,18 +146,20 @@ public class NodeClusterLayout {
     // Need to deal with "clusters" of nodes that have no internal links!
     //  
     
-    for (String node : rbd.allNodes) {
-    	String clust = params.getClusterForNode(node.toUpperCase());
+    for (NID.WithName node : rbd.allNodeIDs) {
+    	String clust = params.getClusterForNode(node);
     	BioFabricNetwork.RelayoutBuildData rbdpc = perClust.get(clust);
     	if (rbdpc == null) {
-    	  rbdpc  = new BioFabricNetwork.RelayoutBuildData(new HashSet<FabricLink>(), new HashSet<String>(), rbd.colGen, intraLay);
-        rbdpc.allNodes = new HashSet<String>();
+    		rbdpc = new BioFabricNetwork.RelayoutBuildData(new UniqueLabeller(),
+    		                                               new HashSet<FabricLink>(), new HashSet<NID.WithName>(),
+    		                                               new HashMap<NID.WithName, String>(), rbd.colGen, intraLay);
+        rbdpc.allNodeIDs = new HashSet<NID.WithName>();
         perClust.put(clust, rbdpc);
     	}  		
-      rbdpc.allNodes.add(node);	
+      addClusterNode(rbdpc, node); 
     }
     
-    String startClust = (params.startNode != null) ? params.getClusterForNode(params.startNode.toUpperCase()) : null;
+    String startClust = (params.startNode != null) ? params.getClusterForNode(params.startNode) : null;
     
     List<String> bfc;
     switch (params.order) {
@@ -180,12 +183,12 @@ public class NodeClusterLayout {
     		throw new IllegalStateException();
     }
     
-    Map<String, List<String>> hubs = null;
+    Map<String, List<NID.WithName>> hubs = null;
     if (params.cLay == ClusterParams.ClustLayout.BREADTH_CONN_FIRST) {
       hubs = rankInterClustHubs(interClust, params, fullNodeDegree);	
     }
 
-    ArrayList<String> allTargets = new ArrayList<String>();
+    ArrayList<NID.WithName> allTargets = new ArrayList<NID.WithName>();
 
     Iterator<String> pcit = bfc.iterator(); 
     while (pcit.hasNext()) {
@@ -194,17 +197,19 @@ public class NodeClusterLayout {
       if (pcrbd == null) {
       	continue;
       }
-      List<String> targets;
+      List<NID.WithName> targets;
       if (intraLay == BioFabricNetwork.BuildMode.CLUSTERED_LAYOUT) {
         NodeSimilarityLayout.CRParams crp = new NodeSimilarityLayout.ClusterParams();
     	  NodeSimilarityLayout nslLayout = new NodeSimilarityLayout();
-    	  pcrbd.existingOrder = new ArrayList<String>(pcrbd.allNodes);
+    	  pcrbd.existingIDOrder = new ArrayList<NID.WithName>(pcrbd.allNodeIDs);
     	 // FAIL
-        targets = nslLayout.doClusteredLayoutOrder(pcrbd, crp, monitor, startFrac, endFrac);
+    	  UiUtil.fixMePrintout("What am I trying to do here?");
+        //targets = nslLayout.doClusteredLayoutOrder(pcrbd, crp, monitor, startFrac, endFrac);
+    	  targets = new ArrayList<NID.WithName>();
       } else {
         DefaultLayout dl = new DefaultLayout();
-        List<String> starts = (hubs == null) ? null : hubs.get(clustName);
-        targets = dl.defaultNodeOrder(pcrbd.allLinks, pcrbd.loneNodes, starts);  
+        List<NID.WithName> starts = (hubs == null) ? null : hubs.get(clustName);
+        targets = dl.defaultNodeOrder(pcrbd.allLinks, pcrbd.loneNodeIDs, starts);  
       }
       allTargets.addAll(targets);
     }
@@ -226,8 +231,8 @@ public class NodeClusterLayout {
     	boolean interClustLink = false;
     	while (ksit.hasNext()) {
     		FabricLink daLink = ksit.next();
-    		String srcClust = params.getClusterForNode(daLink.getSrc().toUpperCase());
-        String trgClust = params.getClusterForNode(daLink.getTrg().toUpperCase());
+    		String srcClust = params.getClusterForNode(daLink.getSrcID());
+        String trgClust = params.getClusterForNode(daLink.getTrgID());
         if (srcClust.equals(trgClust)) {
         	if ((currClust != null) && !currClust.equals(srcClust)) {
         		drainTime = true;
@@ -281,17 +286,33 @@ public class NodeClusterLayout {
     }
     return;
   }
- 
+   
+  /***************************************************************************
+  **
+  ** Helper
+  */
+  
+  private void addClusterNode(BioFabricNetwork.RelayoutBuildData rbd, NID.WithName nid) { 
+    if (!rbd.allNodeIDs.contains(nid)) {
+    	boolean ok = rbd.idGen.addExistingLabel(nid.getNID().getInternal());
+    	if (!ok) {
+    		throw new IllegalStateException();
+    	}
+      rbd.allNodeIDs.add(nid);
+    }
+    return;
+  }
+
   /***************************************************************************
   **
   ** Count map maintenance
   */
   
-  private void addToCount(Map<String, Map<String, Integer>> countMap, String clust, String node) { 
+  private void addToCount(Map<String, Map<NID.WithName, Integer>> countMap, String clust, NID.WithName node) { 
  	
-    Map<String, Integer> perClust = countMap.get(clust);
+    Map<NID.WithName, Integer> perClust = countMap.get(clust);
     if (perClust == null) {
-    	perClust = new HashMap<String, Integer>();
+    	perClust = new HashMap<NID.WithName, Integer>();
     	countMap.put(clust, perClust);
     }
     Integer count = perClust.get(node);
@@ -308,45 +329,46 @@ public class NodeClusterLayout {
   ** in the pile.
   */
   
-  private Map<String, List<String>> rankInterClustHubs(Map<Tuple, List<FabricLink>> interLinks, ClusterParams params, 
-  		                                                 Map<String, Integer> fullNodeDegree) { 
+  private Map<String, List<NID.WithName>> rankInterClustHubs(Map<Tuple, List<FabricLink>> interLinks, 
+  		                                                       ClusterParams params, 
+  		                                                       Map<NID.WithName, Integer> fullNodeDegree) { 
  	
   	// Map(ClusterID -> Map(NodeID, InterClustDegree)):
-  	Map<String, Map<String, Integer>> preRetval = new HashMap<String, Map<String, Integer>>();
+  	Map<String, Map<NID.WithName, Integer>> preRetval = new HashMap<String, Map<NID.WithName, Integer>>();
   	for (Tuple tup : interLinks.keySet()) {
   	  List<FabricLink> forTup = interLinks.get(tup);
   	  for (FabricLink link : forTup) {
   	  	// Tup order is NOT src, trg, but lo, hi:
-  	    addToCount(preRetval, params.getClusterForNode(link.getSrc().toUpperCase()), link.getSrc());
-  	    addToCount(preRetval, params.getClusterForNode(link.getTrg().toUpperCase()), link.getTrg());
+  	    addToCount(preRetval, params.getClusterForNode(link.getSrcID()), link.getSrcID());
+  	    addToCount(preRetval, params.getClusterForNode(link.getTrgID()), link.getTrgID());
   	  }
   	}
   	
   	// Map(ClusterID -> List(NodeID)):
-    Map<String, List<String>> retval = new HashMap<String, List<String>>();  
+    Map<String, List<NID.WithName>> retval = new HashMap<String, List<NID.WithName>>();  
     for (String clust: preRetval.keySet()) {
-    	Map<String, Integer> degMap = preRetval.get(clust);
+    	Map<NID.WithName, Integer> degMap = preRetval.get(clust);
     	// Map(SortedInterClustDegree->Map(SortedFullNodeDegree, Set(SortedNodeName))):
-    	TreeMap<Integer, SortedMap<Integer, SortedSet<String>>> invert = 
-      	new TreeMap<Integer, SortedMap<Integer, SortedSet<String>>>(Collections.reverseOrder());
-    	for (String node : degMap.keySet()) {
-    		Integer InterClustDeg = degMap.get(node);
-    		SortedMap<Integer, SortedSet<String>> perInterDeg = invert.get(InterClustDeg);
+    	TreeMap<Integer, SortedMap<Integer, SortedSet<NID.WithName>>> invert = 
+      	new TreeMap<Integer, SortedMap<Integer, SortedSet<NID.WithName>>>(Collections.reverseOrder());
+    	for (NID.WithName node : degMap.keySet()) {
+    		Integer interClustDeg = degMap.get(node);
+    		SortedMap<Integer, SortedSet<NID.WithName>> perInterDeg = invert.get(interClustDeg);
     		if (perInterDeg == null) {
-    			perInterDeg = new TreeMap<Integer, SortedSet<String>>(Collections.reverseOrder());
-    			invert.put(InterClustDeg, perInterDeg);
+    			perInterDeg = new TreeMap<Integer, SortedSet<NID.WithName>>(Collections.reverseOrder());
+    			invert.put(interClustDeg, perInterDeg);
     		}
-    		Integer fnDeg = fullNodeDegree.get(node.toUpperCase());
-    		SortedSet<String> perFullDeg = perInterDeg.get(fnDeg);
+    		Integer fnDeg = fullNodeDegree.get(node);
+    		SortedSet<NID.WithName> perFullDeg = perInterDeg.get(fnDeg);
     		if (perFullDeg == null) {
-    			perFullDeg = new TreeSet<String>();
+    			perFullDeg = new TreeSet<NID.WithName>();
     			perInterDeg.put(fnDeg, perFullDeg);
     		}
     		perFullDeg.add(node);
     	}
-    	List<String> flat = new ArrayList<String>();
-      for (SortedMap<Integer, SortedSet<String>> perInterDeg : invert.values()) {
-      	for (SortedSet<String> perFull : perInterDeg.values()) {
+    	List<NID.WithName> flat = new ArrayList<NID.WithName>();
+      for (SortedMap<Integer, SortedSet<NID.WithName>> perInterDeg : invert.values()) {
+      	for (SortedSet<NID.WithName> perFull : perInterDeg.values()) {
       	  flat.addAll(perFull);
         }
       }
@@ -360,19 +382,20 @@ public class NodeClusterLayout {
   **
   */
   
-  private List<String> clusterSizeOrder(TreeMap<String, BioFabricNetwork.RelayoutBuildData> perClust, boolean nodeFirst, String startClust) { 
+  private List<String> clusterSizeOrder(TreeMap<String, BioFabricNetwork.RelayoutBuildData> perClust, 
+  		                                  boolean nodeFirst, String startClust) { 
   	
   	TreeMap<Integer, SortedMap<Integer, SortedSet<String>>> preRet = 
   		new TreeMap<Integer, SortedMap<Integer, SortedSet<String>>>(Collections.reverseOrder());
   	for (String clustName : perClust.keySet()) {
   	  BioFabricNetwork.RelayoutBuildData rbdpc = perClust.get(clustName);
-  	  Integer size1 = Integer.valueOf((nodeFirst) ? rbdpc.allNodes.size() : rbdpc.allLinks.size());
+  	  Integer size1 = Integer.valueOf((nodeFirst) ? rbdpc.allNodeIDs.size() : rbdpc.allLinks.size());
   	  SortedMap<Integer, SortedSet<String>> forSize1 = preRet.get(size1);
   	  if (forSize1 == null) {
   	  	forSize1 = new TreeMap<Integer, SortedSet<String>>(Collections.reverseOrder());
   	  	preRet.put(size1, forSize1);
   	  }
-  	  Integer size2 = Integer.valueOf((nodeFirst) ? rbdpc.allLinks.size() : rbdpc.allNodes.size());
+  	  Integer size2 = Integer.valueOf((nodeFirst) ? rbdpc.allLinks.size() : rbdpc.allNodeIDs.size());
   	  SortedSet<String> forSize2 = forSize1.get(size2);
   	  if (forSize2 == null) {
   	  	forSize2 = new TreeSet<String>();
@@ -402,25 +425,32 @@ public class NodeClusterLayout {
   
   private List<String> breadthFirstClustering(ClusterParams params, Set<Tuple> iclinks, String startClust) { 
     
-  	Set<String> clusters = new HashSet<String>(params.getClusters());
+  	UniqueLabeller uLab = new UniqueLabeller();
+  	Map<String, NID.WithName> fakeNodes = new HashMap<String, NID.WithName>();
+  	
+  	for (String clu : params.getClusters()) {
+  	  NID pnid = uLab.getNextOID();
+  	  fakeNodes.put(clu, new NID.WithName(pnid, clu));	
+  	}
+  	
   	Set<FabricLink> links = new HashSet<FabricLink>();
   	for (Tuple tup : iclinks) {
-  		FabricLink pseudo = new FabricLink(tup.getVal1(), tup.getVal2(), "ic", Boolean.valueOf(false), Boolean.valueOf(false));
+  		FabricLink pseudo = new FabricLink(fakeNodes.get(tup.getVal1()), fakeNodes.get(tup.getVal2()), "ic", Boolean.valueOf(false), Boolean.valueOf(false));
   		links.add(pseudo);
-  		pseudo = new FabricLink(tup.getVal2(), tup.getVal1(), "ic", Boolean.valueOf(false), Boolean.valueOf(false));
+  		pseudo = new FabricLink(fakeNodes.get(tup.getVal2()), fakeNodes.get(tup.getVal1()), "ic", Boolean.valueOf(false), Boolean.valueOf(false));
   		links.add(pseudo);
   	}
   	
-  	List<String> useRoots = null;
+  	List<NID.WithName> useRoots = null;
   	if (startClust != null) {
-  		useRoots = new ArrayList<String>();
-  		useRoots.add(startClust);
+  		useRoots = new ArrayList<NID.WithName>();
+  		useRoots.add(fakeNodes.get(startClust));
   	}
-    GraphSearcher gs = new GraphSearcher(clusters, links);
+    GraphSearcher gs = new GraphSearcher(new HashSet<NID.WithName>(fakeNodes.values()), links);
     List<GraphSearcher.QueueEntry> qes = gs.breadthSearch(useRoots);
     ArrayList<String> retval = new ArrayList<String>(); 
     for (GraphSearcher.QueueEntry aqe : qes) {
-      retval.add(aqe.name);
+      retval.add(aqe.name.getName());
   	}
     return (retval);  
   }
@@ -445,17 +475,19 @@ public class NodeClusterLayout {
     public Order order;
     public InterLink iLink;
     public ClustLayout cLay;
-    public String startNode;
+    public NID.WithName startNode;
     public boolean saveAssign;
-    private Map<String, String> nodeClusters_;
+    private Map<NID.WithName, String> nodeClusters_;
 
     public ClusterParams(Source source, Order order, InterLink iLink, ClustLayout cLay, String startNode, 
-    		                 Map<AttributeLoader.AttributeKey, String> nodeClusterAttributes, boolean saveAssign) {
+    		                 Map<AttributeLoader.AttributeKey, String> nodeClusterAttributes, 
+    		                 Map<String, NID.WithName> nodes, boolean saveAssign) {
     	
     	if (nodeClusterAttributes != null) {
-    	  nodeClusters_ = new HashMap<String, String>();
+    	  nodeClusters_ = new HashMap<NID.WithName, String>();
         for (AttributeLoader.AttributeKey key : nodeClusterAttributes.keySet()) {
-          nodeClusters_.put(((AttributeLoader.StringKey)key).key, nodeClusterAttributes.get(key));
+          NID.WithName nodeID = nodes.get(DataUtil.normKey(((AttributeLoader.StringKey)key).key));
+          nodeClusters_.put(nodeID, nodeClusterAttributes.get(key));
         }
       }
       this.source = source;
@@ -476,25 +508,26 @@ public class NodeClusterLayout {
     	return (source.equals(Source.FILE));
     }
 
-    public void install(Map<AttributeLoader.AttributeKey, String> nodeClusterAttributes) {   	
+    public void install(Map<AttributeLoader.AttributeKey, String> nodeClusterAttributes, Map<String, NID.WithName> nodes) {   	
     	if (nodeClusterAttributes != null) {
-    	  nodeClusters_ = new HashMap<String, String>();
+    	  nodeClusters_ = new HashMap<NID.WithName, String>();
         for (AttributeLoader.AttributeKey key : nodeClusterAttributes.keySet()) {
-          nodeClusters_.put(((AttributeLoader.StringKey)key).key, nodeClusterAttributes.get(key));
+        	NID.WithName nodeID = nodes.get(DataUtil.normKey(((AttributeLoader.StringKey)key).key));    	
+          nodeClusters_.put(nodeID, nodeClusterAttributes.get(key));
         }
       }
     }
     
-    public void assign(Map<String, String> nodeClusterAssign) {   	
+    public void assign(Map<NID.WithName, String> nodeClusterAssign) {   	
     	nodeClusters_ = nodeClusterAssign;
       return;
     }
  
-    public String getClusterForNode(String nodeID) {   	
+    public String getClusterForNode(NID.WithName nodeID) {   	
     	return (nodeClusters_.get(nodeID));
     }  
     
-    public Map<String, String> getClusterAssign() {   	
+    public Map<NID.WithName, String> getClusterAssign() {   	
     	return (nodeClusters_);
     }  
     

@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -30,9 +30,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 
 import org.systemsbiology.biofabric.cmd.CommandSet;
-import org.systemsbiology.biofabric.gaggle.DeadFabricGoose;
-import org.systemsbiology.biofabric.gaggle.FabricGooseInterface;
-import org.systemsbiology.biofabric.gaggle.FabricGooseManager;
 import org.systemsbiology.biofabric.ui.dialogs.UpdateJavaDialog;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.ResourceManager;
@@ -88,10 +85,6 @@ public class BioFabricApplication {
   */
   
   public void shutdownFabric() {
-    FabricGooseInterface goose = FabricGooseManager.getManager().getGoose();
-    if ((goose != null) && goose.isActivated()) {
-      goose.closeDown();
-    }
     bfw_.stopBufferBuilding();
     bfw_.dispose();
     if (selectionWindow_ != null) {
@@ -168,9 +161,7 @@ public class BioFabricApplication {
     CommandSet.initCmds("mainWindow", this, bfw_, true);
     bfw_.initWindow(cbf);
     bfw_.setVisible(true);
-    initSelection();
-    Boolean doGag = (Boolean)args.get("doGaggle");
-    gooseLaunch(bfw_, (doGag != null) && doGag.booleanValue());    
+    initSelection();  
     return (bfw_);
   }
     
@@ -222,33 +213,6 @@ public class BioFabricApplication {
     });
     CommandSet.initCmds("selectionWindow", this, selectionWindow_, false);
     selectionWindow_.initWindow(swDim);
-    return;
-  }
-  
- /***************************************************************************
-  **
-  ** Drawing core
-  */
-  
-  private void gooseLaunch(BioFabricWindow frame, boolean doGaggle) {   
-    if (doGaggle) {
-      try {
-        Class gooseClass = Class.forName("org.systemsbiology.biotapestry.biofabric.FabricGoose");
-        FabricGooseInterface liveGoose = (FabricGooseInterface)gooseClass.newInstance();
-        liveGoose.setParameters(frame, "unknown");
-        liveGoose.activate();
-        FabricGooseManager.getManager().setGoose(liveGoose);
-      } catch (ClassNotFoundException cnfex) {
-//        System.err.println("BTGoose class not found");
-        FabricGooseManager.getManager().setGoose(new DeadFabricGoose());     
-      } catch (InstantiationException iex) {
-//        System.err.println("BTGoose class not instantiated");
-      } catch (IllegalAccessException iex) {
-//        System.err.println("BTGoose class not instantiated");
-      }
-    } else {
-      FabricGooseManager.getManager().setGoose(new DeadFabricGoose());
-    }
     return;
   }
 }

@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -35,7 +35,6 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.model.FabricLink.AugRelation;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.utils.EditableTable;
 import org.systemsbiology.biofabric.util.ExceptionHandler;

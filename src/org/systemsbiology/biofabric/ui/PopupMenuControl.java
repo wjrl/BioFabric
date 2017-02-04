@@ -30,6 +30,7 @@ import javax.swing.JPanel;
 
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
+import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 
 /***************************************************************************
@@ -53,7 +54,7 @@ public class PopupMenuControl {
    
   private NodePopup popupGuts_;
   private LinkPopup popupGutsLink_;
-  private String currNode_;
+  private NID.WithName currNode_;
   private FabricLink currLink_;
   private JPanel parent_;
   
@@ -100,7 +101,7 @@ public class PopupMenuControl {
   ** Launch popup menu
   */
   
-  public void showNodePopup(String nodeName, Point pt) {
+  public void showNodePopup(NID.WithName nodeName, Point pt) {
     currNode_ = nodeName;
     popupGuts_.showPopup(pt);       
     return;
@@ -304,7 +305,7 @@ public class PopupMenuControl {
         if (browserURL.indexOf(FabricDisplayOptions.NODE_NAME_PLACEHOLDER) == -1) {
           return;
         }
-        browserURL = browserURL.replaceFirst(FabricDisplayOptions.NODE_NAME_PLACEHOLDER, currNode_);
+        browserURL = browserURL.replaceFirst(FabricDisplayOptions.NODE_NAME_PLACEHOLDER, currNode_.getName());
         (new BrowserLauncher()).openBBURL(browserURL);      
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
@@ -339,11 +340,11 @@ public class PopupMenuControl {
             (browserURL.indexOf(FabricDisplayOptions.LINK_REL_PLACEHOLDER) == -1)) {
           return;
         } else {          
-          String src = currLink_.getSrc();
-          String trg = currLink_.getTrg();
+          NID.WithName src = currLink_.getSrcID();
+          NID.WithName trg = currLink_.getTrgID();
           String rel = currLink_.getAugRelation().relation;
-          browserURL = browserURL.replaceFirst(FabricDisplayOptions.LINK_SRC_PLACEHOLDER, src);
-          browserURL = browserURL.replaceFirst(FabricDisplayOptions.LINK_TRG_PLACEHOLDER, trg);
+          browserURL = browserURL.replaceFirst(FabricDisplayOptions.LINK_SRC_PLACEHOLDER, src.getName());
+          browserURL = browserURL.replaceFirst(FabricDisplayOptions.LINK_TRG_PLACEHOLDER, trg.getName());
           browserURL = browserURL.replaceFirst(FabricDisplayOptions.LINK_REL_PLACEHOLDER, rel);
        }        
        (new BrowserLauncher()).openBBURL(browserURL);      

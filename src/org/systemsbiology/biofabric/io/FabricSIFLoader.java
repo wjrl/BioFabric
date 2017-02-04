@@ -24,12 +24,16 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.DataUtil;
+import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.UniqueLabeller;
 
 /****************************************************************************
 **
@@ -83,8 +87,10 @@ public class FabricSIFLoader {
   ** Process a SIF input
   */
 
-  public SIFStats readSIF(File infile, List<FabricLink> links, Set<String> loneNodes, Map<String, String> nameMap, Integer magBins) throws IOException { 
+  public SIFStats readSIF(File infile, UniqueLabeller idGen, List<FabricLink> links, 
+  		                    Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins) throws IOException { 
     SIFStats retval = new SIFStats();
+    HashMap<String, NID.WithName> nameToID = new HashMap<String, NID.WithName>();
     BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(infile), "UTF-8"));
     ArrayList<String[]> tokSets = new ArrayList<String[]>();
     String line = null;
@@ -107,8 +113,6 @@ public class FabricSIFLoader {
     }
     in.close();
     
-
-    
     int numLines = tokSets.size();  
     for (int i = 0; i < numLines; i++) {
       String[] tokens = tokSets.get(i);
@@ -121,6 +125,10 @@ public class FabricSIFLoader {
         if ((target.indexOf("\"") == 0) && (target.lastIndexOf("\"") == (target.length() - 1))) {
           target = target.replaceAll("\"", "");
         }
+        //
+        // This name map is for the load SIF with node attributes feature:
+        //
+        
         if (nameMap != null) {
           String mappedSource = nameMap.get(source);
           if (mappedSource != null) {
@@ -131,17 +139,39 @@ public class FabricSIFLoader {
             target = mappedTarget;
           }
         }
+        
+        //
+        // Map the name to an ID, if none yet, get a new ID and assign it
+        //
+        
+        String normSrc = DataUtil.normKey(source);
+        String normTrg = DataUtil.normKey(target);
+        
+        NID.WithName srcID = nameToID.get(normSrc);
+        if (srcID == null) {
+        	NID srcNID = idGen.getNextOID();
+        	srcID = new NID.WithName(srcNID, source);
+        	nameToID.put(normSrc, srcID);
+        }
+        
+        NID.WithName trgID = nameToID.get(normTrg);
+        if (trgID == null) {
+        	NID trgNID = idGen.getNextOID();
+        	trgID = new NID.WithName(trgNID, target);
+        	nameToID.put(normTrg, trgID);
+        }
+
         String rel = tokens[1].trim();
         if ((rel.indexOf("\"") == 0) && (rel.lastIndexOf("\"") == (rel.length() - 1))) {
           rel = rel.replaceAll("\"", "");
         }
 
-	      FabricLink nextLink = new FabricLink(source, target, rel, false);
+	      FabricLink nextLink = new FabricLink(srcID, trgID, rel, false);
 	      links.add(nextLink);
 	      
 	      // We never create shadow feedback links!
-	      if (!source.equals(target)) {
-	        FabricLink nextShadowLink = new FabricLink(source, target, rel, true);
+	      if (!srcID.equals(trgID)) {
+	        FabricLink nextShadowLink = new FabricLink(srcID, trgID, rel, true);
 	        links.add(nextShadowLink);
 	      }
  
@@ -156,7 +186,16 @@ public class FabricSIFLoader {
             loner = mappedLoner;
           }
         }
-        loneNodes.add(loner);       
+        
+        String normLoner = DataUtil.normKey(loner);
+        
+        NID.WithName loneID = nameToID.get(normLoner);
+        if (loneID == null) {
+        	NID loneNID = idGen.getNextOID();
+        	NID.WithName lwn = new NID.WithName(loneNID, loner);
+        	nameToID.put(normLoner, lwn);
+        }
+        loneNodeIDs.add(loneID);       
       }
     }
     return (retval);

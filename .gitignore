@@ -3,6 +3,12 @@
 /build/
 /manifest.mf
 /nbbuild.xml
+/bin/
+/BioFabric-1.0.0.jar
+/installInMVN.sh
+/.project
+/.DS_Store
+/.classpath
 .idea/
 BioFabric Fork.iml
 BioFabric.iml
@@ -14,3 +20,4 @@ org/systemsbiology/.DS_Store
 org/systemsbiology/biofabric/
 org/systemsbiology/biotapestry/.gitignore
 org/systemsbiology/biotapestry/biofabric/.gitignore
+

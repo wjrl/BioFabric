@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2016 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -38,6 +39,7 @@ import org.systemsbiology.biofabric.ui.dialogs.utils.EditableTable;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
+import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
@@ -56,9 +58,10 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
   ////////////////////////////////////////////////////////////////////////////  
 
   private static final long serialVersionUID = 1L;
-  private Set<String> result_;
+  private Set<NID.WithName> result_;
   private EditableTable<NodeListTableModel.TableRow> est_;
-  private Set<String> allNodes_;
+  private Set<NID.WithName> allNodeIDs_;
+  private Map<String, Set<NID.WithName>> normNameToID_;
  
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -71,10 +74,11 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
   ** Constructor 
   */ 
 
-  public CompareNodesSetupDialog(JFrame parent, Set<String> allNodes) { 
+  public CompareNodesSetupDialog(JFrame parent, Set<NID.WithName> allNodeIDs, Map<String, Set<NID.WithName>> normNameToID) { 
     super(parent, "compareNodesSetup.title", new Dimension(600, 500), 2);
     result_ = null;
-    allNodes_ = allNodes; 
+    allNodeIDs_ = allNodeIDs;
+    normNameToID_ = normNameToID;
     
     //
     // Build extra button:
@@ -109,7 +113,7 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
   ** 
   */
   
-  public Set<String> getResults() {
+  public Set<NID.WithName> getResults() {
     return (result_);
   }  
 
@@ -134,26 +138,33 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
 
     private static final long serialVersionUID = 1L;
     private final static int NODE_NAME_  = 0;
-    private final static int NUM_COL_    = 1;   
+    private final static int NUM_COL_    = 1;  
+    
+    private final static int NID_ = 0;
+    private final static int NUM_HIDDEN_ = 1;
     
     NodeListTableModel() {
       super(NUM_COL_);
       colNames_ = new String[] {"compareNodesSetup.nodeName"};
       colClasses_ = new Class[] {String.class};
+      addHiddenColumns(NUM_HIDDEN_);
     }    
    
     public class TableRow implements EditableTable.ATableRow {
       public String nodeName;
+      public String nid;
       
       public TableRow() {
       }
       
       TableRow(int i) {
         nodeName = (String)columns_.get(NODE_NAME_).get(i);
+        nid = (String)hiddenColumns_.get(NID_).get(i);
       }
       
       public void toCols() {
         columns_.get(NODE_NAME_).add(nodeName);  
+        hiddenColumns_.get(NID_).add(nid);  
         return;
       }
     }
@@ -167,7 +178,7 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
     }
       
     
-    List<String> applyValues() {
+    List<NID.WithName> applyValues() {
       List<TableRow> vals = getValuesFromTable();
       
       //
@@ -176,7 +187,7 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
       //
       
       ResourceManager rMan = ResourceManager.getManager();
-      ArrayList<String> seenTags = new ArrayList<String>();
+      ArrayList<NID.WithName> seenTags = new ArrayList<NID.WithName>();
       int size = vals.size();
       if (size == 0) {
         return (seenTags);
@@ -201,15 +212,28 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
             
           return (null);
         }
+                
+        String normTag = DataUtil.normKey(tag);
+        Set<NID.WithName> haveIDs = normNameToID_.get(normTag);
+        boolean gotIt = (haveIDs != null);
+        if (gotIt) {
+        	gotIt = false;
+        	for (NID.WithName haveID : haveIDs) {
+        		if (allNodeIDs_.contains(haveID)) {
+        			gotIt = true;
+        			break;
+        		}
+        	}
+        }
         
-        if (!DataUtil.containsKey(allNodes_, tag)) {
+        if (!gotIt) {
           JOptionPane.showMessageDialog(parent_, rMan.getString("compareNodesSetup.notANode"),
                                         rMan.getString("compareNodesSetup.notANodeTitle"),
                                         JOptionPane.ERROR_MESSAGE);           
             
           return (null);
         }
-        seenTags.add(tag);
+        seenTags.add(new NID.WithName(new NID(row.nid), tag));
       }
       
       return (seenTags);
@@ -229,12 +253,13 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
   */
   
   protected boolean stashForOK() {
-    List<String> av = ((NodeListTableModel)est_.getModel()).applyValues();    
+    List<NID.WithName> av = ((NodeListTableModel)est_.getModel()).applyValues();    
     if (av == null) {
       result_ = null;
       return (false);
     }
-    result_ = new HashSet<String>(av);
+    
+    result_ = new HashSet<NID.WithName>(av);
     return (true);
   } 
   

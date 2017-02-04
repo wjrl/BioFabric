@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -19,19 +19,18 @@
 
 package org.systemsbiology.biofabric.analysis;
 
-import java.util.Collection;
-import java.util.Iterator;
+import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
 **
 ** A Class
 */
 
-public class Link implements Cloneable, Comparable<Link> {
-  protected String src_;
-  protected String trg_;
+public class NIDLink implements Cloneable, Comparable<NIDLink> {
+  protected NID.WithName src_;
+  protected NID.WithName trg_;
 
-  public Link(String src, String trg) {
+  public NIDLink(NID.WithName src, NID.WithName trg) {
     if ((src == null) || (trg == null)) {
       throw new IllegalArgumentException();
     }
@@ -39,25 +38,25 @@ public class Link implements Cloneable, Comparable<Link> {
     this.trg_ = trg;
   }
 
-  public Link(Link other) {
+  public NIDLink(NIDLink other) {
     this.src_ = other.src_;
     this.trg_ = other.trg_;
   }
   
   @Override
-  public Link clone() {
+  public NIDLink clone() {
     try {
-      return ((Link)super.clone());
+      return ((NIDLink)super.clone());
     } catch (CloneNotSupportedException cnse) {
       throw new IllegalStateException();
     }
   }    
   
-  public String getTrg() {
+  public NID.WithName getTrg() {
     return (trg_);
   }
 
-  public String getSrc() {
+  public NID.WithName getSrc() {
     return (src_);
   }    
 
@@ -71,27 +70,6 @@ public class Link implements Cloneable, Comparable<Link> {
     return ("src = " + src_ + " trg = " + trg_);
   }
   
-  public String toSymbolicString() {
-    return (src_ + signSymbol() + trg_);
-  }
-  
-  public static String toSymbolicString(Collection<Link> links) {
-    StringBuffer buf = new StringBuffer();
-    Iterator<Link> lit = links.iterator();
-    while (lit.hasNext()) {
-      Link lnk = lit.next();
-      buf.append(lnk.toSymbolicString());
-      if (lit.hasNext()) {
-        buf.append(", ");
-      }
-    }
-    return (buf.toString());
-  }
-  
-  public String signSymbol() {
-    return ("--");
-  }
-  
   @Override
   public boolean equals(Object other) {
     if (other == null) {
@@ -100,22 +78,22 @@ public class Link implements Cloneable, Comparable<Link> {
     if (other == this) {
       return (true);
     }
-    if (!(other instanceof Link)) {
+    if (!(other instanceof NIDLink)) {
       return (false);
     }
-    Link otherLink = (Link)other;
+    NIDLink otherLink = (NIDLink)other;
     return (this.src_.equals(otherLink.src_) && this.trg_.equals(otherLink.trg_));
   }
   
-  public int compareTo(Link otherLink) {
+  public int compareTo(NIDLink otherLink) {
     if (this == otherLink) {
       return (0);
     }
 
     if (!this.src_.equals(otherLink.src_)) {
-      return (this.src_.compareToIgnoreCase(otherLink.src_));
+      return (this.src_.compareTo(otherLink.src_));
     }
     
-    return (this.trg_.compareToIgnoreCase(otherLink.trg_));
+    return (this.trg_.compareTo(otherLink.trg_));
   } 
 }
