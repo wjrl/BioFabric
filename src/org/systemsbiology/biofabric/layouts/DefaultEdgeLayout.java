@@ -200,20 +200,12 @@ public class DefaultEdgeLayout {
         }
       }
     }
-    /*
-        // check to see if the previous network was Per_Network, and now we're doing Default w/ respect to groups
-    if (rbd.getMode() == BioFabricNetwork.BuildMode.GROUP_PER_NETWORK_CHANGE ||
-            (macroRels != null && rbd.bfn != null && rbd.bfn.getLayoutMode()
-                    .equals(BioFabricNetwork.LayoutMode.PER_NETWORK_MODE))) {
-      orderNetworkByGroups(linkOrder, macroRels);
-      UiUtil.fixMePrintout("This fix needs a review");
-    }
-    */
-    
-    
-    
-    
-    if (rbd.getMode() == BioFabricNetwork.BuildMode.GROUP_PER_NETWORK_CHANGE) {
+
+    //
+    // This is what determines if we have an existing link order that needs to reorganize on a per-network basis:
+    //
+    	
+    if (rbd.layoutMode == BioFabricNetwork.LayoutMode.PER_NETWORK_MODE) {
     	orderNetworkByGroups(linkOrder, macroRels);
     }
  

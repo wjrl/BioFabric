@@ -477,7 +477,7 @@ public class BufferBuilder {
     BufferedImage bi = new BufferedImage(screenDim.width, screenDim.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_INT_RGB);
     Graphics2D g2 = bi.createGraphics();
     g2.setColor(Color.WHITE);
-    g2.setColor(Color.RED); //Debug sizing problems
+    g2.setColor(new Color(255, 220, 220)); //Debug sizing problems
     g2.fillRect(0, 0, screenDim.width, screenDim.height + SLICE_HEIGHT_HACK_);
     System.out.println(screenDim);
     boolean didDraw = drawer_.drawForBuffer(g2, worldPiece, screenDim, worldPiece);
