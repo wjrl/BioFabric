@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -44,8 +44,6 @@ import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
-import org.systemsbiology.biofabric.ui.FabricColorGenerator.ColorWorker;
-import org.systemsbiology.biofabric.ui.FabricColorGenerator.MyColorGlue;
 import org.systemsbiology.biofabric.util.AttributeExtractor;
 import org.systemsbiology.biofabric.util.CharacterEntityMapper;
 import org.systemsbiology.biofabric.util.DataUtil;
@@ -571,13 +569,7 @@ public class BioFabricNetwork {
     //
     // Ordering of links:
     //
- /*   
-    if ((rbd.linkOrder == null) || rbd.linkOrder.isEmpty() ||
-            (mode == BuildMode.GROUP_PER_NODE_CHANGE) || (false)) {
-      UiUtil.fixMePrintout("This change is of last argument to false is suspect! Compare to fixes at DefaultEdgeLayout line 202 and BioFabricNetwork line 686");
-*/    
-    
-    
+  
     if ((rbd.linkOrder == null) || rbd.linkOrder.isEmpty() || (mode == BuildMode.GROUP_PER_NODE_CHANGE) || (mode == BuildMode.GROUP_PER_NETWORK_CHANGE)) {
       if ((rbd.nodeOrder == null) || rbd.nodeOrder.isEmpty()) {
         rbd.nodeOrder = new HashMap<NID.WithName, Integer>();
@@ -710,7 +702,11 @@ public class BioFabricNetwork {
       // Stated another way, non-shadows always affect top node drains.  Shadow
       // links only affect bottom node shadow drains:
       //
-
+      
+      // The new setDrainZonesWithMultipleLabels() calls should be replacing this entire
+      // block of code. Confirm this??
+      
+/*
       if (!userSpec) {
         if (!linf.isShadow()) {       
           List<MinMax> dzst = nit.getDrainZones(true);
@@ -735,17 +731,17 @@ public class BioFabricNetwork {
           }
           dzsb.get(0).update(linf.getUseColumn(true));
         }
-      }
+      }*/
     }
     
-    UiUtil.fixMePrintout("This change needs review");
-    if (userSpec || this.linkGrouping_!= null) { // Not sure this works 100% of the time -Rishi Desai 1/17/2017
-      setDrainZonesWithMultipleLabels(true);
-      setDrainZonesWithMultipleLabels(false);
-    } else {
-      setDrainZonesByContig(true);     
-      setDrainZonesByContig(false);    
-    }
+    // WJRL 2/7/17: Actually, this should handle *all* drain zone calculations now, correct??
+ //   if (userSpec || this.linkGrouping_!= null) { // Not sure this works 100% of the time -Rishi Desai 1/17/2017
+    setDrainZonesWithMultipleLabels(true);
+    setDrainZonesWithMultipleLabels(false);
+ //   } else {
+ //     setDrainZonesByContig(true);     
+ //     setDrainZonesByContig(false);    
+  //  }
             
     return;
   }
@@ -2709,7 +2705,7 @@ public class BioFabricNetwork {
       
       NID.WithName srcNID;
       if (src != null) {
-      	srcNID = board.legacyMap.get(src);	
+      	srcNID = board.legacyMap.get(DataUtil.normKey(src));	
       } else if (srcID != null) {
       	srcNID = board.wnMap.get(new NID(srcID));
       } else {
@@ -2718,7 +2714,7 @@ public class BioFabricNetwork {
       
       NID.WithName trgNID;
       if (trg != null) {
-      	trgNID = board.legacyMap.get(trg);	
+      	trgNID = board.legacyMap.get(DataUtil.normKey(trg));	
       } else if (trgID != null) {
       	trgNID = board.wnMap.get(new NID(trgID));
       } else {
