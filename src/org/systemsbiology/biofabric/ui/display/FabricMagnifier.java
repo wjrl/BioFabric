@@ -38,6 +38,7 @@ import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.render.PaintCache;
 import org.systemsbiology.biofabric.ui.render.PaintCache.FloaterSet;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -416,7 +417,7 @@ public class FabricMagnifier extends JPanel {
     painter_.paintIt(g2, true, clipRec_, false);
     g2.setTransform(saveTrans);
     if (selectionPainter_.needToPaint()) {
-    	System.out.println("THIS IS NEEDED");
+    	UiUtil.fixMePrintout("THIS IS NEEDED");
   //    drawSelections(g2, clipRec_);
     }    
     if (floaters_ != null) {

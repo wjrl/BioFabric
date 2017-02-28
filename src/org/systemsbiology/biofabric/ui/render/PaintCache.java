@@ -708,16 +708,27 @@ public class PaintCache {
         g2.fill(rect);
       } else {        
         if (px == Integer.MIN_VALUE) { // Horiz line         
-          if ((bounds == null) || ((py > bounds.y) && (py < (bounds.y + bounds.height)))) {
+          if ((bounds == null) || ((py >= bounds.y) && (py <= (bounds.y + bounds.height)))) {
             if ((bounds != null) && ((range.max < bounds.x) || (range.min > (bounds.x + bounds.width)))) {
               // do nothing
             } else {
+            	double x1 = path.getX1();
+            	double x2 = path.getX2();
+            	double y1 = path.getY1();
+            	double y2 = path.getY2();
+            	boolean replace = false;
+            	if ((x2 - x1) > 100000) {
+            	  path.setLine(bounds.x - 1000, y1, bounds.x + bounds.width + 1000, y2);
+            	  replace = true;
+            	}
               g2.draw(path);
+              if (replace) {
+                path.setLine(x1, y1, x2, y2);
+              }
               didPaint++;
             }
           }
         } else if (py == Integer.MIN_VALUE) { // Vert line
-        	UiUtil.fixMePrintout("using equals here to fix seam problem. Works? Expand to all other cases");
           if ((bounds == null) || ((px >= bounds.x) && (px <= (bounds.x + bounds.width)))) { 
             if ((bounds != null) && ((range.max < bounds.y) || (range.min > (bounds.y + bounds.height)))) {
               // do nothing
