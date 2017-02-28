@@ -717,7 +717,7 @@ public class PaintCache {
             	double y1 = path.getY1();
             	double y2 = path.getY2();
             	boolean replace = false;
-            	if ((x2 - x1) > 100000) {
+            	if (((x2 - x1) > 100000) && (x1 < bounds.x) && (x2 > (bounds.x + bounds.width))) {
             	  path.setLine(bounds.x - 1000, y1, bounds.x + bounds.width + 1000, y2);
             	  replace = true;
             	}
