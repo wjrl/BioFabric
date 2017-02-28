@@ -1,7 +1,7 @@
 BioFabric
 =========
 
-The new development branch is in an experimental stage. It uses the new package organization.
+All new development is currently occurring on this branch. It is still very buggy and unstable.
 
 
 
