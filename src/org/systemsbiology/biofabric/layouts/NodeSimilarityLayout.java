@@ -605,8 +605,8 @@ public class NodeSimilarityLayout {
       if (maxDegNode != null) {
         Link viaLink = null;
         for (Link aConnect : candConnects) {
-          String other = (aConnect.getSrc().equals(maxDegNode)) ? aConnect.getTrg() : aConnect.getSrc();
-          if (other.equals(maxDegOtherNode)) {
+          String other = (aConnect.getSrc().equals(maxDegNode.toString())) ? aConnect.getTrg() : aConnect.getSrc();
+          if (other.equals(maxDegOtherNode.toString())) {
             viaLink = aConnect;
             break;
           }
