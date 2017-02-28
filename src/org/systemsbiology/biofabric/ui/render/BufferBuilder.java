@@ -41,6 +41,7 @@ import javax.swing.SwingUtilities;
 
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -160,7 +161,7 @@ public class BufferBuilder {
     HashMap<Rectangle, WorldPieceOffering> worldForSize = new HashMap<Rectangle, WorldPieceOffering>();
     Integer key = Integer.valueOf(0);
     worldToImageName_.put(key, worldForSize);
-    buildPieceMap(zooms[0], worldDim_, true, worldForSize);
+    buildPieceMap(zooms[0], screenDim_, worldDim_, true, worldForSize);
     Map<Rectangle, WorldPieceOffering> worldForSizex = worldToImageName_.get(key);
     Rectangle worldPiece = worldForSizex.keySet().iterator().next(); 
     BufferedImage bi = new BufferedImage(screenDim_.width, screenDim_.height, BufferedImage.TYPE_INT_RGB);
@@ -188,7 +189,8 @@ public class BufferBuilder {
     for (int i = 0; i < zooms.length; i++) {
       //
       // We do not allow the tesselation size to drop below a minimum image dimension. If we actually hit that
-      // limit for BOTH dimensions (should not happen, but...) just use the last minimum:
+      // limit for BOTH dimensions just use the last minimum:
+    	//
       if (limitOffering != null) {
         Integer key = Integer.valueOf(i);
         HashMap<Rectangle, WorldPieceOffering> worldForSize = new HashMap<Rectangle, WorldPieceOffering>();
@@ -203,7 +205,7 @@ public class BufferBuilder {
         HashMap<Rectangle, WorldPieceOffering> worldForSize = new HashMap<Rectangle, WorldPieceOffering>();
         Integer key = Integer.valueOf(i);
         worldToImageName_.put(key, worldForSize);
-        boolean gottaStop = buildPieceMap(zooms[i], worldDim_, false, worldForSize);
+        boolean gottaStop = buildPieceMap(zooms[i], screenDim_, worldDim_, false, worldForSize);
         if (gottaStop) {
           limitOffering = worldForSize;
         }
@@ -217,7 +219,7 @@ public class BufferBuilder {
     List<QueueRequest> requestQueuePre = buildQueue(0, 1, 10);   
     while (!requestQueuePre.isEmpty()) {
       QueueRequest qr = requestQueuePre.remove(0);
-      buildBuffer(screenDim_, qr);
+      buildBuffer(new Dimension(qr.imageDim.width, qr.imageDim.height), qr);
     }
     
     //
@@ -274,10 +276,9 @@ public class BufferBuilder {
     WorldPieceOffering wpo = worldForSize.get(worldPiece);
     // FIX METhis is assuming that write to handle is atomic???
     if (wpo.cacheHandle == null) {
-    	System.out.println("Build lo res " + size + " " + worldPiece);
       buildLoResSlice(bbZooms_[size.intValue()], screenDim_, worldDim_, worldPiece, worldForSize);
       if (biw_ != null) {
-        biw_.bumpRequest(new QueueRequest(size, worldPiece));
+        biw_.bumpRequest(new QueueRequest(size, new Rectangle(wpo.imgWidth, wpo.imgHeight), worldPiece));
       }
     }
     BufferedImage retval = null;
@@ -295,35 +296,39 @@ public class BufferBuilder {
   ** generate piece map
   */
   
-  private boolean buildPieceMap(int zoomNum, Dimension worldDim, boolean force, Map<Rectangle, WorldPieceOffering> worldForSize) {
+  private boolean buildPieceMap(int zoomNum, Dimension baseImageDim, Dimension worldDim, boolean force, Map<Rectangle, WorldPieceOffering> worldForSize) {
     //
     // On very large, very high aspect ratio networks, we can get cases where the height of the piece is zero
-    // pixels. Don't let this happen:
+    // pixels. Don't let this happen. Also seeing on tiny networks.
     //
     boolean wIsMin = false;
     boolean hIsMin = false;
  
-    System.out.println("These resets create the tearing on the Issue17BIFasTXT.txt test file");
+    int useWidth = baseImageDim.width;
+    int useHeight = baseImageDim.height;
 
+    int effectiveZoomNumX = zoomNum;
     int worldWInc = worldDim.width / zoomNum;
     if ((worldWInc < MIN_DIM_) && !force) {
+    	useWidth = (int)Math.ceil(baseImageDim.width * ((double)MIN_DIM_ / worldWInc));
       worldWInc = MIN_DIM_;
-      wIsMin = true;     
+      effectiveZoomNumX = (int)Math.ceil((double)worldDim.width / worldWInc);
+      wIsMin = true;   
     }
     
+    int effectiveZoomNumY = zoomNum;
     int worldHInc = worldDim.height / zoomNum;
     if ((worldHInc < MIN_DIM_) && !force) {
+    	useHeight = (int)Math.ceil(baseImageDim.height * ((double)MIN_DIM_ / worldHInc));
       worldHInc = MIN_DIM_;
-      hIsMin = true;
+      effectiveZoomNumY = (int)Math.ceil((double)worldDim.height / worldHInc);
+      hIsMin = true;    
     }
-     
-    System.out.println("No! When floored, This creates rectangles far beyond the right/bottom end of the network. Bigger size means we don't need them all");
-    System.out.println("Plus system makes images too small, since it expects increments to match zoomNum value.");
 
-    for (int x = 0; x < zoomNum; x++) {
-      for (int y = 0; y < zoomNum; y++) {
+    for (int x = 0; x < effectiveZoomNumX; x++) {
+      for (int y = 0; y < effectiveZoomNumY; y++) {
         Rectangle worldPiece = new Rectangle(-200 + (x * worldWInc), -200 + (y * worldHInc), worldWInc, worldHInc);
-        worldForSize.put(worldPiece, new WorldPieceOffering(null, zoomNum, false));        
+        worldForSize.put(worldPiece, new WorldPieceOffering(null, useWidth, useHeight, false));        
       }
     }
     return (wIsMin && hIsMin);
@@ -343,7 +348,8 @@ public class BufferBuilder {
         Iterator<Rectangle> w4sit = worldForSize.keySet().iterator();
         while (w4sit.hasNext()) {     
           Rectangle worldPiece = w4sit.next();
-          retval.add(new QueueRequest(key, worldPiece));
+          WorldPieceOffering wpo = worldForSize.get(worldPiece);
+          retval.add(new QueueRequest(key, new Rectangle(wpo.imgWidth, wpo.imgHeight), worldPiece));
           if (retval.size() >= maxCount) {
             return (retval);
           }
@@ -358,7 +364,7 @@ public class BufferBuilder {
   ** Build the buffers
   */
   
-  private boolean buildBuffer(Dimension screenDim, QueueRequest qr) throws IOException {     
+  private boolean buildBuffer(Dimension imageDim, QueueRequest qr) throws IOException {     
     //
     // To chunk the image, we parcel out pieces of world to pieces of screen:
     //
@@ -367,7 +373,7 @@ public class BufferBuilder {
         return (false);
       }
     }
-    buildHiResSlice(screenDim, qr.key, qr.worldPiece);     
+    buildHiResSlice(imageDim, qr.key, qr.worldPiece);     
     return (true);
   }  
    
@@ -442,7 +448,7 @@ public class BufferBuilder {
       }
     }
   
-    System.out.println("Crappy lo-res segmentation occurs here!");
+    UiUtil.fixMePrintout("Crappy lo-res segmentation occurs here!");
     BufferedImage chunk = bi1.getSubimage((xInc * screenWInc), (yInc * screenHInc), useWidth, useHeight);
     BufferedImage scaled = new BufferedImage(screenDim.width, screenDim.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_INT_RGB);
     Graphics2D g2 = scaled.createGraphics();
@@ -469,26 +475,21 @@ public class BufferBuilder {
   ** slice that is cached:
   */
   
-  private void buildHiResSlice(Dimension screenDim, Integer key, Rectangle worldPiece) throws IOException {
-  	System.out.println("Here is the problem. If the world piece is bigger than the zoom level expects, the fixed screenDim is wrong");
-  	
-  	
-    System.out.println("BHRS " + screenDim + " " + key + " for " + worldPiece); 
-    BufferedImage bi = new BufferedImage(screenDim.width, screenDim.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_INT_RGB);
+  private void buildHiResSlice(Dimension imageDim, Integer key, Rectangle worldPiece) throws IOException {
+    BufferedImage bi = new BufferedImage(imageDim.width, imageDim.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_INT_RGB);
     Graphics2D g2 = bi.createGraphics();
     g2.setColor(Color.WHITE);
-    g2.setColor(new Color(255, 220, 220)); //Debug sizing problems
-    g2.fillRect(0, 0, screenDim.width, screenDim.height + SLICE_HEIGHT_HACK_);
-    System.out.println(screenDim);
-    boolean didDraw = drawer_.drawForBuffer(g2, worldPiece, screenDim, worldPiece);
+    //g2.setColor(new Color(255, 220, 220)); //Debug sizing problems
+    g2.fillRect(0, 0, imageDim.width, imageDim.height + SLICE_HEIGHT_HACK_);
+    boolean didDraw = drawer_.drawForBuffer(g2, worldPiece, imageDim, worldPiece);
     
     // Debug sizing problems:
-    AffineTransform transform = new AffineTransform();
-    g2.setTransform(transform);
-    BasicStroke selectedStroke = new BasicStroke(1, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
-    g2.setStroke(selectedStroke);  
-    g2.setColor(Color.GREEN);
-    g2.drawRect(0, 0, screenDim.width - 1, screenDim.height + SLICE_HEIGHT_HACK_ - 1);
+    //AffineTransform transform = new AffineTransform();
+    //g2.setTransform(transform);
+    //BasicStroke selectedStroke = new BasicStroke(1, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
+    //g2.setStroke(selectedStroke);  
+    //g2.setColor(Color.GREEN);
+    //g2.drawRect(0, 0, imageDim.width - 1, imageDim.height + SLICE_HEIGHT_HACK_ - 1);
     
     
     g2.dispose();
@@ -576,8 +577,9 @@ public class BufferBuilder {
     int[] preZooms;
     if (lco != 0) {
       int linkLog = (int)Math.ceil(Math.log(lco) / Math.log(2.0));
-      int firstDrawLog = (int)Math.ceil(Math.log(1.0E4) / Math.log(2.0));  
-      int numPre = Math.max(linkLog - firstDrawLog, 4);
+      int firstDrawLog = (int)Math.ceil(Math.log(1.0E4) / Math.log(2.0));
+      // For tiny networks (1 link), previous 4 levels of zoom is too much.
+      int numPre = Math.max(linkLog - firstDrawLog, 2);
       preZooms = new int[numPre];
       preZooms[0] = 1;
       for (int i = 1; i < numPre; i++) {
@@ -615,7 +617,7 @@ public class BufferBuilder {
           if (qr == null) {
             break;
           }
-          if (!buildBuffer(screenDim_, qr)) {
+          if (!buildBuffer(new Dimension(qr.imageDim.width, qr.imageDim.height), qr)) {
             return;
           }
         }
@@ -670,12 +672,13 @@ public class BufferBuilder {
   private static class WorldPieceOffering implements Cloneable {
     String cacheHandle;
     boolean isDrawn;
-    @SuppressWarnings("unused")
-    int zoomNum;
+    int imgWidth;
+    int imgHeight;
     
-    WorldPieceOffering(String cacheHandle, int zoomNum, boolean isDrawn) {
+    WorldPieceOffering(String cacheHandle, int imgWidth, int imgHeight, boolean isDrawn) {
       this.cacheHandle = cacheHandle;
-      this.zoomNum = zoomNum;
+      this.imgWidth = imgWidth;
+      this.imgHeight = imgHeight;
       this.isDrawn = isDrawn;
     }
     
@@ -696,15 +699,17 @@ public class BufferBuilder {
   
   private static class QueueRequest {
     Integer key;
+    Rectangle imageDim;
     Rectangle worldPiece;
     
-    QueueRequest(Integer key, Rectangle worldPiece) {
+    QueueRequest(Integer key, Rectangle imageDim, Rectangle worldPiece) {
       this.key = key;
       this.worldPiece = worldPiece;
+      this.imageDim = imageDim;
     }
     
     public int hashCode() {
-      return (key.hashCode() + worldPiece.hashCode());
+      return (key.hashCode() + worldPiece.hashCode() + imageDim.hashCode());
     }
       
     public boolean equals(Object other) {    
@@ -722,6 +727,9 @@ public class BufferBuilder {
       if (!this.key.equals(otherReq.key)) {
         return (false);
       }
+      if (!this.imageDim.equals(otherReq.imageDim)) {
+      	return (false);
+      } 
       return (this.worldPiece.equals(otherReq.worldPiece));
     }  
     
