@@ -2923,8 +2923,8 @@ public class BioFabricNetwork {
     public NodeInfoWorker(FabricFactory.FactoryWhiteboard board) {
       super(board);
       myKeys_.add("node");
-      installWorker(new DrainZoneWorker(board, true), new DrainZoneGlue());
       installWorker(new DrainZoneWorker(board, false), new DrainZoneGlue());
+      installWorker(new DrainZoneWorker(board, true), new DrainZoneGlue());
     }
     
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
@@ -2953,13 +2953,13 @@ public class BioFabricNetwork {
       } else {
       	nid = board.ulb.getNextOID();
       	nwn = new NID.WithName(nid, name);
-      	board.legacyMap.put(DataUtil.normKey(name), nwn);
+      	board.legacyMap.put(DataUtil.normKey(name), nwn);  // FOR SOME REASON, 'name' GIVES A NULLPOINTER EXCEPTION 
       }
       board.wnMap.put(nid, nwn);
  
       String row = AttributeExtractor.extractAttribute(elemName, attrs, "node", "row", true);
-      String minCol = AttributeExtractor.extractAttribute(elemName, attrs, "node", "minCol", true);
-      String maxCol = AttributeExtractor.extractAttribute(elemName, attrs, "node", "maxCol", true);
+      String minCol = AttributeExtractor.extractAttribute(elemName, attrs, "node", "minCol", false);
+      String maxCol = AttributeExtractor.extractAttribute(elemName, attrs, "node", "maxCol", false);
       String minColSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "minColSha", false);
       String maxColSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "maxColSha", false);
       String minDrain = AttributeExtractor.extractAttribute(elemName, attrs, "node", "drainMin", false);
@@ -2993,15 +2993,19 @@ public class BioFabricNetwork {
         	retval.setCluster(cluster);
         }
         
-        int min = Integer.valueOf(minCol).intValue();
-        int max = Integer.valueOf(maxCol).intValue();
-        retval.updateMinMaxCol(min, false);
-        retval.updateMinMaxCol(max, false);
+        if (minCol != null) {
+          int min = Integer.valueOf(minCol).intValue();
+          int max = Integer.valueOf(maxCol).intValue();
+          retval.updateMinMaxCol(min, false);
+          retval.updateMinMaxCol(max, false);
+        }
         
-        int minSha = Integer.valueOf(minColSha).intValue();
-        int maxSha = Integer.valueOf(maxColSha).intValue();
-        retval.updateMinMaxCol(minSha, true);
-        retval.updateMinMaxCol(maxSha, true);
+        if (minColSha != null) {
+          int minSha = Integer.valueOf(minColSha).intValue();
+          int maxSha = Integer.valueOf(maxColSha).intValue();
+          retval.updateMinMaxCol(minSha, true);
+          retval.updateMinMaxCol(maxSha, true);
+        }
   
         if (minDrain != null) {
           int minDrVal = Integer.valueOf(minDrain).intValue();
