@@ -34,6 +34,8 @@ import org.systemsbiology.biofabric.analysis.CycleFinder;
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 
@@ -88,9 +90,12 @@ public class ControlTopLayout {
   ** Relayout the network!
   */
   
-  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd, List<NID.WithName> forcedTop) {   
+  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd, List<NID.WithName> forcedTop,
+  		                 BTProgressMonitor monitor, 
+                       double startFrac, 
+                       double endFrac) throws AsynchExitRequestException {   
     doNodeLayout(rbd, forcedTop);
-    (new DefaultEdgeLayout()).layoutEdges(rbd);
+    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
     return;
   }
   

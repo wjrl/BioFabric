@@ -19,6 +19,9 @@
 
 package org.systemsbiology.biofabric.analysis;
 
+import java.util.Comparator;
+import java.util.Map;
+
 import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
@@ -95,5 +98,37 @@ public class NIDLink implements Cloneable, Comparable<NIDLink> {
     }
     
     return (this.trg_.compareTo(otherLink.trg_));
+  }
+  
+  public static class NIDLinkLocationOrder implements Comparator<NIDLink> {
+  	
+  	private Map<NID.WithName, Integer> nodeToRow_;
+  	
+  	public NIDLinkLocationOrder(Map<NID.WithName, Integer> nodeToRow) {
+  		nodeToRow_ = nodeToRow;
+  	}
+  	
+  	public int compare(NIDLink link1, NIDLink link2) {
+  		NID.WithName l1s = link1.getSrc();
+  		NID.WithName l1t = link1.getTrg();
+  		NID.WithName l2s = link2.getSrc();
+  		NID.WithName l2t = link2.getTrg();
+  		Integer l1sR = nodeToRow_.get(l1s);
+  	  Integer l1tR = nodeToRow_.get(l1t);  			
+  		Integer l2sR = nodeToRow_.get(l2s);
+  		Integer l2tR = nodeToRow_.get(l2t);
+
+  		if (l1sR.equals(l2sR)) {
+  			return (l1tR.intValue() - l2tR.intValue());  			
+  		} else if (l1sR.equals(l2tR)) {
+  			return (l1tR.intValue() - l2sR.intValue());			
+  	  } else if (l1tR.equals(l2sR)) {
+  			return (l1sR.intValue() - l2tR.intValue());
+  	  } else if (l1tR.equals(l2tR)) {
+  			return (l1sR.intValue() - l2sR.intValue());
+  	  } else {
+  	  	throw new IllegalArgumentException();
+  	  }	
+  	}	
   } 
 }

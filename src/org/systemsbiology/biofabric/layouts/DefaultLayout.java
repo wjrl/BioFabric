@@ -33,6 +33,8 @@ import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
@@ -74,9 +76,12 @@ public class DefaultLayout {
   ** Relayout the network!
   */
   
-  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd, NodeSimilarityLayout.CRParams params) {   
+  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd, NodeSimilarityLayout.CRParams params,
+  		  		           BTProgressMonitor monitor, 
+                       double startFrac, 
+                       double endFrac) throws AsynchExitRequestException { 
     doNodeLayout(rbd, ((Params)params).startNodes);
-    (new DefaultEdgeLayout()).layoutEdges(rbd);
+    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
     return;
   }
   

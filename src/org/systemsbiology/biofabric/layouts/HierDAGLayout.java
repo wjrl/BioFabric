@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -31,6 +31,8 @@ import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
@@ -92,9 +94,12 @@ public class HierDAGLayout {
   ** Relayout the network!
   */
   
-  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd) {   
+  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd,
+  		                 BTProgressMonitor monitor, 
+                       double startFrac, 
+                       double endFrac) throws AsynchExitRequestException {
     doNodeLayout(rbd);
-    (new DefaultEdgeLayout()).layoutEdges(rbd);
+    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
     return;
   }
   
