@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2016 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -242,6 +242,8 @@ public class FabricLink implements Cloneable, AttributeLoader.AttributeKey {
   /***************************************************************************
   **
   ** Comparator for Fabric Links
+  ** This is kinda bogus and old, and is just used to cleanse input. Replace
+  ** with comething newer?
   */  
   
   public static class FabLinkComparator implements Comparator<FabricLink> {
@@ -353,5 +355,6 @@ public class FabricLink implements Cloneable, AttributeLoader.AttributeKey {
       return ("rel = " + relation + " isShadow = " + isShadow);
     }    
   }
- 
+  
+
 }

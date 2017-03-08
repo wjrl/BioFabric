@@ -218,7 +218,7 @@ public class NodeClusterLayout {
     
     (new DefaultLayout()).installNodeOrder(allTargets, rbd);
     
-    (new DefaultEdgeLayout()).layoutEdges(rbd);
+    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
     
     if (params.iLink == ClusterParams.InterLink.BETWEEN) {
     	int origNum = rbd.linkOrder.size();

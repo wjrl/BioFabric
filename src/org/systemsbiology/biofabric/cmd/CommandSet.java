@@ -93,7 +93,7 @@ import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.HierDAGLayout;
-import org.systemsbiology.biofabric.layouts.ProcessWorldBankCSV;
+import org.systemsbiology.biofabric.layouts.WorldBankLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.parser.ParserClient;
@@ -117,6 +117,7 @@ import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.ui.display.FabricMagnifyingTool;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.BackgroundWorker;
 import org.systemsbiology.biofabric.util.BackgroundWorkerClient;
 import org.systemsbiology.biofabric.util.BackgroundWorkerOwner;
@@ -748,34 +749,6 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     manageWindowTitle(fileName);
     return (true);
   }
- 
-  /***************************************************************************
-  **
-  ** Load network from gaggle
-  */ 
-    
-  public boolean loadFromGaggle(List<FabricLink> links, List<NID.WithName> singleIDs, UniqueLabeller uLab, Map<NID.WithName, String> idToName) { 
-    HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
-    HashSet<FabricLink> culledLinks = new HashSet<FabricLink>();
-    BioFabricNetwork.preprocessLinks(links, reducedLinks, culledLinks);
-    if (!culledLinks.isEmpty()) {
-      ResourceManager rMan = ResourceManager.getManager();
-      String dupLinkFormat = rMan.getString("fabricRead.dupLinkFormat");
-      // Ignore shadow link culls: / 2
-      String dupLinkMsg = MessageFormat.format(dupLinkFormat, new Object[] {Integer.valueOf(culledLinks.size() / 2)});
-      JOptionPane.showMessageDialog(topWindow_, dupLinkMsg,
-                                    rMan.getString("fabricRead.dupLinkTitle"),
-                                    JOptionPane.WARNING_MESSAGE);
-    }
-    BioFabricNetwork.RelayoutBuildData bfnbd = 
-    		new BioFabricNetwork.RelayoutBuildData(uLab, reducedLinks, new HashSet<NID.WithName>(singleIDs),
-    				                                   new HashMap<NID.WithName, String>(), 
-                                               colGen_, BioFabricNetwork.BuildMode.BUILD_FROM_GAGGLE);
-    NetworkBuilder nb = new NetworkBuilder(); 
-    nb.doNetworkBuild(bfnbd, true);
-    manageWindowTitle("Gaggle");
-    return (true);
-  }  
     
   /***************************************************************************
   **
@@ -981,11 +954,16 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   ** Do new model operations
   */ 
 
-  public BufferedImage expensiveModelOperations(BioFabricNetwork.BuildData bfnbd, boolean forMain) throws IOException { 
+  public BufferedImage expensiveModelOperations(BioFabricNetwork.BuildData bfnbd, 
+  		                                          boolean forMain, 
+  		                                          BTProgressMonitor monitor, 
+                                                double startFrac, 
+                                                double endFrac) throws IOException, AsynchExitRequestException {
     Dimension screenSize = (forMain) ? Toolkit.getDefaultToolkit().getScreenSize() : new Dimension(600, 800);
     screenSize.setSize((int)(screenSize.getWidth() * 0.8), (int)(screenSize.getHeight() * 0.4));
+    double midFrac = (startFrac + endFrac) / 2.0;
     // Possibly expensive network analysis preparation:
-    BioFabricNetwork bfn = new BioFabricNetwork(bfnbd);
+    BioFabricNetwork bfn = new BioFabricNetwork(bfnbd, monitor, startFrac, midFrac);
     // Possibly expensive display object creation:
     bfp_.installModel(bfn);  
     // Very expensive display buffer creation:
@@ -994,7 +972,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     BufferedImage topImage = null;
     if (forMain) {
       BufferBuilder bb = new BufferBuilder(null, 1/*30*/, bfp_);
-      topImage = bb.buildBufs(preZooms, bfp_, 24);
+      topImage = bb.buildBufs(preZooms, bfp_, 24, monitor, midFrac, endFrac);
       bfp_.setBufBuilder(bb);      
     } else {
       BufferBuilder bb = new BufferBuilder(bfp_);
@@ -1011,7 +989,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   ** Do new model operations
   */ 
 
-  public BufferedImage expensiveRecolorOperations(boolean forMain) throws IOException { 
+  public BufferedImage expensiveRecolorOperations(boolean forMain,
+  		                                            BTProgressMonitor monitor, 
+                                                  double startFrac, 
+                                                  double endFrac) throws IOException, AsynchExitRequestException {
     Dimension screenSize = (forMain) ? Toolkit.getDefaultToolkit().getScreenSize() : new Dimension(800, 400);
     screenSize.setSize((int)(screenSize.getWidth() * 0.8), (int)(screenSize.getHeight() * 0.4));
     colGen_.newColorModel();
@@ -1022,7 +1003,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     BufferedImage topImage = null;
     if (forMain) {
       BufferBuilder bb = new BufferBuilder(null, 1, bfp_);
-      topImage = bb.buildBufs(preZooms, bfp_, 24);
+      topImage = bb.buildBufs(preZooms, bfp_, 24, monitor, startFrac, endFrac);
       bfp_.setBufBuilder(bb);      
     } else {
       BufferBuilder bb = new BufferBuilder(bfp_);
@@ -1064,8 +1045,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
 
   public void newModelOperations(BioFabricNetwork.BuildData bfnbd, boolean forMain) throws IOException { 
     preLoadOperations();
-    BufferedImage topImage = expensiveModelOperations(bfnbd, forMain);
-    postLoadOperations(topImage);
+    try {
+      BufferedImage topImage = expensiveModelOperations(bfnbd, forMain, null, 0.0, 0.0);
+      postLoadOperations(topImage);
+    } catch (AsynchExitRequestException aex) {
+    	// Not being used in background; will not happen
+    }
     return;
   }
     
@@ -3890,7 +3875,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       try {
         newModelOperations(ubd, true);
       } catch (IOException ioex) {
-        //Silent fail
+        //Silent fail     
       }
       return;
     }     
@@ -4127,7 +4112,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     public Object runCore() throws AsynchExitRequestException {
       try {
-        BufferedImage bi = expensiveModelOperations(bfn_, forMain_);
+        BufferedImage bi = expensiveModelOperations(bfn_, forMain_, this, 1.0, 1.0);
         return (bi);
       } catch (IOException ex) {
         stashException(ex);
@@ -4162,7 +4147,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       try {            
         switch (mode_) {
           case DEFAULT_LAYOUT:
-            (new DefaultLayout()).doLayout(rbd_, params_);
+            (new DefaultLayout()).doLayout(rbd_, params_, this, 0.0, 0.5);
             break;
           case CONTROL_TOP_LAYOUT:
             List<NID.WithName> forcedTop = new ArrayList<NID.WithName>();
@@ -4170,13 +4155,13 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
             //  forcedTop.add("PACS1");    
             // this has to be FORCED; the layers after the first are laid out in a crap fashion!
             UiUtil.fixMePrintout("Gotta handle the forced top!");
-            (new ControlTopLayout()).doLayout(rbd_, forcedTop);
+            (new ControlTopLayout()).doLayout(rbd_, forcedTop, this, 0.0, 0.5);
             break;
           case HIER_DAG_LAYOUT:
-            (new HierDAGLayout()).doLayout(rbd_);
+            (new HierDAGLayout()).doLayout(rbd_, this, 0.0, 0.5);
             break;
           case WORLD_BANK_LAYOUT:
-            (new ProcessWorldBankCSV()).doLayout(rbd_);
+            (new WorldBankLayout()).doLayout(rbd_, this, 0.0, 0.5);
             break;
           case NODE_ATTRIB_LAYOUT:
           case LINK_ATTRIB_LAYOUT:
@@ -4185,13 +4170,13 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
             // previously installed....
             break;
           case REORDER_LAYOUT:
-            (new NodeSimilarityLayout()).doReorderLayout(rbd_, params_, this, 0.0, 1.0);
+            (new NodeSimilarityLayout()).doReorderLayout(rbd_, params_, this, 0.0, 0.5);
             break;            
           case CLUSTERED_LAYOUT:
-            (new NodeSimilarityLayout()).doClusteredLayout(rbd_, params_, this, 0.0, 1.0);
+            (new NodeSimilarityLayout()).doClusteredLayout(rbd_, params_, this, 0.0, 0.5);
             break;
           case NODE_CLUSTER_LAYOUT:
-            (new NodeClusterLayout()).orderByClusterAssignment(rbd_, params_, this, 0.0, 1.0);
+            (new NodeClusterLayout()).orderByClusterAssignment(rbd_, params_, this, 0.0, 0.5);
             break;                        
           case SHADOW_LINK_CHANGE:
           case BUILD_FOR_SUBMODEL:
@@ -4201,7 +4186,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           default:
             throw new IllegalArgumentException();
         }
-        BufferedImage bi = expensiveModelOperations(rbd_, true);
+        BufferedImage bi = expensiveModelOperations(rbd_, true, this, 0.5, 1.0);
         return (bi);
       } catch (IOException ex) {
         stashException(ex);
@@ -4230,7 +4215,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     public Object runCore() throws AsynchExitRequestException {
       try {
-        BufferedImage bi = expensiveRecolorOperations(forMain_);
+        BufferedImage bi = expensiveRecolorOperations(forMain_, this, 0.0, 1.0);
         return (bi);
       } catch (IOException ex) {
         stashException(ex);

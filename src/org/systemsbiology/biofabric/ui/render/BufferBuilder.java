@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -19,13 +19,11 @@
 
 package org.systemsbiology.biofabric.ui.render;
 
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
-import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.PixelGrabber;
@@ -41,6 +39,8 @@ import javax.swing.SwingUtilities;
 
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
@@ -178,7 +178,10 @@ public class BufferBuilder {
   **  Build all the bufs
   */
   
-  public BufferedImage buildBufs(int[] zooms, BufferBuilderClient bbc, int maxSize) throws IOException {
+  public BufferedImage buildBufs(int[] zooms, BufferBuilderClient bbc, int maxSize, 
+  		                           BTProgressMonitor monitor, 
+                                 double startFrac, 
+                                 double endFrac) throws IOException, AsynchExitRequestException {
     timeToExit_ = false;
     bbZooms_ = new int[zooms.length];
     System.arraycopy(zooms, 0, bbZooms_, 0, zooms.length);
@@ -186,6 +189,12 @@ public class BufferBuilder {
     worldDim_ = new Dimension();
     drawer_.dimsForBuf(screenDim_, worldDim_);
     HashMap<Rectangle, WorldPieceOffering> limitOffering = null;
+    
+    double inc = (endFrac - startFrac) / ((zooms.length == 0) ? 1 : zooms.length);
+    double currProg = startFrac;
+    System.out.println("buildBufs " + zooms.length);
+    
+    
     for (int i = 0; i < zooms.length; i++) {
       //
       // We do not allow the tesselation size to drop below a minimum image dimension. If we actually hit that
@@ -210,6 +219,12 @@ public class BufferBuilder {
           limitOffering = worldForSize;
         }
       }
+      if (monitor != null) {
+        currProg += inc;
+        if (!monitor.updateProgress((int)(currProg * 100.0))) {
+          throw new AsynchExitRequestException();
+        }
+      } 
     }
     
     //
@@ -222,6 +237,7 @@ public class BufferBuilder {
       buildBuffer(new Dimension(qr.imageDim.width, qr.imageDim.height), qr);
     }
     
+        System.out.println("buildBufs  requestQueue");
     //
     // Now build up the requests for the background thread:
     //   
@@ -236,7 +252,7 @@ public class BufferBuilder {
       runThread.setPriority(runThread.getPriority() - 2);
       runThread.start();
     }
-     
+    System.out.println("buildBufs  rTI");
     return (getTopImage()); 
   }
 

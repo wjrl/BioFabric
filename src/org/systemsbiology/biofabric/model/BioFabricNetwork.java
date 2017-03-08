@@ -44,7 +44,9 @@ import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.AttributeExtractor;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.CharacterEntityMapper;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.Indenter;
@@ -175,7 +177,10 @@ public class BioFabricNetwork {
   ** Constructor
   */
 
-  public BioFabricNetwork(BuildData bd) {
+  public BioFabricNetwork(BuildData bd, 
+  		                    BTProgressMonitor monitor, 
+                          double startFrac, 
+                          double endFrac) throws AsynchExitRequestException {
   	nodeIDGenerator_ = new UniqueLabeller();
   	layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
     BuildMode mode = bd.getMode();
@@ -202,7 +207,9 @@ public class BioFabricNetwork {
         linkGrouping_ = new ArrayList<String>(rbd.linkGroups);
         colGen_ = rbd.colGen;
         layoutMode_ = rbd.layoutMode;
-        relayoutNetwork(rbd);
+        System.out.println("BFNCO");
+        relayoutNetwork(rbd, monitor, startFrac, endFrac);
+        System.out.println("BFNCO2");
         break;
       case BUILD_FOR_SUBMODEL:
         SelectBuildData sbd = (SelectBuildData)bd;
@@ -237,7 +244,7 @@ public class BioFabricNetwork {
         linkGrouping_ = new ArrayList<String>();
         layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
         colGen_ = obd.colGen;
-        processLinks(obd);
+        processLinks(obd, monitor, startFrac, endFrac);
         break;
       default:
         throw new IllegalArgumentException();
@@ -484,7 +491,7 @@ public class BioFabricNetwork {
     }
     return (allLinks);
   }
-   
+ 
   /***************************************************************************
   **
   ** Get ordered linkInfo iterator
@@ -499,7 +506,10 @@ public class BioFabricNetwork {
   ** Process a link set
   */
 
-  private void processLinks(RelayoutBuildData rbd) { 
+  private void processLinks(RelayoutBuildData rbd, 
+  		                      BTProgressMonitor monitor, 
+                            double startFrac, 
+                            double endFrac) throws AsynchExitRequestException {
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
     //
@@ -517,14 +527,14 @@ public class BioFabricNetwork {
     // so that the shortest vertical link is drawn first!
     //
     
-    (new DefaultEdgeLayout()).layoutEdges(rbd);
-    specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, false);
+    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
+    specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, false, monitor, startFrac, endFrac);
 
     //
     // Determine the start & end of each target row needed to handle the incoming
     // and outgoing links:
     //
- 
+
     trimTargetRows();
         
     //
@@ -540,7 +550,9 @@ public class BioFabricNetwork {
   ** Relayout the network!
   */
   
-  private void relayoutNetwork(RelayoutBuildData rbd) {
+  private void relayoutNetwork(RelayoutBuildData rbd, BTProgressMonitor monitor, 
+                               double startFrac, 
+                               double endFrac) throws AsynchExitRequestException {
     BuildMode mode = rbd.getMode();
     installLinkGroups(rbd.linkGroups);
     setLayoutMode(rbd.layoutMode);
@@ -559,11 +571,17 @@ public class BioFabricNetwork {
       targetIDs = rbd.existingIDOrder;
     }
    
+    if (monitor != null) {
+      if (!monitor.updateProgress((int)(startFrac * 100.0))) {
+        throw new AsynchExitRequestException();
+      }
+    }
+   
     //
     // Now have the ordered list of targets we are going to display.
     // Build target->row maps and the inverse:
     //
-    
+
     fillNodesFromOrder(targetIDs, rbd.colGen, rbd.clustAssign);
 
     //
@@ -579,23 +597,30 @@ public class BioFabricNetwork {
           rbd.nodeOrder.put(targID, Integer.valueOf(i));
         }
       }
-      (new DefaultEdgeLayout()).layoutEdges(rbd);
+      (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
     }
 
     //
     // This now assigns the link to its column, based on user specification
     //
     
+    if (monitor != null) {
+      if (!monitor.updateProgress((int)(((endFrac + startFrac) / 2.0) * 100.0))) {
+        throw new AsynchExitRequestException();
+      }
+    }
+    
     specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, ((mode == BuildMode.LINK_ATTRIB_LAYOUT) || 
     		                                              (mode == BuildMode.NODE_CLUSTER_LAYOUT) ||
     		                                              (mode == BuildMode.GROUP_PER_NODE_CHANGE) ||
-    		                                              (mode == BuildMode.GROUP_PER_NETWORK_CHANGE)));
+    		                                              (mode == BuildMode.GROUP_PER_NETWORK_CHANGE)),
+    		                  monitor, (endFrac + startFrac) / 2.0, endFrac);
       
     //
     // Determine the start & end of each target row needed to handle the incoming
     // and outgoing links:
     //
- 
+
     trimTargetRows();
         
     //
@@ -603,6 +628,13 @@ public class BioFabricNetwork {
     //
 
     loneNodesToLastColumn(rbd.loneNodeIDs);
+
+    if (monitor != null) {
+      if (!monitor.updateProgress((int)(endFrac * 100.0))) {
+        throw new AsynchExitRequestException();
+      }
+    }
+
     return;
   }
   
@@ -654,95 +686,57 @@ public class BioFabricNetwork {
     }
     return (retval);
   }
-  
-  /***************************************************************************
-  **
-  ** Get existing order
-  */
-  
-  public Iterator<Integer> getRows() {
-    return (rowToTargID_.keySet().iterator());
-  }
 
   /***************************************************************************
   ** 
   ** Process a link set
   */
 
-  private void specifiedLinkToColumn(FabricColorGenerator colGen, SortedMap<Integer, FabricLink> linkOrder, boolean userSpec) { 
+  private void specifiedLinkToColumn(FabricColorGenerator colGen, 
+  		                               SortedMap<Integer, FabricLink> linkOrder, 
+  		                               boolean userSpec, BTProgressMonitor monitor, 
+                                     double startFrac, 
+                                     double endFrac) throws AsynchExitRequestException {
      
     normalCols_.columnCount = 0;
     shadowCols_.columnCount = 0;
     int numColors = colGen.getNumColors();
     Iterator<Integer> frkit = linkOrder.keySet().iterator();
+    
+    double inc = (endFrac - startFrac) / ((linkOrder.size() == 0) ? 1 : linkOrder.size());
+    double currProg = startFrac;
+    
     while (frkit.hasNext()) {
       Integer nextCol = frkit.next();
       FabricLink nextLink = linkOrder.get(nextCol);
-      Integer useForSDef = Integer.valueOf(shadowCols_.columnCount);
       Integer[] colCounts = addLinkDef(nextLink, numColors, normalCols_.columnCount, shadowCols_.columnCount, colGen);
       shadowCols_.columnCount = colCounts[0].intValue();
       if (colCounts[1] != null) {
         normalCols_.columnCount = colCounts[1].intValue();
       }
       
-      LinkInfo linf = getLinkDefinition(useForSDef, true);
-      NID.WithName topNodeID = rowToTargID_.get(Integer.valueOf(linf.topRow()));
-      NID.WithName botNodeID = rowToTargID_.get(Integer.valueOf(linf.bottomRow()));
-      
-      NodeInfo nit = nodeDefs_.get(topNodeID);
-      NodeInfo nib = nodeDefs_.get(botNodeID);
-      
-      //
-      // When displaying shadows, drain zone of top node is only mod 
-      // for non-shadow link values, and drain zone of bottom node is 
-      // only mod with shadow link 
-      //
-      // For non-shadow display, top node drain is mod with non-shadow values
-      //
-      // Stated another way, non-shadows always affect top node drains.  Shadow
-      // links only affect bottom node shadow drains:
-      //
-      
-      // The new setDrainZonesWithMultipleLabels() calls should be replacing this entire
-      // block of code. Confirm this??
-      
-/*
-      if (!userSpec) {
-        if (!linf.isShadow()) {       
-          List<MinMax> dzst = nit.getDrainZones(true);
-          if (dzst.size() == 0) {
-            dzst = (new ArrayList<MinMax>());
-            dzst.add(new MinMax().init());
-            nit.addDrainZone(dzst.get(0), true);
-          }
-          dzst.get(0).update(linf.getUseColumn(true));
-
-          List<MinMax> dznt = nit.getDrainZones(false);
-          if (dznt.size() == 0) {
-            dznt.add((new MinMax()).init());
-            nit.addDrainZone(dznt.get(0), false);
-          }
-          dznt.get(0).update(linf.getUseColumn(false));
-        } else {
-          List<MinMax> dzsb = nib.getDrainZones(true);
-          if (dzsb.size() == 0) {
-            dzsb.add((new MinMax()).init());
-            nib.addDrainZone(dzsb.get(0), true);
-          }
-          dzsb.get(0).update(linf.getUseColumn(true));
-        }
-      }*/
+	    if (monitor != null) {
+	    	currProg += inc;
+	      if (!monitor.updateProgress((int)(currProg * 100.0))) {
+	        throw new AsynchExitRequestException();
+	      }
+	    }    
     }
     
-    // WJRL 2/7/17: Actually, this should handle *all* drain zone calculations now, correct??
- //   if (userSpec || this.linkGrouping_!= null) { // Not sure this works 100% of the time -Rishi Desai 1/17/2017
-    setDrainZonesWithMultipleLabels(true);
-    setDrainZonesWithMultipleLabels(false);
- //   } else {
- //     setDrainZonesByContig(true);     
- //     setDrainZonesByContig(false);    
-  //  }
-            
+    // WJRL 3/7/17 Commented out temporarily so I can check efficiency of other code....
+   
+    System.out.println("This operation is O(e^2)");
+    //  setDrainZonesWithMultipleLabels(true);
+    System.out.println("SDZML 0.5");
+    //  setDrainZonesWithMultipleLabels(false);
+    System.out.println("SDZML done");
+ 
+    if (monitor != null) {
+      if (!monitor.updateProgress((int)(endFrac * 100.0))) {
+        throw new AsynchExitRequestException();
+      }
+      System.out.println(currProg);
+    }           
     return;
   }
   
@@ -2705,7 +2699,9 @@ public class BioFabricNetwork {
       
       NID.WithName srcNID;
       if (src != null) {
-      	srcNID = board.legacyMap.get(DataUtil.normKey(src));	
+      	// Previously used DataUtil.normKey(src) as argument, but as issue #41 shows,
+      	// that is wrong. Need the original string:
+      	srcNID = board.legacyMap.get(src);	
       } else if (srcID != null) {
       	srcNID = board.wnMap.get(new NID(srcID));
       } else {
@@ -2714,7 +2710,9 @@ public class BioFabricNetwork {
       
       NID.WithName trgNID;
       if (trg != null) {
-      	trgNID = board.legacyMap.get(DataUtil.normKey(trg));	
+      	// Previously used DataUtil.normKey(trg) as argument, but as issue #41 shows,
+      	// that is wrong. Need the original string:
+      	trgNID = board.legacyMap.get(trg);
       } else if (trgID != null) {
       	trgNID = board.wnMap.get(new NID(trgID));
       } else {
@@ -2802,9 +2800,9 @@ public class BioFabricNetwork {
     private NodeInfo buildFromXML(String elemName, Attributes attrs, FabricFactory.FactoryWhiteboard board) throws IOException { 
       String name = AttributeExtractor.extractAttribute(elemName, attrs, "node", "name", true);
       name = CharacterEntityMapper.unmapEntities(name, false);
-      
+   
       String nidStr = AttributeExtractor.extractAttribute(elemName, attrs, "node", "nid", false);
-      
+
       NID nid;
       NID.WithName nwn;
       if (nidStr != null) {
@@ -2817,7 +2815,10 @@ public class BioFabricNetwork {
       } else {
       	nid = board.ulb.getNextOID();
       	nwn = new NID.WithName(nid, name);
-      	board.legacyMap.put(DataUtil.normKey(name), nwn);
+      	// Addresses Issue 41. Used DataUtil.normKey(name), but if a node made it
+      	// as a separate entity in the past, we should keep them unique. Note that with
+      	// NIDs now, we can support "identically" named nodes anyway:
+      	board.legacyMap.put(name, nwn);
       }
       board.wnMap.put(nid, nwn);
  
