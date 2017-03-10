@@ -2221,11 +2221,7 @@ public class BioFabricNetwork {
     
     /***************************************************************************
     **
-     ** Dump the node using XML ; XML DOESN'T FUNCTION PROPERLY HERE!!!- RISHI
-     *                            CAME BACK HERE 1/7/16
-     *
-     *                            XML IS "WORKING", I'M 99% SURE IT DOES, BUT YOU
-     *                            SHOULD LOOK HERE JUST IN CASE - RISHI 2/26/17
+     ** Dump the node using XML
     */
   
     public void writeXML(PrintWriter out, Indenter ind, int row) {
@@ -2255,18 +2251,10 @@ public class BioFabricNetwork {
       ind.indent();
       if (this.plainDrainZones_.size() > 0) {
         out.println("<drainZones>");
-  
         ind.up();
         for (DrainZone dz : this.plainDrainZones_) {
-//          ind.indent();
-//          out.print("<drainZone minCol=\"");
-//          out.print(dz.getMinMax().min);
-//          out.print("\" maxCol=\"");
-//          out.print(dz.getMinMax().max);
-//          out.println("\" />");
           dz.writeXML(out, ind);
         }
-  
         ind.down();
         ind.indent();
         out.println("</drainZones>");
@@ -2275,21 +2263,12 @@ public class BioFabricNetwork {
       }
       
       ind.indent();
-      
       if (this.shadowDrainZones_.size() > 0) {
         out.println("<drainZonesShadow>");
-  
         ind.up();
         for (DrainZone dzSha : this.shadowDrainZones_) {
-//          ind.indent();
-//          out.print("<drainZoneShadow minCol=\"");
-//          out.print(dzSha.getMinMax().min);
-//          out.print("\" maxCol=\"");
-//          out.print(dzSha.getMinMax().max);
-//          out.println("\" />");
           dzSha.writeXML(out, ind);
         }
-  
         ind.down();
         ind.indent();
         out.println("</drainZonesShadow>");
@@ -2297,13 +2276,9 @@ public class BioFabricNetwork {
         out.println("<drainZonesShadow/>");
       }
       
-      
       ind.down();
       ind.indent();
       out.println("</node>");
-  
-      // GOING TO KEEP THIS HERE UNTIL THIS WORKS 100% CONFIMRED BY YOU - Rishi 2/26/17
-      UiUtil.fixMePrintout("DRAIN ZONES NOT GOING OUT TO XML");
     }
   }
   
@@ -2738,6 +2713,11 @@ public class BioFabricNetwork {
     }
   }
   
+  /***************************************************************************
+   **
+   ** For XML I/O
+   */
+  
   public static class DrainZoneWorker extends AbstractFactoryClient {
     
     private boolean isShadow;
@@ -2799,7 +2779,7 @@ public class BioFabricNetwork {
         	target = LayoutMode.PER_NODE_MODE.getText();   	
         }
         FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard)this.sharedWhiteboard_;
-        retval = LayoutMode.valueOf(target);
+        retval = LayoutMode.fromString(target);
         board.bfn.setLayoutMode(retval);
 
       }
@@ -2930,15 +2910,17 @@ public class BioFabricNetwork {
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
       Object retval = null;
       FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard)this.sharedWhiteboard_;
-      board.nodeInfo = buildFromXML(elemName, attrs, board);
-      retval = board.nodeInfo;
+      if (myKeys_.contains(elemName)) {
+        board.nodeInfo = buildFromXML(elemName, attrs, board);
+        retval = board.nodeInfo;
+      }
       return (retval);     
     }  
     
     private NodeInfo buildFromXML(String elemName, Attributes attrs, FabricFactory.FactoryWhiteboard board) throws IOException { 
       String name = AttributeExtractor.extractAttribute(elemName, attrs, "node", "name", true);
       name = CharacterEntityMapper.unmapEntities(name, false);
-      
+  
       String nidStr = AttributeExtractor.extractAttribute(elemName, attrs, "node", "nid", false);
       
       NID nid;
@@ -2953,7 +2935,7 @@ public class BioFabricNetwork {
       } else {
       	nid = board.ulb.getNextOID();
       	nwn = new NID.WithName(nid, name);
-      	board.legacyMap.put(DataUtil.normKey(name), nwn);  // FOR SOME REASON, 'name' GIVES A NULLPOINTER EXCEPTION 
+        board.legacyMap.put(DataUtil.normKey(name), nwn);
       }
       board.wnMap.put(nid, nwn);
  
