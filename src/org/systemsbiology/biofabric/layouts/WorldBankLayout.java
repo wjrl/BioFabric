@@ -34,14 +34,16 @@ import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
 **
-** This does the world bank layout
+** This does the "world bank" layout
 */
 
-public class ProcessWorldBankCSV {
+public class WorldBankLayout {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -72,7 +74,7 @@ public class ProcessWorldBankCSV {
   ** Constructor
   */
 
-  public ProcessWorldBankCSV() {
+  public WorldBankLayout() {
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -86,9 +88,17 @@ public class ProcessWorldBankCSV {
   ** Relayout the network!
   */
   
-  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd) {   
-    doNodeLayout(rbd);
-    (new DefaultEdgeLayout()).layoutEdges(rbd);
+  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd,                            
+  		                 BTProgressMonitor monitor, 
+                       double startFrac, 
+                       double endFrac) throws AsynchExitRequestException { 
+
+  	double perStep = (endFrac - startFrac) / 2.0;
+  	System.out.println("doLays");   
+    doNodeLayout(rbd, monitor, startFrac, startFrac + perStep);
+    System.out.println("doLays2");   
+    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac + perStep, endFrac);
+    System.out.println("doLays3");   
     return;
   }
   
@@ -97,9 +107,12 @@ public class ProcessWorldBankCSV {
   ** Relayout the network!
   */
   
-  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd) {
+  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd,
+  		                                   BTProgressMonitor monitor, 
+									                       double startFrac, 
+									                       double endFrac) throws AsynchExitRequestException {
     
-    List<NID.WithName> targets = calcNodeOrder(rbd.allLinks, rbd.loneNodeIDs);       
+    List<NID.WithName> targets = calcNodeOrder(rbd.allLinks, rbd.loneNodeIDs, monitor, startFrac, endFrac);       
 
     //
     // Now have the ordered list of targets we are going to display.
@@ -180,13 +193,24 @@ public class ProcessWorldBankCSV {
   ** Calculate node order
   */
 
-  public List<NID.WithName> calcNodeOrder(Set<FabricLink> allLinks, Set<NID.WithName> loneNodes) {    
+  public List<NID.WithName> calcNodeOrder(Set<FabricLink> allLinks, Set<NID.WithName> loneNodes,
+  		                                    BTProgressMonitor monitor, 
+									                        double startFrac, 
+									                        double endFrac) throws AsynchExitRequestException {
  
     ArrayList<NID.WithName> targets = new ArrayList<NID.WithName>();
     HashMap<NID.WithName, Integer> node2Degree = new HashMap<NID.WithName, Integer>();
     HashMap<NID.WithName, SortedSet<NID.WithName>> node2Neighbor = new HashMap<NID.WithName, SortedSet<NID.WithName>>(); 
     HashSet<NID.WithName> allNodes = new HashSet<NID.WithName>();
     
+    double perLoop = (endFrac - startFrac) / 4.0;
+    
+    System.out.println("fracs " + startFrac + " " + endFrac + "  " + perLoop);
+    double currStart1 = startFrac;
+    double currEnd1 = currStart1 + perLoop;
+    double inc1 = (currEnd1 - currStart1) / ((allLinks.size() == 0) ? 1 : allLinks.size());
+    double currProg1 = currStart1;
+
     Iterator<FabricLink> alit = allLinks.iterator();
     while (alit.hasNext()) {
       FabricLink nextLink = alit.next();
@@ -201,10 +225,22 @@ public class ProcessWorldBankCSV {
       
       addANeighbor(node2Neighbor, source, target);
       addANeighbor(node2Neighbor, target, source);
+      
+      if (monitor != null) {
+        currProg1 += inc1;
+        if (!monitor.updateProgress((int)(currProg1 * 100.0))) {
+          throw new AsynchExitRequestException();
+        }
+      }
     }
-    
+    System.out.println("currEnd1 " + currEnd1);
     SortedMap<Integer, SortedSet<NID.WithName>> degree2Nodes = invertDaCount(node2Degree);
      
+    double currStart2 = currEnd1;
+    double currEnd2 = currStart2 + perLoop;
+    double inc2 = (currEnd2 - currStart2) / ((node2Neighbor.size() == 0) ? 1 : node2Neighbor.size());
+    double currProg2 = currStart2;
+    
     //
     // For nodes that have one neighbor, collect those popular neighbors:
     //
@@ -223,7 +259,19 @@ public class ProcessWorldBankCSV {
         }
         popFriends.add(node);
       }
+      
+      if (monitor != null) {
+        currProg2 += inc2;
+        if (!monitor.updateProgress((int)(currProg2 * 100.0))) {
+          throw new AsynchExitRequestException();
+        }
+      }
     }
+        System.out.println("currEnd2 " + currEnd2);
+    double currStart3 = currEnd2;
+    double currEnd3 = currStart3 + perLoop;
+    double inc3 = (currEnd3 - currStart3) / ((degree2Nodes.size() == 0) ? 1 : degree2Nodes.size());
+    double currProg3 = currStart3;
     
     Iterator<Integer> degit = degree2Nodes.keySet().iterator();
     while (degit.hasNext()) {
@@ -245,9 +293,22 @@ public class ProcessWorldBankCSV {
           SortedMap<Integer, SortedSet<NID.WithName>> invFor = invertDaCount(forDaPop);
           targets.addAll(flattenDaCount(invFor));         
         }
+        
+        if (monitor != null) {
+	        currProg3 += inc3;
+	        if (!monitor.updateProgress((int)(currProg3 * 100.0))) {
+	          throw new AsynchExitRequestException();
+	        }
+	      }
       }
     }
-        
+     
+        System.out.println("currEnd3 " + currEnd3);
+    double currStart4 = currEnd3;
+    double currEnd4 = currStart4 + perLoop;
+    double inc4 = (currEnd4 - currStart4) / ((degree2Nodes.size() == 0) ? 1 : degree2Nodes.size());
+    double currProg4 = currStart4;
+    
     HashSet<NID.WithName> stillToPlace = new HashSet<NID.WithName>(allNodes);
     stillToPlace.removeAll(targets);
 
@@ -260,9 +321,16 @@ public class ProcessWorldBankCSV {
         if (stillToPlace.contains(chkNode)) {
           targets.add(chkNode);
         }
-      }  
+      }
+      
+      if (monitor != null) {
+        currProg4 += inc4;
+        if (!monitor.updateProgress((int)(currProg4 * 100.0))) {
+          throw new AsynchExitRequestException();
+        }
+      }
     }
-       
+    System.out.println("currEnd4 " + currEnd4);   
     //
     //
     // Tag on lone nodes.  If a node is by itself, but also shows up in the links,

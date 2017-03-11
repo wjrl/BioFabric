@@ -1243,25 +1243,27 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     
     Double zoomVal = new Double(zoomer_.getZoomFactor());
     Rectangle2D viewInWorld = getViewInWorld();
-      System.out.println("viewInWorld " + viewInWorld);
     //
     // When we zoom in far enough, we start to draw it instead:
     //
     UiUtil.fixMePrintout("first call is with lo res, shows poor scaling effects. Second call to hi res");      
       
     Integer numObj = zoomMap_.get(zoomVal);
-    System.out.println("numObj " + numObj + " " + zoomVal);
     if ((numObj == null) || (bufferBuilder_ == null)) {
       Graphics2D g2 = (Graphics2D)g;
-      System.out.println("do draw");
       drawingGuts(g2, viewInWorld);
       return;
     }
     ArrayList<ImageToUse> imagesToUse = new ArrayList<ImageToUse>();
         
     Iterator<Rectangle> wfsit = bufferBuilder_.getWorldsForSize(numObj);
-
-    int fillCount = 0;
+   
+    //
+    // Image boundary problems will be reduced if we just do the world to viewport transform
+    // for the upper right and then just add the image tile size to that point?
+    // 
+    UiUtil.fixMePrintout("implement the above??");
+    
     while (wfsit.hasNext()) {
       Rectangle worldPiece = wfsit.next();
 
@@ -1274,13 +1276,9 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
           System.err.println("Bad load");
         }
         if (img != null) { 
-        	System.out.println("WP " + worldPiece);
-        	System.out.println("WPGL " + worldPiece.getLocation());
           Point wtv = pointToViewport(worldPiece.getLocation());
           int stX = wtv.x;
           int stY = wtv.y;
-          fillCount++;
-          System.out.println("wp to " + wtv + " " + img.getWidth() + " " + img.getHeight());
           ImageToUse itu = new ImageToUse(img, stX, stY);
           imagesToUse.add(itu);
         }
@@ -1440,9 +1438,6 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     g2.setStroke(selectedStroke);
     g2.setTransform(transform);
     boolean retval = painter_.paintIt(g2, true, clip, false);
-    // Debug sizing problems
-    g2.setColor(Color.blue);
-    g2.drawRect(clip.x, clip.y, clip.width - 1, clip.height - 1);
     return (retval);
   }
   
