@@ -726,9 +726,9 @@ public class BioFabricNetwork {
     // WJRL 3/7/17 Commented out temporarily so I can check efficiency of other code....
    
     System.out.println("This operation is O(e^2)");
-    //  setDrainZonesWithMultipleLabels(true);
+    setDrainZonesWithMultipleLabels(true);
     System.out.println("SDZML 0.5");
-    //  setDrainZonesWithMultipleLabels(false);
+    setDrainZonesWithMultipleLabels(false);
     System.out.println("SDZML done");
  
     if (monitor != null) {
@@ -1169,7 +1169,6 @@ public class BioFabricNetwork {
       }
     }
   
-    UiUtil.fixMePrintout("THIS NEEDS TO BE IMPLEMENTED"); // check here. . .
     return (null);
   }
   
@@ -2226,7 +2225,16 @@ public class BioFabricNetwork {
       out.print(nodeID_.getInternal());
       out.print("\" row=\"");
       out.print(row);
-      
+      MinMax nsCols = getColRange(false);
+      out.print("\" minCol=\"");
+      out.print(nsCols.min);
+      out.print("\" maxCol=\"");
+      out.print(nsCols.max);
+      MinMax sCols = getColRange(true);
+      out.print("\" minColSha=\"");
+      out.print(sCols.min);
+      out.print("\" maxColSha=\"");
+      out.print(sCols.max);
       out.print("\" color=\"");
       out.print(colorKey);
       String clust = getCluster();
@@ -2941,10 +2949,10 @@ public class BioFabricNetwork {
       board.wnMap.put(nid, nwn);
  
       String row = AttributeExtractor.extractAttribute(elemName, attrs, "node", "row", true);
-      String minCol = AttributeExtractor.extractAttribute(elemName, attrs, "node", "minCol", false);
-      String maxCol = AttributeExtractor.extractAttribute(elemName, attrs, "node", "maxCol", false);
-      String minColSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "minColSha", false);
-      String maxColSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "maxColSha", false);
+      String minCol = AttributeExtractor.extractAttribute(elemName, attrs, "node", "minCol", true);
+      String maxCol = AttributeExtractor.extractAttribute(elemName, attrs, "node", "maxCol", true);
+      String minColSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "minColSha", true);
+      String maxColSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "maxColSha", true);
       String minDrain = AttributeExtractor.extractAttribute(elemName, attrs, "node", "drainMin", false);
       String maxDrain = AttributeExtractor.extractAttribute(elemName, attrs, "node", "drainMax", false);
       String minDrainSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "drainMinSha", false);
@@ -2952,20 +2960,6 @@ public class BioFabricNetwork {
       String color = AttributeExtractor.extractAttribute(elemName, attrs, "node", "color", true);
       String cluster = AttributeExtractor.extractAttribute(elemName, attrs, "node", "cluster", false);
       cluster = CharacterEntityMapper.unmapEntities(cluster, false);
-  
-      // original code for reading "legacy"
-//      String row = AttributeExtractor.extractAttribute(elemName, attrs, "node", "row", true);
-//      String minCol = AttributeExtractor.extractAttribute(elemName, attrs, "node", "minCol", true);
-//      String maxCol = AttributeExtractor.extractAttribute(elemName, attrs, "node", "maxCol", true);
-//      String minColSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "minColSha", true);
-//      String maxColSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "maxColSha", true);
-//      String minDrain = AttributeExtractor.extractAttribute(elemName, attrs, "node", "drainMin", false);
-//      String maxDrain = AttributeExtractor.extractAttribute(elemName, attrs, "node", "drainMax", false);
-//      String minDrainSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "drainMinSha", false);
-//      String maxDrainSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "drainMaxSha", false);
-//      String color = AttributeExtractor.extractAttribute(elemName, attrs, "node", "color", true);
-//      String cluster = AttributeExtractor.extractAttribute(elemName, attrs, "node", "cluster", false);
-//      cluster = CharacterEntityMapper.unmapEntities(cluster, false);
       
       NodeInfo retval;
       try {
@@ -2976,19 +2970,15 @@ public class BioFabricNetwork {
         	retval.setCluster(cluster);
         }
         
-        if (minCol != null) {
-          int min = Integer.valueOf(minCol).intValue();
-          int max = Integer.valueOf(maxCol).intValue();
-          retval.updateMinMaxCol(min, false);
-          retval.updateMinMaxCol(max, false);
-        }
+        int min = Integer.valueOf(minCol).intValue();
+        int max = Integer.valueOf(maxCol).intValue();
+        retval.updateMinMaxCol(min, false);
+        retval.updateMinMaxCol(max, false);
         
-        if (minColSha != null) {
-          int minSha = Integer.valueOf(minColSha).intValue();
-          int maxSha = Integer.valueOf(maxColSha).intValue();
-          retval.updateMinMaxCol(minSha, true);
-          retval.updateMinMaxCol(maxSha, true);
-        }
+        int minSha = Integer.valueOf(minColSha).intValue();
+        int maxSha = Integer.valueOf(maxColSha).intValue();
+        retval.updateMinMaxCol(minSha, true);
+        retval.updateMinMaxCol(maxSha, true);
   
         if (minDrain != null) {
           int minDrVal = Integer.valueOf(minDrain).intValue();
