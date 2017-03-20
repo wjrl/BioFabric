@@ -832,44 +832,19 @@ public class BioFabricNetwork {
   }
   
   /***************************************************************************
-   ** Given an interval MinMax([A,B]) of links, calculates the node
-   ** associated with the drain zone's interval
+   * finds the node of the drain zone with bounds = MinMax([A,B])
    */
   
   private NID.WithName findZoneNode(MinMax mm, boolean forShadow) {
     
     List<LinkInfo> links = getLinkDefList(forShadow);
-    
-    Map<NID.WithName, Integer> count = new TreeMap<NID.WithName, Integer>();
-    
-    for (int i = mm.min; i <= mm.max; i++) {
-      
-      LinkInfo li = links.get(i);
-      
-      NID.WithName main;
-      if (li.isShadow()) {
-        main = getNodeIDForRow(li.bottomRow());
-      } else {
-        main = getNodeIDForRow(li.topRow());
-      }
-      
-      if (count.get(main) == null) {
-        count.put(main, 0);
-      }
-      
-      count.put(main, count.get(main) + 1);
+    LinkInfo li = links.get(mm.min);  // checking the minimum of the minmax is enough...?
+
+    if (forShadow) {
+      return getNodeIDForRow(li.bottomRow());
+    } else {
+      return getNodeIDForRow(li.topRow());
     }
-    
-    NID.WithName keyMax = null;
-    
-    for (Map.Entry<NID.WithName, Integer> entry : count.entrySet()) {
-      
-      if (keyMax == null || entry.getValue() > count.get(keyMax)) {
-        keyMax = entry.getKey();
-      }
-    }
-    
-    return keyMax;
   }
   
   /***************************************************************************
