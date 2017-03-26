@@ -726,9 +726,9 @@ public class BioFabricNetwork {
     // WJRL 3/7/17 Commented out temporarily so I can check efficiency of other code....
    
     System.out.println("This operation is O(e^2)");
-    //  setDrainZonesWithMultipleLabels(true);
+    setDrainZonesWithMultipleLabels(true);
     System.out.println("SDZML 0.5");
-    //  setDrainZonesWithMultipleLabels(false);
+    setDrainZonesWithMultipleLabels(false);
     System.out.println("SDZML done");
  
     if (monitor != null) {
@@ -748,7 +748,7 @@ public class BioFabricNetwork {
   private void setDrainZonesWithMultipleLabels(boolean forShadow) {
     
     List<LinkInfo> links = getLinkDefList(forShadow);
-    Map<NID.WithName, List<MinMax>> nodeToZones = new TreeMap<NID.WithName, List<MinMax>>();
+    Map<NID.WithName, List<DrainZone>> nodeToZones = new TreeMap<NID.WithName, List<DrainZone>>();
 
     for (int startIdx = 0; startIdx < links.size(); startIdx++) {
       
@@ -766,9 +766,9 @@ public class BioFabricNetwork {
           NID.WithName name = findZoneNode(mm, forShadow);
           
           if (nodeToZones.get(name) == null) {
-            nodeToZones.put(name, new ArrayList<MinMax>());
+            nodeToZones.put(name, new ArrayList<DrainZone>());
           }
-          nodeToZones.get(name).add(mm);
+          nodeToZones.get(name).add(new DrainZone(mm, forShadow));
           
           startIdx += (endIdx - startIdx); // add drain zone length to start index
           break;
@@ -779,9 +779,9 @@ public class BioFabricNetwork {
           NID.WithName name = findZoneNode(mm, forShadow);
           
           if (nodeToZones.get(name) == null) {
-            nodeToZones.put(name, new ArrayList<MinMax>());
+            nodeToZones.put(name, new ArrayList<DrainZone>());
           }
-          nodeToZones.get(name).add(mm);
+          nodeToZones.get(name).add(new DrainZone(mm, forShadow));
           
           startIdx += (endIdx - startIdx);
         }
@@ -799,7 +799,7 @@ public class BioFabricNetwork {
 //    }
 //    System.out.println('\n');
     
-    for (Map.Entry<NID.WithName, List<MinMax>> entry : nodeToZones.entrySet()) {
+    for (Map.Entry<NID.WithName, List<DrainZone>> entry : nodeToZones.entrySet()) {
       
       NodeInfo ni = getNodeDefinition(entry.getKey());
       ni.setDrainZones(entry.getValue(), forShadow);
@@ -832,44 +832,19 @@ public class BioFabricNetwork {
   }
   
   /***************************************************************************
-   ** Given an interval MinMax([A,B]) of links, calculates the node
-   ** associated with the drain zone's interval
+   * finds the node of the drain zone with bounds = MinMax([A,B])
    */
   
   private NID.WithName findZoneNode(MinMax mm, boolean forShadow) {
     
     List<LinkInfo> links = getLinkDefList(forShadow);
-    
-    Map<NID.WithName, Integer> count = new TreeMap<NID.WithName, Integer>();
-    
-    for (int i = mm.min; i <= mm.max; i++) {
-      
-      LinkInfo li = links.get(i);
-      
-      NID.WithName main;
-      if (li.isShadow()) {
-        main = getNodeIDForRow(li.bottomRow());
-      } else {
-        main = getNodeIDForRow(li.topRow());
-      }
-      
-      if (count.get(main) == null) {
-        count.put(main, 0);
-      }
-      
-      count.put(main, count.get(main) + 1);
+    LinkInfo li = links.get(mm.min);  // checking the minimum of the minmax is enough...?
+
+    if (forShadow) {
+      return getNodeIDForRow(li.bottomRow());
+    } else {
+      return getNodeIDForRow(li.topRow());
     }
-    
-    NID.WithName keyMax = null;
-    
-    for (Map.Entry<NID.WithName, Integer> entry : count.entrySet()) {
-      
-      if (keyMax == null || entry.getValue() > count.get(keyMax)) {
-        keyMax = entry.getKey();
-      }
-    }
-    
-    return keyMax;
   }
   
   /***************************************************************************
@@ -923,7 +898,7 @@ public class BioFabricNetwork {
       }
       if (maxRun != null) {
         NodeInfo nit = nodeDefs_.get(nodeID);
-        nit.addDrainZone(maxRun.clone(), forShadow);
+        nit.addDrainZone(new DrainZone(maxRun.clone(), forShadow));
       }
     }
     return;
@@ -1143,34 +1118,35 @@ public class BioFabricNetwork {
   */
 
   public NID.WithName getDrainForColumn(Integer colVal, boolean forShadow) {
-  	/*
+  
     int col = colVal.intValue();
     ColumnAssign useCA = (forShadow) ? shadowCols_ : normalCols_;
     NID.WithName targetID = useCA.columnToTarget.get(colVal);
     NID.WithName sourceID = useCA.columnToSource.get(colVal);
     if (targetID != null) {
       NodeInfo nit = nodeDefs_.get(targetID);
-      MinMax tdz = nit.getDrainZone(forShadow);
-      if (tdz != null) {
-        if ((col >= tdz.min) && (col <= tdz.max)) {
-          return (targetID);
-        }
+      List<DrainZone> tdzs = nit.getDrainZones(forShadow);
+      if (tdzs != null) {
+        for (DrainZone tdz : tdzs)
+          if ((col >= tdz.getMinMax().min) && (col <= tdz.getMinMax().max)) {
+            return (targetID);
+          }
       }
     }
     if (sourceID != null) {
       NodeInfo nis = nodeDefs_.get(sourceID);
-      MinMax sdz = nis.getDrainZone(forShadow);
-      if (sdz != null) {
-        if ((col >= sdz.min) && (col <= sdz.max)) {
-          return (sourceID);
-        }
+      List<DrainZone> sdzs = nis.getDrainZones(forShadow);
+      if (sdzs != null) {
+        for (DrainZone sdz : sdzs)
+          if ((col >= sdz.getMinMax().min) && (col <= sdz.getMinMax().max)) {
+            return (sourceID);
+          }
       }
     }
-    */
-  	UiUtil.fixMePrintout("THIS NEEDS TO BE IMPLEMENTED");
+  
     return (null);
   }
- 
+  
   /***************************************************************************
   ** 
   ** Get Source For Column
@@ -1743,7 +1719,7 @@ public class BioFabricNetwork {
         }        
       }
       if (srcDrain != null) {
-        srcNI.addDrainZone(srcDrain, false);
+        srcNI.addDrainZone(new DrainZone(srcDrain, false));
       }
       
       //
@@ -1779,7 +1755,7 @@ public class BioFabricNetwork {
         }        
       }
       if (shadowSrcDrain != null) {
-        srcNI.addDrainZone(shadowSrcDrain, true);
+        srcNI.addDrainZone(new DrainZone(shadowSrcDrain, true));
       }
     }
  
@@ -2142,8 +2118,8 @@ public class BioFabricNetwork {
     private MinMax colRangeSha_;
     private MinMax colRangePln_;
     
-    private List<MinMax> shadowDrainZones_;
-    private List<MinMax> plainDrainZones_;
+    private List<DrainZone> shadowDrainZones_;
+    private List<DrainZone> plainDrainZones_;
     
     NodeInfo(NID nodeID, String nodeName, int nodeRow, String colorKey) {
     	nodeID_ = nodeID;
@@ -2154,9 +2130,9 @@ public class BioFabricNetwork {
       colRangeSha_.init();
       colRangePln_ = new MinMax();
       colRangePln_.init();
-      shadowDrainZones_ = new ArrayList<MinMax>();
+      shadowDrainZones_ = new ArrayList<DrainZone>();
       cluster_ = null;
-      plainDrainZones_ = new ArrayList<MinMax>();
+      plainDrainZones_ = new ArrayList<DrainZone>();
     }
       
     public String getNodeName() { 
@@ -2171,24 +2147,24 @@ public class BioFabricNetwork {
       return (new NID.WithName(nodeID_, nodeName_));
     } 
  
-    public List<MinMax> getDrainZones(boolean forShadow) {
-      return (forShadow) ? new ArrayList<MinMax>(shadowDrainZones_) : new ArrayList<MinMax>(plainDrainZones_);
+    public List<DrainZone> getDrainZones(boolean forShadow) {
+      return (forShadow) ? new ArrayList<DrainZone>(shadowDrainZones_) : new ArrayList<DrainZone>(plainDrainZones_);
     }
     
-    public void addDrainZone(MinMax zone, boolean forShadow) {
-      if (forShadow) {
-        shadowDrainZones_.add(zone);
+    public void addDrainZone(DrainZone dz) {
+      if (dz.isShadow()) {
+        shadowDrainZones_.add(dz);
       } else {
-        plainDrainZones_.add(zone);
+        plainDrainZones_.add(dz);
       }
       return;
     }
   
-    public void setDrainZones(List<MinMax> zones, boolean forShadow) {
+    public void setDrainZones(List<DrainZone> zones, boolean forShadow) {
       if (forShadow) {
-        shadowDrainZones_ = new ArrayList<MinMax>(zones);
+        shadowDrainZones_ = new ArrayList<DrainZone>(zones);
       } else {
-        plainDrainZones_ = new ArrayList<MinMax>(zones);
+        plainDrainZones_ = new ArrayList<DrainZone>(zones);
       }
     }
     
@@ -2213,54 +2189,117 @@ public class BioFabricNetwork {
     
     /***************************************************************************
     **
-     ** Dump the node using XML ; XML DOESN'T FUNCTION PROPERLY HERE!!!- RISHI
-     *                            CAME BACK HERE 1/7/16
+     ** Dump the node using XML
     */
   
-	  public void writeXML(PrintWriter out, Indenter ind, int row) {
-	    ind.indent();
-	    out.print("<node name=\"");
-	    out.print(CharacterEntityMapper.mapEntities(nodeName_, false));
-	    out.print("\" nid=\"");
-	    out.print(nodeID_.getInternal());
-	    out.print("\" row=\"");
-	    out.print(row);
-	    MinMax nsCols = getColRange(false);
-	    out.print("\" minCol=\"");
-	    out.print(nsCols.min);
-	    out.print("\" maxCol=\"");
-	    out.print(nsCols.max);
-	    MinMax sCols = getColRange(true);
-	    out.print("\" minColSha=\"");
-	    out.print(sCols.min);
-	    out.print("\" maxColSha=\"");
-	    out.print(sCols.max);
-      UiUtil.fixMePrintout("DRAIN ZONES NOT GOING OUT TO XML");
+    public void writeXML(PrintWriter out, Indenter ind, int row) {
+      ind.indent();
+      out.print("<node name=\"");
+      out.print(CharacterEntityMapper.mapEntities(nodeName_, false));
+      out.print("\" nid=\"");
+      out.print(nodeID_.getInternal());
+      out.print("\" row=\"");
+      out.print(row);
+      MinMax nsCols = getColRange(false);
+      out.print("\" minCol=\"");
+      out.print(nsCols.min);
+      out.print("\" maxCol=\"");
+      out.print(nsCols.max);
+      MinMax sCols = getColRange(true);
+      out.print("\" minColSha=\"");
+      out.print(sCols.min);
+      out.print("\" maxColSha=\"");
+      out.print(sCols.max);
+      out.print("\" color=\"");
+      out.print(colorKey);
+      String clust = getCluster();
+      if (clust != null) {
+        out.print("\" cluster=\"");
+        out.print(CharacterEntityMapper.mapEntities(clust, false));
+      }
 
-//      MinMax nDrain = getDrainZone(false); WILL FIX XML IO LATER - RISHI 10/3/16
-//      if (nDrain != null) {
-//        out.print("\" drainMin=\"");
-//        out.print(nDrain.min);
-//        out.print("\" drainMax=\"");
-//        out.print(nDrain.max);
-//      }
-//      MinMax sDrain = getDrainZone(true);
-//      if (sDrain != null) {
-//        out.print("\" drainMinSha=\"");
-//        out.print(sDrain.min);
-//        out.print("\" drainMaxSha=\"");
-//        out.print(sDrain.max);
-//      }
-	    out.print("\" color=\"");
-	    out.print(colorKey);
-	    String clust = getCluster();
-	    if (clust != null) {
-	      out.print("\" cluster=\"");
-	      out.print(CharacterEntityMapper.mapEntities(clust, false));
-	    }
-	    out.println("\" />");
-	  }
-  } 
+      out.println("\">");
+      
+      //
+      // DRAIN ZONES XML
+      //
+      
+      ind.up();
+      ind.indent();
+      if (this.plainDrainZones_.size() > 0) {
+        out.println("<drainZones>");
+        ind.up();
+        for (DrainZone dz : this.plainDrainZones_) {
+          dz.writeXML(out, ind);
+        }
+        ind.down();
+        ind.indent();
+        out.println("</drainZones>");
+      } else {
+        out.println("<drainZones/>");
+      }
+      
+      ind.indent();
+      if (this.shadowDrainZones_.size() > 0) {
+        out.println("<drainZonesShadow>");
+        ind.up();
+        for (DrainZone dzSha : this.shadowDrainZones_) {
+          dzSha.writeXML(out, ind);
+        }
+        ind.down();
+        ind.indent();
+        out.println("</drainZonesShadow>");
+      } else {
+        out.println("<drainZonesShadow/>");
+      }
+      
+      ind.down();
+      ind.indent();
+      out.println("</node>");
+    }
+  }
+  
+  /***************************************************************************
+   **
+   ** Drain Zone
+   */
+  
+  public static class DrainZone {
+    
+    private MinMax dzmm;
+    private boolean isShadow;
+    
+    public DrainZone(MinMax dzmm, boolean isShadow){
+      this.dzmm = dzmm.clone();
+      this.isShadow = isShadow;
+    }
+    
+    public void writeXML(PrintWriter out, Indenter ind) {
+      if (isShadow) {
+        ind.indent();
+        out.print("<drainZoneShadow minCol=\"");
+        out.print(dzmm.min);
+        out.print("\" maxCol=\"");
+        out.print(dzmm.max);
+        out.println("\" />");
+      } else {
+        ind.indent();
+        out.print("<drainZone minCol=\"");
+        out.print(dzmm.min);
+        out.print("\" maxCol=\"");
+        out.print(dzmm.max);
+        out.println("\" />");
+      }
+    }
+    
+    public boolean isShadow() {
+      return isShadow;
+    }
+    
+    public MinMax getMinMax() {
+      return dzmm;
+    }
+  }
   
   /***************************************************************************
   **
@@ -2641,7 +2680,65 @@ public class BioFabricNetwork {
       return (null);
     }
   }
- 
+  
+  public static class DrainZoneGlue implements GlueStick {
+    
+    public Object glueKidToParent(Object kidObj, AbstractFactoryClient parentWorker, Object optionalArgs) throws IOException {
+      FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard) optionalArgs;
+      board.nodeInfo.addDrainZone(board.drainZone);
+      return null;
+    }
+  }
+  
+  /***************************************************************************
+   **
+   ** For XML I/O
+   */
+  
+  public static class DrainZoneWorker extends AbstractFactoryClient {
+    
+    private boolean isShadow;
+    
+    public DrainZoneWorker(FabricFactory.FactoryWhiteboard board, boolean isShadow) {
+      super(board);
+      this.isShadow = isShadow;
+      
+      if (this.isShadow) {
+        myKeys_.add("drainZoneShadow");
+      } else {
+        myKeys_.add("drainZone");
+      }
+    }
+    
+    protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
+      Object retval = null;
+      FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard) this.sharedWhiteboard_;
+      board.drainZone = buildFromXML(elemName, attrs);
+      retval = board.drainZone;
+      return (retval);
+    }
+    
+    private DrainZone buildFromXML(String elemName, Attributes attrs) throws IOException {
+      
+      String minCol, maxCol;
+      
+      if (this.isShadow) {
+        minCol = AttributeExtractor.extractAttribute(elemName, attrs, "drainZoneShadow", "minCol", true);
+        maxCol = AttributeExtractor.extractAttribute(elemName, attrs, "drainZoneShadow", "maxCol", true);
+      } else {
+        minCol = AttributeExtractor.extractAttribute(elemName, attrs, "drainZone", "minCol", true);
+        maxCol = AttributeExtractor.extractAttribute(elemName, attrs, "drainZone", "maxCol", true);
+      }
+  
+      int min = Integer.valueOf(minCol).intValue();
+      int max = Integer.valueOf(maxCol).intValue();
+      MinMax dzmm = new MinMax(min, max);
+      
+      return (new DrainZone(dzmm, isShadow));
+    }
+    
+  }
+  
   public static class LinkGroupWorker extends AbstractFactoryClient {
     
     public LinkGroupWorker(FabricFactory.FactoryWhiteboard board) {
@@ -2659,7 +2756,7 @@ public class BioFabricNetwork {
         	target = LayoutMode.PER_NODE_MODE.getText();   	
         }
         FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard)this.sharedWhiteboard_;
-        retval = LayoutMode.valueOf(target);
+        retval = LayoutMode.fromString(target);
         board.bfn.setLayoutMode(retval);
 
       }
@@ -2787,20 +2884,23 @@ public class BioFabricNetwork {
     public NodeInfoWorker(FabricFactory.FactoryWhiteboard board) {
       super(board);
       myKeys_.add("node");
+      installWorker(new DrainZoneWorker(board, false), new DrainZoneGlue());
+      installWorker(new DrainZoneWorker(board, true), new DrainZoneGlue());
     }
     
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
       Object retval = null;
       FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard)this.sharedWhiteboard_;
-      board.nodeInfo = buildFromXML(elemName, attrs, board);
-      retval = board.nodeInfo;
+      if (myKeys_.contains(elemName)) {
+        board.nodeInfo = buildFromXML(elemName, attrs, board);
+        retval = board.nodeInfo;
+      }
       return (retval);     
     }  
     
     private NodeInfo buildFromXML(String elemName, Attributes attrs, FabricFactory.FactoryWhiteboard board) throws IOException { 
       String name = AttributeExtractor.extractAttribute(elemName, attrs, "node", "name", true);
       name = CharacterEntityMapper.unmapEntities(name, false);
-   
       String nidStr = AttributeExtractor.extractAttribute(elemName, attrs, "node", "nid", false);
 
       NID nid;
@@ -2815,6 +2915,7 @@ public class BioFabricNetwork {
       } else {
       	nid = board.ulb.getNextOID();
       	nwn = new NID.WithName(nid, name);
+
       	// Addresses Issue 41. Used DataUtil.normKey(name), but if a node made it
       	// as a separate entity in the past, we should keep them unique. Note that with
       	// NIDs now, we can support "identically" named nodes anyway:
@@ -2857,12 +2958,14 @@ public class BioFabricNetwork {
         if (minDrain != null) {
           int minDrVal = Integer.valueOf(minDrain).intValue();
           int maxDrVal = Integer.valueOf(maxDrain).intValue();
-          retval.addDrainZone(new MinMax(minDrVal, maxDrVal), false);
+          DrainZone dz = new DrainZone(new MinMax(minDrVal, maxDrVal), false);
+          retval.addDrainZone(dz);
         }
         if (minDrainSha != null) {
           int minDrValSha = Integer.valueOf(minDrainSha).intValue();
           int maxDrValSha = Integer.valueOf(maxDrainSha).intValue();
-          retval.addDrainZone(new MinMax(minDrValSha, maxDrValSha), true);
+          DrainZone dz = new DrainZone(new MinMax(minDrValSha, maxDrValSha), true);
+          retval.addDrainZone(dz);
         }
       } catch (NumberFormatException nfex) {
         throw new IOException();
