@@ -114,6 +114,7 @@ import org.systemsbiology.biofabric.ui.dialogs.NetworkAlignmentDialog;
 import org.systemsbiology.biofabric.ui.dialogs.RelationDirectionDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ReorderLayoutParamsDialog;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
+import org.systemsbiology.biofabric.ui.display.BucketRenderer;
 import org.systemsbiology.biofabric.ui.display.FabricMagnifyingTool;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
@@ -971,11 +972,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     bfp_.zoomForBuf(preZooms, screenSize);
     BufferedImage topImage = null;
     if (forMain) {
-      BufferBuilder bb = new BufferBuilder(null, 1/*30*/, bfp_);
+      BufferBuilder bb = new BufferBuilder(null, 1/*30*/, bfp_, bfp_.getBucketRend());
       topImage = bb.buildBufs(preZooms, bfp_, 24, monitor, midFrac, endFrac);
       bfp_.setBufBuilder(bb);      
     } else {
-      BufferBuilder bb = new BufferBuilder(bfp_);
+      BufferBuilder bb = new BufferBuilder(bfp_, bfp_.getBucketRend());
       topImage = bb.buildOneBuf(preZooms);      
       bfp_.setBufBuilder(null);
     }
@@ -1002,11 +1003,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     bfp_.zoomForBuf(preZooms, screenSize);
     BufferedImage topImage = null;
     if (forMain) {
-      BufferBuilder bb = new BufferBuilder(null, 1, bfp_);
+      BufferBuilder bb = new BufferBuilder(null, 1, bfp_, bfp_.getBucketRend());
       topImage = bb.buildBufs(preZooms, bfp_, 24, monitor, startFrac, endFrac);
       bfp_.setBufBuilder(bb);      
     } else {
-      BufferBuilder bb = new BufferBuilder(bfp_);
+      BufferBuilder bb = new BufferBuilder(bfp_, bfp_.getBucketRend());
       topImage = bb.buildOneBuf(preZooms);      
       bfp_.setBufBuilder(null);
     }

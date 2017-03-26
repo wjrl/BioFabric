@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2012 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -20,8 +20,8 @@
 package org.systemsbiology.biofabric.ui.render;
 
 import java.awt.Dimension;
-import java.awt.Graphics;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 
 /****************************************************************************
 **
@@ -35,7 +35,8 @@ public interface BufBuildDrawer {
   **  Draw for a buffer
   */
 
-  public boolean drawForBuffer(Graphics g, Rectangle clip, Dimension screenDim, Rectangle worldRec);
+  public boolean drawForBuffer(BufferedImage bi, Rectangle clip, Dimension screenDim, 
+  		                         Rectangle worldRec, int heightPad, double linksPerPixel);
 
   /***************************************************************************
   **

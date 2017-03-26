@@ -46,6 +46,7 @@ import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.ui.display.BioFabricNavAndControl;
 import org.systemsbiology.biofabric.ui.display.BioFabricOverview;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
+import org.systemsbiology.biofabric.ui.display.BucketRenderer;
 import org.systemsbiology.biofabric.ui.display.FabricMagnifyingTool;
 import org.systemsbiology.biofabric.util.BackgroundWorkerControlManager;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
@@ -195,7 +196,8 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     stockToolBar(toolBar, isMain_, fc);   
     nac_ = new BioFabricNavAndControl(isMain_, this);
     fmt_ = nac_.getFMT();
-    cp_ = new BioFabricPanel(fc.getColorGenerator(), bfa_, fmt_, nac_.getOverview(), nac_.getNavTool(), isMain_, this);
+    BucketRenderer bucketRend = new BucketRenderer(fc.getColorGenerator());
+    cp_ = new BioFabricPanel(fc.getColorGenerator(), bfa_, fmt_, nac_.getOverview(), nac_.getNavTool(), isMain_, this, bucketRend);  
     fc.setFabricPanel(cp_);
     nac_.setFabricPanel(cp_);
     cp_.setFabricLocation(nac_.getFabricLocation(), nac_.getMouseOverView());        

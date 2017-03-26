@@ -284,7 +284,7 @@ public class ImageCache {
   ** Write out an PNG image
   */
 
-  private void writePNGImage(BufferedImage bi, File file) throws IOException {
+  public static void writePNGImage(BufferedImage bi, File file) throws IOException {
     Iterator writers = ImageIO.getImageWritersByFormatName("png");
     ImageWriter writer = (ImageWriter)writers.next();
     ImageOutputStream ios = ImageIO.createImageOutputStream(file);

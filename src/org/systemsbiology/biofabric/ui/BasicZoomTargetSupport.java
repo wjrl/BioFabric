@@ -294,12 +294,23 @@ public class BasicZoomTargetSupport implements ZoomTarget {
   */
   
   public Point pointToViewport(Point worldPoint) {
-    Point2D newPoint = new Point2D.Double(worldPoint.getX(), worldPoint.getY());
-    transform_.transform(newPoint, newPoint);
-    int x = (int)Math.round(newPoint.getX());
-    int y = (int)Math.round(newPoint.getY());
-    Point pt = new Point(x, y);
-    return (pt);
+  	Point2D newPoint = new Point2D.Double();
+  	Point pt = new Point();
+    return (pointToViewport(worldPoint, transform_, newPoint, pt));
+  } 
+  
+  /***************************************************************************
+  **
+  ** Gets given point in viewport coordinates X
+  */
+  
+  public static Point pointToViewport(Point worldPoint, AffineTransform trans, Point2D temp, Point res) {
+    temp.setLocation(worldPoint.getX(), worldPoint.getY());
+    trans.transform(temp, temp);
+    int x = (int)Math.round(temp.getX());
+    int y = (int)Math.round(temp.getY());
+    res.setLocation(x, y);
+    return (res);
   } 
   
   /***************************************************************************
@@ -321,18 +332,28 @@ public class BasicZoomTargetSupport implements ZoomTarget {
   
   /***************************************************************************
   **
+  ** Get the transform for the given zoom value
+  */
+ 
+  public AffineTransform getTransformForZoomValue(double zoom) {   
+    Workspace ws = workspaceSource_.getWorkspace();
+    Rectangle rect = ws.getWorkspace();
+    AffineTransform transform = new AffineTransform();    
+    transform.translate((rect.getWidth() / 2.0) * zoom, (rect.getHeight() / 2.0) * zoom);
+    transform.scale(zoom, zoom);
+    Point2D center = ws.getCenter();
+    transform.translate(-center.getX(), -center.getY());    
+    return (transform);
+  }
+  
+  /***************************************************************************
+  **
   ** Set the zoom
   */
  
   public void setZoomFactor(double zoom) {   
     zoom_ = zoom;
-    Workspace ws = workspaceSource_.getWorkspace();
-    Rectangle rect = ws.getWorkspace();
-    transform_ = new AffineTransform();    
-    transform_.translate((rect.getWidth() / 2.0) * zoom, (rect.getHeight() / 2.0) * zoom);
-    transform_.scale(zoom, zoom);
-    Point2D center = ws.getCenter();
-    transform_.translate(-center.getX(), -center.getY());    
+    transform_ = getTransformForZoomValue(zoom);
     myGenomePre_.setPresentationZoomFactor(zoom); 
     return;
   }
@@ -346,7 +367,23 @@ public class BasicZoomTargetSupport implements ZoomTarget {
     //
     // If the viewport is larger than the preferred size, we center using that:
     //
-    
+    zoom_ = zoom;
+    transform_ = getTransformForWideZoomFactor(zoom, viewportDim);
+    myGenomePre_.setPresentationZoomFactor(zoom); 
+    return;
+  }
+  
+  /***************************************************************************
+  **
+  ** Set the zoom X
+  */
+ 
+  public AffineTransform getTransformForWideZoomFactor(double zoom, Dimension viewportDim) {   
+    //
+    // If the viewport is larger than the preferred size, we center using that:
+    //
+  	
+    AffineTransform transform = new AffineTransform();
     Workspace ws = workspaceSource_.getWorkspace();
     Rectangle rect = ws.getWorkspace();
    
@@ -356,14 +393,11 @@ public class BasicZoomTargetSupport implements ZoomTarget {
     int useWidth = (rectWidth < viewportDim.width) ? viewportDim.width : rectWidth;
     int useHeight = (rectHeight < viewportDim.height) ? viewportDim.height : rectHeight;
     Point2D center = ws.getCenter(); 
-    
-    zoom_ = zoom;
-    transform_ = new AffineTransform();    
-    transform_.translate((useWidth / 2.0), (useHeight / 2.0));
-    transform_.scale(zoom, zoom);
-    transform_.translate(-center.getX(), -center.getY());    
-    myGenomePre_.setPresentationZoomFactor(zoom); 
-    return;
+    transform = new AffineTransform();    
+    transform.translate((useWidth / 2.0), (useHeight / 2.0));
+    transform.scale(zoom, zoom);
+    transform.translate(-center.getX(), -center.getY());    
+    return (transform);
   }
   
   /***************************************************************************

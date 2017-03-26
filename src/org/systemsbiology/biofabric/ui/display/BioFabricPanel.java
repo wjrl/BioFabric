@@ -51,6 +51,7 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
+
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
@@ -187,6 +188,8 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   private Map<NID.WithName, Rectangle2D> nodeNameLocations_;
   private Map<NID.WithName, List<Rectangle2D>> drainNameLocations_;
   private PopupMenuControl popCtrl_;
+  
+  private BucketRenderer bucketRend_;
   private static final long serialVersionUID = 1L;
   
   ////////////////////////////////////////////////////////////////////////////
@@ -202,7 +205,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
 
   public BioFabricPanel(FabricColorGenerator colGen, BioFabricApplication bfa, 
                         FabricMagnifyingTool fmt, BioFabricOverview bfo, FabricNavTool fnt, 
-                        boolean isForMain, BioFabricWindow bfw) {
+                        boolean isForMain, BioFabricWindow bfw, BucketRenderer bRend) {
     bfa_ = bfa;
     fmt_ = fmt;
     fnt_ = fnt;
@@ -248,6 +251,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     cursorMgr_ = new CursorManager(this, false);
     worldDim_ = new Dimension(100, 100);
     popCtrl_ = new PopupMenuControl(this);
+    bucketRend_ = bRend;
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -256,6 +260,15 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   //
   ////////////////////////////////////////////////////////////////////////////
 
+  /***************************************************************************
+  ** 
+  ** Get the bucket renderer
+  */
+
+  public BucketRenderer getBucketRend() { 
+    return (bucketRend_);
+  }
+  
   /***************************************************************************
   ** 
   ** Get the magnifying tool
@@ -421,12 +434,12 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       zoom = zoomV;
     }
     screenDim_ = new Dimension(imgWidth, imgHeight);
-    System.out.println("SD " + screenDim_);
+    System.out.println("SD " + screenDim_ + " zoomLength " + zooms.length);
     double lastZoom = zoom;
     for (int i = 0; i < zooms.length; i++) {
       zoomMap_.put(new Double(lastZoom), Integer.valueOf(i));
       lastZoom *= 2.0;
-    }  
+    }
     return;
   }
 
@@ -1128,6 +1141,8 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     drainNameLocations_ = new HashMap<NID.WithName, List<Rectangle2D>>();    
     painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), shadeNodes, showShadows, nodeNameLocations_, drainNameLocations_);
     selectionPainter_.buildObjCache(new ArrayList<NodeInfo>(), new ArrayList<LinkInfo>(), shadeNodes, showShadows, new HashMap<NID.WithName, Rectangle2D>(), new HashMap<NID.WithName, List<Rectangle2D>>());
+    bucketRend_.buildBucketCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), showShadows, 
+  		                           screenDim_, worldDim_);
     fnt_.haveAModel(true);
     return;
   }
@@ -1173,7 +1188,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
  
   /***************************************************************************
   ** 
-  ** Needed???
+  ** Needed? Yes.
   */
 
   public void initZoom() {
@@ -1184,6 +1199,16 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     // e.g. long thin models go outside the workspace and we don't
     // actually zoom!
     zoomSrc_.simpleSetWorkspace(new Workspace(getFullScreenWorld())); 
+    
+    
+    //
+    // The zooms we need for this particular model have been installed. We can now figure out the bucket cache size
+    // to use.
+    //
+    double zoomToModel = zcs_.getZoomToModel();
+  //  buildBucketCache(zoomToModel, worldRect_, worldDim_, screenDim_, bfn_.getNodeDefList(), bfn_.getLinkDefList(true), true);
+    UiUtil.fixMePrintout("Calculate links per pixel here to decide rendering strategy");
+ 
     return;
   }
    
@@ -1255,34 +1280,41 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       return;
     }
     ArrayList<ImageToUse> imagesToUse = new ArrayList<ImageToUse>();
-        
-    Iterator<Rectangle> wfsit = bufferBuilder_.getWorldsForSize(numObj);
-   
+    
+       
     //
     // Image boundary problems will be reduced if we just do the world to viewport transform
     // for the upper right and then just add the image tile size to that point?
     // 
     UiUtil.fixMePrintout("implement the above??");
-    
-    while (wfsit.hasNext()) {
-      Rectangle worldPiece = wfsit.next();
 
-      Rectangle2D wpit = viewInWorld.createIntersection(worldPiece);
-      if ((wpit.getWidth() > 10.0) && (wpit.getHeight() > 10.0)) {
-        BufferedImage img = null;
-        try {
-          img = bufferBuilder_.getImageForSizeAndPiece(numObj, worldPiece);
-        } catch (IOException ioex) {
-          System.err.println("Bad load");
-        }
-        if (img != null) { 
-          Point wtv = pointToViewport(worldPiece.getLocation());
-          int stX = wtv.x;
-          int stY = wtv.y;
-          ImageToUse itu = new ImageToUse(img, stX, stY);
-          imagesToUse.add(itu);
-        }
-      }
+     // UiUtil.fixMePrintout("Data structure that returned set based on viewInWorld bounds would be much better");
+   // Iterator<Rectangle> wfsit = bufferBuilder_.getWorldsForSize(numObj);
+    ArrayList<Rectangle> slicesToCover = new ArrayList<Rectangle>();
+    bufferBuilder_.getSlicesToCover(numObj, viewInWorld, slicesToCover);
+    int numSlice = slicesToCover.size();
+ 
+    for (int i = 0; i < numSlice; i++) {
+     // Rectangle worldPiece = wfsit.next();
+    	Rectangle worldPiece = slicesToCover.get(i);
+
+     // UiUtil.fixMePrintout("lotta garbage being made here");
+    //  Rectangle2D wpit = viewInWorld.createIntersection(worldPiece);
+    //  if ((wpit.getWidth() > 10.0) && (wpit.getHeight() > 10.0)) {
+	    BufferedImage img = null;
+	    try {
+	      img = bufferBuilder_.getImageForSizeAndPiece(numObj, worldPiece);
+	    } catch (IOException ioex) {
+	      System.err.println("Bad load");
+	    }
+	    if (img != null) { 
+	      Point wtv = pointToViewport(worldPiece.getLocation());
+	      int stX = wtv.x;
+	      int stY = wtv.y;
+	      ImageToUse itu = new ImageToUse(img, stX, stY);
+	      imagesToUse.add(itu);
+	    }
+     // }
     }
     if (imagesToUse.isEmpty()) {
       return;
@@ -1421,8 +1453,12 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   ** Drawing core
   */
   
-  public boolean drawForBuffer(Graphics g, Rectangle clip, Dimension screenDim, Rectangle worldRec) {
-    Graphics2D g2 = (Graphics2D)g;
+  public boolean drawForBuffer(BufferedImage bi, Rectangle clip, Dimension screenDim, 
+  		                         Rectangle worldRec, int heightPad, double linksPerPixel) { 
+  	Graphics2D g2 = bi.createGraphics();
+    g2.setColor(Color.WHITE);
+    //g2.setColor(new Color(255, 220, 220)); //Debug sizing problems
+    g2.fillRect(0, 0, screenDim.width, screenDim.height + heightPad);
     double zoomH = screenDim.getWidth() / worldRec.getWidth();
     double zoomV = screenDim.getHeight() / worldRec.getHeight();
     double zoom = Math.max(zoomH, zoomV); //Math.min(zoomH, zoomV);
@@ -1438,6 +1474,16 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     g2.setStroke(selectedStroke);
     g2.setTransform(transform);
     boolean retval = painter_.paintIt(g2, true, clip, false);
+    
+    // Debug sizing problems:
+    //AffineTransform transform = new AffineTransform();
+    //g2.setTransform(transform);
+    //BasicStroke selectedStroke = new BasicStroke(1, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
+    //g2.setStroke(selectedStroke);  
+    //g2.setColor(Color.GREEN);
+    //g2.drawRect(0, 0, imageDim.width - 1, imageDim.height + SLICE_HEIGHT_HACK_ - 1);
+
+    g2.dispose();
     return (retval);
   }
   
@@ -2273,23 +2319,11 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   
   private void exportGuts(Object outObj, String format, ImageExporter.ResolutionSettings res, double zoom, Dimension size) throws IOException { 
     
-    int width; 
-    int height; 
     Rectangle worldPiece = new Rectangle(-200, -200, worldDim_.width, worldDim_.height);
-        
-    if (size == null) { 
-      width = (int)(worldPiece.width * zoom); 
-      height = (int)(worldPiece.height * zoom);
-    } else {
-      width = size.width; 
-      height = size.height;            
-    }
+    Dimension useSize = (size == null) ? new Dimension((int)(worldPiece.width * zoom), (int)(worldPiece.height * zoom)) : size;
            
-    BufferedImage bi = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-    Graphics2D g2 = bi.createGraphics();
-    g2.setColor(Color.white);
-    g2.fillRect(0, 0, width, height);   
-    drawForBuffer(g2, worldPiece, size, worldPiece);  
+    BufferedImage bi = new BufferedImage(useSize.width, useSize.height, BufferedImage.TYPE_INT_RGB);
+    drawForBuffer(bi, worldPiece, useSize, worldPiece, 0, 0.0);  
     ImageExporter iex = new ImageExporter();
     iex.export(outObj, bi, format, res);    
     return;
