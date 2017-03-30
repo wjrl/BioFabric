@@ -66,13 +66,8 @@ public class BufferBuilder {
   private static final int SLICE_HEIGHT_HACK_ = 1;
   
   //
-  // Don't build slices smaller than this dimension:
-  //
-  
-  private static final int MIN_DIM_ = 100;  
-  
-  //
   // At what level of links per pixel to we transition from bin renderer to drawing renderer?
+  //
   
   private static final double TRANSITION_LPP_ = 20.0;
   
@@ -96,14 +91,14 @@ public class BufferBuilder {
   //
   
   private ImageCache cache_;
-  private HashMap<Integer, Map<Rectangle, WorldPieceOffering>> worldToImageName_;
-  private HashMap<Rectangle, WorldPieceOffering> allWorldsToImageName_;
+ // private HashMap<Integer, Map<Rectangle, WorldPieceOffering>> worldToImageName_;
+  private HashMap<Rectangle2D, WorldPieceOffering> allWorldsToImageName_;
   private QuadTree findWorldsQT_;
   private BufBuildDrawer drawRender_;
   private BufBuildDrawer binRender_;
   private int[] bbZooms_;
   private Dimension screenDim_;
-  private Dimension worldDim_;
+  private Rectangle2D worldRect_;
   private BufferBuilderClient bbc_;
   private boolean timeToExit_;
   private BuildImageWorker biw_;
@@ -122,8 +117,7 @@ public class BufferBuilder {
 
   public BufferBuilder(String cachePref, int maxMeg, BufBuildDrawer drawRender, BufBuildDrawer binRender) {
     cache_ = new ImageCache(cachePref, maxMeg);
-    worldToImageName_ = new HashMap<Integer, Map<Rectangle, WorldPieceOffering>>();
-    allWorldsToImageName_ = new HashMap<Rectangle, WorldPieceOffering>();
+    allWorldsToImageName_ = new HashMap<Rectangle2D, WorldPieceOffering>();
     findWorldsQT_ = null;
     drawRender_ = drawRender;
     binRender_ = binRender;
@@ -139,8 +133,7 @@ public class BufferBuilder {
   public BufferBuilder(BufBuildDrawer drawRender, BufBuildDrawer binRender) {
     drawRender_ = drawRender;
     binRender_ = binRender;
-    worldToImageName_ = new HashMap<Integer, Map<Rectangle, WorldPieceOffering>>();
-    allWorldsToImageName_ = new HashMap<Rectangle, WorldPieceOffering>();
+    allWorldsToImageName_ = new HashMap<Rectangle2D, WorldPieceOffering>();
     findWorldsQT_ = null;
     bbc_ = null;
     timeToExit_ = false;
@@ -172,18 +165,10 @@ public class BufferBuilder {
   */
   
   public BufferedImage buildOneBuf(int[] zooms) {
-    bbZooms_ = new int[zooms.length];
-    System.arraycopy(zooms, 0, bbZooms_, 0, zooms.length);
     screenDim_ = new Dimension();
-    worldDim_ = new Dimension();
-    binRender_.dimsForBuf(screenDim_, worldDim_); // Both will give same answer...
-  
-    HashMap<Rectangle, WorldPieceOffering> worldForSize = new HashMap<Rectangle, WorldPieceOffering>();
-    Integer key = Integer.valueOf(0);
-    worldToImageName_.put(key, worldForSize);
-    buildPieceMap(zooms[0], screenDim_, worldDim_, true, worldForSize);
-    Map<Rectangle, WorldPieceOffering> worldForSizex = worldToImageName_.get(key);
-    Rectangle worldPiece = worldForSizex.keySet().iterator().next(); 
+    worldRect_ = new Rectangle2D.Double();
+    binRender_.dimsForBuf(screenDim_, worldRect_); // Both will give same answer... 
+    Rectangle worldPiece = UiUtil.rectFromRect2D(worldRect_);
     BufferedImage bi = new BufferedImage(screenDim_.width, screenDim_.height, BufferedImage.TYPE_INT_RGB);
     double lpp = linksPerPix(screenDim_, worldPiece);
     BufBuildDrawer useDrawer = (lpp < TRANSITION_LPP_) ? drawRender_ : binRender_;
@@ -196,14 +181,17 @@ public class BufferBuilder {
   ** Get our slices in world to cover the given view in the world at the desired depth
   */
   
-  public void getSlicesToCover(Integer numObj, Rectangle2D viewInWorld, List<Rectangle>slicesToCover) {
+  public void getSlicesToCover(int depth, Rectangle2D viewInWorld, List<Rectangle2D>slicesToCover) {
   
-  boolean getAllNodesToDepth(int atDepth, List<QuadTreeNode> nodes) {
-  	
+  	ArrayList<QuadTree.QuadTreeNode> qtnList = new ArrayList<QuadTree.QuadTreeNode>();
+  	findWorldsQT_.getNodes(viewInWorld, depth, qtnList);
+  	int lsiz = qtnList.size();
+  	for (int i = 0; i < lsiz; i++) {
+  		QuadTree.QuadTreeNode qtn = qtnList.get(i);
+      slicesToCover.add(qtn.getWorldExtent());
+    }
+  	return;
   }
-  
-  
-  
   
   /***************************************************************************
   **
@@ -218,51 +206,15 @@ public class BufferBuilder {
     bbZooms_ = new int[zooms.length];
     System.arraycopy(zooms, 0, bbZooms_, 0, zooms.length);
     screenDim_ = new Dimension();
-    worldDim_ = new Dimension();
-    drawRender_.dimsForBuf(screenDim_, worldDim_); // These values are now ours
-    UiUtil.fixMePrintout("This needs to be handed to us:");
-    Rectangle worldPiece = new Rectangle(-200, -200, worldDim_.width, worldDim_.height); // FIX ME!!!
-    HashMap<Rectangle, WorldPieceOffering> limitOffering = null;
-    
+    worldRect_ = new Rectangle2D.Double();
+    drawRender_.dimsForBuf(screenDim_, worldRect_); // These values are now ours
+    Rectangle worldPiece = UiUtil.rectFromRect2D(worldRect_);
+     
     double inc = (endFrac - startFrac) / ((zooms.length == 0) ? 1 : zooms.length);
     double currProg = startFrac;
-    System.out.println("buildBufs " + zooms.length);
     
-    findWorldsQT_ = new QuadTree(MIN_DIM_, worldPiece, zooms.length);
+    findWorldsQT_ = new QuadTree(worldPiece, zooms.length);
          
-    /*
-    for (int i = 0; i < zooms.length; i++) {
-      //
-      // We do not allow the tesselation size to drop below a minimum image dimension. If we actually hit that
-      // limit for BOTH dimensions just use the last minimum:
-    	//
-      if (limitOffering != null) {
-        Integer key = Integer.valueOf(i);
-        HashMap<Rectangle, WorldPieceOffering> worldForSize = new HashMap<Rectangle, WorldPieceOffering>();
-        Iterator<Rectangle> wpoKit = limitOffering.keySet().iterator();
-        while (wpoKit.hasNext()) {
-          Rectangle rkey = wpoKit.next();
-          WorldPieceOffering wpo = limitOffering.get(rkey);
-          worldForSize.put((Rectangle)rkey.clone(), wpo.clone()); 
-        }   
-        worldToImageName_.put(key, worldForSize);
-      } else {
-        HashMap<Rectangle, WorldPieceOffering> worldForSize = new HashMap<Rectangle, WorldPieceOffering>();
-        Integer key = Integer.valueOf(i);
-        worldToImageName_.put(key, worldForSize);
-        boolean gottaStop = buildPieceMap(zooms[i], screenDim_, worldDim_, false, worldForSize);
-        if (gottaStop) {
-          limitOffering = worldForSize;
-        }
-      }
-      if (monitor != null) {
-        currProg += inc;
-        if (!monitor.updateProgress((int)(currProg * 100.0))) {
-          throw new AsynchExitRequestException();
-        }
-      } 
-    */
-    
     //
     // Build the first two zoom levels before we even get started:
     //
@@ -287,29 +239,21 @@ public class BufferBuilder {
       runThread.setPriority(runThread.getPriority() - 2);
       runThread.start();
     }
-    System.out.println("buildBufs  rTI");
     return (getTopImage()); 
   }
 
-  /***************************************************************************
-  **
-  ** Get all worlds for given size
- 
-  
-  public Iterator<Rectangle> getWorldsForSize(Integer size) {
-    Map<Rectangle, WorldPieceOffering> worldForSize = worldToImageName_.get(size);
-    HashSet<Rectangle> setOfKeys = new HashSet<Rectangle>(worldForSize.keySet()); 
-    return (setOfKeys.iterator());
-  }
-  
   /***************************************************************************
   **
   ** Get the top buffered image
   */
   
   public BufferedImage getTopImage() throws IOException {
-    Map<Rectangle, WorldPieceOffering> worldForSize = worldToImageName_.get(Integer.valueOf(0));
-    WorldPieceOffering wpo = worldForSize.values().iterator().next();
+  	ArrayList<QuadTree.QuadTreeNode> nodes = new ArrayList<QuadTree.QuadTreeNode>();
+  	boolean found = findWorldsQT_.getAllNodesToDepth(0, 0, nodes);
+  	if (!found || (nodes.size() != 1)) {
+  		throw new IOException();
+  	}
+    WorldPieceOffering wpo = this.allWorldsToImageName_.get(nodes.get(0).getWorldExtent());
     BufferedImage retval = null;
     synchronized (this) {
       retval = cache_.getAnImage(wpo.cacheHandle);
@@ -319,17 +263,28 @@ public class BufferBuilder {
 
   /***************************************************************************
   **
-  ** Drawing routine
+  ** Get an image at the given depth
   */
   
-  public BufferedImage getImageForSizeAndPiece(Integer size, Rectangle worldPiece) throws IOException {
-    Map<Rectangle, WorldPieceOffering> worldForSize = worldToImageName_.get(size);
-    WorldPieceOffering wpo = worldForSize.get(worldPiece);
-    UiUtil.fixMePrintout("This is assuming that write to handle is atomic??? BAD");
-    if (wpo.cacheHandle == null) {
-      buildLoResSlice(bbZooms_[size.intValue()], screenDim_, worldDim_, worldPiece, worldForSize);
+  public BufferedImage getImageForPiece(int depth, Rectangle2D worldRect) throws IOException {
+  	WorldPieceOffering wpo = allWorldsToImageName_.get(worldRect);
+  	if (wpo == null) {
+  		wpo = new WorldPieceOffering(null, screenDim_, worldRect, false);
+  		allWorldsToImageName_.put(worldRect, wpo);;
+  	//	System.out.println("GIFP miss " + worldRect);
+  	} else {
+  //		System.out.println("GIFP hit " + worldRect);
+  	}
+  	boolean needLoRes = false;
+    synchronized (this) {  	
+      needLoRes = (wpo.cacheHandle == null);
+    }
+    // Yeah, this could be stale. Not the end of the world though, and we are not going to
+    // hold the lock until the lo-res slice is built...
+    if (needLoRes) {  	
+      buildLoResSlice(worldRect, wpo);
       if (biw_ != null) {
-        biw_.bumpRequest(new QueueRequest(size, new Rectangle(wpo.imgWidth, wpo.imgHeight), worldPiece));
+        biw_.bumpRequest(new QueueRequest(depth, screenDim_, worldRect));
       }
     }
     BufferedImage retval = null;
@@ -345,7 +300,7 @@ public class BufferBuilder {
   /***************************************************************************
   **
   ** generate piece map
-  */
+  
   
   private boolean buildPieceMap(int zoomNum, Dimension baseImageDim, Dimension worldDim, boolean force, Map<Rectangle, WorldPieceOffering> worldForSize) {
     //
@@ -379,7 +334,7 @@ public class BufferBuilder {
     for (int x = 0; x < effectiveZoomNumX; x++) {
       for (int y = 0; y < effectiveZoomNumY; y++) {
         Rectangle worldPiece = new Rectangle(-200 + (x * worldWInc), -200 + (y * worldHInc), worldWInc, worldHInc);
-        worldForSize.put(worldPiece, new WorldPieceOffering(null, useWidth, useHeight, false));        
+        worldForSize.put(worldPiece, new WorldPieceOffering(null, node.getViewExtent(), worldExtent, false));        
       }
     }
     return (wIsMin && hIsMin);
@@ -394,33 +349,21 @@ public class BufferBuilder {
     ArrayList<QueueRequest> retval = new ArrayList<QueueRequest>();
     ArrayList<QuadTree.QuadTreeNode> nodes = new ArrayList<QuadTree.QuadTreeNode>();
     findWorldsQT_.getAllNodesToDepth(startIndex, endIndex, nodes);
-   // for (int i = startIndex; i <= endIndex; i++) {
-   //   Integer key = Integer.valueOf(i);       
-   //   Map<Rectangle, WorldPieceOffering> worldForSize = worldToImageName_.get(key);
-    //  if (worldForSize != null) {
-     //   Iterator<Rectangle> w4sit = worldForSize.keySet().iterator();
-      //  while (w4sit.hasNext()) {
     int numWorlds = nodes.size();
     for (int i = 0; i < numWorlds; i++) {
     	QuadTree.QuadTreeNode node = nodes.get(i);
-    	Rectangle extent = node.getExtent();
-      WorldPieceOffering wpo = allWorldsToImageName_.get(extent);
+    	Rectangle2D worldExtent = node.getWorldExtent();
+      WorldPieceOffering wpo = allWorldsToImageName_.get(worldExtent);
       if (wpo != null) {
       	throw new IllegalStateException();
       }
-      wpo = new WorldPieceOffering(null, useWidth, useHeight, false); // Gotta have image size here!!!
-      allWorldsToImageName_.put(extent, wpo);        
-      
-    //  Rectangle worldPiece = w4sit.next();
-   //       WorldPieceOffering wpo = worldForSize.get(worldPiece);
-      retval.add(new QueueRequest(key, new Rectangle(wpo.imgWidth, wpo.imgHeight), extent));
+      wpo = new WorldPieceOffering(null, screenDim_, worldExtent, false);
+      allWorldsToImageName_.put(worldExtent, wpo);        
+      retval.add(new QueueRequest(node.getDepth(), screenDim_, wpo.worldRect));
       if (retval.size() >= maxCount) {
         return (retval);
       }
     }
-      //  }
-     // }
-   // }
     return (retval);
   }  
 
@@ -438,7 +381,7 @@ public class BufferBuilder {
         return (false);
       }
     }
-    buildHiResSlice(imageDim, qr.key, qr.worldPiece);     
+    buildHiResSlice(imageDim, qr.depth, qr.worldPiece);     
     return (true);
   }  
    
@@ -448,44 +391,47 @@ public class BufferBuilder {
   ** 
   */
   
-  private String buildLoResSlice(int num, Dimension screenDim, Dimension worldDim, 
-                                 Rectangle worldPiece, Map<Rectangle, WorldPieceOffering> worldForSize) throws IOException {
+  private String buildLoResSlice(Rectangle2D worldRect, WorldPieceOffering wpo) throws IOException {
      
-    int worldHInc = worldDim.height / num;
-    int worldWInc = worldDim.width / num;
-    int useNum = bbZooms_[1];
-    int useIndex = 1; 
-    int scale = num / useNum;
-    int screenHInc = screenDim.height / scale;
-    int screenWInc = screenDim.width / scale;
-           
+  //  int worldHInc = worldDim.height / num;
+ //   int worldWInc = worldDim.width / num;
+  //  int useNum = bbZooms_[1];
+  //  int useIndex = 1; 
+  //  int scale = num / useNum;
+  //  int screenHInc = screenDim.height / scale;
+  //  int screenWInc = screenDim.width / scale;
+  	
+    ArrayList<QuadTree.QuadTreeNode> path = new  ArrayList<QuadTree.QuadTreeNode>() ;  
     BufferedImage bi1 = null;
+  //  Rectangle usePidece = null;
 
-    Rectangle usePiece = null;
-    // NOTE THE USE INDEX OF 1 FOR THE IMAGE BASE!!!!  NO!!!! FIX ME!!!!
-    Map<Rectangle, WorldPieceOffering> worldForUse = worldToImageName_.get(Integer.valueOf(useIndex));
-    allWorldsToImageName_
+    if (!findWorldsQT_.getPath(worldRect, path)) {
+    	throw new IllegalStateException();
+    }
     
-    Iterator<Rectangle> wf1Kit = worldForUse.keySet().iterator(); 
-    while (wf1Kit.hasNext()) {
-      usePiece = wf1Kit.next();
-      UiUtil.fixMePrintout("More object garbage creation here!!!!");
-      Rectangle2D wpit = usePiece.createIntersection(worldPiece);
-      if ((wpit.getWidth() > 10.0) && (wpit.getHeight() > 10.0)) {
-        synchronized (this) {
-          WorldPieceOffering wpou = worldForUse.get(usePiece);
-          if ((wpou.cacheHandle != null) && !wpou.cacheHandle.equals("")) {
-            bi1 = cache_.getAnImage(wpou.cacheHandle);
-          }
+    //
+    // Crank backwards up the chain to find an image to use:
+    //
+    
+    WorldPieceOffering wpou = null;
+    int pathLen = path.size();
+    for (int i = pathLen - 1; i >= 0; i--) {
+    	QuadTree.QuadTreeNode node = path.get(i);
+      synchronized (this) {
+        wpou = allWorldsToImageName_.get(node.getWorldExtent());  
+        if ((wpou != null) && (wpou.cacheHandle != null) && !wpou.cacheHandle.equals("")) {
+          bi1 = cache_.getAnImage(wpou.cacheHandle);
+          System.out.println("Found image at i " + i);
+          break;
         }
-        break;
       }
+      
     }
 
     if (bi1 == null) {  // blank!
       return (null);
     }
-
+/*
     int xInc = (worldPiece.x - usePiece.x + 10) / worldWInc;  // FIX !  Too sensitive to rounding errors: 10 is temp fix
     int yInc = ((worldPiece.y - usePiece.y) + 10) / worldHInc;
 
@@ -515,17 +461,32 @@ public class BufferBuilder {
         return (null);
       }
     }
+    */
+    //
+    // The piece of the image we use depends on how the target world rect fits inside the
+    // world rect of the image we are using:
+    //
+    
+    double subxFrac = (worldRect.getX() - wpou.worldRect.getX()) / wpou.worldRect.getWidth();
+    int subxLoc = (int)Math.round(subxFrac * screenDim_.getWidth());
+    double subyFrac = (worldRect.getY() - wpou.worldRect.getY()) / wpou.worldRect.getHeight();
+    int subyLoc = (int)Math.round(subyFrac * screenDim_.getHeight());
+    int subW = (int)Math.round((worldRect.getWidth() / wpou.worldRect.getWidth()) * bi1.getWidth());
+    int subH = (int)Math.round((worldRect.getHeight() / wpou.worldRect.getHeight()) * bi1.getHeight());
+    
+    
   
-    UiUtil.fixMePrintout("Crappy lo-res segmentation occurs here!");
-    BufferedImage chunk = bi1.getSubimage((xInc * screenWInc), (yInc * screenHInc), useWidth, useHeight);
-    BufferedImage scaled = new BufferedImage(screenDim.width, screenDim.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_INT_RGB);
+   // UiUtil.fixMePrintout("Crappy lo-res segmentation occurs here!");
+    
+    BufferedImage chunk = bi1.getSubimage(subxLoc, subyLoc, subW, subH);
+    BufferedImage scaled = new BufferedImage(screenDim_.width, screenDim_.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_INT_RGB);
     Graphics2D g2 = scaled.createGraphics();
     g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-    g2.drawImage(chunk, 0, 0, screenDim.width, screenDim.height + SLICE_HEIGHT_HACK_, null);
+    g2.drawImage(chunk, 0, 0, screenDim_.width, screenDim_.height + SLICE_HEIGHT_HACK_, null);
     g2.dispose();
+    
     String handle = null;
     synchronized (this) {
-      WorldPieceOffering wpo = worldForSize.get(worldPiece);
       if (!wpo.isDrawn) {
         if (!isBlankImage(scaled)) {      
           wpo.cacheHandle = cache_.cacheAnImage(scaled);
@@ -542,7 +503,7 @@ public class BufferBuilder {
   ** How many links per pix for this current zoom?
   */
   
-  private double linksPerPix(Dimension imageDim, Rectangle worldPiece) { 
+  private double linksPerPix(Dimension imageDim, Rectangle2D worldPiece) { 
     double zoom = Math.max(imageDim.getWidth() / worldPiece.getWidth(), imageDim.getHeight() / worldPiece.getHeight());
     double linksPerPix = 1.0 / (BioFabricPanel.GRID_SIZE * zoom);
     return (linksPerPix);
@@ -554,7 +515,7 @@ public class BufferBuilder {
   ** slice that is cached:
   */
   
-  private void buildHiResSlice(Dimension imageDim, Integer key, Rectangle worldPiece) throws IOException {
+  private void buildHiResSlice(Dimension imageDim, int depth, Rectangle2D worldPiece) throws IOException {
     BufferedImage bi = new BufferedImage(imageDim.width, imageDim.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_INT_RGB);
 
     double lpp = linksPerPix(imageDim, worldPiece);
@@ -565,8 +526,6 @@ public class BufferBuilder {
     BufferBuilderClient tellHim = null;
     synchronized (this) {
     	WorldPieceOffering wpo = allWorldsToImageName_.get(worldPiece);
-      //Map<Rectangle, WorldPieceOffering> worldForSize = worldToImageName_.get(key);
-      //WorldPieceOffering wpo = worldForSize.get(worldPiece);
       if (didDraw) {
         if ((wpo.cacheHandle == null) || wpo.cacheHandle.equals("")) {
           wpo.cacheHandle = cache_.cacheAnImage(bi);
@@ -587,11 +546,11 @@ public class BufferBuilder {
     }
     
     if (tellHim != null) {
-      final Integer noteKey = key;
+      final int noteKey = depth;
       final BufferBuilderClient fth = tellHim;
       SwingUtilities.invokeLater(new Runnable() {
         public void run() {
-          fth.yourOrderIsReady(noteKey.intValue());
+          fth.yourOrderIsReady(noteKey);
         }
       });
     }
@@ -741,20 +700,20 @@ public class BufferBuilder {
   private static class WorldPieceOffering implements Cloneable {
     String cacheHandle;
     boolean isDrawn;
-    int imgWidth;
-    int imgHeight;
+    Dimension imageDim;
+    Rectangle2D worldRect;
     
-    WorldPieceOffering(String cacheHandle, int imgWidth, int imgHeight, boolean isDrawn) {
+    WorldPieceOffering(String cacheHandle, Dimension imageDim, Rectangle2D worldRect, boolean isDrawn) {
       this.cacheHandle = cacheHandle;
-      this.imgWidth = imgWidth;
-      this.imgHeight = imgHeight;
+      this.imageDim = imageDim;
+      this.worldRect = worldRect;
       this.isDrawn = isDrawn;
     }
     
     @Override
     public WorldPieceOffering clone() {
       try {
-        return ((WorldPieceOffering)super.clone());
+        return ((WorldPieceOffering)super.clone()); // Don't copy rects; they are not changed
       } catch (CloneNotSupportedException cnse) {
         throw new IllegalStateException();
       }
@@ -767,18 +726,18 @@ public class BufferBuilder {
   */  
   
   private static class QueueRequest {
-    Integer key;
-    Rectangle imageDim;
-    Rectangle worldPiece;
+    int depth;
+    Dimension imageDim;
+    Rectangle2D worldPiece;
     
-    QueueRequest(Integer key, Rectangle imageDim, Rectangle worldPiece) {
-      this.key = key;
+    QueueRequest(int depth, Dimension imageDim, Rectangle2D worldPiece) {
+      this.depth = depth;
       this.worldPiece = worldPiece;
       this.imageDim = imageDim;
     }
     
     public int hashCode() {
-      return (key.hashCode() + worldPiece.hashCode() + imageDim.hashCode());
+      return (depth + worldPiece.hashCode() + imageDim.hashCode());
     }
       
     public boolean equals(Object other) {    
@@ -793,7 +752,7 @@ public class BufferBuilder {
       }
       QueueRequest otherReq = (QueueRequest)other;
 
-      if (!this.key.equals(otherReq.key)) {
+      if (this.depth != otherReq.depth) {
         return (false);
       }
       if (!this.imageDim.equals(otherReq.imageDim)) {
@@ -803,13 +762,13 @@ public class BufferBuilder {
     }  
     
   }
-  
+ 
   /***************************************************************************
   **
-  ** Draw Object
+  ** Interface for guys who wnat to listen for our results
   */  
   
   public interface BufferBuilderClient { 
     public void yourOrderIsReady(int sizeNum);
-  }
+  } 
 }

@@ -338,6 +338,7 @@ public class BasicZoomTargetSupport implements ZoomTarget {
   public AffineTransform getTransformForZoomValue(double zoom) {   
     Workspace ws = workspaceSource_.getWorkspace();
     Rectangle rect = ws.getWorkspace();
+    System.out.println("WSPA " + rect);
     AffineTransform transform = new AffineTransform();    
     transform.translate((rect.getWidth() / 2.0) * zoom, (rect.getHeight() / 2.0) * zoom);
     transform.scale(zoom, zoom);
@@ -386,6 +387,7 @@ public class BasicZoomTargetSupport implements ZoomTarget {
     AffineTransform transform = new AffineTransform();
     Workspace ws = workspaceSource_.getWorkspace();
     Rectangle rect = ws.getWorkspace();
+        System.out.println("WSPAWZ " + rect);
    
     int rectWidth = (int)(rect.getWidth() * zoom); 
     int rectHeight = (int)(rect.getHeight() * zoom);

@@ -19,7 +19,7 @@
 
 package org.systemsbiology.biofabric.util;
 
-import java.awt.Rectangle;
+import java.awt.geom.Rectangle2D;
 import java.util.List;
 
 /***************************************************************************
@@ -32,9 +32,9 @@ public class QuadTree {
   private int maxDepth_;
   private QuadTreeNode root_;
   
-  public QuadTree(int minDim, Rectangle extent, int maxDepth) {
+  public QuadTree(Rectangle2D worldExtent, int maxDepth) {
   	maxDepth_ = maxDepth;
-  	root_ = new QuadTreeNode(minDim, extent);
+  	root_ = new QuadTreeNode(worldExtent);
   } 
    
   /***************************************************************************
@@ -43,13 +43,23 @@ public class QuadTree {
 	** contain the rectangle. Returns true if anything found. 
 	*/
 	  
-  public boolean getNodes(Rectangle rect, int atDepth, List<QuadTreeNode> nodes) {
+  public boolean getNodes(Rectangle2D worldRect, int atDepth, List<QuadTreeNode> nodes) {
     if (atDepth >= maxDepth_) {
     	throw new IllegalArgumentException();
     }
-  	return (root_.getNodes(rect, atDepth, nodes));
+  	return (root_.getNodes(worldRect, atDepth, nodes));
   }
   
+  /***************************************************************************
+	**
+	** Given a rectangle that maps exactly to one of our nodes, fill in the path of nodes to that
+	** rectangle.
+	*/
+	  
+  public boolean getPath(Rectangle2D worldRect, List<QuadTreeNode> path) {
+  	return (root_.getPath(worldRect, path));
+  }
+
   /***************************************************************************
 	**
 	** Given bounding depths, fill in the children between those depths
@@ -62,14 +72,6 @@ public class QuadTree {
     }
   	return (root_.getAllNodesToDepth(minDepth, maxDepth, nodes));
   }
-
-  /***************************************************************************
-  **
-  ** Node payloads
-  */
-  
-  public interface Payload {
-  }
   
   /***************************************************************************
   **
@@ -81,11 +83,8 @@ public class QuadTree {
   	enum Corner {SINGLETON, UPPER_LEFT, UPPER_RIGHT, LOWER_LEFT, LOWER_RIGHT}
   	
   	private int depth_;
-  	private int minDim_;
-  	private boolean minWidth_;
-  	private boolean minHeight_;
-  	private Rectangle extent_;
-  	private Payload payLoad_;
+
+  	private Rectangle2D worldExtent_;
   	private Corner corner_;
     private QuadTreeNode parent_;
     private boolean needKidInit_;
@@ -99,15 +98,11 @@ public class QuadTree {
 	  ** Build the root node
 	  */
 
-    QuadTreeNode(int minDim, Rectangle extent) {
-    	if ((extent.width < minDim) || (extent.width < minDim)) {
-    		throw new IllegalArgumentException();
-    	}
+    QuadTreeNode(Rectangle2D worldExtent) {
     	depth_ = 0;
       parent_ = null;
       corner_ = Corner.SINGLETON;
-      minDim_ = minDim;
-      extent_ = extent;
+      worldExtent_ = worldExtent;
       needKidInit_ = true;
     }
     
@@ -116,32 +111,28 @@ public class QuadTree {
 	  ** Build a child node
 	  */  
 
-    QuadTreeNode(QuadTreeNode parent, Corner corner, int minDim, int depth) {
+    QuadTreeNode(QuadTreeNode parent, Corner corner, int depth) {
     	depth_ = depth;
       parent_ = parent;
       corner_ = corner;
-      minDim_ = minDim;
       needKidInit_ = true;
-      Rectangle parentEx = parent.getExtent();
-      int halfw = parentEx.width / 2;
-      int halfwx = parentEx.width % 2;
-      int halfh = parentEx.height / 2;
-      int halfhx = parentEx.height % 2;
-      minWidth_ = (halfw <= minDim_);
-      minHeight_ = (halfh <= minDim_);
+      Rectangle2D parentWEx = parent.getWorldExtent();
+      double dhalfw = parentWEx.getWidth() * 0.5;
+      double dhalfh = parentWEx.getHeight() * 0.5;
+
       switch (corner_) {
         case UPPER_LEFT:
-        	extent_ = new Rectangle(parentEx.x, parentEx.y, halfw, halfh);
+        	worldExtent_ = new Rectangle2D.Double(parentWEx.getX(), parentWEx.getY(), dhalfw, dhalfh);
         	break;
         case UPPER_RIGHT:
-        	extent_ = new Rectangle(parentEx.x + halfw, parentEx.y, halfw + halfwx, halfh);
+        	worldExtent_ = new Rectangle2D.Double(parentWEx.getX() + dhalfw, parentWEx.getY(), dhalfw, dhalfh);
         	break;
         case LOWER_LEFT:
-        	extent_ = new Rectangle(parentEx.x, parentEx.y + halfh, halfw, halfh + halfhx);
+        	worldExtent_ = new Rectangle2D.Double(parentWEx.getX(), parentWEx.getY() + dhalfh, dhalfw, dhalfh);
         	break;
         case LOWER_RIGHT:
-        	extent_ = new Rectangle(parentEx.x + halfw, parentEx.y + halfh, 
-        			                    halfw + halfwx, halfh + halfhx);        	
+        	worldExtent_ = new Rectangle2D.Double(parentWEx.getX() + dhalfw, 
+        			                                  parentWEx.getY() + dhalfh, dhalfw, dhalfh);
         	break;
         default:
         	throw new IllegalArgumentException();
@@ -154,46 +145,68 @@ public class QuadTree {
 	  ** contain the rectangle.
 	  */
 	  
-	  boolean getNodes(Rectangle rect, int atDepth, List<QuadTreeNode> nodes) {
+	  boolean getNodes(Rectangle2D worldRect, int atDepth, List<QuadTreeNode> nodes) {
 	  	//
 	  	// If our depth is greater than the requested depth, we have nothing to do anymore:
 	  	//
 	  	if (atDepth < depth_) {
-	  		return (false);
+	  //		System.out.println("we are deep " + depth_ + " " + atDepth);
+	  		return (false); 
 	  	}
 
-  	  boolean weIntersect = extent_.intersects(rect);
+  	  boolean weIntersect = worldExtent_.intersects(worldRect);
   	  if (weIntersect) {
   	  	if (atDepth == depth_) {
+  	  //		System.out.println("we are at depth " + depth_ + " " + atDepth + " " + worldRect + " " + worldExtent_);
   	  		nodes.add(this);
   	  		return (true);
   	  	}
   	  	if (needKidInit_) {
   	  		needKidInit_ = false;
-  	  		// If no split occurred, we are at the minimum dimension, even if we
-  	  		// have not hit the greatest depth
-  	  	  boolean didSplit = split();
-  	  		if (!didSplit) {
-  	  			nodes.add(this);
-  	  		  return (true);		
-  	  		}
+  	  	  split();
   	  	}
-  	  	if (ulKid_ != null) {
-  	  		ulKid_.getNodes(rect, atDepth, nodes);
-  	  	}
-  	  	if (urKid_ != null) {
-  	  		urKid_.getNodes(rect, atDepth, nodes);
-  	  	}
-  	  	if (llKid_ != null) {
-  	  		llKid_.getNodes(rect, atDepth, nodes);
-  	  	}
-  	  	if (lrKid_ != null) {
-  	  		lrKid_.getNodes(rect, atDepth, nodes);
-  	  	}
+	  		ulKid_.getNodes(worldRect, atDepth, nodes);
+	  		urKid_.getNodes(worldRect, atDepth, nodes);
+	  		llKid_.getNodes(worldRect, atDepth, nodes);
+	  		lrKid_.getNodes(worldRect, atDepth, nodes);
   	  	return (true);
   	  } else {
+  	//  	System.out.println("no hit " + "  " + worldRect + " " + worldExtent_);
   	  	return (false);
   	  }
+    } 
+	  
+	  /***************************************************************************
+	  **
+	  ** Given a rectangle and a depth, fill in the children at the depth that
+	  ** contain the rectangle.
+	  */
+	  
+	  boolean getPath(Rectangle2D matchRect, List<QuadTreeNode> path) {
+	  
+  	  boolean weMatch = worldExtent_.equals(matchRect);
+  	  if (weMatch) {
+  	  	path.add(this);
+  	  	return (true);
+  	  }
+  	  boolean weIntersect = worldExtent_.intersects(matchRect);
+  	  if (!weIntersect) {
+  	    return (false);
+  	  }
+  	  path.add(this);
+  	  if (needKidInit_) {
+  	  	throw new IllegalStateException();
+  	  }
+	  	if (ulKid_.getPath(matchRect, path)) {
+	  	  return (true);
+	  	} else if (urKid_.getPath(matchRect, path)) {
+  			return (true);
+	  	} else if (llKid_.getPath(matchRect, path)) {
+  			return (true);
+	  	}	else if (lrKid_.getPath(matchRect, path)) {
+  			return (true);
+	  	}		
+	  	throw new IllegalStateException();
     } 
 
 	  /***************************************************************************
@@ -216,25 +229,12 @@ public class QuadTree {
 	  	if (maxDepth > depth_) {
 		  	if (needKidInit_) {
 		  		needKidInit_ = false;
-		  		// If no split occurred, we are at the minimum dimension, even if we
-		  		// have not hit the greatest depth
-		  	  boolean didSplit = split();
-		  		if (!didSplit) {
-		  		  return (true);		
-		  		}
+		  	  split();
 		  	}
-		  	if (ulKid_ != null) {
-		  		ulKid_.getAllNodesToDepth(minDepth, maxDepth, nodes);
-		  	}
-		  	if (urKid_ != null) {
-		  		urKid_.getAllNodesToDepth(minDepth, maxDepth, nodes);
-		  	}
-		  	if (llKid_ != null) {
-		  		llKid_.getAllNodesToDepth(minDepth, maxDepth, nodes);
-		  	}
-		  	if (lrKid_ != null) {
-		  		lrKid_.getAllNodesToDepth(minDepth, maxDepth, nodes);
-		  	}
+		  	ulKid_.getAllNodesToDepth(minDepth, maxDepth, nodes);
+		  	urKid_.getAllNodesToDepth(minDepth, maxDepth, nodes);
+		  	llKid_.getAllNodesToDepth(minDepth, maxDepth, nodes);
+		  	lrKid_.getAllNodesToDepth(minDepth, maxDepth, nodes);
 	  	}
 	  	return (true);
 	  }
@@ -264,72 +264,39 @@ public class QuadTree {
 	  ** Get the parent
 	  */	
     
-    
     QuadTreeNode getParent() {
       return (parent_);        
     }
     
     /***************************************************************************
 	  **
-	  ** Get the extent
+	  ** Get the world extent
 	  */	 
     
-    public Rectangle getExtent() {
-      return (extent_);      
+    public Rectangle2D getWorldExtent() {
+      return (worldExtent_);      
     }
     
     /***************************************************************************
 	  **
-	  ** Set the payload
-	  */	
+	  ** Get the depth
+	  */	 
     
-    
-    void setPayload(Payload payLoad) {
-      payLoad_ = payLoad;
-      return;
+    public int getDepth() {
+      return (depth_);      
     }
     
-    /***************************************************************************
-	  **
-	  ** Get the payload
-	  */	
-
-    public Payload getPayload() {
-      return (payLoad_);
-    }
-
 	  /***************************************************************************
 	  **
-	  ** Create the kids. If one of our dimensions is at or below the minimum dimension,
-	  ** we do not split that dimension. Returns false is no more children to be added
-	  ** (both dims now at or below minimum dimension).
+	  ** Create the kids.
 	  */
     
-    boolean split() {	
-    	if (!minWidth_) {
-    		ulKid_ = new QuadTreeNode(this, Corner.UPPER_LEFT, minDim_, depth_ + 1);
-    		urKid_ = new QuadTreeNode(this, Corner.UPPER_RIGHT, minDim_, depth_ + 1);
-    		if (!minHeight_) { 
-    			llKid_ = new QuadTreeNode(this, Corner.LOWER_LEFT, minDim_, depth_ + 1);
-    		  lrKid_ = new QuadTreeNode(this, Corner.LOWER_RIGHT, minDim_, depth_ + 1);
-    		} else {
-    			llKid_ = null;
-    			lrKid_ = null;
-    		}
-    		return (true);
-    	} else { // Is min width
-    		urKid_ = null;
-    		lrKid_ = null;
-    		if (!minHeight_) {
-    			ulKid_ = new QuadTreeNode(this, Corner.UPPER_LEFT, minDim_, depth_ + 1);
-    			llKid_ = new QuadTreeNode(this, Corner.LOWER_LEFT, minDim_, depth_ + 1);
-    			return (true);
-    		} else {
-    			ulKid_ = null;
-    			llKid_ = null;
-    			return (false);
-    		}
-    	}       
+    void split() {	
+      ulKid_ = new QuadTreeNode(this, Corner.UPPER_LEFT, depth_ + 1);
+    	urKid_ = new QuadTreeNode(this, Corner.UPPER_RIGHT, depth_ + 1);
+    	llKid_ = new QuadTreeNode(this, Corner.LOWER_LEFT,depth_ + 1);
+    	lrKid_ = new QuadTreeNode(this, Corner.LOWER_RIGHT, depth_ + 1);
+    	return;    
     }
   }
 }

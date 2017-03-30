@@ -23,11 +23,10 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Point;
-import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferInt;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,8 +55,8 @@ public class BucketRenderer implements BufBuildDrawer {
   private List<BioFabricNetwork.LinkInfo> linkList_;
   
   private Dimension screenDim_;
-  private Dimension worldDim_;  
   private boolean showShadows_;
+  private Rectangle2D worldRect_;
 
   
   ////////////////////////////////////////////////////////////////////////////
@@ -75,7 +74,7 @@ public class BucketRenderer implements BufBuildDrawer {
 
     targetList_ = new ArrayList<NodeInfo>();
     linkList_ = new ArrayList<LinkInfo>();
-    worldDim_ = new Dimension(100, 100);
+    worldRect_ = new Rectangle2D.Double(0.0, 0.0, 100.0, 100.0);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -89,9 +88,9 @@ public class BucketRenderer implements BufBuildDrawer {
   ** Get the dimensions for the buffer
   */
   
-   public void dimsForBuf(Dimension screenDim, Dimension worldDim) {
+   public void dimsForBuf(Dimension screenDim, Rectangle2D worldRect) {
      screenDim.setSize(screenDim_);
-     worldDim.setSize(worldDim_);    
+     worldRect.setRect(worldRect_);    
      return;
    }
 
@@ -101,24 +100,32 @@ public class BucketRenderer implements BufBuildDrawer {
   */
    
   public void buildBucketCache(List<BioFabricNetwork.NodeInfo> targets, 
-  		                         List<BioFabricNetwork.LinkInfo> links, boolean showShadows, 
-  		                         Dimension screenDim, Dimension worldDim) { 
+  		                         List<BioFabricNetwork.LinkInfo> links, boolean showShadows) { 
  
   	targetList_ = targets;
     linkList_ = links;
     showShadows_ = showShadows;
-    screenDim_ = screenDim;
-    worldDim_ = worldDim;
     return;
   }
- 
+  
+  /***************************************************************************
+  ** 
+  ** Install a model size
+  */
+   
+  public void setModelDims(Dimension screenDim, Rectangle2D worldRect) { 
+    screenDim_ = screenDim;
+    worldRect_.setRect(worldRect);    
+    return;
+  }
+
   /***************************************************************************
   **
   ** Drawing core
   */
   
-  public boolean drawForBuffer(BufferedImage bi, Rectangle clip, Dimension screenDim, 
-  		                         Rectangle worldRec, int heightPad, double linksPerPixel) {
+  public boolean drawForBuffer(BufferedImage bi, Rectangle2D clip, Dimension screenDim, 
+  		                         Rectangle2D worldRec, int heightPad, double linksPerPixel) {
   	
   	int imgHeight = bi.getHeight();
     int imgWidth = bi.getWidth();
@@ -143,12 +150,12 @@ public class BucketRenderer implements BufBuildDrawer {
   ** Drawing core
   */
   
-  private boolean drawLinksForBuffer(BufferedImage bi, Rectangle clip, Dimension screenDim, Rectangle worldRec, int heightPad, double lpp) {
+  private boolean drawLinksForBuffer(BufferedImage bi, Rectangle2D clip, Dimension screenDim, Rectangle2D worldRec, int heightPad, double lpp) {
   	
   	int imgHeight = bi.getHeight();
     int imgWidth = bi.getWidth();
 	
-  	System.out.println("Clip " + clip);
+ // 	System.out.println("Clip " + clip);
     double zoomH = screenDim.getWidth() / worldRec.getWidth();
     double zoomV = screenDim.getHeight() / worldRec.getHeight();
     double zoom = Math.max(zoomH, zoomV);
@@ -165,7 +172,7 @@ public class BucketRenderer implements BufBuildDrawer {
     
     Point2D newPoint = new Point2D.Double();
     int[] mybuf = new int[bufLen];
-    System.out.println("mbl " + mybuf.length + " " + screenDim + " " + imgHeight + " " + imgWidth);
+ //   System.out.println("mbl " + mybuf.length + " " + screenDim + " " + imgHeight + " " + imgWidth);
     
     Point pts = new Point();
     Point pte = new Point();    
@@ -178,23 +185,23 @@ public class BucketRenderer implements BufBuildDrawer {
 	  
     for (BioFabricNetwork.LinkInfo lif : linkList_) {
 
-	    int yStrt = lif.topRow() * BioFabricPanel.GRID_SIZE;
-	    int yEnd = lif.bottomRow() * BioFabricPanel.GRID_SIZE;
-	    int x = lif.getUseColumn(showShadows_) * BioFabricPanel.GRID_SIZE;
-	    if ((x < clip.x) || (x > (clip.x + clip.width))) {
+	    double yStrt = lif.topRow() * BioFabricPanel.GRID_SIZE;
+	    double yEnd = lif.bottomRow() * BioFabricPanel.GRID_SIZE;
+	    double x = lif.getUseColumn(showShadows_) * BioFabricPanel.GRID_SIZE;
+	    if ((x < clip.getX()) || (x > (clip.getX() + clip.getWidth()))) {
 	    	continue;
 	    }
-	    if (yStrt < clip.y) {
-	    	yStrt = clip.y;
+	    if (yStrt < clip.getY()) {
+	    	yStrt = clip.getY();
 	    }
-	    if (yStrt > (clip.y + clip.height)) {
-	    	yStrt = clip.y + clip.height;
+	    if (yStrt > (clip.getY() + clip.getHeight())) {
+	    	yStrt = clip.getY() + clip.getHeight();
 	    }
-	    if (yEnd < clip.y) {
-	    	yEnd = clip.y;
+	    if (yEnd < clip.getY()) {
+	    	yEnd = clip.getY();
 	    }
-	    if (yEnd > (clip.y + clip.height)) {
-	    	yEnd = clip.y + clip.height;
+	    if (yEnd > (clip.getY() + clip.getHeight())) {
+	    	yEnd = clip.getY() + clip.getHeight();
 	    }
 	
 	    startPoint.setLocation(x, yStrt);
@@ -247,7 +254,7 @@ public class BucketRenderer implements BufBuildDrawer {
   ** Drawing core
   */
   
-  private boolean drawNodesForBuffer(BufferedImage bi, Rectangle clip, Dimension screenDim, Rectangle worldRec, int heightPad, double lpp) {
+  private boolean drawNodesForBuffer(BufferedImage bi, Rectangle2D clip, Dimension screenDim, Rectangle2D worldRec, int heightPad, double lpp) {
   
   	int imgHeight = bi.getHeight();
     int imgWidth = bi.getWidth();
@@ -262,7 +269,7 @@ public class BucketRenderer implements BufBuildDrawer {
     transform.translate(-centerW.getX(), -centerW.getY());
     
     double linksPerPix = 1.0 / (BioFabricPanel.GRID_SIZE * zoom);
-    System.out.println("lpp " + linksPerPix);
+  //  System.out.println("lpp " + linksPerPix);
      
       
     int scrnHeight = screenDim.height;
@@ -272,7 +279,7 @@ public class BucketRenderer implements BufBuildDrawer {
     
     Point2D newPoint = new Point2D.Double();
     int[] mybuf = new int[bufLen];
-    System.out.println("mbl " + mybuf.length + " " + screenDim + " " + imgHeight + " " + imgWidth);
+  //  System.out.println("mbl " + mybuf.length + " " + screenDim + " " + imgHeight + " " + imgWidth);
     
     Point pts = new Point();
     Point pte = new Point();    
@@ -287,23 +294,23 @@ public class BucketRenderer implements BufBuildDrawer {
 
 	    MinMax colRange = nif.getColRange(showShadows_);
 	    				
-	    int xStrt = colRange.min * BioFabricPanel.GRID_SIZE;
-	    int xEnd = colRange.max * BioFabricPanel.GRID_SIZE;
-	    int y = nif.nodeRow * BioFabricPanel.GRID_SIZE;
-	    if ((y < clip.y) || (y > (clip.y + clip.height))) {
+	    double xStrt = colRange.min * BioFabricPanel.GRID_SIZE;
+	    double xEnd = colRange.max * BioFabricPanel.GRID_SIZE;
+	    double y = nif.nodeRow * BioFabricPanel.GRID_SIZE;
+	    if ((y < clip.getY()) || (y > (clip.getY() + clip.getHeight()))) {
 	    	continue;
 	    }
-	    if (xStrt < clip.x) {
-	    	xStrt = clip.x;
+	    if (xStrt < clip.getX()) {
+	    	xStrt = clip.getX();
 	    }
-	    if (xStrt > (clip.x + clip.width)) {
-	    	xStrt = clip.x + clip.width;
+	    if (xStrt > (clip.getX() + clip.getWidth())) {
+	    	xStrt = clip.getX() + clip.getWidth();
 	    }
-	    if (xEnd < clip.x) {
-	    	xEnd = clip.x;
+	    if (xEnd < clip.getX()) {
+	    	xEnd = clip.getX();
 	    }
-	    if (xEnd > (clip.x + clip.width)) {
-	    	xEnd = clip.x + clip.width;
+	    if (xEnd > (clip.getX() + clip.getWidth())) {
+	    	xEnd = clip.getX() + clip.getWidth();
 	    }
 	
 	    startPoint.setLocation(xStrt, y);

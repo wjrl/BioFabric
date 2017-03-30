@@ -961,7 +961,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                                                 double startFrac, 
                                                 double endFrac) throws IOException, AsynchExitRequestException {
     Dimension screenSize = (forMain) ? Toolkit.getDefaultToolkit().getScreenSize() : new Dimension(600, 800);
-    screenSize.setSize((int)(screenSize.getWidth() * 0.8), (int)(screenSize.getHeight() * 0.4));
+    
+     screenSize.setSize((int)(screenSize.getWidth() * 1.0), (int)(screenSize.getHeight() * 1.0));
+  //  screenSize.setSize((int)(screenSize.getWidth() * 0.8), (int)(screenSize.getHeight() * 0.4));
     double midFrac = (startFrac + endFrac) / 2.0;
     // Possibly expensive network analysis preparation:
     BioFabricNetwork bfn = new BioFabricNetwork(bfnbd, monitor, startFrac, midFrac);
