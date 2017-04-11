@@ -185,6 +185,7 @@ public class FabricFactory implements ParserClient {
     public BioFabricNetwork bfn;
     public BioFabricNetwork.LinkInfo linkInfo;
     public BioFabricNetwork.NodeInfo nodeInfo;
+    public BioFabricNetwork.DrainZone drainZone;
     public FabricColorGenerator fcg;
     public NamedColor currCol;
     public int colTarg;

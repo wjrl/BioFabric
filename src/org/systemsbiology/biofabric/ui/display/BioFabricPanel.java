@@ -767,7 +767,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     int colMin;
     int colMax;
     
-    List<MinMax> dropZone = node.getDrainZones(showShadows);
+    List<BioFabricNetwork.DrainZone> dropZone = node.getDrainZones(showShadows);
     MinMax nmm = null;
     if (dropZone == null) {
       nmm = node.getColRange(showShadows);
@@ -775,8 +775,8 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       colMax = nmm.max;
     } else {
       UiUtil.fixMePrintout("This needs review");
-      colMin = dropZone.get(0).min; // QUICK FIX WILL MAKE BETTER SOLUTION LATER
-      colMax = dropZone.get(0).max;
+      colMin = dropZone.get(0).getMinMax().min; // QUICK FIX WILL MAKE BETTER SOLUTION LATER
+      colMax = dropZone.get(0).getMinMax().max;
     }
     
     int start = colMin;

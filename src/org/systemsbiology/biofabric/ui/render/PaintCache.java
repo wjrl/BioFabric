@@ -444,7 +444,7 @@ public class PaintCache {
     // Drain zone sizing / rotation:
     //
     
-    List<MinMax> zones = target.getDrainZones(showShadows);
+    List<BioFabricNetwork.DrainZone> zones = target.getDrainZones(showShadows);
     
     DrainZoneInfo[] dzis = new DrainZoneInfo[zones.size()];
     for (int i = 0; i < dzis.length; i++) {    // initialize each entry in array
@@ -614,9 +614,10 @@ public class PaintCache {
     private Rectangle2D dumpRect;
     private MinMax dzmm;
     
-    DrainZoneInfo(MinMax dzmm) {
-      this.dzmm = dzmm.clone();
-    } 
+
+    DrainZoneInfo(BioFabricNetwork.DrainZone dz) {
+      this.dzmm = dz.getMinMax().clone();
+    }
   }
   
   /***************************************************************************
