@@ -207,9 +207,9 @@ public class BioFabricNetwork {
         linkGrouping_ = new ArrayList<String>(rbd.linkGroups);
         colGen_ = rbd.colGen;
         layoutMode_ = rbd.layoutMode;
-        System.out.println("BFNCO");
+        System.out.println("BFNCO " + System.currentTimeMillis());
         relayoutNetwork(rbd, monitor, startFrac, endFrac);
-        System.out.println("BFNCO2");
+        System.out.println("BFNCO2 " + System.currentTimeMillis());
         break;
       case BUILD_FOR_SUBMODEL:
         SelectBuildData sbd = (SelectBuildData)bd;
@@ -244,7 +244,9 @@ public class BioFabricNetwork {
         linkGrouping_ = new ArrayList<String>();
         layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
         colGen_ = obd.colGen;
+        System.out.println("PROL " + System.currentTimeMillis());
         processLinks(obd, monitor, startFrac, endFrac);
+        System.out.println("POOL " + System.currentTimeMillis());
         break;
       default:
         throw new IllegalArgumentException();
@@ -513,13 +515,13 @@ public class BioFabricNetwork {
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
     //
-       
+       System.out.println("PROL1 " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
     List<NID.WithName> targetIDs =  (new DefaultLayout()).doNodeLayout(rbd, null);
     
     //
     // Now have the ordered list of targets we are going to display.
     //
-    
+    System.out.println("PROL2 " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
     fillNodesFromOrder(targetIDs, rbd.colGen, rbd.clustAssign);
 
     //
@@ -527,6 +529,7 @@ public class BioFabricNetwork {
     // so that the shortest vertical link is drawn first!
     //
     
+    System.out.println("PROL3 " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
     (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
     specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, false, monitor, startFrac, endFrac);
 
@@ -534,13 +537,13 @@ public class BioFabricNetwork {
     // Determine the start & end of each target row needed to handle the incoming
     // and outgoing links:
     //
-
+System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
     trimTargetRows();
         
     //
     // For the lone nodes, they are assigned into the last column:
     //
-    
+    System.out.println("PROL5 " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
     loneNodesToLastColumn(rbd.loneNodeIDs);
     return;
   }
@@ -563,7 +566,8 @@ public class BioFabricNetwork {
                                  (mode == BuildMode.WORLD_BANK_LAYOUT) ||
                                  (mode == BuildMode.NODE_CLUSTER_LAYOUT) || 
                                  (mode == BuildMode.CLUSTERED_LAYOUT) || 
-                                 (mode == BuildMode.REORDER_LAYOUT);          
+                                 (mode == BuildMode.REORDER_LAYOUT); 
+      System.out.println("PreSID " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
     List<NID.WithName> targetIDs;
     if (specifiedNodeOrder) {
       targetIDs = specifiedIDOrder(rbd.allNodeIDs, rbd.nodeOrder);
@@ -581,7 +585,7 @@ public class BioFabricNetwork {
     // Now have the ordered list of targets we are going to display.
     // Build target->row maps and the inverse:
     //
-
+    System.out.println("PreFNFO " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
     fillNodesFromOrder(targetIDs, rbd.colGen, rbd.clustAssign);
 
     //
@@ -597,6 +601,7 @@ public class BioFabricNetwork {
           rbd.nodeOrder.put(targID, Integer.valueOf(i));
         }
       }
+        System.out.println("LOE " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
       (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
     }
 
@@ -609,7 +614,7 @@ public class BioFabricNetwork {
         throw new AsynchExitRequestException();
       }
     }
-    
+    System.out.println("SLC " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
     specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, ((mode == BuildMode.LINK_ATTRIB_LAYOUT) || 
     		                                              (mode == BuildMode.NODE_CLUSTER_LAYOUT) ||
     		                                              (mode == BuildMode.GROUP_PER_NODE_CHANGE) ||
@@ -620,13 +625,13 @@ public class BioFabricNetwork {
     // Determine the start & end of each target row needed to handle the incoming
     // and outgoing links:
     //
-
+    System.out.println("TTR " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
     trimTargetRows();
         
     //
     // For the lone nodes, they are assigned into the last column:
     //
-
+     System.out.println("LNLC " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
     loneNodesToLastColumn(rbd.loneNodeIDs);
 
     if (monitor != null) {

@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -34,6 +34,8 @@ import javax.imageio.ImageWriter;
 import javax.imageio.metadata.IIOMetadata;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
+
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -103,7 +105,7 @@ public class ImageCache {
   ** Get an image from the cache; returns null if no image
   */
   
-  public BufferedImage getAnImage(String handle) throws IOException {
+  public BufferedImage getAnImage(String handle, BufImgStack bis) throws IOException {
     BufferedImage retval = imgCache_.get(handle);
     if (retval != null) {
       queue_.remove(handle);
@@ -141,7 +143,7 @@ public class ImageCache {
     //
 
     int sizeEst = retval.getHeight() * retval.getWidth() * 3;
-    maintainSize(sizeEst);
+    maintainSize(sizeEst, bis);
  
     //
     // Install it:
@@ -158,10 +160,10 @@ public class ImageCache {
   ** Cache an image, return a handle.
   */
   
-  public String cacheAnImage(BufferedImage bi) throws IOException {
+  public String cacheAnImage(BufferedImage bi, BufImgStack bis) throws IOException {
 
     int sizeEst = bi.getHeight() * bi.getWidth() * 3;
-    maintainSize(sizeEst);
+    maintainSize(sizeEst, bis);
     
     String handle = Integer.toString(nextHandle_++);
     imgCache_.put(handle, bi); 
@@ -171,16 +173,16 @@ public class ImageCache {
     return (handle);
   }
   
-   /***************************************************************************
+  /***************************************************************************
   **
-  ** Cache an image, return a handle.
+  ** Drop the image associated with the handle
   */
   
-  public void dropAnImage(String handle) throws IOException {
+  public BufferedImage dropAnImage(String handle, BufImgStack bis) throws IOException {
 
-    BufferedImage bye = getAnImage(handle);
+    BufferedImage bye = getAnImage(handle, bis);
     if (bye == null) {
-      return;
+      return (null);
     }
     int byeEst = bye.getHeight() * bye.getWidth() * 3;
     currSize_ -= byeEst;
@@ -189,7 +191,8 @@ public class ImageCache {
     }
     
     queue_.remove(handle);
-    imgCache_.remove(handle); 
+    imgCache_.remove(handle);
+    bis.returnImage(bye);
 
     String fileName = handleToFile_.get(handle);
     if (fileName != null) {
@@ -197,8 +200,9 @@ public class ImageCache {
       if (dropFile.exists()) {
         dropFile.delete();
       }
+      handleToFile_.remove(handle);
     }
-    return;
+    return (bye);
   }
   
   
@@ -207,19 +211,20 @@ public class ImageCache {
   ** Replace the image with the given handle.
   */
   
-  public String replaceAnImage(String handle, BufferedImage bi) throws IOException {
+  public String replaceAnImage(String handle, BufferedImage bi, BufImgStack bis) throws IOException {
 
-    BufferedImage bye = getAnImage(handle);
+    BufferedImage bye = getAnImage(handle, bis);
     int byeEst = bye.getHeight() * bye.getWidth() * 3;
     currSize_ -= byeEst;
     if (currSize_ < 0) {
       currSize_ = 0;
     }
+    bis.returnImage(bye);
     
     // Note above getAnImage put us at the front of the queue
         
     int sizeEst = bi.getHeight() * bi.getWidth() * 3;
-    maintainSize(sizeEst);    
+    maintainSize(sizeEst, bis);    
     imgCache_.put(handle, bi); 
     currSize_ += sizeEst;
     
@@ -236,22 +241,26 @@ public class ImageCache {
   ** Manage in-memory cache, toss least recently used
   */
   
-  private void maintainSize(int sizeEst) throws IOException {
+  private void maintainSize(int sizeEst, BufImgStack bis) throws IOException {
     while (((sizeEst + currSize_) > maxMeg_) && (queue_.size() > 0)) {
       String goodBye = queue_.remove(queue_.size() - 1);
       BufferedImage bye = imgCache_.remove(goodBye);
       String fileName = handleToFile_.get(goodBye);
       if (fileName == null) {
+      	System.out.println("Flushing to file cache to maintain size");
         File holdFile = getAFile();
         writePNGImage(bye, holdFile);
         handleToFile_.put(goodBye, holdFile.getAbsolutePath());
+        fileCacheReport();
       }
       int byeEst = bye.getHeight() * bye.getWidth() * 3;
       currSize_ -= byeEst;
       if (currSize_ < 0) {
         currSize_ = 0;
       }
+      bis.returnImage(bye);
     }
+    System.out.println("Curr mem cache: " + currSize_ + " with size est " + sizeEst);
     return;
   }
   
@@ -281,10 +290,37 @@ public class ImageCache {
 
   /***************************************************************************
   ** 
+  ** Stats on image file cache:
+  */
+  
+  public long fileCacheReport() {
+     
+  	long length = 0;
+  	int numFile = 0;
+   
+    for (String holdFilePath : handleToFile_.values()) {    
+      File holdFile = new File(holdFilePath);
+      if (!holdFile.exists()) {
+        continue;
+      }
+      if (numFile == 0) {
+        System.out.println("Directory: " + holdFile.getParentFile().getAbsolutePath());
+      }
+  	  length += holdFile.length();
+  	  numFile++;
+    }
+    System.out.println("Total bytes used: " + length);
+    System.out.println("Total file count: " + numFile);
+    return (length);
+  }
+
+  /***************************************************************************
+  ** 
   ** Write out an PNG image
   */
 
   public static void writePNGImage(BufferedImage bi, File file) throws IOException {
+  	long prewrite = Runtime.getRuntime().freeMemory();
     Iterator writers = ImageIO.getImageWritersByFormatName("png");
     ImageWriter writer = (ImageWriter)writers.next();
     ImageOutputStream ios = ImageIO.createImageOutputStream(file);
@@ -297,6 +333,7 @@ public class ImageCache {
     writer.write(writer.getDefaultStreamMetadata(param), img, param);
     ios.close();
     writer.dispose();
+    System.out.println("done writePNGImage " + file.getName() + " used " + (prewrite - Runtime.getRuntime().freeMemory()));
     return;
   }
   
@@ -306,6 +343,7 @@ public class ImageCache {
   */
 
   private BufferedImage readImageFromFile(File readFile) throws IOException { 
+  	UiUtil.fixMePrintout("Have intermediate step of writing to bytes!");
     FileInputStream fis = new FileInputStream(readFile);
     ImageInputStream iis = ImageIO.createImageInputStream(fis);
     Iterator readers = ImageIO.getImageReaders(iis);

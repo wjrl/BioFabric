@@ -17,7 +17,7 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.ui.display;
+package org.systemsbiology.biofabric.ui.render;
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -35,7 +35,7 @@ import org.systemsbiology.biofabric.model.BioFabricNetwork.LinkInfo;
 import org.systemsbiology.biofabric.model.BioFabricNetwork.NodeInfo;
 import org.systemsbiology.biofabric.ui.BasicZoomTargetSupport;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
-import org.systemsbiology.biofabric.ui.render.BufBuildDrawer;
+import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.util.MinMax;
 
 /****************************************************************************
@@ -57,6 +57,7 @@ public class BucketRenderer implements BufBuildDrawer {
   private Dimension screenDim_;
   private boolean showShadows_;
   private Rectangle2D worldRect_;
+  private BufImgStack bis_;
 
   
   ////////////////////////////////////////////////////////////////////////////
@@ -75,6 +76,7 @@ public class BucketRenderer implements BufBuildDrawer {
     targetList_ = new ArrayList<NodeInfo>();
     linkList_ = new ArrayList<LinkInfo>();
     worldRect_ = new Rectangle2D.Double(0.0, 0.0, 100.0, 100.0);
+    bis_ = null;
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -113,9 +115,10 @@ public class BucketRenderer implements BufBuildDrawer {
   ** Install a model size
   */
    
-  public void setModelDims(Dimension screenDim, Rectangle2D worldRect) { 
+  public void setModelDims(Dimension screenDim, Rectangle2D worldRect, BufImgStack bis) { 
     screenDim_ = screenDim;
-    worldRect_.setRect(worldRect);    
+    worldRect_.setRect(worldRect);
+    bis_ = bis;
     return;
   }
 
@@ -133,13 +136,15 @@ public class BucketRenderer implements BufBuildDrawer {
   	g2.setPaint(Color.WHITE);
     g2.fillRect(0, 0, imgWidth, imgHeight);
  
-    BufferedImage bin = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_ARGB);
+    BufferedImage bin = bis_.fetchImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_ARGB);
     drawNodesForBuffer(bin, clip, screenDim, worldRec, heightPad, linksPerPixel);
     g2.drawImage(bin, 0, 0, null);
-  	BufferedImage bil = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_ARGB);
+  	BufferedImage bil = bis_.fetchImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_ARGB);
   	drawLinksForBuffer(bil, clip, screenDim, worldRec, heightPad, linksPerPixel);
   	g2.drawImage(bil, 0, 0, null);
   	g2.dispose();
+  	bis_.returnImage(bin);
+  	bis_.returnImage(bil);
   	
   	return (true);
   }
@@ -171,8 +176,8 @@ public class BucketRenderer implements BufBuildDrawer {
     int bufLen = scrnHeight * scrnWidth;
     
     Point2D newPoint = new Point2D.Double();
-    int[] mybuf = new int[bufLen];
- //   System.out.println("mbl " + mybuf.length + " " + screenDim + " " + imgHeight + " " + imgWidth);
+   
+    int[] mybuf = bis_.fetchBuf(bufLen);
     
     Point pts = new Point();
     Point pte = new Point();    
@@ -246,6 +251,8 @@ public class BucketRenderer implements BufBuildDrawer {
     	}
       bi.setRGB(xval, yval, rgb);
 	  }
+    
+    bis_.returnBuf(mybuf);
     return (true);
   }
  
@@ -278,7 +285,7 @@ public class BucketRenderer implements BufBuildDrawer {
     int bufLen = scrnHeight * scrnWidth;
     
     Point2D newPoint = new Point2D.Double();
-    int[] mybuf = new int[bufLen];
+    int[] mybuf = bis_.fetchBuf(bufLen);
   //  System.out.println("mbl " + mybuf.length + " " + screenDim + " " + imgHeight + " " + imgWidth);
     
     Point pts = new Point();
@@ -360,6 +367,7 @@ public class BucketRenderer implements BufBuildDrawer {
     // Use this instead:
     // int[] a = ((DataBufferInt)bi.getRaster().getDataBuffer()).getData();
     // System.arraycopy(mybuf, 0, a, 0, Math.min(mybuf.length, a.length));
+    bis_.returnBuf(mybuf);
     return (true);
   }
   

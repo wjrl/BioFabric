@@ -114,8 +114,8 @@ import org.systemsbiology.biofabric.ui.dialogs.NetworkAlignmentDialog;
 import org.systemsbiology.biofabric.ui.dialogs.RelationDirectionDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ReorderLayoutParamsDialog;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
-import org.systemsbiology.biofabric.ui.display.BucketRenderer;
 import org.systemsbiology.biofabric.ui.display.FabricMagnifyingTool;
+import org.systemsbiology.biofabric.ui.render.BucketRenderer;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
@@ -595,7 +595,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                                       JOptionPane.WARNING_MESSAGE);
       }
       
-      SortedMap<FabricLink.AugRelation, Boolean> relaMap = BioFabricNetwork.extractRelations(links);  
+      System.out.println("Extract relations " + System.currentTimeMillis());
+      SortedMap<FabricLink.AugRelation, Boolean> relaMap = BioFabricNetwork.extractRelations(links); 
+      System.out.println("Extract relations Done" + System.currentTimeMillis());
       RelationDirectionDialog rdd = new RelationDirectionDialog(topWindow_, relaMap);
       rdd.setVisible(true);
       if (!rdd.haveResult()) {
@@ -647,10 +649,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       } else {
         relaMap = rdd.getRelationMap();
       }
-      
+      System.out.println("Assign directions " + System.currentTimeMillis());
       BioFabricNetwork.assignDirections(links, relaMap);
       HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
       HashSet<FabricLink> culledLinks = new HashSet<FabricLink>();
+      System.out.println("preproc links " + System.currentTimeMillis());
       BioFabricNetwork.preprocessLinks(links, reducedLinks, culledLinks);
       if (!culledLinks.isEmpty()) {
         String dupLinkFormat = rMan.getString("fabricRead.dupLinkFormat");
@@ -691,11 +694,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
 	        }*/       
         }
       }
-      
+            System.out.println("realyBuilData " + System.currentTimeMillis());
       BioFabricNetwork.RelayoutBuildData bfn = new BioFabricNetwork.RelayoutBuildData(idGen, reducedLinks, loneNodeIDs,
                                                                                       new HashMap<NID.WithName, String>(), colGen_,                                                               
                                                                                       BioFabricNetwork.BuildMode.BUILD_FROM_SIF);
       NetworkBuilder nb = new NetworkBuilder(); 
+            System.out.println("do network build " + System.currentTimeMillis());
       nb.doNetworkBuild(bfn, true);            
     } catch (OutOfMemoryError oom) {
       ExceptionHandler.getHandler().displayOutOfMemory(oom);
@@ -961,32 +965,36 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                                                 double startFrac, 
                                                 double endFrac) throws IOException, AsynchExitRequestException {
     Dimension screenSize = (forMain) ? Toolkit.getDefaultToolkit().getScreenSize() : new Dimension(600, 800);
-    
+    System.out.println("Expensive in " + System.currentTimeMillis());
      screenSize.setSize((int)(screenSize.getWidth() * 1.0), (int)(screenSize.getHeight() * 1.0));
   //  screenSize.setSize((int)(screenSize.getWidth() * 0.8), (int)(screenSize.getHeight() * 0.4));
     double midFrac = (startFrac + endFrac) / 2.0;
     // Possibly expensive network analysis preparation:
     BioFabricNetwork bfn = new BioFabricNetwork(bfnbd, monitor, startFrac, midFrac);
+    System.out.println("BFN Expensive done " + System.currentTimeMillis());
     // Possibly expensive display object creation:
-    bfp_.installModel(bfn);  
+    bfp_.installModel(bfn); 
+     System.out.println("Model installed Expensive done " + System.currentTimeMillis());
     // Very expensive display buffer creation:
     int[] preZooms = BufferBuilder.calcImageZooms(bfn);
     bfp_.zoomForBuf(preZooms, screenSize);
     BufferedImage topImage = null;
+     System.out.println("Buffer Builder started " + System.currentTimeMillis());
     if (forMain) {
-      BufferBuilder bb = new BufferBuilder(null, 1/*30*/, bfp_, bfp_.getBucketRend());
-      topImage = bb.buildBufs(preZooms, bfp_, 24, monitor, midFrac, endFrac);
+      BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
+      topImage = bb.buildBufs(preZooms, bfp_, 25, monitor, midFrac, endFrac);
+       System.out.println("Buffs Built started " + System.currentTimeMillis());
       bfp_.setBufBuilder(bb);      
     } else {
       BufferBuilder bb = new BufferBuilder(bfp_, bfp_.getBucketRend());
       topImage = bb.buildOneBuf(preZooms);      
       bfp_.setBufBuilder(null);
     }
+    System.out.println("Expensive out " + System.currentTimeMillis());
+    Runtime.getRuntime().gc();
     return (topImage);
   }
- 
 
-  
   /***************************************************************************
   **
   ** Do new model operations
@@ -1005,7 +1013,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     bfp_.zoomForBuf(preZooms, screenSize);
     BufferedImage topImage = null;
     if (forMain) {
-      BufferBuilder bb = new BufferBuilder(null, 1, bfp_, bfp_.getBucketRend());
+      BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
       topImage = bb.buildBufs(preZooms, bfp_, 24, monitor, startFrac, endFrac);
       bfp_.setBufBuilder(bb);      
     } else {
@@ -1022,7 +1030,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   */ 
        
   public void postRecolorOperations(BufferedImage topImage) {
-    topWindow_.getOverview().installImage(topImage, bfp_.getWorldRect());
+    topWindow_.getOverview().installImage(topImage, bfp_.getWorldScreen());
     return;
   }
    
@@ -1032,7 +1040,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   */ 
        
   public void postLoadOperations(BufferedImage topImage) {
-    topWindow_.getOverview().installImage(topImage, bfp_.getWorldRect());
+    topWindow_.getOverview().installImage(topImage, bfp_.getWorldScreen());
     bfp_.installModelPost();
     bfp_.installZooms();
     bfp_.initZoom();
@@ -1859,7 +1867,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     public void actionPerformed(ActionEvent e) {
       try {
+      	System.out.println("ZOOM in: " + Runtime.getRuntime().freeMemory());
         bfp_.getZoomController().bumpZoomWrapper(sign_);
+        System.out.println("ZOOM out: " + Runtime.getRuntime().freeMemory());
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -3755,7 +3765,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         } else {
           restore_ = null;
         }
+        System.out.println("PLO " + System.currentTimeMillis());
         preLoadOperations();
+        System.out.println("End PLO " + System.currentTimeMillis());
         NewNetworkRunner runner = new NewNetworkRunner(bfn, isMain);                                                                  
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
                                                                  "netBuild.waitTitle", "netBuild.wait", null, false);
@@ -4124,6 +4136,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     public Object postRunCore() {
+    	Runtime.getRuntime().gc();
+    	try {
+        Thread.sleep(4000);
+      } catch (InterruptedException iex) {
+      }
       return (null);
     } 
   }  

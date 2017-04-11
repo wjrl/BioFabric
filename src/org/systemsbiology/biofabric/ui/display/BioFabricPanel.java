@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -35,6 +35,8 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
+import java.awt.image.WritableRaster;
 import java.awt.print.PageFormat;
 import java.awt.print.Printable;
 import java.io.File;
@@ -79,12 +81,15 @@ import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.ImageExporter;
 import org.systemsbiology.biofabric.ui.PopupMenuControl;
 import org.systemsbiology.biofabric.ui.ZoomPresentation;
+import org.systemsbiology.biofabric.ui.render.BucketRenderer;
 import org.systemsbiology.biofabric.ui.render.BufBuildDrawer;
+import org.systemsbiology.biofabric.ui.render.BufImgStack;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
 import org.systemsbiology.biofabric.ui.render.PaintCache;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.QuadTree;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UndoSupport;
 
@@ -173,7 +178,8 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   
   private BioFabricNetwork bfn_;
   private PaintCache painter_;
-  private PaintCache selectionPainter_;
+//  private PaintCache selectionPainter_;
+  private PaintCache.Reduction selections_;
   private BioFabricApplication bfa_;
   private FabricMagnifyingTool fmt_;
   private FabricNavTool fnt_;
@@ -186,10 +192,17 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   private BioFabricWindow bfw_;
   private Map<NID.WithName, Rectangle2D> nodeNameLocations_;
   private Map<NID.WithName, List<Rectangle2D>> drainNameLocations_;
+  private QuadTree forSelections_;
+   
   private PopupMenuControl popCtrl_;
   
   private BucketRenderer bucketRend_;
   private static final long serialVersionUID = 1L;
+  
+  private Rectangle clipRect_;
+  private Rectangle clipRect2_;
+  private BufImgStack bis_;
+  private List<BufferedImage> staleImages_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -216,8 +229,8 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     zcs_ = new ZoomCommandSupport(fc);
     isAMac_ = fc.isAMac();
     painter_ = new PaintCache(colGen);
-    selectionPainter_ = new PaintCache(colGen);
-    fmt_.setPainters(painter_, selectionPainter_);
+   // selectionPainter_ = new PaintCache(colGen);
+    fmt_.setPainters(painter_, null);
     zoomMap_ = new TreeMap<Double, Integer>();
     numZoom_ = 0;
     addMouseListener(new MouseHandler());
@@ -232,7 +245,9 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     tourStartSelectionOnly_ = false;
     firstZoomPoint_ = null;
     lastShifted_ = false;
-    lastCtrl_ = false; 
+    lastCtrl_ = false;
+    clipRect_ = new Rectangle();
+    clipRect2_ = new Rectangle();
    
     worldRectNetAR_ = new Rectangle2D.Double(0.0, 0.0, 100.0, 100.0); 
     zoomSrc_.simpleSetWorkspace(new Workspace(UiUtil.rectFromRect2D(worldRectNetAR_))); 
@@ -250,6 +265,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     cursorMgr_ = new CursorManager(this, false);
     popCtrl_ = new PopupMenuControl(this);
     bucketRend_ = bRend;
+    staleImages_ = new ArrayList<BufferedImage>();
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -265,6 +281,15 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
 
   public BucketRenderer getBucketRend() { 
     return (bucketRend_);
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Get the buffered image stack
+  */
+
+  public BufImgStack getBufImgStack() { 
+    return (bis_);
   }
   
   /***************************************************************************
@@ -376,6 +401,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     if (bfn_ == null) {
       return;
     }
+    System.out.println("OIR " + size + " " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
     Double zoomVal = new Double(zoomer_.getZoomFactor());
     Integer numObj = zoomMap_.get(zoomVal);
     if ((numObj != null) && (size == numObj.intValue())) {
@@ -439,6 +465,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     }
     
     screenDim_ = new Dimension(screenSize);
+    bis_ = new BufImgStack(50000);
     
     //
     // We create a world rectangle centered on the existing world, with the aspect ratio
@@ -469,7 +496,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     //
     // Companion renderer needs this info too:
     //
-    bucketRend_.setModelDims(screenDim_, worldRectScreenAR_);
+    bucketRend_.setModelDims(screenDim_, worldRectScreenAR_, bis_);
 
     return;
   }
@@ -487,7 +514,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
 
   /***************************************************************************
   ** 
-  ** Get detail panel
+  ** Clear selections
   */
 
   public void clearSelections() { 
@@ -499,7 +526,9 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     floaterSet_.currSelRect = null;
     rects_.clear();
     currSel_ = -1;
-    selectionPainter_.buildObjCache(targetList_, linkList_, false, false, new HashMap<NID.WithName, Rectangle2D>(), new HashMap<NID.WithName, List<Rectangle2D>>());
+    this.selections_ = null;
+ //   selectionPainter_.buildObjCache(targetList_, linkList_, false, false, new HashMap<NID.WithName, Rectangle2D>(), 
+    		                          //  new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_);
     fnt_.haveASelection(false);
     handleFloaterChange();
     EventManager mgr = EventManager.getManager();
@@ -1148,9 +1177,11 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     boolean shadeNodes = fdo.getShadeNodes();
     boolean showShadows = fdo.getDisplayShadows();
     painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), shadeNodes, 
-                           showShadows, new HashMap<NID.WithName, Rectangle2D>(), new HashMap<NID.WithName, List<Rectangle2D>>());
-    selectionPainter_.buildObjCache(targetList_, linkList_, shadeNodes, showShadows, 
-                                    new HashMap<NID.WithName, Rectangle2D>(), new HashMap<NID.WithName, List<Rectangle2D>>());
+                           showShadows, new HashMap<NID.WithName, Rectangle2D>(), 
+                           new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_);
+  //  selectionPainter_.buildObjCache(targetList_, linkList_, shadeNodes, showShadows, 
+                                //    new HashMap<NID.WithName, Rectangle2D>(), 
+                                 //   new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_);
     handleFloaterChange();
     return;
   }
@@ -1180,9 +1211,26 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
  
     nodeNameLocations_ = new HashMap<NID.WithName, Rectangle2D>();
     drainNameLocations_ = new HashMap<NID.WithName, List<Rectangle2D>>();    
-    painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), shadeNodes, showShadows, nodeNameLocations_, drainNameLocations_);
-    selectionPainter_.buildObjCache(new ArrayList<NodeInfo>(), new ArrayList<LinkInfo>(), shadeNodes, showShadows, new HashMap<NID.WithName, Rectangle2D>(), new HashMap<NID.WithName, List<Rectangle2D>>());
+    painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), 
+    		                   shadeNodes, showShadows, nodeNameLocations_, drainNameLocations_, worldRectNetAR_);
+  //  selectionPainter_.buildObjCache(new ArrayList<NodeInfo>(), new ArrayList<LinkInfo>(), 
+    		                    //        shadeNodes, showShadows, new HashMap<NID.WithName, Rectangle2D>(), 
+    		                        //    new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_);
     bucketRend_.buildBucketCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), showShadows);
+    
+    forSelections_ = new QuadTree(worldRectNetAR_, 5);
+    Iterator<NID.WithName> kit = drainNameLocations_.keySet().iterator();
+    int count = 0;
+    while (kit.hasNext()) {
+    	NID.WithName nid = kit.next();
+    	List<Rectangle2D> rects = drainNameLocations_.get(nid);
+    	int numR = rects.size();
+    	for (int i = 0; i < numR; i++) {
+    	  String key = Integer.toString(count++);
+    	  QuadTree.Payload pay = new QuadTree.Payload(rects.get(i), key);
+    	  forSelections_.insertPayload(pay);
+    	}
+    }
     fnt_.haveAModel(true);
     return;
   }
@@ -1292,7 +1340,19 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   
   @Override
   public void paintComponent(Graphics g) {
-    super.paintComponent(g);    
+    super.paintComponent(g); 
+    
+    Iterator<BufferedImage> siit = staleImages_.iterator();
+    while (siit.hasNext()) {
+    	BufferedImage bi = siit.next();
+    	bis_.returnImage(bi);
+  	//  WritableRaster biRast = bi.getRaster(); 
+  //	  DataBufferByte biDbb = (DataBufferByte)biRast.getDataBuffer();
+  //	  bis_.returnByteBuf(biDbb.getData());
+    }
+    staleImages_.clear();
+    
+    
     if (bfn_ == null) {
       return;
     }
@@ -1302,10 +1362,8 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     //
     // When we zoom in far enough, we start to draw it instead:
     //
-    UiUtil.fixMePrintout("first call is with lo res, shows poor scaling effects. Second call to hi res");      
-      
+    System.out.println("paint " + Runtime.getRuntime().freeMemory());
     Integer numObj = zoomMap_.get(zoomVal);
-    System.out.println("NUMOBJ IS " + numObj);
     if ((numObj == null) || (bufferBuilder_ == null)) {
       Graphics2D g2 = (Graphics2D)g;
       drawingGuts(g2, viewInWorld);
@@ -1351,14 +1409,16 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       ImageToUse it = ituit.next();
       if (it.image != null) {
         g2p.drawImage(it.image, it.stX, it.stY, null);
+        staleImages_.add(it.image);
       }
     }
-    Rectangle clip = new Rectangle((int)viewInWorld.getX(), (int)viewInWorld.getY(),
+    clipRect_.setBounds((int)viewInWorld.getX(), (int)viewInWorld.getY(),
                                    (int)viewInWorld.getWidth(), (int)viewInWorld.getHeight());
     if (!targetList_.isEmpty() || !linkList_.isEmpty()) {
-      drawSelections(g2p, clip);
+      drawSelections(g2p, clipRect_);
     }
     drawFloater(g, true);
+    g.dispose();
     return;
   }
   
@@ -1372,7 +1432,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
     g2.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
     AffineTransform saveTrans = g2.getTransform();   
-    Rectangle clip = new Rectangle((int)viewRect.getX(), (int)viewRect.getY(), (int)viewRect.getWidth(), (int)viewRect.getHeight());
+    clipRect2_.setBounds((int)viewRect.getX(), (int)viewRect.getY(), (int)viewRect.getWidth(), (int)viewRect.getHeight());
     g2.transform(zoomer_.getTransform());
     BasicStroke selectedStroke = new BasicStroke(PaintCache.STROKE_SIZE, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
     g2.setStroke(selectedStroke);
@@ -1383,11 +1443,11 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     
     
     g2.setPaint(Color.WHITE);
-    g2.drawRect(clip.x, clip.y, clip.width, clip.height); 
-    painter_.paintIt(g2, true, clip, false);
+    g2.drawRect(clipRect2_.x, clipRect2_.y, clipRect2_.width, clipRect2_.height); 
+    painter_.paintIt(g2, clipRect2_, false, null);
     if (!targetList_.isEmpty() || !linkList_.isEmpty()) {
       g2.setTransform(saveTrans);
-      drawSelections(g2, clip);
+      drawSelections(g2, clipRect2_);
       g2.setTransform(saveTrans);
       g2.transform(zoomer_.getTransform());
     }
@@ -1469,7 +1529,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     g2.setStroke(selectedStroke);
     g2.transform(trans); 
     g2.fillRect(worldPiece.x, worldPiece.y, worldPiece.width, worldPiece.height);
-    painter_.paintIt(g2, true, worldPiece, false);
+    painter_.paintIt(g2, worldPiece, false, null);
     return (PAGE_EXISTS);
   }
  
@@ -1498,7 +1558,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     BasicStroke selectedStroke = new BasicStroke(PaintCache.STROKE_SIZE, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
     g2.setStroke(selectedStroke);
     g2.setTransform(transform); 
-    boolean retval = painter_.paintIt(g2, true, UiUtil.rectFromRect2D(clip), false);
+    boolean retval = painter_.paintIt(g2, UiUtil.rectFromRect2D(clip), false, null);
     
     // Debug sizing problems:
     AffineTransform transformx = new AffineTransform();
@@ -1533,7 +1593,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     BasicStroke selectedStroke = new BasicStroke(PaintCache.STROKE_SIZE, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
     g2.setStroke(selectedStroke);
     g2.setTransform(transform);
-    boolean retval = painter_.paintIt(g2, true, clip, false);
+    boolean retval = painter_.paintIt(g2, clip, false, null);
     // Debug sizing problems
     //g2.setColor(Color.red);
     //g2.drawRect(clip.x, clip.y, clip.width - 1, clip.height - 1);
@@ -1552,7 +1612,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     Rectangle viewRect = jsp_.getViewport().getViewRect();
     
     if ((bim_ == null) || (bim_.getHeight() != viewRect.height) || (bim_.getWidth() != viewRect.width)) {
-      bim_ = new BufferedImage(viewRect.width, viewRect.height, BufferedImage.TYPE_INT_ARGB);
+      bim_ = new BufferedImage(viewRect.width, viewRect.height, BufferedImage.TYPE_4BYTE_ABGR);
     }
     Graphics2D ig2 = bim_.createGraphics();
     ig2.setTransform(new AffineTransform());
@@ -1581,7 +1641,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     //ig2.setComposite(AlphaComposite.Clear);
     
     ig2.setComposite(AlphaComposite.Src);
-    selectionPainter_.paintIt(ig2, true, clip, false);
+    painter_.paintIt(ig2, clip, false, selections_);
 
     g2.drawImage(bim_, viewRect.x, viewRect.y, viewRect.width, viewRect.height, null);
     return;
@@ -1642,7 +1702,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   */
   
   public Rectangle getRequiredSize(String genomeKey, String layoutKey) {
-    return (UiUtil.rectFromRect2D(worldRectScreenAR_));
+    return (UiUtil.rectFromRect2D(worldRectNetAR_));
   }
   
   /***************************************************************************
@@ -1651,8 +1711,19 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   */
   
   public Rectangle getWorldRect() {
-    return (UiUtil.rectFromRect2D(worldRectScreenAR_));
+    return (UiUtil.rectFromRect2D(worldRectNetAR_));
   }
+  
+  /***************************************************************************
+  **
+  ** Return the required size of the layout
+  */
+  
+  public Rectangle getWorldScreen() {
+    return (UiUtil.rectFromRect2D(this.worldRectScreenAR_));
+  }
+
+  
 
   /***************************************************************************
   **
@@ -2024,18 +2095,19 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   
   /***************************************************************************
   **
-  ** Run the selection logic
+  ** Run the selection logic for point click. Point rcbp is for row-column, Point sloc
+  ** is sub-row-column resolution.
   */  
   
-  public void selectionLogic(Point rcbp, Point sloc, Rectangle rect, boolean onePt, 
-                             boolean showShadows, Set<NID.WithName> nodes, Set<FabricLink> links, 
-                             Set<Integer> cols, boolean shiftPressed) { 
+  public void selectionLogicPoint(Point rcbp, Point sloc,
+                                  boolean showShadows, Set<NID.WithName> nodes, Set<FabricLink> links, 
+                                  Set<Integer> cols, boolean shiftPressed) { 
 
 
     if ((nodeNameLocations_ == null) || (drainNameLocations_ == null)) {
       return;
     }
-    
+  
     //
     // If shift pressed, we need ranges:
     //
@@ -2065,10 +2137,8 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     // Clicking on one guy will make him the current selection!
     //
 
-    int startRow = (rcbp == null) ? rect.y : rcbp.y;
-    int endRow = (rcbp == null) ? rect.y + rect.height : rcbp.y;
-    int startCol = (rcbp == null) ? rect.x : rcbp.x;
-    int endCol = (rcbp == null) ? rect.x + rect.width : rcbp.x;
+    int row = rcbp.y;
+    int col = rcbp.x;
 
     //
     // One point clicks can select a drain name, but only if a link click
@@ -2079,127 +2149,217 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     boolean nodeAdd = false;
     boolean linkAdd = false;
 
+    //
+    // Do we have a drain zone from a one point click?
+    //
+    
     NID.WithName gotDrain = null;
-    if (onePt) {
-      Point2D worldPt = viewToWorld(sloc);
-      Iterator<NID.WithName> dnlit = drainNameLocations_.keySet().iterator(); 
-      while (dnlit.hasNext()) {
-        NID.WithName target = dnlit.next();
-        List<Rectangle2D> nameLocs = drainNameLocations_.get(target);
-        for (Rectangle2D zone : nameLocs) {
-          if (zone.contains(worldPt)) {
-            gotDrain = target;
-            break;
-          }
+    Point2D worldPt = viewToWorld(sloc);
+    Iterator<NID.WithName> dnlit = drainNameLocations_.keySet().iterator(); 
+    while (dnlit.hasNext()) {
+      NID.WithName target = dnlit.next();
+      List<Rectangle2D> nameLocs = drainNameLocations_.get(target);
+      for (Rectangle2D zone : nameLocs) {
+        if (zone.contains(worldPt)) {
+          gotDrain = target;
+          break;
         }
       }
     }
+
+    HashSet<String> foundKeys = new HashSet<String>();   
+    forSelections_.getPayloadKeys(worldPt, foundKeys);
+    System.out.println("found key " + foundKeys);
+
+    System.out.println("READ ME FOR NEW POLICY");
+    // Rectangle selection should pull in links with glyphs within the rectangle, along with nodes they
+    // are incident upon. They should also always be additive.
+    // Should be able to select a link (which includes endpoints) by clicking on it, if there is no
+    // node that beats it (ambiguity favors the node). 
 
     boolean gotLink = false;
-    for (int row = startRow; row <= endRow; row++) {
-      for (int col = startCol; col <= endCol; col++) {         
-        Integer rowObj = Integer.valueOf(row);
-        Integer colObj = Integer.valueOf(col);
-        NID.WithName target = bfn_.getNodeIDForRow(rowObj);
-        if ((target != null) && (gotDrain == null)) {
-          boolean gotIt = false;           
-          if (onePt) {  // With one click, can select targets by clicking on row!
-            BioFabricNetwork.NodeInfo tni = bfn_.getNodeDefinition(target);
-            MinMax range = tni.getColRange(showShadows);
-            if ((col >= range.min) && (col <= range.max)) {
-              if (nodes.contains(target)) {
-                nodes.remove(target);
-              } else {
-                if (nodeRange != null) {
-                  nodeRange.update(row);
-                }
-                nodes.add(target);
-                nodeAdd = true;
-              }
-              gotIt = true;
-            }
+ 
+    //
+    // Disaster! On Stanford net, a smallish box draw can capture 60,000 node rows and
+    // 130,000 link rows. For those keeping track at home, that means this loop runs
+    // 7.8 billion times.
+    //
+    
+    Integer rowObj = Integer.valueOf(row);
+    NID.WithName target = bfn_.getNodeIDForRow(rowObj);          
+    Integer colObj = Integer.valueOf(col);
+    
+    //
+    // We have hit a row with a node, but not a drain zone:
+    //
+    
+    if ((target != null) && (gotDrain == null)) {
+      //
+      // See if we click on the node line directly:
+      //
+      BioFabricNetwork.NodeInfo tni = bfn_.getNodeDefinition(target);
+      MinMax range = tni.getColRange(showShadows);
+      if ((col >= range.min) && (col <= range.max)) { // Click within start and end of node line
+        if (nodes.contains(target)) {
+          nodes.remove(target); // If in, take out
+        } else {
+          if (nodeRange != null) {
+            nodeRange.update(row); // Update node range, if we have it
           }
-          if (!gotIt) {
-            Point2D worldPt = rowColToWorld(new Point(col, row));
-            Rectangle2D nameLoc = nodeNameLocations_.get(target);
-            if (nameLoc.contains(worldPt)) {
-              if (nodes.contains(target)) {
-                nodes.remove(target);
-              } else {
-                if (nodeRange != null) {
-                  nodeRange.update(row);
-                }
-                nodes.add(target);
-                nodeAdd = true;
-              }
+          nodes.add(target); // Add node to selection
+          nodeAdd = true; // we have an addition
+        } 
+      } else {
+        Point2D worldPt2 = rowColToWorld(new Point(col, row)); // Looking at the crossing of the node and the link line
+        Rectangle2D nameLoc = nodeNameLocations_.get(target); 
+        if (nameLoc.contains(worldPt2)) { // Does name location for target contain this world point??
+          if (nodes.contains(target)) { // Same remove or add logic as above
+            nodes.remove(target);
+          } else {
+            if (nodeRange != null) {
+              nodeRange.update(row);
             }
-          }
-        }
-        BioFabricNetwork.LinkInfo linf = bfn_.getLinkDefinition(colObj, showShadows);
-        if (linf != null) {
-          if ((rowObj.intValue() == linf.getStartRow()) || (rowObj.intValue() == linf.getEndRow())) {
-            boolean removeIt = false;
-            if (cols.contains(colObj)) {
-              cols.remove(colObj);
-              removeIt = true;
-            } else {
-              if (colRange != null) {
-                colRange.update(col);
-              }
-              cols.add(colObj);
-            }
-            NID.WithName src = bfn_.getSourceIDForColumn(colObj, showShadows); 
-            NID.WithName trg = bfn_.getTargetIDForColumn(colObj, showShadows);
-            if (removeIt) {
-              links.remove(linf.getLink());
-            } else {
-              links.add(linf.getLink().clone());
-              nodes.add(src);
-              nodes.add(trg);
-            } 
-            gotLink = true;
+            nodes.add(target);
+            nodeAdd = true;
           }
         }
       }
     }
+  
+    BioFabricNetwork.LinkInfo linf = bfn_.getLinkDefinition(colObj, showShadows); // get link for the column
+    if (linf != null) { // If we have a link in the column...
+    	// if we are on a row where link starts or ends, we have an intersection. 
+    	// WRONG! When both ends are in box, the link gets removed! 
+      if ((rowObj.intValue() == linf.getStartRow()) || (rowObj.intValue() == linf.getEndRow())) {
+      	// Usual add or remove ON COLUMNS
+        boolean removeIt = false;
+        if (cols.contains(colObj)) {
+          cols.remove(colObj);
+          removeIt = true;
+        } else {
+          if (colRange != null) {
+            colRange.update(col);
+          }
+          cols.add(colObj);
+        }
+        // If told to remove, we remove the link. Otherwise, we add link, AND the node.
+        NID.WithName src = bfn_.getSourceIDForColumn(colObj, showShadows); 
+        NID.WithName trg = bfn_.getTargetIDForColumn(colObj, showShadows);
+        if (removeIt) {
+          links.remove(linf.getLink());
+        } else {
+          links.add(linf.getLink().clone());
+          nodes.add(src);
+          nodes.add(trg);
+        } 
+        gotLink = true;
+      }
+    }
 
+    //
+    // No link, but we do have a drain zone:
+    //
+    
     if (!gotLink && (gotDrain != null)) {
       if (nodes.contains(gotDrain)) {
         nodes.remove(gotDrain);
       } else {
         if (nodeRange != null) {
-          int row = bfn_.getNodeDefinition(gotDrain).nodeRow;
-          nodeRange.update(row);
+          int row2 = bfn_.getNodeDefinition(gotDrain).nodeRow;
+          nodeRange.update(row2);
         }
         nodes.add(gotDrain);
         nodeAdd = true;
       }   
     }
-    
+ 
+    //
+    // If shift is pressed, we are filling in the gaps:
+    //
+ 
     if (shiftPressed) {
       if (linkAdd && (colRange.min != Integer.MAX_VALUE)) {
         for (int i = colRange.min; i < colRange.max; i++) {
-          Integer colObj = Integer.valueOf(i);
-          cols.add(colObj);
-          NID.WithName src = bfn_.getSourceIDForColumn(colObj, showShadows); 
-          NID.WithName trg = bfn_.getTargetIDForColumn(colObj, showShadows);
-          BioFabricNetwork.LinkInfo linf = bfn_.getLinkDefinition(colObj, showShadows);
-          links.add(linf.getLink().clone());
+          Integer colObj2 = Integer.valueOf(i);
+          cols.add(colObj2);
+          NID.WithName src = bfn_.getSourceIDForColumn(colObj2, showShadows); 
+          NID.WithName trg = bfn_.getTargetIDForColumn(colObj2, showShadows);
+          BioFabricNetwork.LinkInfo linf2 = bfn_.getLinkDefinition(colObj2, showShadows);
+          links.add(linf2.getLink().clone());
           nodes.add(src);
           nodes.add(trg);
         }
       }
      if (nodeAdd && (nodeRange.min != Integer.MAX_VALUE)) {
         for (int i = nodeRange.min; i < nodeRange.max; i++) {
-          Integer rowObj = Integer.valueOf(i);
-          NID.WithName target = bfn_.getNodeIDForRow(rowObj);
-          nodes.add(target);
+          Integer rowObj2 = Integer.valueOf(i);
+          NID.WithName target2 = bfn_.getNodeIDForRow(rowObj2);
+          nodes.add(target2);
         }
       }
-    } 
+    }
     return;
   }
   
+  /***************************************************************************
+  **
+  ** Run the selection logic
+  */  
+  
+  public void selectionLogicRect(Rectangle rect, boolean showShadows, Set<NID.WithName> nodes, Set<FabricLink> links, 
+                                 Set<Integer> cols) { 
+
+
+    if ((nodeNameLocations_ == null) || (drainNameLocations_ == null)) {
+      return;
+    }
+ 
+    //
+    // Figure out the bounds
+    //
+
+    int startRow = rect.y ;
+    int endRow =  rect.y + rect.height;
+    int startCol =  rect.x;
+    int endCol = rect.x + rect.width;
+
+    System.out.println("READ ME FOR NEW POLICY");
+    // Rectangle selection should pull in links with glyphs within the rectangle, along with nodes they
+    // are incident upon. They should also always be additive.
+    // Should be able to select a link (which includes endpoints) by clicking on it, if there is no
+    // node that beats it (ambiguity favors the node). 
+    
+    //
+    // Given a rectangle, we iterate through the columns, get the links, and see if the start
+    // or end of the links are within the box. If yes, we select the link, as well as the nodes
+    // they are incident on:
+    //
+    
+    //Integer rowObj = Integer.valueOf(row);
+   // 	NID.WithName target = bfn_.getNodeIDForRow(rowObj);
+        	
+    for (int col = startCol; col <= endCol; col++) {               
+      Integer colObj = Integer.valueOf(col);
+      BioFabricNetwork.LinkInfo linf = bfn_.getLinkDefinition(colObj, showShadows); // get link for the column
+      if (linf != null) { // If we have a link in the column...
+      	int lstart = linf.getStartRow();
+      	int lend = linf.getEndRow();
+      	boolean startOK = (lstart >= startRow) && (lstart <= endRow);
+        boolean endOK = (lend >= startRow) && (lend <= endRow);
+        if (startOK || endOK) {
+          cols.add(colObj);
+          NID.WithName src = bfn_.getSourceIDForColumn(colObj, showShadows); 
+          NID.WithName trg = bfn_.getTargetIDForColumn(colObj, showShadows);
+     
+          links.add(linf.getLink().clone());
+          nodes.add(src);
+          nodes.add(trg);
+        }
+      }
+    }
+    return;
+  }
+
   /***************************************************************************
   **
   ** Build needed selection geometry
@@ -2291,9 +2451,19 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     }
     bumpGuts();
     handleFloaterChange();
-    selectionPainter_.buildObjCache(targetList_, linkList_, false, showShadows, 
-                                    new HashMap<NID.WithName, Rectangle2D>(),
-                                    new HashMap<NID.WithName, List<Rectangle2D>>());
+    System.out.println("This has gotta change");
+    HashSet<Integer> targRows = new HashSet<Integer>();
+    HashSet<Integer> targCols = new HashSet<Integer>(currColSelections_);
+    
+    int numTarg = targetList_.size();
+    for (int i = 0; i < numTarg; i++) {
+    	BioFabricNetwork.NodeInfo targetInf = targetList_.get(i);
+    	targRows.add(Integer.valueOf(targetInf.nodeRow));
+    }
+    this.selections_ = new PaintCache.Reduction(targRows, targCols, new HashSet<String>());   
+  //  selectionPainter_.buildObjCache(targetList_, linkList_, false, showShadows, 
+                               //     new HashMap<NID.WithName, Rectangle2D>(),
+                               //     new HashMap<NID.WithName, List<Rectangle2D>>());
     EventManager mgr = EventManager.getManager();
     SelectionChangeEvent ev = new SelectionChangeEvent(null, null, SelectionChangeEvent.SELECTED_ELEMENT);
     mgr.sendSelectionChangeEvent(ev);  
@@ -2643,10 +2813,15 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       //
       // Clicking on one guy will make him the current selection!
       //
+      Rectangle newStart;
+      if (onePt) {
+        newStart = buildFocusBox(rcbp);
+        selectionLogicPoint(rcbp, sloc, showShadows, currNodeSelections_, currLinkSelections_, currColSelections_, shiftPressed); 
+      } else {
+      	newStart = null;
+      	selectionLogicRect(rect, showShadows, currNodeSelections_, currLinkSelections_, currColSelections_); 
+      }
       
-      Rectangle newStart = (onePt) ? buildFocusBox(rcbp) : null;
-           
-      selectionLogic(rcbp, sloc, rect, onePt, showShadows, currNodeSelections_, currLinkSelections_, currColSelections_, shiftPressed); 
       buildSelectionGeometry(null, newStart);  
       return;
     }  
@@ -2776,7 +2951,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
         HashSet<FabricLink> links = new HashSet<FabricLink>();
         HashSet<Integer> cols = new HashSet<Integer>();
         boolean showShadows = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getDisplayShadows(); 
-        selectionLogic(rcp, loc, null, true, showShadows, nodes, links, cols, false); 
+        selectionLogicPoint(rcp, loc, showShadows, nodes, links, cols, false); 
         if (!links.isEmpty()) {
           FabricLink fabLink = links.iterator().next();
           popCtrl_.showLinkPopup(fabLink, loc); 
@@ -2807,7 +2982,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
         Point currPt = me.getPoint();
         if (me.isControlDown() || (isAMac_ && me.isMetaDown())) {
           Point compLoc = me.getComponent().getLocationOnScreen();
-          Point currAbs = new Point(compLoc.x + currPt.x, compLoc.y + currPt.y);               
+          Point currAbs = new Point(compLoc.x + currPt.x, compLoc.y + currPt.y); 
 
           JScrollBar hsb = jsp_.getHorizontalScrollBar();
           int hMax = hsb.getMaximum() - hsb.getVisibleAmount();
@@ -2821,7 +2996,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
           int vMin = vsb.getMinimum();
           int newY = lastView_.y - (currAbs.y - lastAbs_.y);
           if (newY > vMax) newY = vMax;
-          if (newY < vMin) newY = vMin;        
+          if (newY < vMin) newY = vMin;
 
           jsp_.getViewport().setViewPosition(new Point(newX, newY));
           jsp_.getViewport().invalidate(); 
