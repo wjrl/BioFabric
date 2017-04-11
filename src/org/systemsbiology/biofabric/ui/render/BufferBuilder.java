@@ -20,22 +20,16 @@
 package org.systemsbiology.biofabric.ui.render;
 
 import java.awt.Dimension;
-import java.awt.Graphics2D;
 import java.awt.Rectangle;
-import java.awt.RenderingHints;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
-import java.awt.image.PixelGrabber;
 import java.awt.image.WritableRaster;
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import javax.swing.SwingUtilities;
 
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
@@ -45,7 +39,6 @@ import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.QuadTree;
 import org.systemsbiology.biofabric.util.UiUtil;
-import org.systemsbiology.biofabric.util.QuadTree.QuadTreeNode;
 
 /****************************************************************************
 **
@@ -78,9 +71,6 @@ public class BufferBuilder {
   // PUBLIC CONSTANTS
   //
   //////////////////////////////////////////////////////////////////////////// 
-  
-  
-  
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -238,10 +228,10 @@ public class BufferBuilder {
     bbc_ = bbc;
  
     if (!requestQueue.isEmpty()) {
-    //  biw_ = new BuildImageWorker(screenDim_, requestQueue);
-    //  Thread runThread = new Thread(biw_);
-    //  runThread.setPriority(runThread.getPriority() - 2);
-    //  runThread.start();
+      biw_ = new BuildImageWorker(screenDim_, requestQueue);
+      Thread runThread = new Thread(biw_);
+      runThread.setPriority(runThread.getPriority() - 2);
+      runThread.start();
     }
     Runtime.getRuntime().gc();
     return (getTopImage()); 
@@ -379,7 +369,6 @@ public class BufferBuilder {
         wpou = allWorldsToImageName_.get(node.getWorldExtent());  
         if ((wpou != null) && (wpou.cacheHandle != null) && !wpou.cacheHandle.equals("")) {
           bi1 = cache_.getAnImage(wpou.cacheHandle, bis_);
-          System.out.println("Found image at i " + i + " " + Runtime.getRuntime().freeMemory());
           break;
         }
       }
@@ -396,14 +385,11 @@ public class BufferBuilder {
     //
     
     double subxFrac = (worldRect.getX() - wpou.worldRect.getX()) / wpou.worldRect.getWidth();
-    System.out.println("subxFrac " + subxFrac + " " + worldRect + " " + wpou.worldRect);
     int subxLoc = (int)Math.round(subxFrac * screenDim_.getWidth());
     double subyFrac = (worldRect.getY() - wpou.worldRect.getY()) / wpou.worldRect.getHeight();
-    System.out.println("subyFrac " + subyFrac);
     int subyLoc = (int)Math.round(subyFrac * screenDim_.getHeight());
     int subW = (int)Math.round((worldRect.getWidth() / wpou.worldRect.getWidth()) * bi1.getWidth());
     int subH = (int)Math.round((worldRect.getHeight() / wpou.worldRect.getHeight()) * bi1.getHeight());  
-    System.out.println("Pre getSub " + Runtime.getRuntime().freeMemory());
     
     //
     // Previous version created a BufferedImage from a chunk of the bigger image, which was not
@@ -420,11 +406,11 @@ public class BufferBuilder {
     int smallLen = pixNum * 3;
     byte[] bbc = bis_.fetchByteBuf(smallLen);
     wr.getDataElements(subxLoc, subyLoc, subW, subH, bbc);
-    System.out.println("chunk is  " + subxLoc + " " + subyLoc+ " " + subW+ " " + subH);
     
     //
     // Get the image we are going to produce:
     //
+    
     BufferedImage scaled = bis_.fetchImage(screenDim_.width, screenDim_.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_3BYTE_BGR);
     byte[] bbs = bis_.fetchByteBuf(scaled.getRaster().getDataBuffer().getSize());
  
@@ -433,14 +419,98 @@ public class BufferBuilder {
     }
     
     //
-    // Data in quarter-size bbc needs to be laid out in larger bbs buffer and duplicated:
+    // Data in small-size bbc needs to be laid out in larger bbs buffer and duplicated:
+    //
+    // For a doubling, we copy each pixel twice, skipping rows in the target array. Then we duplicate the row
+    // into the adjacent row. For 4X scaling, we do the same, but duplicate pixel four times, write it every four
+    // rows, and copy the line three times. Same pattern with higher order scaling...
     //
     
-    System.out.println("Multiplier: " + (screenDim_.width / subW));
-    System.out.println("Only works correctly when we double!");
-    System.out.println("If parent tile comes from higher up, we need to duplicate pixel 8, 16, 32 times!");
+    int factor = (int)Math.floor(screenDim_.width / subW);
+    int facSq = factor * factor;
     
-    System.out.println("c s " + bbc.length + " " + bbs.length + " -------------------------------------------");
+    for (int i = 0; i < subH; i++) { // do this for each row...
+    	for (int j = 0; j < subW; j++) { // do this for each pixel in the row...
+    		int currOffSmall = (i * (subW * 3)) + (j * 3); // This is always the same regardless of scaling...
+    		int currOffLargeBase = ((i * ((subW * 3) * facSq)) + (j * 3 * factor));
+    		int dupOffset = 0;
+        for (int k = 0; k < factor; k++) { // Duplicate this pixel into the target...
+          int currOffLargeDup = currOffLargeBase + dupOffset;
+          dupOffset += 3;
+	    		for (int m = 0; m < 3; m++) { // for the three channels of the pixel...
+	    			byte b = bbc[currOffSmall + m];
+	    	    bbs[currOffLargeDup + m] = b;
+	    	  }
+        }
+    	}
+    }
+    //
+    // Now duplicate each row:
+    //
+      
+    for (int i = 0; i < screenDim_.height; i += factor) { // do this for each row...
+    	int currOffBase = i * screenDim_.width * 3;
+      for (int k = 1; k < factor; k++) { //duplicate the row...
+      	int currOffDest = (i + k) * screenDim_.width * 3;
+      	try {
+  			  System.arraycopy(bbs, currOffBase, bbs, currOffDest, screenDim_.width * 3);
+        } catch (ArrayIndexOutOfBoundsException aex) {
+        	
+        	UiUtil.fixMePrintout("Have seen array out of bounds here!");
+        	//ik 896 10
+          //bbs 4,350,000
+          //col 4,300,800
+          //cold 4,348,800 (+ 1600 * 3) = 4,353,600
+ 
+        	System.err.println("factor " + factor + " " + screenDim_.width + " " + subW);
+    		  System.err.println("ik " + i + " " + k);
+    		  System.err.println("bbs " + bbs.length);
+    		  System.err.println("col " + currOffBase);
+    		  System.err.println("cold " + currOffDest);
+    		  i = 10000000;
+    		  break;
+    	  }
+    	}
+    }
+
+    //
+    // Write it into the destination:
+    //
+    
+    WritableRaster bisRast = scaled.getRaster();
+  	bisRast.setDataElements(0, 0, screenDim_.width, screenDim_.height + SLICE_HEIGHT_HACK_, bbs);
+ 
+    String handle = null;
+    synchronized (this) {
+      if (!wpo.isDrawn) {
+        if (!isBlankImage(scaled)) {
+        	// Caching recycles the image
+          wpo.cacheHandle = cache_.cacheAnImage(scaled, bis_);
+        } else {
+          wpo.cacheHandle = "";
+          // gotta manually recycle the image:
+          bis_.returnImage(scaled);
+        }
+      } 
+    }
+    bis_.returnImage(bi1);
+    bis_.returnByteBuf(bbc);
+    bis_.returnByteBuf(bbs);
+    long po = Runtime.getRuntime().freeMemory();
+    long used = preRend - po;
+    System.out.println("Post getSub " + po);
+    System.out.println("rendering new scaled image used: " + used);
+    return (handle);
+  }
+  
+  /***************************************************************************
+  **
+  ** Works (not very well) for doubling scale
+  */
+  
+  private void worksForDoubling(int subW, int subH, byte[] bbc, byte[] bbs) { 
+  
+      System.out.println("c s " + bbc.length + " " + bbs.length + " -------------------------------------------");
     for (int i = 0; i < subH; i++) {
     	for (int j = 0; j < subW; j++) {
     		int currOffSmall = (i * (subW * 3)) + (j * 3); // This is always correct.....
@@ -478,35 +548,7 @@ public class BufferBuilder {
     	  }
     	}
     }
-    //
-    // Write it into the destination:
-    //
-    WritableRaster bisRast = scaled.getRaster();
-  	bisRast.setDataElements(0, 0, screenDim_.width, screenDim_.height + SLICE_HEIGHT_HACK_, bbs);
- 
-    System.out.println("Disp " + Runtime.getRuntime().freeMemory());
-
-    String handle = null;
-    synchronized (this) {
-      if (!wpo.isDrawn) {
-        if (!isBlankImage(scaled)) {
-        	// Caching recycles the image
-          wpo.cacheHandle = cache_.cacheAnImage(scaled, bis_);
-        } else {
-          wpo.cacheHandle = "";
-          // gotta manually recycle the image:
-          bis_.returnImage(scaled);
-        }
-      } 
-    }
-    bis_.returnImage(bi1);
-    bis_.returnByteBuf(bbc);
-    bis_.returnByteBuf(bbs);
-    long po = Runtime.getRuntime().freeMemory();
-    long used = preRend - po;
-    System.out.println("Post getSub " + po);
-    System.out.println("rendering new scaled image used: " + used);
-    return (handle);
+    return;
   }
  
   /***************************************************************************
