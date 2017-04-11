@@ -67,7 +67,7 @@ public class FabricMagnifier extends JPanel {
   private int miniSize_;
   private boolean needInit_;
   private PaintCache painter_;
-  private PaintCache selectionPainter_;
+ // private PaintCache selectionPainter_;
   private AffineTransform miniTrans_;
   private Rectangle worldRec_;
   private Rectangle clipRec_;
@@ -106,6 +106,8 @@ public class FabricMagnifier extends JPanel {
     setBackground(Color.white);
     painter_ = new PaintCache(colGen);
     floaters_ = null;
+    worldRec_ = new Rectangle();
+    clipRec_= new Rectangle();
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -336,8 +338,8 @@ public class FabricMagnifier extends JPanel {
       return;
     }
     byTour_ = byTour;
-    centerRC_ = (Point)centerRC.clone();
-    center_ = (Point2D)center.clone();
+    centerRC_.setLocation(centerRC);
+    center_.setLocation(center);
     setMiniZoom();
     repaint();
     return;
@@ -366,11 +368,11 @@ public class FabricMagnifier extends JPanel {
     Dimension screenDim = getSize();
     int worldWidth = (currSize_ * BioFabricPanel.GRID_SIZE);
     int worldHeight  = (currSize_ * BioFabricPanel.GRID_SIZE);
-    worldRec_ = new Rectangle((int)center_.getX() - (worldWidth / 2), 
-                              (int)center_.getY() - (worldHeight / 2),
+    worldRec_.setBounds((int)center_.getX() - (worldWidth / 2), 
+                        (int)center_.getY() - (worldHeight / 2),
                               worldWidth, worldHeight);   
-    clipRec_ = new Rectangle((int)(worldRec_.getX() - BioFabricPanel.GRID_SIZE), (int)(worldRec_.getY() - BioFabricPanel.GRID_SIZE),
-                              (int)(worldRec_.getWidth() + (BioFabricPanel.GRID_SIZE * 2)), (int)(worldRec_.getHeight() + (BioFabricPanel.GRID_SIZE * 2)));
+    clipRec_.setBounds((int)(worldRec_.getX() - BioFabricPanel.GRID_SIZE), (int)(worldRec_.getY() - BioFabricPanel.GRID_SIZE),
+                       (int)(worldRec_.getWidth() + (BioFabricPanel.GRID_SIZE * 2)), (int)(worldRec_.getHeight() + (BioFabricPanel.GRID_SIZE * 2)));
     double zoomH = screenDim.getWidth() / worldRec_.getWidth();
     double zoomV = screenDim.getHeight() / worldRec_.getHeight();
     double zoom = Math.min(zoomH, zoomV);
@@ -390,7 +392,7 @@ public class FabricMagnifier extends JPanel {
 
   public void setPainters(PaintCache painter, PaintCache selectionPainter) {
     painter_ = painter;
-    selectionPainter_ = selectionPainter;
+ //   selectionPainter_ = selectionPainter;
     repaint();
     return;
   }
@@ -414,12 +416,12 @@ public class FabricMagnifier extends JPanel {
     g2.transform(miniTrans_);
     BasicStroke selectedStroke = new BasicStroke(PaintCache.STROKE_SIZE, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
     g2.setStroke(selectedStroke);
-    painter_.paintIt(g2, true, clipRec_, false);
+    painter_.paintIt(g2, clipRec_, false, null);
     g2.setTransform(saveTrans);
-    if (selectionPainter_.needToPaint()) {
+ //   if (selectionPainter_.needToPaint()) {
     	UiUtil.fixMePrintout("THIS IS NEEDED");
   //    drawSelections(g2, clipRec_);
-    }    
+  //  }    
     if (floaters_ != null) {
       g2.transform(miniTrans_);
       painter_.drawFloater(g2, floaters_); 
@@ -452,7 +454,7 @@ public class FabricMagnifier extends JPanel {
     ig2.setStroke(selectedStroke);
     ig2.setTransform(miniTrans_);
     ig2.setComposite(AlphaComposite.Src);
-    selectionPainter_.paintIt(ig2, true, clip, false);
+   // selectionPainter_.paintIt(ig2, clip, false);
     g2.drawImage(bim_, 0, 0, viewDim.width, viewDim.height, null);
     return;
   } 
