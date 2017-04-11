@@ -750,49 +750,45 @@ public class BioFabricNetwork {
     List<LinkInfo> links = getLinkDefList(forShadow);
     Map<NID.WithName, List<DrainZone>> nodeToZones = new TreeMap<NID.WithName, List<DrainZone>>();
 
-    for (int startIdx = 0; startIdx < links.size(); startIdx++) {
+    LinkInfo current = links.get(0);  // these keep track of start of zone and zone's node
+    int startIdx = 0;
+    
+    for (int index = 0; index <= links.size(); index++) {
       
-      LinkInfo startLI = links.get(startIdx);
-      
-      for (int endIdx = startIdx + 1; endIdx < links.size(); endIdx++) {
+      if (index == links.size()) { // at end of array; no need to update current and startIdx
         
-        LinkInfo currLI = links.get(endIdx);
-        
-        if (! isContiguous(startLI, currLI)) {
-          
-          endIdx--;  // backtrack, because end of drain zone has been reached
-          
-          MinMax mm = new MinMax(startIdx, endIdx);
-          NID.WithName name = findZoneNode(mm, forShadow);
-          
-          if (nodeToZones.get(name) == null) {
-            nodeToZones.put(name, new ArrayList<DrainZone>());
-          }
-          nodeToZones.get(name).add(new DrainZone(mm, forShadow));
-          
-          startIdx += (endIdx - startIdx); // add drain zone length to start index
-          break;
-          
-        } else if (endIdx == links.size() - 1) {
-          
-          MinMax mm = new MinMax(startIdx, endIdx);
-          NID.WithName name = findZoneNode(mm, forShadow);
-          
-          if (nodeToZones.get(name) == null) {
-            nodeToZones.put(name, new ArrayList<DrainZone>());
-          }
-          nodeToZones.get(name).add(new DrainZone(mm, forShadow));
-          
-          startIdx += (endIdx - startIdx);
+        int endIdx = links.size() - 1;
+  
+        MinMax mm = new MinMax(startIdx, endIdx);
+        NID.WithName name = findZoneNode(mm, forShadow);
+  
+        if (nodeToZones.get(name) == null) {
+          nodeToZones.put(name, new ArrayList<DrainZone>());
         }
+        nodeToZones.get(name).add(new DrainZone(mm, forShadow));
         
+      } else if (! isContiguous(links.get(index), current)) {
+        
+        int last = index - 1;  // backtrack one position
+  
+        MinMax mm = new MinMax(startIdx, last);
+        NID.WithName name = findZoneNode(mm, forShadow);
+  
+        if (nodeToZones.get(name) == null) {
+          nodeToZones.put(name, new ArrayList<DrainZone>());
+        }
+        nodeToZones.get(name).add(new DrainZone(mm, forShadow));
+        
+        startIdx = index;           // update the start index
+        current = links.get(index); // update the current node whose zone we're calculating
       }
+        
     }
 
-//    for (Map.Entry<String,List<MinMax>> entry: nodeToZones.entrySet()) {
+//    for (Map.Entry<NID.WithName,List<DrainZone>> entry: nodeToZones.entrySet()) {
 //      String s = entry.getKey() + " ";
-//      for (MinMax mm : entry.getValue()) {
-//        s += "(" + mm.min + " " + mm.max + ")";
+//      for (DrainZone dz : entry.getValue()) {
+//        s += "(" + dz.getMinMax().min + " " + dz.getMinMax().max + ")";
 //      }
 //
 //      System.out.println(s);
@@ -2898,7 +2894,7 @@ public class BioFabricNetwork {
       return (retval);     
     }  
     
-    private NodeInfo buildFromXML(String elemName, Attributes attrs, FabricFactory.FactoryWhiteboard board) throws IOException { 
+    private NodeInfo buildFromXML(String elemName, Attributes attrs, FabricFactory.FactoryWhiteboard board) throws IOException {
       String name = AttributeExtractor.extractAttribute(elemName, attrs, "node", "name", true);
       name = CharacterEntityMapper.unmapEntities(name, false);
       String nidStr = AttributeExtractor.extractAttribute(elemName, attrs, "node", "nid", false);
