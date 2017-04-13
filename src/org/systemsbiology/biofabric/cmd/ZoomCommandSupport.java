@@ -246,7 +246,7 @@ public class ZoomCommandSupport {
   ** Calc scroll dims
   */ 
     
-  private Dimension scrollDims() {
+  public Dimension scrollDims() {
     // Use this instead??
     // Dimension vDim = jsp.getViewport().getExtentSize();
     JScrollBar vsb = jsp_.getVerticalScrollBar();
@@ -324,6 +324,17 @@ public class ZoomCommandSupport {
     return;
   }  
 
+  /***************************************************************************
+  **
+  ** Get zoom value needed to bound model
+  */
+  
+  public double getZoomToModel() {
+    Rectangle bounds = sup_.getCurrentBasicBounds();
+    ZoomResult zres = calcOptimalZoom(bounds);
+    return (zoomVals_[zres.index]);
+  }
+   
   /***************************************************************************
   **
   ** Get current zoom value

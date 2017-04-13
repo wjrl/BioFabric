@@ -103,6 +103,10 @@ public class BioFabricOverview extends JPanel {
     mouseIn_ = false;
     hideMag_ = true;
     
+    worldRect_ = new Rectangle();
+    mousePoint_ = new Point2D.Double();
+    viewInWorld_= new Rectangle2D.Double();
+    magInWorld_ = new Rectangle();
     
     myCard_ = new CardLayout();
     setLayout(myCard_);
@@ -171,7 +175,7 @@ public class BioFabricOverview extends JPanel {
 
   public void setMouse(Point2D center, Point cprc) {
     navFocus_ = cprc;
-    mousePoint_ = (Point2D)center.clone();
+    mousePoint_.setLocation(center);
     mouseIn_ = true;
     repaint();
     return;
@@ -183,7 +187,7 @@ public class BioFabricOverview extends JPanel {
   */
 
   public void setViewInWorld(Rectangle2D viewInWorld) {
-    viewInWorld_ = (Rectangle2D)viewInWorld.clone();
+    viewInWorld_.setFrame(viewInWorld);
     repaint();
     return;
   }
@@ -194,7 +198,7 @@ public class BioFabricOverview extends JPanel {
   */
 
   public void setMagnifyView(Rectangle magInWorld) {
-    magInWorld_ = (Rectangle)magInWorld.clone();
+    magInWorld_.setBounds(magInWorld);
     repaint();
     return;
   }
@@ -219,7 +223,7 @@ public class BioFabricOverview extends JPanel {
   public void installImage(BufferedImage img, Rectangle worldRect) {
     img_ = img;
     scaledImg_ = null;
-    worldRect_ = (Rectangle)worldRect.clone();
+    worldRect_.setBounds(worldRect);
     resizeImage();
     repaint();
     return;

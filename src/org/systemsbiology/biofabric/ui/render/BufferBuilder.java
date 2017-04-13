@@ -19,28 +19,25 @@
 
 package org.systemsbiology.biofabric.ui.render;
 
-import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Graphics2D;
 import java.awt.Rectangle;
-import java.awt.RenderingHints;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
-import java.awt.image.PixelGrabber;
+import java.awt.image.DataBufferByte;
+import java.awt.image.WritableRaster;
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import javax.swing.SwingUtilities;
 
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
+import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.QuadTree;
 import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
@@ -64,10 +61,10 @@ public class BufferBuilder {
   private static final int SLICE_HEIGHT_HACK_ = 1;
   
   //
-  // Don't build slices smaller than this dimension:
+  // At what level of links per pixel to we transition from bin renderer to drawing renderer?
   //
   
-  private static final int MIN_DIM_ = 100;  
+  private static final double TRANSITION_LPP_ = 20.0;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -85,15 +82,18 @@ public class BufferBuilder {
   // For mapping of selections:
   //
   
-  private ImageCache cache_;
-  private HashMap<Integer, Map<Rectangle, WorldPieceOffering>> worldToImageName_;
-  private BufBuildDrawer drawer_;
+  private RasterCache cache_;
+  private HashMap<Rectangle2D, WorldPieceOffering> allWorldsToImageName_;
+  private QuadTree findWorldsQT_;
+  private BufBuildDrawer drawRender_;
+  private BufBuildDrawer binRender_;
   private int[] bbZooms_;
   private Dimension screenDim_;
-  private Dimension worldDim_;
+  private Rectangle2D worldRect_;
   private BufferBuilderClient bbc_;
   private boolean timeToExit_;
   private BuildImageWorker biw_;
+  private BufImgStack bis_;
 
   
   ////////////////////////////////////////////////////////////////////////////
@@ -107,12 +107,16 @@ public class BufferBuilder {
   ** Constructor
   */
 
-  public BufferBuilder(String cachePref, int maxMeg, BufBuildDrawer drawer) {
-    cache_ = new ImageCache(cachePref, maxMeg);
-    worldToImageName_ = new HashMap<Integer, Map<Rectangle, WorldPieceOffering>>();
-    drawer_ = drawer;
+  public BufferBuilder(String cachePref, int maxMeg, BufBuildDrawer drawRender, 
+  		                 BufBuildDrawer binRender, BufImgStack bis) {
+    cache_ = new RasterCache(cachePref, maxMeg);
+    allWorldsToImageName_ = new HashMap<Rectangle2D, WorldPieceOffering>();
+    findWorldsQT_ = null;
+    drawRender_ = drawRender;
+    binRender_ = binRender;
     bbc_ = null;
     timeToExit_ = false;
+    bis_ = bis;
   }
   
   /***************************************************************************
@@ -120,9 +124,11 @@ public class BufferBuilder {
   ** Constructor
   */
 
-  public BufferBuilder(BufBuildDrawer drawer) {
-    drawer_ = drawer;
-    worldToImageName_ = new HashMap<Integer, Map<Rectangle, WorldPieceOffering>>();
+  public BufferBuilder(BufBuildDrawer drawRender, BufBuildDrawer binRender) {
+    drawRender_ = drawRender;
+    binRender_ = binRender;
+    allWorldsToImageName_ = new HashMap<Rectangle2D, WorldPieceOffering>();
+    findWorldsQT_ = null;
     bbc_ = null;
     timeToExit_ = false;
   }
@@ -153,26 +159,34 @@ public class BufferBuilder {
   */
   
   public BufferedImage buildOneBuf(int[] zooms) {
-    bbZooms_ = new int[zooms.length];
-    System.arraycopy(zooms, 0, bbZooms_, 0, zooms.length);
     screenDim_ = new Dimension();
-    worldDim_ = new Dimension();
-    drawer_.dimsForBuf(screenDim_, worldDim_);
-    HashMap<Rectangle, WorldPieceOffering> worldForSize = new HashMap<Rectangle, WorldPieceOffering>();
-    Integer key = Integer.valueOf(0);
-    worldToImageName_.put(key, worldForSize);
-    buildPieceMap(zooms[0], screenDim_, worldDim_, true, worldForSize);
-    Map<Rectangle, WorldPieceOffering> worldForSizex = worldToImageName_.get(key);
-    Rectangle worldPiece = worldForSizex.keySet().iterator().next(); 
-    BufferedImage bi = new BufferedImage(screenDim_.width, screenDim_.height, BufferedImage.TYPE_INT_RGB);
-    Graphics2D g2 = bi.createGraphics();
-    g2.setColor(Color.WHITE);
-    g2.fillRect(0, 0, screenDim_.width, screenDim_.height);
-    drawer_.drawForBuffer(g2, worldPiece, screenDim_, worldPiece);  
-    g2.dispose();
+    worldRect_ = new Rectangle2D.Double();
+    binRender_.dimsForBuf(screenDim_, worldRect_); // Both will give same answer... 
+    Rectangle worldPiece = UiUtil.rectFromRect2D(worldRect_);
+    BufferedImage bi = bis_.fetchImage(screenDim_.width, screenDim_.height, BufferedImage.TYPE_3BYTE_BGR);
+    double lpp = linksPerPix(screenDim_, worldPiece);
+    BufBuildDrawer useDrawer = (lpp < TRANSITION_LPP_) ? drawRender_ : binRender_;
+    useDrawer.drawForBuffer(bi, worldPiece, screenDim_, worldPiece, 0, lpp);  
     return (bi); 
   }
  
+  /***************************************************************************
+  **
+  ** Get our slices in world to cover the given view in the world at the desired depth
+  */
+  
+  public void getSlicesToCover(int depth, Rectangle2D viewInWorld, List<Rectangle2D>slicesToCover) {
+  
+  	ArrayList<QuadTree.QuadTreeNode> qtnList = new ArrayList<QuadTree.QuadTreeNode>();
+  	findWorldsQT_.getNodes(viewInWorld, depth, qtnList);
+  	int lsiz = qtnList.size();
+  	for (int i = 0; i < lsiz; i++) {
+  		QuadTree.QuadTreeNode qtn = qtnList.get(i);
+      slicesToCover.add(qtn.getWorldExtent());
+    }
+  	return;
+  }
+  
   /***************************************************************************
   **
   **  Build all the bufs
@@ -186,47 +200,15 @@ public class BufferBuilder {
     bbZooms_ = new int[zooms.length];
     System.arraycopy(zooms, 0, bbZooms_, 0, zooms.length);
     screenDim_ = new Dimension();
-    worldDim_ = new Dimension();
-    drawer_.dimsForBuf(screenDim_, worldDim_);
-    HashMap<Rectangle, WorldPieceOffering> limitOffering = null;
-    
+    worldRect_ = new Rectangle2D.Double();
+    drawRender_.dimsForBuf(screenDim_, worldRect_); // These values are now ours
+    Rectangle worldPiece = UiUtil.rectFromRect2D(worldRect_);
+     
     double inc = (endFrac - startFrac) / ((zooms.length == 0) ? 1 : zooms.length);
     double currProg = startFrac;
-    System.out.println("buildBufs " + zooms.length);
     
-    
-    for (int i = 0; i < zooms.length; i++) {
-      //
-      // We do not allow the tesselation size to drop below a minimum image dimension. If we actually hit that
-      // limit for BOTH dimensions just use the last minimum:
-    	//
-      if (limitOffering != null) {
-        Integer key = Integer.valueOf(i);
-        HashMap<Rectangle, WorldPieceOffering> worldForSize = new HashMap<Rectangle, WorldPieceOffering>();
-        Iterator<Rectangle> wpoKit = limitOffering.keySet().iterator();
-        while (wpoKit.hasNext()) {
-          Rectangle rkey = wpoKit.next();
-          WorldPieceOffering wpo = limitOffering.get(rkey);
-          worldForSize.put((Rectangle)rkey.clone(), wpo.clone()); 
-        }   
-        worldToImageName_.put(key, worldForSize);
-      } else {
-        HashMap<Rectangle, WorldPieceOffering> worldForSize = new HashMap<Rectangle, WorldPieceOffering>();
-        Integer key = Integer.valueOf(i);
-        worldToImageName_.put(key, worldForSize);
-        boolean gottaStop = buildPieceMap(zooms[i], screenDim_, worldDim_, false, worldForSize);
-        if (gottaStop) {
-          limitOffering = worldForSize;
-        }
-      }
-      if (monitor != null) {
-        currProg += inc;
-        if (!monitor.updateProgress((int)(currProg * 100.0))) {
-          throw new AsynchExitRequestException();
-        }
-      } 
-    }
-    
+    findWorldsQT_ = new QuadTree(worldPiece, zooms.length);
+         
     //
     // Build the first two zoom levels before we even get started:
     //
@@ -237,7 +219,6 @@ public class BufferBuilder {
       buildBuffer(new Dimension(qr.imageDim.width, qr.imageDim.height), qr);
     }
     
-        System.out.println("buildBufs  requestQueue");
     //
     // Now build up the requests for the background thread:
     //   
@@ -252,102 +233,65 @@ public class BufferBuilder {
       runThread.setPriority(runThread.getPriority() - 2);
       runThread.start();
     }
-    System.out.println("buildBufs  rTI");
+    Runtime.getRuntime().gc();
     return (getTopImage()); 
   }
 
-  /***************************************************************************
-  **
-  ** Get all worlds for given size
-  */
-  
-  public Iterator<Rectangle> getWorldsForSize(Integer size) {
-    Map<Rectangle, WorldPieceOffering> worldForSize = worldToImageName_.get(size);
-    HashSet<Rectangle> setOfKeys = new HashSet<Rectangle>(worldForSize.keySet()); 
-    return (setOfKeys.iterator());
-  }
-  
   /***************************************************************************
   **
   ** Get the top buffered image
   */
   
   public BufferedImage getTopImage() throws IOException {
-    Map<Rectangle, WorldPieceOffering> worldForSize = worldToImageName_.get(Integer.valueOf(0));
-    WorldPieceOffering wpo = worldForSize.values().iterator().next();
+  	ArrayList<QuadTree.QuadTreeNode> nodes = new ArrayList<QuadTree.QuadTreeNode>();
+  	boolean found = findWorldsQT_.getAllNodesToDepth(0, 0, nodes);
+  	if (!found || (nodes.size() != 1)) {
+  		throw new IOException();
+  	}
+    WorldPieceOffering wpo = allWorldsToImageName_.get(nodes.get(0).getWorldExtent());
     BufferedImage retval = null;
+    //
+    // It is true there are two locks floating around, one on this object, and one of the
+    // bis_ BufImgStack. But since bis_ does not acquire any locks during its methods, we
+    // do not need to worry about deadlock conditions.
+    //
     synchronized (this) {
-      retval = cache_.getAnImage(wpo.cacheHandle);
+      retval = cache_.getAnImage(wpo.cacheHandle, bis_);
     }
     return (retval);
   }
 
   /***************************************************************************
   **
-  ** Drawing routine
+  ** Get an image at the given depth
   */
   
-  public BufferedImage getImageForSizeAndPiece(Integer size, Rectangle worldPiece) throws IOException {
-    Map<Rectangle, WorldPieceOffering> worldForSize = worldToImageName_.get(size);
-    WorldPieceOffering wpo = worldForSize.get(worldPiece);
-    // FIX METhis is assuming that write to handle is atomic???
-    if (wpo.cacheHandle == null) {
-      buildLoResSlice(bbZooms_[size.intValue()], screenDim_, worldDim_, worldPiece, worldForSize);
+  public BufferedImage getImageForPiece(int depth, Rectangle2D worldRect) throws IOException {
+  	WorldPieceOffering wpo = allWorldsToImageName_.get(worldRect);
+  	if (wpo == null) {
+  		wpo = new WorldPieceOffering(null, screenDim_, worldRect, false);
+  		allWorldsToImageName_.put(worldRect, wpo);;
+  	}
+  	boolean needLoRes = false;
+    synchronized (this) {  	
+      needLoRes = (wpo.cacheHandle == null);
+    }
+    // Yeah, this could be stale. Not the end of the world though, and we are not going to
+    // hold the lock until the lo-res slice is built...
+    if (needLoRes) {
+    	UiUtil.fixMePrintout("RACE CONDITION! Make sure low-res does not replace a high-res if it gets done second");
+      buildLoResSlice(worldRect, wpo);
       if (biw_ != null) {
-        biw_.bumpRequest(new QueueRequest(size, new Rectangle(wpo.imgWidth, wpo.imgHeight), worldPiece));
+        biw_.bumpRequest(new QueueRequest(depth, screenDim_, worldRect));
       }
     }
     BufferedImage retval = null;
-    // This stalls a lot on big images, perhaps while files are being written out?
     synchronized (this) {
       if ((wpo.cacheHandle != null) && !wpo.cacheHandle.equals("")) {
-        retval = cache_.getAnImage(wpo.cacheHandle);
+        retval = cache_.getAnImage(wpo.cacheHandle, bis_);
       }
     }
     return (retval);
-  }
- 
-  /***************************************************************************
-  **
-  ** generate piece map
-  */
-  
-  private boolean buildPieceMap(int zoomNum, Dimension baseImageDim, Dimension worldDim, boolean force, Map<Rectangle, WorldPieceOffering> worldForSize) {
-    //
-    // On very large, very high aspect ratio networks, we can get cases where the height of the piece is zero
-    // pixels. Don't let this happen. Also seeing on tiny networks.
-    //
-    boolean wIsMin = false;
-    boolean hIsMin = false;
- 
-    int useWidth = baseImageDim.width;
-    int useHeight = baseImageDim.height;
-
-    int effectiveZoomNumX = zoomNum;
-    int worldWInc = worldDim.width / zoomNum;
-    if ((worldWInc < MIN_DIM_) && !force) {
-    	useWidth = (int)Math.ceil(baseImageDim.width * ((double)MIN_DIM_ / worldWInc));
-      worldWInc = MIN_DIM_;
-      effectiveZoomNumX = (int)Math.ceil((double)worldDim.width / worldWInc);
-      wIsMin = true;   
-    }
-    
-    int effectiveZoomNumY = zoomNum;
-    int worldHInc = worldDim.height / zoomNum;
-    if ((worldHInc < MIN_DIM_) && !force) {
-    	useHeight = (int)Math.ceil(baseImageDim.height * ((double)MIN_DIM_ / worldHInc));
-      worldHInc = MIN_DIM_;
-      effectiveZoomNumY = (int)Math.ceil((double)worldDim.height / worldHInc);
-      hIsMin = true;    
-    }
-
-    for (int x = 0; x < effectiveZoomNumX; x++) {
-      for (int y = 0; y < effectiveZoomNumY; y++) {
-        Rectangle worldPiece = new Rectangle(-200 + (x * worldWInc), -200 + (y * worldHInc), worldWInc, worldHInc);
-        worldForSize.put(worldPiece, new WorldPieceOffering(null, useWidth, useHeight, false));        
-      }
-    }
-    return (wIsMin && hIsMin);
   }
  
   /***************************************************************************
@@ -357,19 +301,22 @@ public class BufferBuilder {
   
   private List<QueueRequest> buildQueue(int startIndex, int endIndex, int maxCount)  {
     ArrayList<QueueRequest> retval = new ArrayList<QueueRequest>();
-    for (int i = startIndex; i <= endIndex; i++) {
-      Integer key = Integer.valueOf(i);       
-      Map<Rectangle, WorldPieceOffering> worldForSize = worldToImageName_.get(key);
-      if (worldForSize != null) {
-        Iterator<Rectangle> w4sit = worldForSize.keySet().iterator();
-        while (w4sit.hasNext()) {     
-          Rectangle worldPiece = w4sit.next();
-          WorldPieceOffering wpo = worldForSize.get(worldPiece);
-          retval.add(new QueueRequest(key, new Rectangle(wpo.imgWidth, wpo.imgHeight), worldPiece));
-          if (retval.size() >= maxCount) {
-            return (retval);
-          }
-        }
+    ArrayList<QuadTree.QuadTreeNode> nodes = new ArrayList<QuadTree.QuadTreeNode>();
+    findWorldsQT_.getAllNodesToDepth(startIndex, endIndex, nodes);
+    int numWorlds = nodes.size();
+    for (int i = 0; i < numWorlds; i++) {
+    	QuadTree.QuadTreeNode node = nodes.get(i);
+    	Rectangle2D worldExtent = node.getWorldExtent();
+      WorldPieceOffering wpo = allWorldsToImageName_.get(worldExtent);
+      if (wpo != null) {
+      	System.err.println("Dup " + worldExtent);
+      	throw new IllegalStateException();
+      }
+      wpo = new WorldPieceOffering(null, screenDim_, worldExtent, false);
+      allWorldsToImageName_.put(worldExtent, wpo);        
+      retval.add(new QueueRequest(node.getDepth(), screenDim_, wpo.worldRect));
+      if (retval.size() >= maxCount) {
+        return (retval);
       }
     }
     return (retval);
@@ -389,143 +336,261 @@ public class BufferBuilder {
         return (false);
       }
     }
-    buildHiResSlice(imageDim, qr.key, qr.worldPiece);     
+    buildHiResSlice(imageDim, qr.depth, qr.worldPiece);     
     return (true);
   }  
    
   /***************************************************************************
   **
-  ** If we lack an image slice, we first create a lo-res version from existing images.
+  ** If we lack an image slice, we first create a lo-res version from existing images. NOTE
+  ** THAT THIS IS RUNNING ON THE AWT THREAD.
   ** 
   */
   
-  private String buildLoResSlice(int num, Dimension screenDim, Dimension worldDim, 
-                                 Rectangle worldPiece, Map<Rectangle, WorldPieceOffering> worldForSize) throws IOException {
-     
-    int worldHInc = worldDim.height / num;
-    int worldWInc = worldDim.width / num;
-    int useNum = bbZooms_[1];
-    int useIndex = 1; 
-    int scale = num / useNum;
-    int screenHInc = screenDim.height / scale;
-    int screenWInc = screenDim.width / scale;
-           
+  private String buildLoResSlice(Rectangle2D worldRect, WorldPieceOffering wpo) throws IOException {
+    long preRend = Runtime.getRuntime().freeMemory();  
+    System.out.println("preRend " + preRend);
+    ArrayList<QuadTree.QuadTreeNode> path = new  ArrayList<QuadTree.QuadTreeNode>() ;  
     BufferedImage bi1 = null;
 
-    Rectangle usePiece = null;
-    // NOTE THE USE INDEX OF 1 FOR THE IMAGE BASE!!!!  NO!!!! FIX ME!!!!
-    Map<Rectangle, WorldPieceOffering> worldForUse = worldToImageName_.get(Integer.valueOf(useIndex));
-    Iterator<Rectangle> wf1Kit = worldForUse.keySet().iterator(); 
-    while (wf1Kit.hasNext()) {
-      usePiece = wf1Kit.next();
-      Rectangle2D wpit = usePiece.createIntersection(worldPiece);
-      if ((wpit.getWidth() > 10.0) && (wpit.getHeight() > 10.0)) {
-        synchronized (this) {
-          WorldPieceOffering wpou = worldForUse.get(usePiece);
-          if ((wpou.cacheHandle != null) && !wpou.cacheHandle.equals("")) {
-            bi1 = cache_.getAnImage(wpou.cacheHandle);
-          }
+    if (!findWorldsQT_.getPath(worldRect, path)) {
+    	throw new IllegalStateException();
+    }
+    
+    //
+    // Crank backwards up the chain to find an image to use:
+    //
+    
+    WorldPieceOffering wpou = null;
+    int pathLen = path.size();
+    for (int i = pathLen - 1; i >= 0; i--) {
+    	QuadTree.QuadTreeNode node = path.get(i);
+      synchronized (this) {
+        wpou = allWorldsToImageName_.get(node.getWorldExtent());  
+        if ((wpou != null) && (wpou.cacheHandle != null) && !wpou.cacheHandle.equals("")) {
+          bi1 = cache_.getAnImage(wpou.cacheHandle, bis_);
+          break;
         }
-        break;
       }
+      
     }
 
     if (bi1 == null) {  // blank!
       return (null);
     }
 
-    int xInc = (worldPiece.x - usePiece.x + 10) / worldWInc;  // FIX !  Too sensitive to rounding errors: 10 is temp fix
-    int yInc = ((worldPiece.y - usePiece.y) + 10) / worldHInc;
+    //
+    // The piece of the image we use depends on how the target world rect fits inside the
+    // world rect of the image we are using:
+    //
+    
+    double subxFrac = (worldRect.getX() - wpou.worldRect.getX()) / wpou.worldRect.getWidth();
+    int subxLoc = (int)Math.round(subxFrac * screenDim_.getWidth());
+    double subyFrac = (worldRect.getY() - wpou.worldRect.getY()) / wpou.worldRect.getHeight();
+    int subyLoc = (int)Math.round(subyFrac * screenDim_.getHeight());
+    int subW = (int)Math.round((worldRect.getWidth() / wpou.worldRect.getWidth()) * bi1.getWidth());
+    int subH = (int)Math.round((worldRect.getHeight() / wpou.worldRect.getHeight()) * bi1.getHeight());  
+    
+    //
+    // Previous version created a BufferedImage from a chunk of the bigger image, which was not
+    // so terrible, since it shared the data buffer. But we used a rendering context to draw the
+    // piece into a full-size image, which generated large (multi-megabyte) piles of garbage.
+    //
+    // So now we do the data manipulation directly, pulling the bytes out of the small piece
+    // and laying them into the larger byte array to scale them up.
+    //
 
-    int topWidth = bi1.getWidth() - (xInc * screenWInc);
-    int useWidth = (topWidth < screenWInc) ? topWidth : screenWInc;
-    int topHeight = bi1.getHeight() - (yInc * screenHInc);
-    int useHeight = (topHeight < screenHInc) ? topHeight : screenHInc;
-    if ((useHeight <= 0) || (useWidth <= 0)) {
-      // REALLY thin slices (1.25 million links) have round/trunc errors taking height to 0!
-      double screenHIncd = (double)screenDim.height / (double)scale;
-      double yIncd = (double)((worldPiece.y - usePiece.y) + 10) / (double)worldHInc;
-      double topHeightd = bi1.getHeight() - (yIncd * screenHInc);
-      double useHeightd = (topHeightd < screenHIncd) ? topHeightd : screenHIncd;
-      
-      double screenWIncd = (double)screenDim.width / (double)scale;
-      double xIncd = (double)((worldPiece.x - usePiece.x) + 10) / (double)worldWInc;
-      double topWidthd = bi1.getWidth() - (xIncd * screenWInc);
-      double useWidthd = (topWidthd < screenWIncd) ? topWidthd : screenWIncd;
-             
-      if ((useHeight <= 0) && (useHeightd > 0.0)) {
-        useHeight = 1;
-      }
-      if ((useWidth <= 0) && (useWidthd > 0.0)) {
-        useWidth = 1;
-      }     
-      if ((useHeight <= 0) || (useWidth <= 0)) {
-        return (null);
-      }
+    // First, pull the smaller byte chunk out of the image we are going to enlarge:
+    WritableRaster wr = bi1.getRaster();
+    int pixNum = subW * subH;
+    int smallLen = pixNum * 3;
+    byte[] bbc = bis_.fetchByteBuf(smallLen);
+    wr.getDataElements(subxLoc, subyLoc, subW, subH, bbc);
+    
+    //
+    // Get the image we are going to produce:
+    //
+    
+    BufferedImage scaled = bis_.fetchImage(screenDim_.width, screenDim_.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_3BYTE_BGR);
+    byte[] bbs = bis_.fetchByteBuf(scaled.getRaster().getDataBuffer().getSize());
+ 
+    for (int i = 0; i < bbs.length; i++) {
+    	bbs[i] = (byte)255;
     }
-  
-    UiUtil.fixMePrintout("Crappy lo-res segmentation occurs here!");
-    BufferedImage chunk = bi1.getSubimage((xInc * screenWInc), (yInc * screenHInc), useWidth, useHeight);
-    BufferedImage scaled = new BufferedImage(screenDim.width, screenDim.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_INT_RGB);
-    Graphics2D g2 = scaled.createGraphics();
-    g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-    g2.drawImage(chunk, 0, 0, screenDim.width, screenDim.height + SLICE_HEIGHT_HACK_, null);
-    g2.dispose();
+    
+    //
+    // Data in small-size bbc needs to be laid out in larger bbs buffer and duplicated:
+    //
+    // For a doubling, we copy each pixel twice, skipping rows in the target array. Then we duplicate the row
+    // into the adjacent row. For 4X scaling, we do the same, but duplicate pixel four times, write it every four
+    // rows, and copy the line three times. Same pattern with higher order scaling...
+    //
+    
+    int factor = (int)Math.floor(screenDim_.width / subW);
+    int facSq = factor * factor;
+    
+    for (int i = 0; i < subH; i++) { // do this for each row...
+    	for (int j = 0; j < subW; j++) { // do this for each pixel in the row...
+    		int currOffSmall = (i * (subW * 3)) + (j * 3); // This is always the same regardless of scaling...
+    		int currOffLargeBase = ((i * ((subW * 3) * facSq)) + (j * 3 * factor));
+    		int dupOffset = 0;
+        for (int k = 0; k < factor; k++) { // Duplicate this pixel into the target...
+          int currOffLargeDup = currOffLargeBase + dupOffset;
+          dupOffset += 3;
+	    		for (int m = 0; m < 3; m++) { // for the three channels of the pixel...
+	    			byte b = bbc[currOffSmall + m];
+	    	    bbs[currOffLargeDup + m] = b;
+	    	  }
+        }
+    	}
+    }
+    //
+    // Now duplicate each row:
+    //
+      
+    for (int i = 0; i < screenDim_.height; i += factor) { // do this for each row...
+    	int currOffBase = i * screenDim_.width * 3;
+      for (int k = 1; k < factor; k++) { //duplicate the row...
+      	int currOffDest = (i + k) * screenDim_.width * 3;
+      	try {
+  			  System.arraycopy(bbs, currOffBase, bbs, currOffDest, screenDim_.width * 3);
+        } catch (ArrayIndexOutOfBoundsException aex) {
+        	
+        	UiUtil.fixMePrintout("Have seen array out of bounds here!");
+        	//ik 896 10
+          //bbs 4,350,000
+          //col 4,300,800
+          //cold 4,348,800 (+ 1600 * 3) = 4,353,600
+ 
+        	System.err.println("factor " + factor + " " + screenDim_.width + " " + subW);
+    		  System.err.println("ik " + i + " " + k);
+    		  System.err.println("bbs " + bbs.length);
+    		  System.err.println("col " + currOffBase);
+    		  System.err.println("cold " + currOffDest);
+    		  i = 10000000;
+    		  break;
+    	  }
+    	}
+    }
+
+    //
+    // Write it into the destination:
+    //
+    
+    WritableRaster bisRast = scaled.getRaster();
+  	bisRast.setDataElements(0, 0, screenDim_.width, screenDim_.height + SLICE_HEIGHT_HACK_, bbs);
+ 
     String handle = null;
     synchronized (this) {
-      WorldPieceOffering wpo = worldForSize.get(worldPiece);
       if (!wpo.isDrawn) {
-        if (!isBlankImage(scaled)) {      
-          wpo.cacheHandle = cache_.cacheAnImage(scaled);
+        if (!isBlankImage(scaled)) {
+        	// Caching recycles the image
+          wpo.cacheHandle = cache_.cacheAnImage(scaled, bis_);
         } else {
           wpo.cacheHandle = "";
+          // gotta manually recycle the image:
+          bis_.returnImage(scaled);
         }
-      }
+      } 
     }
+    bis_.returnImage(bi1);
+    bis_.returnByteBuf(bbc);
+    bis_.returnByteBuf(bbs);
+    long po = Runtime.getRuntime().freeMemory();
+    long used = preRend - po;
+    System.out.println("Post getSub " + po);
+    System.out.println("rendering new scaled image used: " + used);
     return (handle);
   }
-   
+  
+  /***************************************************************************
+  **
+  ** Works (not very well) for doubling scale
+  */
+  
+  private void worksForDoubling(int subW, int subH, byte[] bbc, byte[] bbs) { 
+  
+      System.out.println("c s " + bbc.length + " " + bbs.length + " -------------------------------------------");
+    for (int i = 0; i < subH; i++) {
+    	for (int j = 0; j < subW; j++) {
+    		int currOffSmall = (i * (subW * 3)) + (j * 3); // This is always correct.....
+    		// 
+    		int currOffLarge = ((i * ((subW * 3) * 4)) + (j * 3 * 2));
+    		int currOffLargeDup = currOffLarge + 3;
+    		int currOffLargeNextRow = (i * (subW * 3 * 4)) + (subW * 3 * 2) + (j * 3 * 2);
+    		int currOffLargeNextRowDup = currOffLargeNextRow + 3;
+    //		if ((i < 5) && (j < 10)) {
+    //			System.out.println("h w " + subH + " " + subW + " -------------------------------------------");
+    //		  System.out.println("cos " + currOffSmall);
+    	//	  System.out.println("col " + currOffLarge);
+    	//	  System.out.println("cold " + currOffLargeDup);
+    	//	  System.out.println("coln " + currOffLargeNextRow);
+    	//	  System.out.println("colnd " + currOffLargeNextRowDup);
+    //		}
+    		for (int k = 0; k < 3; k++) {
+    			try {
+    			  byte b = bbc[currOffSmall + k];
+    	      bbs[currOffLarge + k] = b;
+    	      bbs[currOffLargeDup + k] = b;
+    	      bbs[currOffLargeNextRow + k] = b;
+     	      bbs[currOffLargeNextRowDup + k] = b;
+    			} catch (ArrayIndexOutOfBoundsException aex) {
+    				System.out.println("ijk " + i + " " +  j + " " + k);
+    					  System.out.println("cos " + currOffSmall);
+    		  System.out.println("col " + currOffLarge);
+    		  System.out.println("cold " + currOffLargeDup);
+    		  System.out.println("coln " + currOffLargeNextRow);
+    		  System.out.println("colnd " + currOffLargeNextRowDup);
+    		  i = 100000;
+    		  j = 100000;
+    				break;
+    			}
+    	  }
+    	}
+    }
+    return;
+  }
+ 
+  /***************************************************************************
+  **
+  ** How many links per pix for this current zoom?
+  */
+  
+  private double linksPerPix(Dimension imageDim, Rectangle2D worldPiece) { 
+    double zoom = Math.max(imageDim.getWidth() / worldPiece.getWidth(), imageDim.getHeight() / worldPiece.getHeight());
+    double linksPerPix = 1.0 / (BioFabricPanel.GRID_SIZE * zoom);
+    return (linksPerPix);
+  }
+  
   /***************************************************************************
   **
   ** While the lo-res slice is being displayed, we go out and render to a high-res
   ** slice that is cached:
   */
   
-  private void buildHiResSlice(Dimension imageDim, Integer key, Rectangle worldPiece) throws IOException {
-    BufferedImage bi = new BufferedImage(imageDim.width, imageDim.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_INT_RGB);
-    Graphics2D g2 = bi.createGraphics();
-    g2.setColor(Color.WHITE);
-    //g2.setColor(new Color(255, 220, 220)); //Debug sizing problems
-    g2.fillRect(0, 0, imageDim.width, imageDim.height + SLICE_HEIGHT_HACK_);
-    boolean didDraw = drawer_.drawForBuffer(g2, worldPiece, imageDim, worldPiece);
-    
-    // Debug sizing problems:
-    //AffineTransform transform = new AffineTransform();
-    //g2.setTransform(transform);
-    //BasicStroke selectedStroke = new BasicStroke(1, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
-    //g2.setStroke(selectedStroke);  
-    //g2.setColor(Color.GREEN);
-    //g2.drawRect(0, 0, imageDim.width - 1, imageDim.height + SLICE_HEIGHT_HACK_ - 1);
-    
-    
-    g2.dispose();
- 
+  private void buildHiResSlice(Dimension imageDim, int depth, Rectangle2D worldPiece) throws IOException {
+    BufferedImage bi = bis_.fetchImage(imageDim.width, imageDim.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_3BYTE_BGR);
+
+    double lpp = linksPerPix(imageDim, worldPiece);
+    BufBuildDrawer useDrawer = (lpp < TRANSITION_LPP_) ? drawRender_ : binRender_;
+   
+    boolean didDraw = useDrawer.drawForBuffer(bi, worldPiece, imageDim, worldPiece, SLICE_HEIGHT_HACK_, lpp);
+  
     BufferBuilderClient tellHim = null;
     synchronized (this) {
-      Map<Rectangle, WorldPieceOffering> worldForSize = worldToImageName_.get(key);
-      WorldPieceOffering wpo = worldForSize.get(worldPiece);
+    	WorldPieceOffering wpo = allWorldsToImageName_.get(worldPiece);
       if (didDraw) {
         if ((wpo.cacheHandle == null) || wpo.cacheHandle.equals("")) {
-          wpo.cacheHandle = cache_.cacheAnImage(bi);
+          wpo.cacheHandle = cache_.cacheAnImage(bi, bis_);
         } else {
-          cache_.replaceAnImage(wpo.cacheHandle, bi);
+          cache_.replaceAnImage(wpo.cacheHandle, bi, bis_);
         }
         wpo.isDrawn = true;
       } else {  // nothing drawn
         if (wpo.cacheHandle == null) {
           wpo.cacheHandle = "";
         } else if (!wpo.cacheHandle.equals("")) {
-          cache_.dropAnImage(wpo.cacheHandle);
+          cache_.dropAnImage(wpo.cacheHandle, bis_);
         }
       }
       if (bbc_ != null) {
@@ -534,49 +599,39 @@ public class BufferBuilder {
     }
     
     if (tellHim != null) {
-      final Integer noteKey = key;
+      final int noteKey = depth;
       final BufferBuilderClient fth = tellHim;
       SwingUtilities.invokeLater(new Runnable() {
         public void run() {
-          fth.yourOrderIsReady(noteKey.intValue());
+          fth.yourOrderIsReady(noteKey);
         }
       });
     }
-    bi = null;
     return;
   }
  
   /***************************************************************************
   **
-  ** Tell us if the image is all white:
+  ** Tell us if the image is all white.
   */
 
   private boolean isBlankImage(BufferedImage bi) {
+  	
+  	//
+  	// First version of this created vast amount of garbage. Now, we just pull the
+  	// bytes out of the Image and make sure they are all full-on:
+  	//
     int width = bi.getWidth();
     int height = bi.getHeight();
-    int[] pixels = new int[width * height];
-    PixelGrabber pg = new PixelGrabber(bi, 0, 0, width, height, pixels, 0, width);
-    try {
-      pg.grabPixels();
-    } catch (InterruptedException ex) {
-      throw new IllegalStateException();
-    }
-    for (int j = 0; j < height; j++) {
-      for (int i = 0; i < width; i++) {
-        if (!parsePixel(i, j, pixels[j * width + i])) {
-          return (false);
-        }
-      }
+    int len = width * height * 3;
+    byte[] bbs = ((DataBufferByte)bi.getRaster().getDataBuffer()).getData();
+    for (int i = 0; i < len; i++) {
+    	if (bbs[i] != (byte)255) {
+    		System.out.println("Not blank " + i + " is " + bbs[i]);
+    		return (false);
+    	}
     }
     return (true);
-  }
-
-  private boolean parsePixel(int x, int y, int pixel) {
-     //int alpha = (pixel >> 24) & 0xff;
-     int red   = (pixel >> 16) & 0xff;
-     int green = (pixel >>  8) & 0xff;
-     int blue  = (pixel) & 0xff;
-     return ((red == 255) && (green == 255) && (blue == 255));       
   }
 
   /***************************************************************************
@@ -688,20 +743,20 @@ public class BufferBuilder {
   private static class WorldPieceOffering implements Cloneable {
     String cacheHandle;
     boolean isDrawn;
-    int imgWidth;
-    int imgHeight;
+    Dimension imageDim;
+    Rectangle2D worldRect;
     
-    WorldPieceOffering(String cacheHandle, int imgWidth, int imgHeight, boolean isDrawn) {
+    WorldPieceOffering(String cacheHandle, Dimension imageDim, Rectangle2D worldRect, boolean isDrawn) {
       this.cacheHandle = cacheHandle;
-      this.imgWidth = imgWidth;
-      this.imgHeight = imgHeight;
+      this.imageDim = imageDim;
+      this.worldRect = worldRect;
       this.isDrawn = isDrawn;
     }
     
     @Override
     public WorldPieceOffering clone() {
       try {
-        return ((WorldPieceOffering)super.clone());
+        return ((WorldPieceOffering)super.clone()); // Don't copy rects; they are not changed
       } catch (CloneNotSupportedException cnse) {
         throw new IllegalStateException();
       }
@@ -714,18 +769,18 @@ public class BufferBuilder {
   */  
   
   private static class QueueRequest {
-    Integer key;
-    Rectangle imageDim;
-    Rectangle worldPiece;
+    int depth;
+    Dimension imageDim;
+    Rectangle2D worldPiece;
     
-    QueueRequest(Integer key, Rectangle imageDim, Rectangle worldPiece) {
-      this.key = key;
+    QueueRequest(int depth, Dimension imageDim, Rectangle2D worldPiece) {
+      this.depth = depth;
       this.worldPiece = worldPiece;
       this.imageDim = imageDim;
     }
     
     public int hashCode() {
-      return (key.hashCode() + worldPiece.hashCode() + imageDim.hashCode());
+      return (depth + worldPiece.hashCode() + imageDim.hashCode());
     }
       
     public boolean equals(Object other) {    
@@ -740,7 +795,7 @@ public class BufferBuilder {
       }
       QueueRequest otherReq = (QueueRequest)other;
 
-      if (!this.key.equals(otherReq.key)) {
+      if (this.depth != otherReq.depth) {
         return (false);
       }
       if (!this.imageDim.equals(otherReq.imageDim)) {
@@ -750,13 +805,13 @@ public class BufferBuilder {
     }  
     
   }
-  
+ 
   /***************************************************************************
   **
-  ** Draw Object
+  ** Interface for guys who wnat to listen for our results
   */  
   
   public interface BufferBuilderClient { 
     public void yourOrderIsReady(int sizeNum);
-  }
+  } 
 }
