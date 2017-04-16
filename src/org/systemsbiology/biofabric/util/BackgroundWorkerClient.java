@@ -57,6 +57,7 @@ public class BackgroundWorkerClient {
   private boolean allowCancels_;
   private boolean cancelRequested_;
   private JLabel cancellingMessage_;
+  private JLabel progressMessage_;
   private FixedJButton cancelButton_;
   private boolean isHeadless_;
 
@@ -140,9 +141,9 @@ public class BackgroundWorkerClient {
     ResourceManager rMan = ResourceManager.getManager();      
     progressDialog_ = new JDialog(topWindow_, rMan.getString(waitTitle_), true);
     if (chart_ == null) {
-      progressDialog_.setSize(350, 200);
+      progressDialog_.setSize(400, 350);
     } else {
-      progressDialog_.setSize(600, 500);
+      progressDialog_.setSize(650, 600);
     }
     JLabel label = new JLabel(rMan.getString(waitMsg_), JLabel.CENTER);
     Container cp = progressDialog_.getContentPane();
@@ -156,6 +157,7 @@ public class BackgroundWorkerClient {
     if (allowCancels_) {
       progressDialog_.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
       progressDialog_.addWindowListener(new WindowAdapter() {
+      	@Override
         public void windowClosing(WindowEvent e) {
           try {
             boolean cancelPending = cancelRequested_;
@@ -197,11 +199,16 @@ public class BackgroundWorkerClient {
       cp.add(cancellingMessage_, gbc);     
     }
 
+    progressMessage_ = new JLabel(rMan.getString(waitMsg_), JLabel.CENTER);
+    UiUtil.gbcSet(gbc, 0, rowNum++, 5, 1, UiUtil.BO, 0, 0, 20, 20, 20, 20, UiUtil.CEN, 1.0, 0.0);    
+    cp.add(progressMessage_, gbc);
+    
     progressDialog_.setLocationRelativeTo(topWindow_);
     progressBar_ = new JProgressBar(0, 100);
     progressBar_.setValue(0);
     progressBar_.setStringPainted(true);
     progressBar_.setIndeterminate(true);
+  
     UiUtil.gbcSet(gbc, 0, rowNum++, 5, 1, UiUtil.BO, 0, 0, 20, 20, 20, 20, UiUtil.CEN, 1.0, 0.0);    
     cp.add(progressBar_, gbc);
     
@@ -213,7 +220,7 @@ public class BackgroundWorkerClient {
     return;
   }
 
-  public boolean updateRankings(SortedMap vals) {
+  public boolean updateRankings(SortedMap<Integer, Double> vals) {
     if (chart_ != null) {
       chart_.setProgress(vals);
       chart_.repaint();
@@ -226,6 +233,20 @@ public class BackgroundWorkerClient {
       progressBar_.setValue(percent);
       progressBar_.setIndeterminate(false);
     }
+    return (!cancelRequested_);
+  }
+  
+  public boolean updateProgressAndPhase(int percent, String message) {
+    if (progressBar_ != null) {
+      progressBar_.setValue(percent);
+      progressBar_.setIndeterminate(false);
+    }
+    if (progressMessage_ != null) {
+      progressMessage_.setText(ResourceManager.getManager().getString(message));
+      progressMessage_.invalidate();
+      progressDialog_.validate();
+    }
+    
     return (!cancelRequested_);
   }
   

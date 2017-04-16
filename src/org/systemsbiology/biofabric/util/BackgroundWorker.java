@@ -184,7 +184,7 @@ public abstract class BackgroundWorker implements Runnable, BTProgressMonitor {
     return (!cancelRequested_);
   }      
 
-  public boolean updateRankings(SortedMap rankings) {
+  public boolean updateRankings(SortedMap<Integer, Double> rankings) {
     RankProgresso prog = new RankProgresso(rankings);
     SwingUtilities.invokeLater(prog);
     return (!cancelRequested_);
@@ -196,22 +196,43 @@ public abstract class BackgroundWorker implements Runnable, BTProgressMonitor {
     Progresso prog = new Progresso(percent);
     SwingUtilities.invokeLater(prog);
     return (!cancelRequested_);
-  }    
+  }  
+  
+  public boolean updateProgressAndPhase(int done, String message) {
+    done_ = done;
+    int percent = (int)(((double)done / (double)total_) * 100.0);
+    Progresso prog = new Progresso(percent, message);
+    SwingUtilities.invokeLater(prog);
+    return (!cancelRequested_);
+  }  
+  
   
   private class Progresso implements Runnable {
-    int percent_;      
+    int percent_;
+    String message_;
     Progresso(int percent) {
       percent_ = percent;
-    }      
+      message_ = null;
+    }  
+    
+    Progresso(int percent, String message) {
+      percent_ = percent;
+      message_ = message;
+    }  
+    
     public void run() {
-      cancelRequested_ = !client_.updateProgress(percent_);
+    	if (message_ == null) {
+    	  cancelRequested_ = !client_.updateProgress(percent_);
+    	} else {
+    		cancelRequested_ = !client_.updateProgressAndPhase(percent_, message_);
+    	} 
     }
   }
   
   private class RankProgresso implements Runnable {
-    TreeMap ranks_;      
-    RankProgresso(SortedMap ranks) {
-      ranks_ = new TreeMap(ranks);
+    TreeMap<Integer, Double> ranks_;      
+    RankProgresso(SortedMap<Integer, Double> ranks) {
+      ranks_ = new TreeMap<Integer, Double>(ranks);
     }      
     public void run() {
       cancelRequested_ = !client_.updateRankings(ranks_);

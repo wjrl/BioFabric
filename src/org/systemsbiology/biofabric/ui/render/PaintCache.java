@@ -40,6 +40,9 @@ import java.util.Set;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.QuadTree;
@@ -144,8 +147,8 @@ public class PaintCache {
   */
   
   public boolean needToPaint() {
+  	UiUtil.fixMePrintout("NO! Need to check array lengths");
   	return (true);
-  //	UiUtil.fixMePrintout("NO! Need to check array lengths");
  //   return (!(paintPathsFirstPass_.isEmpty() && paintPathsSecondPass_.isEmpty() && paintPathsThirdPass_.isEmpty()
     //		non-null arrays!
    // 		));
@@ -297,7 +300,8 @@ public class PaintCache {
   
   public void buildObjCache(List<BioFabricNetwork.NodeInfo> targets, List<BioFabricNetwork.LinkInfo> links, 
                             boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
-                            Map<NID.WithName, List<Rectangle2D>> drainMap, Rectangle2D worldRect) {
+                            Map<NID.WithName, List<Rectangle2D>> drainMap, Rectangle2D worldRect,
+                            BTProgressMonitor monitor, double startFrac, double endFrac) throws AsynchExitRequestException {
     nameKeyToPaintFirst_.clear();
     nameKeyToPaintSecond_.clear();
     nameKeyToPaintThird_.clear();
@@ -315,9 +319,12 @@ public class PaintCache {
     int numLinks = links.size();
     int maxCol = 0;
     
+    
+    
     HashMap<Integer, MinMax> linkExtents = new HashMap<Integer, MinMax>();
     for (int i = 0; i < numLinks; i++) {
       BioFabricNetwork.LinkInfo link = links.get(i);
+      
       int num = link.getUseColumn(showShadows);
       int sRow = link.topRow();
       int eRow = link.bottomRow();
@@ -330,15 +337,20 @@ public class PaintCache {
     nodes_ = new LinePath[targets.size()];
     links_ = new LinePath[maxCol + 1]; 
     linkGlyphs_ = new GlyphPath[maxCol + 1];
-        
+     
+    LoopReporter lr = new LoopReporter(numLinks, 20, monitor, 0.0, 1.0, "progress.buildNodeGraphics");
     Iterator<BioFabricNetwork.NodeInfo> trit = targets.iterator();
     while (trit.hasNext()) {
       BioFabricNetwork.NodeInfo target = trit.next();
+      lr.report();
       buildALineHorz(target, frc, colGen_, linkExtents, shadeNodes, 
       		           showShadows, nameMap, drainMap);
     }
+      
+    LoopReporter lr2 = new LoopReporter(numLinks, 20, monitor, 0.0, 1.0, "progress.buildLinkGraphics");
     for (int i = 0; i < numLinks; i++) {
       BioFabricNetwork.LinkInfo link = links.get(i);
+      lr2.report();
       buildLinkPaths(link, links_, linkGlyphs_, colGen_, showShadows);
     }
 

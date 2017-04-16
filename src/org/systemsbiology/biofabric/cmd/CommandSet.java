@@ -55,6 +55,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -558,17 +559,22 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         nodeNames.put(((AttributeLoader.StringKey)key).key, nameMap.get(key));
       }
     }
-  
+    
+    TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
     FabricSIFLoader.SIFStats sss;
     if (file.length() > 500000) {
       sss = new FabricSIFLoader.SIFStats();
       BackgroundFileReader br = new BackgroundFileReader();
-      br.doBackgroundSIFRead(file, idGen, links, loneNodes, nodeNames, sss, magBins);
+      br.doBackgroundSIFRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap);
       return (true);
     } else {
       try { 
-        sss = (new FabricSIFLoader()).readSIF(file, idGen, links, loneNodes, nodeNames, magBins); 
-        return (finishLoadFromSIFSource(file, idGen, sss, links, loneNodes, (magBins != null)));
+        sss = (new FabricSIFLoader()).readSIF(file, idGen, links, loneNodes, nodeNames, magBins, null, 0.0, 0.0);
+        BioFabricNetwork.extractRelations(links, relMap, null, 0.0, 0.0);
+        return (finishLoadFromSIFSource(file, idGen, sss, links, loneNodes, (magBins != null), relMap));
+      } catch (AsynchExitRequestException axex) {
+      	// Should never happen
+        return (false);              
       } catch (IOException ioe) {
         displayFileInputError(ioe);
         return (false);              
@@ -584,7 +590,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   ** Common load operations.
   */
     
-  private boolean finishLoadFromSIFSource(File file, UniqueLabeller idGen, FabricSIFLoader.SIFStats sss, List<FabricLink> links, Set<NID.WithName> loneNodeIDs, boolean binMag) {
+  private boolean finishLoadFromSIFSource(File file, UniqueLabeller idGen, FabricSIFLoader.SIFStats sss, 
+  		                                    List<FabricLink> links, Set<NID.WithName> loneNodeIDs, 
+  		                                    boolean binMag, SortedMap<FabricLink.AugRelation, Boolean> relaMap) {
     ResourceManager rMan = ResourceManager.getManager();
     try {
       if (!sss.badLines.isEmpty()) {        
@@ -595,9 +603,6 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                                       JOptionPane.WARNING_MESSAGE);
       }
       
-      System.out.println("Extract relations " + System.currentTimeMillis());
-      SortedMap<FabricLink.AugRelation, Boolean> relaMap = BioFabricNetwork.extractRelations(links); 
-      System.out.println("Extract relations Done" + System.currentTimeMillis());
       RelationDirectionDialog rdd = new RelationDirectionDialog(topWindow_, relaMap);
       rdd.setVisible(true);
       if (!rdd.haveResult()) {
@@ -649,12 +654,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       } else {
         relaMap = rdd.getRelationMap();
       }
-      System.out.println("Assign directions " + System.currentTimeMillis());
-      BioFabricNetwork.assignDirections(links, relaMap);
+      
       HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
       HashSet<FabricLink> culledLinks = new HashSet<FabricLink>();
-      System.out.println("preproc links " + System.currentTimeMillis());
-      BioFabricNetwork.preprocessLinks(links, reducedLinks, culledLinks);
+      PreprocessNetwork pn = new PreprocessNetwork();
+      pn.doNetworkPreprocess(links, relaMap, reducedLinks, culledLinks);
+        
       if (!culledLinks.isEmpty()) {
         String dupLinkFormat = rMan.getString("fabricRead.dupLinkFormat");
         // Ignore shadow link culls: / 2
@@ -710,7 +715,23 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     manageWindowTitle(file.getName());
     return (true);
   }  
-   
+
+  /***************************************************************************
+  **
+  ** Preprocess ops that are either run in forground or background:
+  */ 
+    
+  private void preprocess(List<FabricLink> links, 
+  		                    SortedMap<FabricLink.AugRelation, Boolean> relaMap,
+  	                      Set<FabricLink> reducedLinks, Set<FabricLink> culledLinks,  
+  	                      BTProgressMonitor monitor, double startFrac, double endFrac) 
+  		                      throws AsynchExitRequestException {
+    double midFrac = startFrac + ((endFrac - startFrac) / 3.0); // First part maybe 33% of total...
+    BioFabricNetwork.assignDirections(links, relaMap, monitor, startFrac, midFrac);
+    BioFabricNetwork.preprocessLinks(links, reducedLinks, culledLinks, monitor, midFrac, endFrac);
+    return;
+  }  
+    
   /***************************************************************************
   **
   ** Common load operations.
@@ -973,7 +994,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     BioFabricNetwork bfn = new BioFabricNetwork(bfnbd, monitor, startFrac, midFrac);
     System.out.println("BFN Expensive done " + System.currentTimeMillis());
     // Possibly expensive display object creation:
-    bfp_.installModel(bfn); 
+    bfp_.installModel(bfn, monitor, 0.0, midFrac); 
      System.out.println("Model installed Expensive done " + System.currentTimeMillis());
     // Very expensive display buffer creation:
     int[] preZooms = BufferBuilder.calcImageZooms(bfn);
@@ -982,7 +1003,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
      System.out.println("Buffer Builder started " + System.currentTimeMillis());
     if (forMain) {
       BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
-      topImage = bb.buildBufs(preZooms, bfp_, 25, monitor, midFrac, endFrac);
+      topImage = bb.buildBufs(preZooms, bfp_, 25, monitor, 0.0, endFrac);
        System.out.println("Buffs Built started " + System.currentTimeMillis());
       bfp_.setBufBuilder(bb);      
     } else {
@@ -2640,7 +2661,13 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       BioFabricNetwork bfn = bfp_.getNetwork();
       List<String> currentTags = bfn.getLinkGroups();
       ArrayList<FabricLink> links = new ArrayList<FabricLink>(bfn.getAllLinks(true));
-      Set<FabricLink.AugRelation>  allRelations = BioFabricNetwork.extractRelations(links).keySet();       
+      TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
+      try {
+        BioFabricNetwork.extractRelations(links, relMap, null, 0.0, 0.0);
+      } catch (AsynchExitRequestException aerx) {
+      	// Should not happen...
+      }
+      Set<FabricLink.AugRelation> allRelations = relMap.keySet(); 
       LinkGroupingSetupDialog lgsd = new LinkGroupingSetupDialog(topWindow_, currentTags, allRelations, bfn);
       lgsd.setVisible(true);
       if (!lgsd.haveResult()) {
@@ -3931,20 +3958,23 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private UniqueLabeller idGen_;
     private FabricSIFLoader.SIFStats sss_;
     private Integer magBins_;
+    private SortedMap<FabricLink.AugRelation, Boolean> relMap_;
      
     public void doBackgroundSIFRead(File file, UniqueLabeller idGen,
     		                            List<FabricLink> links, Set<NID.WithName> loneNodeIDs, 
-    		                            Map<String, String> nameMap, FabricSIFLoader.SIFStats sss, Integer magBins) {
+    		                            Map<String, String> nameMap, FabricSIFLoader.SIFStats sss, 
+    		                            Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relMap) {
       file_ = file;
       links_ = links;
       loneNodeIDs_ = loneNodeIDs;
       idGen_ = idGen;
       sss_ = sss;
       magBins_ = magBins;
+      relMap_ = relMap;
       try {       
-        SIFReaderRunner runner = new SIFReaderRunner(file, idGen, links, loneNodeIDs, nameMap, sss, magBins);                                                        
+        SIFReaderRunner runner = new SIFReaderRunner(file, idGen, links, loneNodeIDs, nameMap, sss, magBins, relMap);                                                        
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
-                                                                 "fileLoad.waitTitle", "fileLoad.wait", null, false);
+                                                                 "fileLoad.waitTitle", "fileLoad.wait", null, true);
         runner.setClient(bwc);
         bwc.launchWorker();         
       } catch (Exception ex) {
@@ -3981,7 +4011,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     public void handleCancellation() {
-      throw new UnsupportedOperationException();
+    	UiUtil.fixMePrintout("Do anything on cancel??");
     }     
     
     public void cleanUpPostRepaint(Object result) { 
@@ -3998,7 +4028,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         setCurrentXMLFile(file_);
         postXMLLoad(ff_, file_.getName());
       } else {
-        finishLoadFromSIFSource(file_, idGen_, sss_, links_, loneNodeIDs_, (magBins_ != null));
+        finishLoadFromSIFSource(file_, idGen_, sss_, links_, loneNodeIDs_, (magBins_ != null), relMap_);
       }
       return;
     }
@@ -4111,6 +4141,48 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
   /***************************************************************************
   **
+  ** Class for recoloring networks
+  */ 
+    
+  public class PreprocessNetwork implements BackgroundWorkerOwner {
+    
+    public void doNetworkPreprocess(List<FabricLink> links, 
+  		                              SortedMap<FabricLink.AugRelation, Boolean> relaMap,
+  	                                Set<FabricLink> reducedLinks, Set<FabricLink> culledLinks) {
+      try {
+        bfp_.shutdown();
+        PreprocessRunner runner = new PreprocessRunner(links, relaMap, reducedLinks, culledLinks);                                                            
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
+                                                                 "netPreprocess.waitTitle", "netPreprocess.wait", null, false);
+        runner.setClient(bwc);
+        bwc.launchWorker();         
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }
+      return;
+    }
+
+    public boolean handleRemoteException(Exception remoteEx) {
+      return (false);
+    }    
+        
+    public void cleanUpPreEnable(Object result) {
+      return;
+    }
+    
+    public void handleCancellation() {
+      // Not allowing cancellation!
+      return;
+    }     
+    
+    public void cleanUpPostRepaint(Object result) {   
+      return;
+    }
+  }
+  
+  
+  /***************************************************************************
+  **
   ** Background network import
   */ 
     
@@ -4136,9 +4208,16 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     public Object postRunCore() {
+    	System.out.println("Tot " + Runtime.getRuntime().totalMemory());
+    	System.out.println("Free " + Runtime.getRuntime().freeMemory());
+    	System.out.println("Max " + Runtime.getRuntime().maxMemory());
+      try {
+        Thread.sleep(2000);
+      } catch (InterruptedException iex) {
+      }
     	Runtime.getRuntime().gc();
     	try {
-        Thread.sleep(4000);
+        Thread.sleep(10000);
       } catch (InterruptedException iex) {
       }
       return (null);
@@ -4277,7 +4356,39 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     } 
   }  
   
-   /***************************************************************************
+  /***************************************************************************
+  **
+  ** Background file load
+  */ 
+    
+  private class PreprocessRunner extends BackgroundWorker {
+   
+    List<FabricLink> links_; 
+    SortedMap<FabricLink.AugRelation, Boolean> relaMap_;
+  	Set<FabricLink> reducedLinks_; 
+  	Set<FabricLink> culledLinks_;
+  	
+  	public PreprocessRunner(List<FabricLink> links, 
+  		                      SortedMap<FabricLink.AugRelation, Boolean> relaMap,
+  	                        Set<FabricLink> reducedLinks, Set<FabricLink> culledLinks) {
+      super("Early Result");
+      links_ = links;
+      relaMap_ = relaMap;
+      reducedLinks_ = reducedLinks;
+      culledLinks_ = culledLinks;
+    }
+    
+    public Object runCore() throws AsynchExitRequestException {
+      preprocess(links_, relaMap_, reducedLinks_, culledLinks_, this, 0.0, 1.0);
+      return (new Boolean(true));  
+    }
+    
+    public Object postRunCore() {
+      return (null);
+    } 
+  } 
+
+  /***************************************************************************
   **
   ** Background file load
   */ 
@@ -4291,10 +4402,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private Map<String, String> nameMap_;
     private FabricSIFLoader.SIFStats sss_;
     private Integer magBins_;
+    private SortedMap<FabricLink.AugRelation, Boolean> relaMap_;
     
     public SIFReaderRunner(File file, UniqueLabeller idGen, List<FabricLink> links, 
     		                   Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, 
-    		                   FabricSIFLoader.SIFStats sss, Integer magBins) {
+    		                   FabricSIFLoader.SIFStats sss, 
+    		                   Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relaMap) {
       super("Early Result");
       myFile_ = file;
       links_ = links;
@@ -4303,12 +4416,16 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       nameMap_ = nameMap;
       sss_ = sss;
       magBins_ = magBins;
+      relaMap_ = relaMap;
     }
     
     public Object runCore() throws AsynchExitRequestException {
       try {
-        FabricSIFLoader.SIFStats sss = (new FabricSIFLoader()).readSIF(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_);
+        FabricSIFLoader.SIFStats sss = (new FabricSIFLoader()).readSIF(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, this, 0.0, 0.75);
         sss_.copyInto(sss);
+        // Extracting relations can be expensive as well, so this should occur while the file loading
+        // dialog is up....
+        BioFabricNetwork.extractRelations(links_, relaMap_, this, 0.75, 1.0);     
         return (new Boolean(true));
       } catch (IOException ioe) {
         stashException(ioe);

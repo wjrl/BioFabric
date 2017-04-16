@@ -86,6 +86,8 @@ import org.systemsbiology.biofabric.ui.render.BufBuildDrawer;
 import org.systemsbiology.biofabric.ui.render.BufImgStack;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
 import org.systemsbiology.biofabric.ui.render.PaintCache;
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.NID;
@@ -1166,7 +1168,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   ** Change the paint
   */
 
-  public void changePaint() {
+  public void changePaint() throws AsynchExitRequestException {
     if (bufferBuilder_ != null) {
       bufferBuilder_.release();
     }    
@@ -1178,7 +1180,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     boolean showShadows = fdo.getDisplayShadows();
     painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), shadeNodes, 
                            showShadows, new HashMap<NID.WithName, Rectangle2D>(), 
-                           new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_);
+                           new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_, null, 0.0, 1.0);
   //  selectionPainter_.buildObjCache(targetList_, linkList_, shadeNodes, showShadows, 
                                 //    new HashMap<NID.WithName, Rectangle2D>(), 
                                  //   new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_);
@@ -1191,7 +1193,9 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   ** Install a model
   */
 
-  public void installModel(BioFabricNetwork bfn) { 
+  public void installModel(BioFabricNetwork bfn, BTProgressMonitor monitor, 
+                       double startFrac, 
+                       double endFrac) throws AsynchExitRequestException {
     bfn_ = bfn;
     FabricDisplayOptions fdo = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
     boolean shadeNodes = fdo.getShadeNodes();
@@ -1212,7 +1216,8 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     nodeNameLocations_ = new HashMap<NID.WithName, Rectangle2D>();
     drainNameLocations_ = new HashMap<NID.WithName, List<Rectangle2D>>();    
     painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), 
-    		                   shadeNodes, showShadows, nodeNameLocations_, drainNameLocations_, worldRectNetAR_);
+    		                   shadeNodes, showShadows, nodeNameLocations_, 
+    		                   drainNameLocations_, worldRectNetAR_, monitor, startFrac, endFrac);
   //  selectionPainter_.buildObjCache(new ArrayList<NodeInfo>(), new ArrayList<LinkInfo>(), 
     		                    //        shadeNodes, showShadows, new HashMap<NID.WithName, Rectangle2D>(), 
     		                        //    new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_);
@@ -2044,7 +2049,11 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       } else {
         Rectangle2D nnl = nodeNameLocations_.get(target);
         Point2D inWorld = rowColToWorld(cprc);
-        if (nnl.contains(inWorld)) {
+        UiUtil.fixMePrintout("zigg.sif plus zigg.noa see null ptr here *on mouse move during node-attribute relayout??*");
+        if ((nnl == null) || (inWorld == null)) {
+        	System.err.println("nnl " + nnl + " iw " + inWorld);
+        	Thread.dumpStack();
+        } else if (nnl.contains(inWorld)) {
           retval.nodeDesc = target.getName();
         }       
       }    

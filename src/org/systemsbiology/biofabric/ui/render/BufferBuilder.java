@@ -37,6 +37,7 @@ import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.QuadTree;
 import org.systemsbiology.biofabric.util.UiUtil;
 
@@ -213,9 +214,11 @@ public class BufferBuilder {
     // Build the first two zoom levels before we even get started:
     //
     
-    List<QueueRequest> requestQueuePre = buildQueue(0, 1, 10);   
+    List<QueueRequest> requestQueuePre = buildQueue(0, 1, 10); 
+    LoopReporter lr = new LoopReporter(requestQueuePre.size(), 20, monitor, startFrac, endFrac, "progress.stockingImageBufferTop");
     while (!requestQueuePre.isEmpty()) {
       QueueRequest qr = requestQueuePre.remove(0);
+      lr.report();
       buildBuffer(new Dimension(qr.imageDim.width, qr.imageDim.height), qr);
     }
     
@@ -233,7 +236,10 @@ public class BufferBuilder {
       runThread.setPriority(runThread.getPriority() - 2);
       runThread.start();
     }
-    Runtime.getRuntime().gc();
+    
+    LoopReporter lr2 = new LoopReporter(1, 20, monitor, startFrac, endFrac, "progress.garbageRequest");
+    lr2.report();
+
     return (getTopImage()); 
   }
 

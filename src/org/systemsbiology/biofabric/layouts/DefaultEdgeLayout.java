@@ -33,6 +33,7 @@ import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.model.FabricLink.AugRelation;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
@@ -80,7 +81,7 @@ public class DefaultEdgeLayout {
                           double endFrac) throws AsynchExitRequestException {
     
     Map<NID.WithName, Integer> nodeOrder = rbd.nodeOrder;
-    
+ 
     
 
     //
@@ -125,21 +126,11 @@ public class DefaultEdgeLayout {
     // Do this discretely to allow progress bar:
     //
     
+    LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, startFrac, endFrac, "progress.linkLayout");
     
-    double currProg = startFrac;
-    double inc1 = (endFrac - startFrac) / ((rbd.allLinks.size() == 0) ? 1 : rbd.allLinks.size());    
-    
-    int prog = 0;
-    
-    for (FabricLink link : rbd.allLinks) { 
+    for (FabricLink link : rbd.allLinks) {
+    	lr.report();
       order.add(link);
-      currProg += inc1;
-      prog++;
-      if ((monitor != null) && ((prog % 1000) == 0)) {
-        if (!monitor.updateProgress((int)(currProg * 100.0))) {
-          throw new AsynchExitRequestException();
-        }
-      }
     }
     SortedMap<Integer, FabricLink> retval = new TreeMap<Integer, FabricLink>();
     int count = 0;
