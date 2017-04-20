@@ -760,12 +760,12 @@ System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRunt
     
     for (int index = 0; index <= links.size(); index++) {
       
-      if (index == links.size()) { // at end of array; no need to update current and startIdx
+      if (index == links.size()) {
         
         int endIdx = links.size() - 1;
   
         MinMax mm = new MinMax(startIdx, endIdx);
-        NID.WithName name = findZoneNode(mm, forShadow);
+        NID.WithName name = findZoneNode(mm, forShadow, links);
   
         if (nodeToZones.get(name) == null) {
           nodeToZones.put(name, new ArrayList<DrainZone>());
@@ -777,7 +777,7 @@ System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRunt
         int last = index - 1;  // backtrack one position
   
         MinMax mm = new MinMax(startIdx, last);
-        NID.WithName name = findZoneNode(mm, forShadow);
+        NID.WithName name = findZoneNode(mm, forShadow, links);
   
         if (nodeToZones.get(name) == null) {
           nodeToZones.put(name, new ArrayList<DrainZone>());
@@ -790,16 +790,6 @@ System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRunt
         
     }
 
-//    for (Map.Entry<NID.WithName,List<DrainZone>> entry: nodeToZones.entrySet()) {
-//      String s = entry.getKey() + " ";
-//      for (DrainZone dz : entry.getValue()) {
-//        s += "(" + dz.getMinMax().min + " " + dz.getMinMax().max + ")";
-//      }
-//
-//      System.out.println(s);
-//    }
-//    System.out.println('\n');
-    
     for (Map.Entry<NID.WithName, List<DrainZone>> entry : nodeToZones.entrySet()) {
       
       NodeInfo ni = getNodeDefinition(entry.getKey());
@@ -836,9 +826,8 @@ System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRunt
    * finds the node of the drain zone with bounds = MinMax([A,B])
    */
   
-  private NID.WithName findZoneNode(MinMax mm, boolean forShadow) {
+  private NID.WithName findZoneNode(MinMax mm, boolean forShadow, List<LinkInfo> links) {
     
-    List<LinkInfo> links = getLinkDefList(forShadow);
     LinkInfo li = links.get(mm.min);  // checking the minimum of the minmax is enough...?
 
     if (forShadow) {
