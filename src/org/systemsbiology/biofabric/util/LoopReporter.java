@@ -37,7 +37,7 @@ public class LoopReporter {
     startFrac_ = startFrac;
     endFrac_ = endFrac;
     message_ = message;
-    skipLines_ = max_ / bins;
+    skipLines_ = (bins == 0) ? 0 : max_ / bins;
     count_ = 0L;
     skipProg_ = skipLines_;
   }  

@@ -37,10 +37,13 @@ import java.awt.image.BufferedImage;
 import java.awt.print.PageFormat;
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
+import java.io.BufferedInputStream;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -58,6 +61,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import javax.swing.AbstractAction;
@@ -99,6 +103,7 @@ import org.systemsbiology.biofabric.layouts.WorldBankLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.parser.ParserClient;
+import org.systemsbiology.biofabric.parser.ProgressFilterInputStream;
 import org.systemsbiology.biofabric.parser.SUParser;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
@@ -117,7 +122,6 @@ import org.systemsbiology.biofabric.ui.dialogs.RelationDirectionDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ReorderLayoutParamsDialog;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.ui.display.FabricMagnifyingTool;
-import org.systemsbiology.biofabric.ui.render.BucketRenderer;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
@@ -3931,7 +3935,30 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       return;
     }
     
+    //
+    // Cancellation takes place on the UI Thread:
+    //
     public void handleCancellation() {
+    	ResourceManager rMan = ResourceManager.getManager();
+      int restore =
+        JOptionPane.showConfirmDialog(topWindow_, rMan.getString("progress.cancelled"),
+                                      rMan.getString("progress.cancelledTitle"),
+                                      JOptionPane.YES_NO_OPTION);        
+      if (restore != JOptionPane.YES_OPTION) {
+        BioFabricNetwork.BuildData ubd = new BioFabricNetwork.RelayoutBuildData(new UniqueLabeller(),
+														                                                     new HashSet<FabricLink>(), 
+														                                                     new HashSet<NID.WithName>(), 
+														                                                     new HashMap<NID.WithName, String>(),
+														                                                     colGen_, 
+														                                                     BioFabricNetwork.BuildMode.BUILD_FROM_SIF);
+        try {
+          newModelOperations(ubd, true);
+        } catch (IOException ioex) {
+          //Silent fail     
+        }
+      }
+    	/*
+    	
       BioFabricNetwork.BuildData ubd;
       if (restore_ != null) {
         ubd = restore_;
@@ -3950,6 +3977,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       } catch (IOException ioex) {
         //Silent fail     
       }
+      */
       return;
     }     
     
@@ -4018,7 +4046,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       ff_ = ff;
       file_ = file;
       try {
-        ReaderRunner runner = new ReaderRunner(sup, file);                                                                  
+        ReaderRunner runner = new ReaderRunner(sup, file, false);                                                                  
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
                                                                  "fileLoad.waitTitle", "fileLoad.wait", null, true);
         runner.setClient(bwc);
@@ -4390,19 +4418,33 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
    
     private File myFile_;
     private SUParser myParser_;
+    private boolean compressed_;
     
-    public ReaderRunner(SUParser sup, File file) {
+    public ReaderRunner(SUParser sup, File file, boolean compressed) {
       super(new Boolean(false));
       myFile_ = file;
       myParser_ = sup;
+      compressed_ = compressed;
     }  
     public Object runCore() throws AsynchExitRequestException {
+    	ProgressFilterInputStream pfis = null;
       try {
-        myParser_.parse(myFile_);
+      	long fileLen = myFile_.length();
+      	FileInputStream fis = new FileInputStream(myFile_);
+      	InputStream bis;
+      	if (compressed_) {
+      	  bis = new GZIPInputStream(fis, 8 * 1024);
+      	} else {
+      		bis = new BufferedInputStream(new FileInputStream(myFile_));
+      	} 
+      	pfis = new ProgressFilterInputStream(bis, fileLen); 	
+        myParser_.parse(pfis, this, 0.0, 1.0);
         return (new Boolean(true));
       } catch (IOException ioe) {
         stashException(ioe);
         return (null);
+      } finally {
+      	if (pfis != null) { try { pfis.close(); } catch (IOException ioe) {} }
       }
     } 
     public Object postRunCore() {

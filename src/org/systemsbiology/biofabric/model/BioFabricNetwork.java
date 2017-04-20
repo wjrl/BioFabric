@@ -726,9 +726,9 @@ System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRunt
     // WJRL 3/7/17 Commented out temporarily so I can check efficiency of other code....
    
     System.out.println("This operation is O(e^2)");
-   // setDrainZonesWithMultipleLabels(true);
+    setDrainZonesWithMultipleLabels(true);
     System.out.println("SDZML 0.5");
-   // setDrainZonesWithMultipleLabels(false);
+    setDrainZonesWithMultipleLabels(false);
     System.out.println("SDZML done");
  
     LoopReporter lr2 = new LoopReporter(1, 20, monitor, startFrac, endFrac, "progress.linkToColumnDone");
@@ -744,6 +744,11 @@ System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRunt
   private void setDrainZonesWithMultipleLabels(boolean forShadow) {
     
     List<LinkInfo> links = getLinkDefList(forShadow);
+    
+    if (links.isEmpty()) {
+    	return;
+    }
+    
     Map<NID.WithName, List<DrainZone>> nodeToZones = new TreeMap<NID.WithName, List<DrainZone>>();
 
     LinkInfo current = links.get(0);  // these keep track of start of zone and zone's node

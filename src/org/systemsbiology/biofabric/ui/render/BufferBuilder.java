@@ -259,6 +259,7 @@ public class BufferBuilder {
     // bis_ BufImgStack. But since bis_ does not acquire any locks during its methods, we
     // do not need to worry about deadlock conditions.
     //
+    UiUtil.fixMePrintout("Refusal to restore after cancel gets us an NPE right here");
     synchronized (this) {
       retval = cache_.getAnImage(wpo.cacheHandle, bis_);
     }
