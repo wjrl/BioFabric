@@ -78,10 +78,6 @@ public class BufferBuilder {
   // PRIVATE INSTANCE MEMBERS
   //
   ////////////////////////////////////////////////////////////////////////////
-   
-  //
-  // For mapping of selections:
-  //
   
   private RasterCache cache_;
   private HashMap<Rectangle2D, WorldPieceOffering> allWorldsToImageName_;
@@ -94,7 +90,7 @@ public class BufferBuilder {
   private BufferBuilderClient bbc_;
   private boolean timeToExit_;
   private BuildImageWorker biw_;
-  private BufImgStack bis_;
+  private ImgAndBufPool bis_;
 
   
   ////////////////////////////////////////////////////////////////////////////
@@ -109,7 +105,7 @@ public class BufferBuilder {
   */
 
   public BufferBuilder(String cachePref, int maxMeg, BufBuildDrawer drawRender, 
-  		                 BufBuildDrawer binRender, BufImgStack bis) {
+  		                 BufBuildDrawer binRender, ImgAndBufPool bis) {
     cache_ = new RasterCache(cachePref, maxMeg);
     allWorldsToImageName_ = new HashMap<Rectangle2D, WorldPieceOffering>();
     findWorldsQT_ = null;
@@ -151,6 +147,10 @@ public class BufferBuilder {
       bbc_ = null;
       this.notify();
     }
+    if (findWorldsQT_ != null) {
+    	findWorldsQT_.clear();
+    }
+    cache_.releaseResources();
     return;
   }
   
@@ -226,7 +226,8 @@ public class BufferBuilder {
     // Now build up the requests for the background thread:
     //   
     
-    List<QueueRequest> requestQueue = (zooms.length > 2) ? buildQueue(2, zooms.length - 1, maxSize) : new ArrayList<QueueRequest>();
+    int useMax = 1; //maxSize; 
+    List<QueueRequest> requestQueue = (zooms.length > 2) ? buildQueue(2, zooms.length - 1, useMax) : new ArrayList<QueueRequest>();
  
     bbc_ = bbc;
  
@@ -236,9 +237,6 @@ public class BufferBuilder {
       runThread.setPriority(runThread.getPriority() - 2);
       runThread.start();
     }
-    
-    LoopReporter lr2 = new LoopReporter(1, 20, monitor, startFrac, endFrac, "progress.garbageRequest");
-    lr2.report();
 
     return (getTopImage()); 
   }
@@ -309,12 +307,17 @@ public class BufferBuilder {
     ArrayList<QueueRequest> retval = new ArrayList<QueueRequest>();
     ArrayList<QuadTree.QuadTreeNode> nodes = new ArrayList<QuadTree.QuadTreeNode>();
     findWorldsQT_.getAllNodesToDepth(startIndex, endIndex, nodes);
+    Rectangle2D emptyExtent = new Rectangle2D.Double(0.0, 0.0, 0.0, 0.0);
     int numWorlds = nodes.size();
     for (int i = 0; i < numWorlds; i++) {
     	QuadTree.QuadTreeNode node = nodes.get(i);
     	Rectangle2D worldExtent = node.getWorldExtent();
+    	if (worldExtent.equals(emptyExtent)) { // This is an empty model...
+    		continue;
+    	}
       WorldPieceOffering wpo = allWorldsToImageName_.get(worldExtent);
       if (wpo != null) {
+      	UiUtil.fixMePrintout("Cancel of relayout puts us here");
       	System.err.println("Dup " + worldExtent);
       	throw new IllegalStateException();
       }

@@ -141,18 +141,18 @@ public class BackgroundWorkerClient {
     ResourceManager rMan = ResourceManager.getManager();      
     progressDialog_ = new JDialog(topWindow_, rMan.getString(waitTitle_), true);
     if (chart_ == null) {
-      progressDialog_.setSize(400, 350);
+      progressDialog_.setSize(350, 200);
     } else {
-      progressDialog_.setSize(650, 600);
+      progressDialog_.setSize(600, 500);
     }
-    JLabel label = new JLabel(rMan.getString(waitMsg_), JLabel.CENTER);
+    progressMessage_ = new JLabel(rMan.getString(waitMsg_), JLabel.CENTER);
     Container cp = progressDialog_.getContentPane();
     cp.setLayout(new GridBagLayout());
     GridBagConstraints gbc = new GridBagConstraints();
     int rowNum = 0;
     UiUtil.gbcSet(gbc, 0, rowNum, 5, 4, UiUtil.BO, 0, 0, 5, 5, 5, 5, UiUtil.CEN, 1.0, 1.0);
     rowNum += 4;
-    cp.add(label, gbc);
+    cp.add(progressMessage_, gbc);
     
     if (allowCancels_) {
       progressDialog_.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
@@ -199,10 +199,6 @@ public class BackgroundWorkerClient {
       cp.add(cancellingMessage_, gbc);     
     }
 
-    progressMessage_ = new JLabel(rMan.getString(waitMsg_), JLabel.CENTER);
-    UiUtil.gbcSet(gbc, 0, rowNum++, 5, 1, UiUtil.BO, 0, 0, 20, 20, 20, 20, UiUtil.CEN, 1.0, 0.0);    
-    cp.add(progressMessage_, gbc);
-    
     progressDialog_.setLocationRelativeTo(topWindow_);
     progressBar_ = new JProgressBar(0, 100);
     progressBar_.setValue(0);
@@ -236,6 +232,13 @@ public class BackgroundWorkerClient {
     return (!cancelRequested_);
   }
   
+  public boolean setToIndeterminate() {
+    if (progressBar_ != null) {
+      progressBar_.setIndeterminate(true);
+    }
+    return (!cancelRequested_);
+  }
+
   public boolean updateProgressAndPhase(int percent, String message) {
     if (progressBar_ != null) {
       progressBar_.setValue(percent);
@@ -287,7 +290,6 @@ public class BackgroundWorkerClient {
         progressDialog_.setVisible(false);
         progressDialog_.dispose();
       }
-      UiUtil.fixMePrintout("NO! If IO ERROR, Early result (String) different from late result (Buffered image)");
       owner_.cleanUpPreEnable(result);      
       if (suw_ != null) {
         suw_.reenableControls();
@@ -333,4 +335,5 @@ public class BackgroundWorkerClient {
     progressDialog_.validate();
     cancelRequested_ = true;
   }
-} 
+}
+

@@ -37,7 +37,7 @@ import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.render.PaintCache;
-import org.systemsbiology.biofabric.ui.render.PaintCache.FloaterSet;
+import org.systemsbiology.biofabric.ui.render.PaintCacheFast;
 import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
@@ -104,7 +104,7 @@ public class FabricMagnifier extends JPanel {
     centerRC_ = new Point(0, 0);
     miniTrans_ = new AffineTransform();
     setBackground(Color.white);
-    painter_ = new PaintCache(colGen);
+    painter_ = new PaintCacheFast(colGen);
     floaters_ = null;
     worldRec_ = new Rectangle();
     clipRec_= new Rectangle();

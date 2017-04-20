@@ -132,10 +132,13 @@ public class DefaultEdgeLayout {
     	lr.report();
       order.add(link);
     }
+    
+    LoopReporter lr2 = new LoopReporter(order.size(), 20, monitor, 0.0, 1.0, "progress.settingLinkOrder");
     SortedMap<Integer, FabricLink> retval = new TreeMap<Integer, FabricLink>();
     int count = 0;
     for (FabricLink link : order) {
     	retval.put(Integer.valueOf(count++), link);
+    	lr2.report();
     }    
     rbd.setLinkOrder(retval); 
 

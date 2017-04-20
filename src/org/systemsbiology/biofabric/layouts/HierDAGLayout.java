@@ -98,7 +98,7 @@ public class HierDAGLayout {
   		                 BTProgressMonitor monitor, 
                        double startFrac, 
                        double endFrac) throws AsynchExitRequestException {
-    doNodeLayout(rbd);
+    doNodeLayout(rbd, monitor, startFrac, endFrac);
     (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
     return;
   }
@@ -108,7 +108,10 @@ public class HierDAGLayout {
   ** Relayout the network!
   */
   
-  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd) {
+  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, 
+  		   																 BTProgressMonitor monitor, 
+									                       double startFrac, 
+									                       double endFrac) throws AsynchExitRequestException {
     
     List<NID.WithName> targets = orderByNodeDegree(rbd);       
 
@@ -117,7 +120,7 @@ public class HierDAGLayout {
     // Build target->row maps and the inverse:
     //
     
-    (new DefaultLayout()).installNodeOrder(targets, rbd);
+    (new DefaultLayout()).installNodeOrder(targets, rbd, monitor, startFrac, endFrac);
     return (targets);
   }
   

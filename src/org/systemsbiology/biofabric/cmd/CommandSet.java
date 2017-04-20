@@ -58,6 +58,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPOutputStream;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -126,6 +127,7 @@ import org.systemsbiology.biofabric.util.BackgroundWorkerOwner;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FileExtensionFilters;
 import org.systemsbiology.biofabric.util.FixedJButton;
+import org.systemsbiology.biofabric.util.GarbageRequester;
 import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.InvalidInputException;
 import org.systemsbiology.biofabric.util.NID;
@@ -658,7 +660,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
       HashSet<FabricLink> culledLinks = new HashSet<FabricLink>();
       PreprocessNetwork pn = new PreprocessNetwork();
-      pn.doNetworkPreprocess(links, relaMap, reducedLinks, culledLinks);
+      boolean didFinish = pn.doNetworkPreprocess(links, relaMap, reducedLinks, culledLinks);
+      if (!didFinish) {
+        return (false);
+      }
         
       if (!culledLinks.isEmpty()) {
         String dupLinkFormat = rMan.getString("fabricRead.dupLinkFormat");
@@ -1004,7 +1009,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     if (forMain) {
       BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
       topImage = bb.buildBufs(preZooms, bfp_, 25, monitor, 0.0, endFrac);
-       System.out.println("Buffs Built started " + System.currentTimeMillis());
+      System.out.println("Buffs Built started " + System.currentTimeMillis());
       bfp_.setBufBuilder(bb);      
     } else {
       BufferBuilder bb = new BufferBuilder(bfp_, bfp_.getBucketRend());
@@ -1012,7 +1017,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       bfp_.setBufBuilder(null);
     }
     System.out.println("Expensive out " + System.currentTimeMillis());
-    Runtime.getRuntime().gc();
+    
     return (topImage);
   }
 
@@ -1164,30 +1169,43 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       return (true);
     } else {
       try {
-        saveToOutputStream(new FileOutputStream(file));
+        saveToOutputStream(new FileOutputStream(file), false, null, 0.0, 0.0);
         setCurrentXMLFile(file);
         manageWindowTitle(file.getName());
         return (true);
+      } catch (AsynchExitRequestException aeex) {
+      	// Not on background thread; will not happen
+      	return (false);
       } catch (IOException ioe) {
         displayFileOutputError();
         return (false);
       }
     }  
   }
-    
-
   
   /***************************************************************************
   **
-  ** Common save activities
+  ** Save to output stream
   */   
   
-  void saveToOutputStream(OutputStream stream) throws IOException {
-    PrintWriter out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(stream, "UTF-8")));
-    Indenter ind = new Indenter(out, Indenter.DEFAULT_INDENT);
-    BioFabricNetwork bfn = bfp_.getNetwork();
-    bfn.writeXML(out, ind);
-    out.close();
+  void saveToOutputStream(OutputStream stream, boolean compress, BTProgressMonitor monitor, double startFrac, double endFrac) 
+  	throws AsynchExitRequestException, IOException {
+
+  	PrintWriter out = null;
+  	if (compress) {
+  		out = new PrintWriter(new OutputStreamWriter(new GZIPOutputStream(stream, 8 * 1024), "UTF-8"));
+  	} else {
+  	  out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(stream, "UTF-8")));
+  	}  	
+  	try {
+	    Indenter ind = new Indenter(out, Indenter.DEFAULT_INDENT);
+	    BioFabricNetwork bfn = bfp_.getNetwork();
+	    bfn.writeXML(out, ind, monitor, startFrac, endFrac);
+  	} finally {
+  		if (out != null) {
+  			out.close();
+  		}
+  	}  
     return;
   }
   
@@ -3010,14 +3028,24 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           String fileName = (String)args[1];
           return (saveToFile(fileName));
         } else {
-          OutputStream stream = (OutputStream)args[1];
-          try {
-            saveToOutputStream(stream);
-          } catch (IOException ioe) {
-            displayFileOutputError(); // Which is kinda bogus...
-            return (false);
-          }
-          return (true);
+        	OutputStream stream = (OutputStream)args[1];
+          BioFabricNetwork bfn = bfp_.getNetwork();     
+			    if (bfn.getLinkCount(true) > 5000) {
+			      BackgroundFileWriter bw = new BackgroundFileWriter(); 
+			      bw.doBackgroundWrite(stream);
+			      return (true);
+			    } else {
+			      try {
+			        saveToOutputStream(stream, false, null, 0.0, 0.0);
+			        return (true);
+			      } catch (AsynchExitRequestException aeex) {
+			      	// Not on background thread; will not happen
+			      	return (false);
+			      } catch (IOException ioe) {
+			        displayFileOutputError();
+			        return (false);
+			      }
+			    }
         }
       }
     }
@@ -3678,6 +3706,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     // change the window.  Note we use a back button now too!
     
     public void actionPerformed(ActionEvent e) {
+    	System.out.println("Free " + Runtime.getRuntime().freeMemory());
       try {
         if (frame_ != null) {      
           frame_.setExtendedState(JFrame.NORMAL);
@@ -3797,7 +3826,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         System.out.println("End PLO " + System.currentTimeMillis());
         NewNetworkRunner runner = new NewNetworkRunner(bfn, isMain);                                                                  
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
-                                                                 "netBuild.waitTitle", "netBuild.wait", null, false);
+                                                                 "netBuild.waitTitle", "netBuild.wait", null, true);
         runner.setClient(bwc);
         bwc.launchWorker();         
       } catch (Exception ex) {
@@ -3866,15 +3895,16 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private BioFabricNetwork.PreBuiltBuildData restore_;
        
     public void doNetworkRelayout(BioFabricNetwork.RelayoutBuildData rbd, NodeSimilarityLayout.CRParams params) {
-      if (rbd.canRestore()) {
-        BioFabricNetwork net = bfp_.getNetwork();
-        restore_ = new BioFabricNetwork.PreBuiltBuildData(net, BioFabricNetwork.BuildMode.BUILD_FROM_XML);
-      } else {
+   //   if (rbd.canRestore()) {
+     //   BioFabricNetwork net = bfp_.getNetwork();
+      //  restore_ = new BioFabricNetwork.PreBuiltBuildData(net, BioFabricNetwork.BuildMode.BUILD_FROM_XML);
+     // } else {
         restore_ = null;
-      }
+    //  }
 
       try {
-        preLoadOperations();
+      	// This operation nulls out the existing network:
+      //  preLoadOperations();
         NetworkRelayoutRunner runner = new NetworkRelayoutRunner(rbd, params);                                                                  
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
                                                                  "netRelayout.waitTitle", "netRelayout.wait", null, true);
@@ -3915,6 +3945,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
 
       }
       try {
+      	System.out.println("THIS TAKES 10 MINUTES OF FROZEN UI TO RESTORE");
         newModelOperations(ubd, true);
       } catch (IOException ioex) {
         //Silent fail     
@@ -3989,7 +4020,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       try {
         ReaderRunner runner = new ReaderRunner(sup, file);                                                                  
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
-                                                                 "fileLoad.waitTitle", "fileLoad.wait", null, false);
+                                                                 "fileLoad.waitTitle", "fileLoad.wait", null, true);
         runner.setClient(bwc);
         bwc.launchWorker();         
       } catch (Exception ex) {
@@ -4011,7 +4042,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     public void handleCancellation() {
-    	UiUtil.fixMePrintout("Do anything on cancel??");
+    	System.err.println("Cancellation! What next?");
     }     
     
     public void cleanUpPostRepaint(Object result) { 
@@ -4042,14 +4073,26 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public class BackgroundFileWriter implements BackgroundWorkerOwner {
     
     private Exception ex_;   
-    private File file_; 
+    private File file_;
 
     public void doBackgroundWrite(File file) {
-      file_ = file;
-      try {
-        WriterRunner runner = new WriterRunner(file);                                                                  
+    	file_ = file; 
+    	WriterRunner runner = new WriterRunner(file);
+    	doWrite(runner);
+    	return;
+    }
+    
+    public void doBackgroundWrite(OutputStream stream) {
+    	file_ = null;
+      WriterRunner runner = new WriterRunner(stream);
+      doWrite(runner);
+      return;
+    }
+    
+    private void doWrite(WriterRunner runner) {
+      try {                                                                
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
-                                                                 "fileWrite.waitTitle", "fileWrite.wait", null, false);
+                                                                 "fileWrite.waitTitle", "fileWrite.wait", null, true);
         runner.setClient(bwc);
         bwc.launchWorker();         
       } catch (Exception ex) {
@@ -4071,7 +4114,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     public void handleCancellation() {
-      throw new UnsupportedOperationException();
+    	UiUtil.fixMePrintout("May want to give user the option to not do this, though the file is messed up.");
+    	if (file_ != null) {
+    	  file_.delete();
+    	}
+    	return;
     }     
     
     public void cleanUpPostRepaint(Object result) { 
@@ -4102,7 +4149,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         bfp_.shutdown();
         RecolorNetworkRunner runner = new RecolorNetworkRunner(isMain);                                                                  
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
-                                                                 "netRecolor.waitTitle", "netRecolor.wait", null, false);
+                                                                 "netRecolor.waitTitle", "netRecolor.wait", null, true);
         runner.setClient(bwc);
         bwc.launchWorker();         
       } catch (Exception ex) {
@@ -4124,7 +4171,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     public void handleCancellation() {
-      // Not allowing cancellation!
+      System.err.println("Cancellation! What next?");
       return;
     }     
     
@@ -4141,25 +4188,26 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
   /***************************************************************************
   **
-  ** Class for recoloring networks
+  ** Class for doing analysis networks
   */ 
     
   public class PreprocessNetwork implements BackgroundWorkerOwner {
     
-    public void doNetworkPreprocess(List<FabricLink> links, 
+  	private boolean finished_;
+    public boolean doNetworkPreprocess(List<FabricLink> links, 
   		                              SortedMap<FabricLink.AugRelation, Boolean> relaMap,
   	                                Set<FabricLink> reducedLinks, Set<FabricLink> culledLinks) {
+    	finished_ = true;
       try {
-        bfp_.shutdown();
         PreprocessRunner runner = new PreprocessRunner(links, relaMap, reducedLinks, culledLinks);                                                            
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
-                                                                 "netPreprocess.waitTitle", "netPreprocess.wait", null, false);
+                                                                 "netPreprocess.waitTitle", "netPreprocess.wait", null, true);
         runner.setClient(bwc);
         bwc.launchWorker();         
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
-      return;
+      return (finished_);
     }
 
     public boolean handleRemoteException(Exception remoteEx) {
@@ -4171,7 +4219,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     public void handleCancellation() {
-      // Not allowing cancellation!
+    	finished_ = false;
+      System.err.println("Cancellation! What next?");
       return;
     }     
     
@@ -4192,7 +4241,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private boolean forMain_;
     
     public NewNetworkRunner(BioFabricNetwork.BuildData bfn, boolean forMain) {
-      super("Early Result");      
+      super(new BufferedImage(1, 1, BufferedImage.TYPE_3BYTE_BGR));      
       bfn_ = bfn;
       forMain_ = forMain;
     }
@@ -4200,6 +4249,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     public Object runCore() throws AsynchExitRequestException {
       try {
         BufferedImage bi = expensiveModelOperations(bfn_, forMain_, this, 1.0, 1.0);
+        GarbageRequester gr = new GarbageRequester();
+        gr.askForGC(this, 1.0, 1.0);
         return (bi);
       } catch (IOException ex) {
         stashException(ex);
@@ -4208,18 +4259,6 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     public Object postRunCore() {
-    	System.out.println("Tot " + Runtime.getRuntime().totalMemory());
-    	System.out.println("Free " + Runtime.getRuntime().freeMemory());
-    	System.out.println("Max " + Runtime.getRuntime().maxMemory());
-      try {
-        Thread.sleep(2000);
-      } catch (InterruptedException iex) {
-      }
-    	Runtime.getRuntime().gc();
-    	try {
-        Thread.sleep(10000);
-      } catch (InterruptedException iex) {
-      }
       return (null);
     } 
   }  
@@ -4236,13 +4275,26 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private NodeSimilarityLayout.CRParams params_;
     
     public NetworkRelayoutRunner(BioFabricNetwork.RelayoutBuildData rbd, NodeSimilarityLayout.CRParams params) {
-      super("Early Result");      
+      super(new BufferedImage(1, 1, BufferedImage.TYPE_3BYTE_BGR));      
       rbd_ = rbd;
       mode_ = rbd.getMode();
       params_ = params;
     }
     
     public Object runCore() throws AsynchExitRequestException {
+      System.out.println("pre " + Runtime.getRuntime().freeMemory());
+    	try {
+    		File holdIt = File.createTempFile("BioFabricHold", ".zip");
+    		holdIt.deleteOnExit();
+    	  saveToOutputStream(new FileOutputStream(holdIt), true, this, 0.0, 1.0);
+    	} catch (IOException ioex) {
+    		System.err.println("bad write");	
+    	}
+    	
+    	preLoadOperations();
+    	Runtime.getRuntime().gc();
+    	System.out.println("post " + Runtime.getRuntime().freeMemory());
+    	
       try {            
         switch (mode_) {
           case DEFAULT_LAYOUT:
@@ -4286,6 +4338,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
             throw new IllegalArgumentException();
         }
         BufferedImage bi = expensiveModelOperations(rbd_, true, this, 0.5, 1.0);
+        GarbageRequester gr = new GarbageRequester();
+        gr.askForGC(this, 1.0, 1.0);
         return (bi);
       } catch (IOException ex) {
         stashException(ex);
@@ -4308,7 +4362,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private boolean forMain_;
     
     public RecolorNetworkRunner(boolean forMain) {
-      super("Early Result");      
+      super(new BufferedImage(1, 1, BufferedImage.TYPE_3BYTE_BGR));      
       forMain_ = forMain;
     }
     
@@ -4338,7 +4392,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private SUParser myParser_;
     
     public ReaderRunner(SUParser sup, File file) {
-      super("Early Result");
+      super(new Boolean(false));
       myFile_ = file;
       myParser_ = sup;
     }  
@@ -4371,7 +4425,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   	public PreprocessRunner(List<FabricLink> links, 
   		                      SortedMap<FabricLink.AugRelation, Boolean> relaMap,
   	                        Set<FabricLink> reducedLinks, Set<FabricLink> culledLinks) {
-      super("Early Result");
+      super(new Boolean(false));
       links_ = links;
       relaMap_ = relaMap;
       reducedLinks_ = reducedLinks;
@@ -4408,7 +4462,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     		                   Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, 
     		                   FabricSIFLoader.SIFStats sss, 
     		                   Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relaMap) {
-      super("Early Result");
+      super(new Boolean(false));
       myFile_ = file;
       links_ = links;
       loneNodeIDs_ = loneNodeIDs;
@@ -4423,8 +4477,6 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       try {
         FabricSIFLoader.SIFStats sss = (new FabricSIFLoader()).readSIF(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, this, 0.0, 0.75);
         sss_.copyInto(sss);
-        // Extracting relations can be expensive as well, so this should occur while the file loading
-        // dialog is up....
         BioFabricNetwork.extractRelations(links_, relaMap_, this, 0.75, 1.0);     
         return (new Boolean(true));
       } catch (IOException ioe) {
@@ -4445,14 +4497,22 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   private class WriterRunner extends BackgroundWorker {
    
     private File myFile_;
+    private OutputStream myStream_;
     
     public WriterRunner(File file) {
-      super("Early Result");
+      super(new Boolean(false));
       myFile_ = file;
-    }  
+      myStream_ = null;
+    }
+    public WriterRunner(OutputStream stream) {
+      super(new Boolean(false));
+      myStream_ = stream;
+      myFile_ = null;
+    }
+     
     public Object runCore() throws AsynchExitRequestException {
       try {
-        saveToOutputStream(new FileOutputStream(myFile_));
+        saveToOutputStream((myStream_ == null) ? new FileOutputStream(myFile_) : myStream_, false, this, 0.0, 1.0);
         return (new Boolean(true));
       } catch (IOException ioe) {
         stashException(ioe);

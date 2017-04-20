@@ -33,13 +33,24 @@ import java.util.Set;
 public class QuadTree {
   
   private int maxDepth_;
+  private Rectangle2D worldExtent_;
   private QuadTreeNode root_;
   
   public QuadTree(Rectangle2D worldExtent, int maxDepth) {
   	maxDepth_ = maxDepth;
+  	worldExtent_ = worldExtent;
   	root_ = new QuadTreeNode(worldExtent, maxDepth);
   } 
  
+  /***************************************************************************
+	**
+	** Clear tree to free up memory
+	*/
+  
+  public void clear() {
+  	root_ = new QuadTreeNode(worldExtent_, maxDepth_);
+  }
+
   /***************************************************************************
 	**
 	** Stick a payload into the tree

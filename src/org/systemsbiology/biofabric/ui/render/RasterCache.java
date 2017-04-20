@@ -21,9 +21,7 @@ package org.systemsbiology.biofabric.ui.render;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
-import java.awt.image.PixelInterleavedSampleModel;
 import java.awt.image.Raster;
-import java.awt.image.SampleModel;
 import java.awt.image.WritableRaster;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -36,6 +34,8 @@ import java.util.HashMap;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
+
+import org.systemsbiology.biofabric.util.UiUtil;
 
 
 /****************************************************************************
@@ -100,7 +100,7 @@ public class RasterCache {
   ** BufferedImage.
   */
   
-  public BufferedImage getAnImage(String handle, BufImgStack bis) throws IOException {
+  public BufferedImage getAnImage(String handle, ImgAndBufPool bis) throws IOException {
     BytesWithMeta bwm = getADataBuffer(handle, bis);
     if (bwm == null) {
     	return (null);
@@ -115,7 +115,7 @@ public class RasterCache {
   ** Cache an image, return a handle, *recycle the image*
   */
   
-  public String cacheAnImage(BufferedImage bi, BufImgStack bis) throws IOException {
+  public String cacheAnImage(BufferedImage bi, ImgAndBufPool bis) throws IOException {
 
   	InfoForImage ifi = new InfoForImage(bi);	
   	BytesWithMeta bwm = imageToBuf(bi, bis, ifi);
@@ -133,10 +133,21 @@ public class RasterCache {
 
   /***************************************************************************
   **
+  ** Release resources
+  */
+  
+  public void releaseResources()  {
+  	UiUtil.fixMePrintout("DO THIS IN A THREAD_SAFE FASHION!!");
+  	return;
+  }
+  
+  
+  /***************************************************************************
+  **
   ** Drop the data associated with the handle. 
   */
   
-  public void dropAnImage(String handle, BufImgStack bis) throws IOException {
+  public void dropAnImage(String handle, ImgAndBufPool bis) throws IOException {
   	//
   	// Since we don't store images, we just need to drop the data buffer!
   	//
@@ -170,7 +181,7 @@ public class RasterCache {
   ** Replace the image with the given handle. *recycles the image*
   */
   
-  public String replaceAnImage(String handle, BufferedImage bi, BufImgStack bis) throws IOException {
+  public String replaceAnImage(String handle, BufferedImage bi, ImgAndBufPool bis) throws IOException {
   	
     BytesWithMeta bye = getADataBuffer(handle, bis);
     currSize_ -= bye.buf.length;
@@ -205,7 +216,7 @@ public class RasterCache {
   ** Manage in-memory cache, toss least recently used. Tossed byte array recycled.
   */
   
-  private void maintainSize(int sizeEst, BufImgStack bis) throws IOException {
+  private void maintainSize(int sizeEst, ImgAndBufPool bis) throws IOException {
     while (((sizeEst + currSize_) > maxMeg_) && (queue_.size() > 0)) {
       String goodBye = queue_.remove(queue_.size() - 1);
       BytesWithMeta bwm = bufferCache_.remove(goodBye);
@@ -282,7 +293,7 @@ public class RasterCache {
   ** Write out a DataBuffer for file. Buffer is NOT recycled.
   */
 
-  private void writeBufferToFile(BytesWithMeta bwm, File file, BufImgStack bis) throws IOException {
+  private void writeBufferToFile(BytesWithMeta bwm, File file, ImgAndBufPool bis) throws IOException {
   	long prewrite = Runtime.getRuntime().freeMemory();
   	BufferedOutputStream out = null;
   	try {
@@ -303,7 +314,7 @@ public class RasterCache {
   ** Read in a DataBuffer
   */
 
-  private BytesWithMeta readBufferFromFile(File file, InfoForImage ifi, BufImgStack bis) throws IOException {
+  private BytesWithMeta readBufferFromFile(File file, InfoForImage ifi, ImgAndBufPool bis) throws IOException {
   	long preread = Runtime.getRuntime().freeMemory();
   	System.out.println("in readBuffer " + file.getName() + " mem " + preread);
   	byte[] buf = bis.fetchByteBuf(ifi.compressedNumBytes);
@@ -335,7 +346,7 @@ public class RasterCache {
   ** Get a BytesWithMeta from the cache; returns null if no BytesWithMeta
   */
   
-  private BytesWithMeta getADataBuffer(String handle, BufImgStack bis) throws IOException {
+  private BytesWithMeta getADataBuffer(String handle, ImgAndBufPool bis) throws IOException {
   	
     //
   	// We have a hit in the memory cache. Retrieve it, and move it to the front of the
@@ -397,7 +408,7 @@ public class RasterCache {
   ** Convert an image into a buffer. Image is not recycled; caller is responsible.
   */
 
-  private BytesWithMeta imageToBuf(BufferedImage bi, BufImgStack bis, InfoForImage ifi)  { 
+  private BytesWithMeta imageToBuf(BufferedImage bi, ImgAndBufPool bis, InfoForImage ifi)  { 
   	Raster rast = bi.getRaster();
   	DataBufferByte dbb = (DataBufferByte)rast.getDataBuffer();
   	byte[] data = dbb.getData();
@@ -420,7 +431,7 @@ public class RasterCache {
   ** Convert a buffer into an image. Buffer is not recycled, caller is responsible.
   */
 
-  private BufferedImage bufToImage(BytesWithMeta bwm, BufImgStack bis, InfoForImage ifi) throws IOException {   	
+  private BufferedImage bufToImage(BytesWithMeta bwm, ImgAndBufPool bis, InfoForImage ifi) throws IOException {   	
   	Inflater inflate = new Inflater();
     byte[] decomp = bis.fetchByteBuf(ifi.uncompressedNumBytes);
     inflate.setInput(bwm.buf, 0, bwm.used);
@@ -435,53 +446,7 @@ public class RasterCache {
     BufferedImage bi = bis.fetchImage(ifi.width, ifi.height, ifi.type);
   	WritableRaster biRast = bi.getRaster();
   	biRast.setDataElements(0, 0, ifi.width, ifi.height, decomp);
-  	
-  	
-  	
-  //	DataBufferByte biDbb = (DataBufferByte)biRast.getDataBuffer();
-  //	byte[] data = biDbb.getData();
-  //	System.arraycopy(decomp, 0, data, 0, data.length);  
-  	
-  	/*
-    int size = biDbb.getSize();
- //   byte[] mybank = bis.fetchByteBuf(size);
-  //  DataBufferByte dbb = new DataBufferByte(mybank, size);
-     DataBufferByte dbb = new DataBufferByte(size);
-    SampleModel asm = biRast.getSampleModel();
-  	PixelInterleavedSampleModel sm = (PixelInterleavedSampleModel)asm;   
-    WritableRaster myRast = Raster.createInterleavedRaster(dbb, sm.getWidth(), sm.getHeight(), sm.getScanlineStride(),
-    		                                                   sm.getPixelStride(), sm.getBandOffsets(), null);
-   
-  	BufferedImage bi2 = new BufferedImage(bi.getColorModel(), myRast, false, null);
-  	myRast.setDataElements(0, 0, sm.getWidth(), sm.getHeight(), decomp);
-    bis.returnImage(bi);
-    
-    
-    
-    
-   
-
- //   System.arraycopy(decomp, 0, mybank, 0, size);  
- //   SampleModel asm = biRast.getSampleModel();
- // 	PixelInterleavedSampleModel sm = (PixelInterleavedSampleModel)asm;   
-  //  WritableRaster myRast = Raster.createInterleavedRaster(dbb, sm.getWidth(), sm.getHeight(), sm.getScanlineStride(),
-    		                                                  // sm.getPixelStride(), sm.getBandOffsets(), null);       
-  //  bi.setData(myRast);
-
-    
-    
-    /* Raster rast = bi.getRaster();
-    
-    DataBufferByte dbb = (DataBufferByte)rast.getDataBuffer();
-    byte[] dest = dbb.getData();
-    if (resultLength != dest.length) {
-    	throw new IOException();
-    }*/
-    
-  //  System.out.println("decomp " + decomp.length + " UNB " + ifi.uncompressedNumBytes + " into " + dest.length);
-   
     bis.returnByteBuf(decomp);
- //   bis.returnByteBuf(mybank);
     return (bi);
   }
   

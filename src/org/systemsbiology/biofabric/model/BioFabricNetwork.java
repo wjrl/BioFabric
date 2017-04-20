@@ -523,7 +523,7 @@ public class BioFabricNetwork {
     // Now have the ordered list of targets we are going to display.
     //
     System.out.println("PROL2 " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
-    fillNodesFromOrder(targetIDs, rbd.colGen, rbd.clustAssign, monitor, startFrac, endFrac);
+    fillNodesFromOrder(targetIDs, rbd.colGen, rbd.clustAssign, monitor, 0.0, endFrac);
 
     //
     // This now assigns the link to its column.  Note that we order them
@@ -539,13 +539,13 @@ public class BioFabricNetwork {
     // and outgoing links:
     //
 System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
-    trimTargetRows();
+    trimTargetRows(monitor, 0.0, 1.0);
         
     //
     // For the lone nodes, they are assigned into the last column:
     //
     System.out.println("PROL5 " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
-    loneNodesToLastColumn(rbd.loneNodeIDs);
+    loneNodesToLastColumn(rbd.loneNodeIDs, monitor, 0.0, 1.0);
     return;
   }
   
@@ -627,13 +627,13 @@ System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRunt
     // and outgoing links:
     //
     System.out.println("TTR " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
-    trimTargetRows();
+    trimTargetRows(monitor, 0.0, 1.0);
         
     //
     // For the lone nodes, they are assigned into the last column:
     //
      System.out.println("LNLC " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
-    loneNodesToLastColumn(rbd.loneNodeIDs);
+    loneNodesToLastColumn(rbd.loneNodeIDs, monitor, 0.0, 1.0);
 
     if (monitor != null) {
       if (!monitor.updateProgress((int)(endFrac * 100.0))) {
@@ -928,11 +928,13 @@ System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRunt
   ** Dump the network using XML
   */
   
-  public void writeXML(PrintWriter out, Indenter ind) {    
+  public void writeXML(PrintWriter out, Indenter ind, 
+  		                 BTProgressMonitor monitor, double startFrac, double endFrac) throws AsynchExitRequestException {    
     ind.indent();
     out.println("<BioFabric>");
     ind.up();
-    
+    LoopReporter lr = new LoopReporter(4, 4, monitor, startFrac, endFrac, "progress.writingFile");
+     
     colGen_.writeXML(out, ind);
     
     //
@@ -940,6 +942,7 @@ System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRunt
     //
     
     FabricDisplayOptionsManager.getMgr().writeXML(out, ind);
+    lr.report(); // #1
        
     //
     // Dump the nodes, then the links:
@@ -957,6 +960,7 @@ System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRunt
     }
     ind.down().indent();
     out.println("</nodes>");
+    lr.report();  // #2
   
     if (!linkGrouping_.isEmpty()) {
       Iterator<String> lgit = linkGrouping_.iterator();
@@ -982,6 +986,7 @@ System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRunt
       Integer key = nsit.next();
       inverse.put(nonShadowedLinkMap_.get(key), key);
     }
+    lr.report();  // #3
     
     
     Iterator<Integer> ldit = fullLinkDefs_.keySet().iterator();
@@ -1019,6 +1024,7 @@ System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRunt
       out.print(li.getColorKey());
       out.println("\" />");
     }
+    lr.report(); // #4
     ind.down().indent();
     out.println("</links>");
     ind.down().indent();
@@ -1811,10 +1817,17 @@ System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRunt
   ** and outgoing links:
   */
 
-  private void trimTargetRows() {
-    Iterator<Integer> fldit = fullLinkDefs_.keySet().iterator();
+  private void trimTargetRows(BTProgressMonitor monitor, 
+                              double startFrac, 
+                              double endFrac) throws AsynchExitRequestException {
+  	
+  	double mid = (startFrac + endFrac) / 2.0;
+  	
+  	LoopReporter lr = new LoopReporter(fullLinkDefs_.size(), 20, monitor, startFrac, mid, "progress.trimTargetRows1");
+  	Iterator<Integer> fldit = fullLinkDefs_.keySet().iterator();
     while (fldit.hasNext()) {
       Integer colNum = fldit.next();
+      lr.report();
       LinkInfo li = fullLinkDefs_.get(colNum);
       shadowCols_.columnToSource.put(colNum, li.getSource());
       shadowCols_.columnToTarget.put(colNum, li.getTarget());
@@ -1823,9 +1836,12 @@ System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRunt
       srcNI.updateMinMaxCol(colNum.intValue(), true);
       trgNI.updateMinMaxCol(colNum.intValue(), true);
     }
+    
+    LoopReporter lr2 = new LoopReporter(nonShadowedLinkMap_.size(), 20, monitor, mid, endFrac, "progress.trimTargetRows2");
     Iterator<Integer> nslit = nonShadowedLinkMap_.keySet().iterator();
     while (nslit.hasNext()) {
       Integer colNum = nslit.next();
+      lr2.report();
       Integer mappedCol = nonShadowedLinkMap_.get(colNum);
       LinkInfo li = fullLinkDefs_.get(mappedCol);
       normalCols_.columnToSource.put(colNum, li.getSource());
@@ -1843,10 +1859,17 @@ System.out.println("PROL4 " + System.currentTimeMillis() + " " + Runtime.getRunt
   ** For the lone nodes, they are assigned into the last column:
   */
 
-  private void loneNodesToLastColumn(Set<NID.WithName> loneNodeIDs) {
+  private void loneNodesToLastColumn(Set<NID.WithName> loneNodeIDs,
+  		                               BTProgressMonitor monitor, 
+                                     double startFrac, 
+                                     double endFrac) throws AsynchExitRequestException {
+  	
+  	LoopReporter lr = new LoopReporter(loneNodeIDs.size(), 20, monitor, startFrac, endFrac, "progress.loneNodes");
+  	
     Iterator<NID.WithName> lnit = loneNodeIDs.iterator();
     while (lnit.hasNext()) {
       NID.WithName loneID = lnit.next();
+      lr.report();
       NodeInfo loneNI = nodeDefs_.get(loneID);     
       loneNI.updateMinMaxCol(normalCols_.columnCount - 1, false);
       loneNI.updateMinMaxCol(shadowCols_.columnCount - 1, true);

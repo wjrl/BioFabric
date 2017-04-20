@@ -83,12 +83,15 @@ import org.systemsbiology.biofabric.ui.PopupMenuControl;
 import org.systemsbiology.biofabric.ui.ZoomPresentation;
 import org.systemsbiology.biofabric.ui.render.BucketRenderer;
 import org.systemsbiology.biofabric.ui.render.BufBuildDrawer;
-import org.systemsbiology.biofabric.ui.render.BufImgStack;
+import org.systemsbiology.biofabric.ui.render.ImgAndBufPool;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
 import org.systemsbiology.biofabric.ui.render.PaintCache;
+import org.systemsbiology.biofabric.ui.render.PaintCacheFast;
+import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
+import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.QuadTree;
@@ -203,7 +206,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   
   private Rectangle clipRect_;
   private Rectangle clipRect2_;
-  private BufImgStack bis_;
+  private ImgAndBufPool bis_;
   private List<BufferedImage> staleImages_;
   
   ////////////////////////////////////////////////////////////////////////////
@@ -230,8 +233,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     CommandSet fc = CommandSet.getCmds((isForMain) ? "mainWindow" : "selectionWindow");
     zcs_ = new ZoomCommandSupport(fc);
     isAMac_ = fc.isAMac();
-    painter_ = new PaintCache(colGen);
-   // selectionPainter_ = new PaintCache(colGen);
+    painter_ = new PaintCacheSmall(colGen);
     fmt_.setPainters(painter_, null);
     zoomMap_ = new TreeMap<Double, Integer>();
     numZoom_ = 0;
@@ -290,7 +292,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   ** Get the buffered image stack
   */
 
-  public BufImgStack getBufImgStack() { 
+  public ImgAndBufPool getBufImgStack() { 
     return (bis_);
   }
   
@@ -369,7 +371,9 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     if (bufferBuilder_ != null) {
       bufferBuilder_.release();
     }
+    painter_.clear();
     bfn_ = null;
+    fmt_.setModel(null); 
     zoomMap_.clear();
     worldRectNetAR_ = new Rectangle2D.Double(0.0, 0.0, 100.0, 100.0); 
     zoomSrc_.simpleSetWorkspace(new Workspace(UiUtil.rectFromRect2D(worldRectNetAR_))); 
@@ -467,7 +471,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     }
     
     screenDim_ = new Dimension(screenSize);
-    bis_ = new BufImgStack(50000);
+    bis_ = new ImgAndBufPool(50000);
     
     //
     // We create a world rectangle centered on the existing world, with the aspect ratio
@@ -1181,9 +1185,6 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), shadeNodes, 
                            showShadows, new HashMap<NID.WithName, Rectangle2D>(), 
                            new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_, null, 0.0, 1.0);
-  //  selectionPainter_.buildObjCache(targetList_, linkList_, shadeNodes, showShadows, 
-                                //    new HashMap<NID.WithName, Rectangle2D>(), 
-                                 //   new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_);
     handleFloaterChange();
     return;
   }
@@ -1218,16 +1219,17 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), 
     		                   shadeNodes, showShadows, nodeNameLocations_, 
     		                   drainNameLocations_, worldRectNetAR_, monitor, startFrac, endFrac);
-  //  selectionPainter_.buildObjCache(new ArrayList<NodeInfo>(), new ArrayList<LinkInfo>(), 
-    		                    //        shadeNodes, showShadows, new HashMap<NID.WithName, Rectangle2D>(), 
-    		                        //    new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_);
     bucketRend_.buildBucketCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), showShadows);
     
+    
+    LoopReporter lr = new LoopReporter(drainNameLocations_.size(), 20, monitor, startFrac, endFrac, "progress.drainsToQuad");
+
     forSelections_ = new QuadTree(worldRectNetAR_, 5);
     Iterator<NID.WithName> kit = drainNameLocations_.keySet().iterator();
     int count = 0;
     while (kit.hasNext()) {
     	NID.WithName nid = kit.next();
+    	lr.report();
     	List<Rectangle2D> rects = drainNameLocations_.get(nid);
     	int numR = rects.size();
     	for (int i = 0; i < numR; i++) {

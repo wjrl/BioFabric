@@ -119,7 +119,7 @@ public class WorldBankLayout {
     // Build target->row maps and the inverse:
     //
     
-    (new DefaultLayout()).installNodeOrder(targets, rbd);
+    (new DefaultLayout()).installNodeOrder(targets, rbd, monitor, startFrac, endFrac);
     return (targets);
   }
   

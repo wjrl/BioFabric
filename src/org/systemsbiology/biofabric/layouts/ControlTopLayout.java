@@ -94,7 +94,7 @@ public class ControlTopLayout {
   		                 BTProgressMonitor monitor, 
                        double startFrac, 
                        double endFrac) throws AsynchExitRequestException {   
-    doNodeLayout(rbd, forcedTop);
+    doNodeLayout(rbd, forcedTop, monitor, startFrac, endFrac);
     (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
     return;
   }
@@ -104,14 +104,17 @@ public class ControlTopLayout {
   ** Relayout the network!
   */
   
-  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, List<NID.WithName> forcedTop) {
-    
+  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, List<NID.WithName> forcedTop, 
+  		                                   BTProgressMonitor monitor, 
+									                       double startFrac, 
+									                       double endFrac) throws AsynchExitRequestException {
+									    
     List<NID.WithName> targets = orderByNodeDegree(rbd, forcedTop);       
     //
     // Now have the ordered list of targets we are going to display.
     // Build target->row maps and the inverse:
     //
-    (new DefaultLayout()).installNodeOrder(targets, rbd);
+    (new DefaultLayout()).installNodeOrder(targets, rbd, monitor, startFrac, endFrac);
     return (targets);
   }
   

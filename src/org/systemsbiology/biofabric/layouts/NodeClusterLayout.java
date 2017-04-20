@@ -209,14 +209,14 @@ public class NodeClusterLayout {
       } else {
         DefaultLayout dl = new DefaultLayout();
         List<NID.WithName> starts = (hubs == null) ? null : hubs.get(clustName);
-        targets = dl.defaultNodeOrder(pcrbd.allLinks, pcrbd.loneNodeIDs, starts);  
+        targets = dl.defaultNodeOrder(pcrbd.allLinks, pcrbd.loneNodeIDs, starts, monitor, startFrac, endFrac);  
       }
       allTargets.addAll(targets);
     }
     interNodesOnly.removeAll(allTargets);
     allTargets.addAll(interNodesOnly);
     
-    (new DefaultLayout()).installNodeOrder(allTargets, rbd);
+    (new DefaultLayout()).installNodeOrder(allTargets, rbd, monitor, startFrac, endFrac);
     
     (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
     

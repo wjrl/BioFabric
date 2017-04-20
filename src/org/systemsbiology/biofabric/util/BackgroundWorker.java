@@ -223,6 +223,8 @@ public abstract class BackgroundWorker implements Runnable, BTProgressMonitor {
     public void run() {
     	if (message_ == null) {
     	  cancelRequested_ = !client_.updateProgress(percent_);
+    	} else if (message_.equals("INDET")) {
+    	  cancelRequested_ = !client_.setToIndeterminate();
     	} else {
     		cancelRequested_ = !client_.updateProgressAndPhase(percent_, message_);
     	} 
