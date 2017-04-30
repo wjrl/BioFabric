@@ -58,6 +58,17 @@ public class LoopReporter {
 	  return;
   }
   
+  public void finish() throws AsynchExitRequestException {
+    if (monitor_ != null) {
+      if (!monitor_.updateProgressAndPhase((int)(100.0), message_)) {
+        throw new AsynchExitRequestException();
+      }
+    }
+	  return;
+  }
+  
+  
+  
   public void report() throws AsynchExitRequestException {
   	report(1);
 	  return;

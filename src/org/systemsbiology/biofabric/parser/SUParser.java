@@ -165,15 +165,13 @@ public class SUParser extends DefaultHandler {
   ** Parse the given input stream
   */
 
-  public void parse(ProgressFilterInputStream pfis, BTProgressMonitor monitor, double startFrac, double endFrac) 
+  public void parse(ProgressFilterInputStream pfis, BTProgressMonitor monitor, boolean forCache) 
     throws AsynchExitRequestException, IOException {
   	
   	pfis_ = pfis;
   	seen_ = new HashSet<Double>();
   	monitor_ = monitor;
-  	startFrac_ = startFrac;
-  	endFrac_ = endFrac;
-  	lr_ = new LoopReporter(20, 0, monitor_, startFrac_, endFrac_, "progress.readXML");
+  	lr_ = new LoopReporter(20, 0, monitor_, 0.0, 1.0, (forCache) ? "progress.fromCache" : "progress.readXML");
   	
     try {
       parser_.parse(new InputSource(pfis_));

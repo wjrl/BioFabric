@@ -30,6 +30,7 @@ import java.awt.geom.GeneralPath;
 import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -96,6 +97,7 @@ public class PaintCacheSmall implements PaintCache {
   private LinePath[] nodes_;
   private List<BioFabricNetwork.LinkInfo> linkRefs_;
   private int[] linkIndex_;
+  private int indexOffset_;
   private QuadTree names_;
   private HashMap<String, PaintedPath> nameKeyToPaintFirst_;
   private HashMap<String, PaintedPath> nameKeyToPaintSecond_;
@@ -152,6 +154,7 @@ public class PaintCacheSmall implements PaintCache {
     nodes_ = null;
     linkRefs_ = null;
     linkIndex_ = null;
+    indexOffset_ = 0;
     if (names_ != null) {
     	names_.clear();
     }
@@ -254,17 +257,23 @@ public class PaintCacheSmall implements PaintCache {
 	    int startCol = (int)Math.floor(minX) - extraCols;
 	    int endCol = (int)Math.floor(maxX) + extraCols;
 	    
-	    startCol = (startCol < 0) ? 0 : startCol;
-	    endCol = (endCol >= linkIndex_.length) ? linkIndex_.length - 1 : endCol;
+	    startCol = (startCol < indexOffset_) ? indexOffset_ : startCol;
+	    endCol = (endCol >= (linkIndex_.length + indexOffset_)) ? linkIndex_.length - 1 + indexOffset_: endCol;
 
 	    Line2D line = new Line2D.Double();
       LinePath lp = new LinePath();
       MinMax mm = new MinMax();
       GlyphPath gp = new GlyphPath();
 
+      int count = 0;
 	    for (int i = startCol; i < endCol; i++) {
+	    	// If we are not drawing contiguous links (subviews with gaps) we will hit non-link columns to skip:
+	      if (linkIndex_[i - indexOffset_] == -1) {
+	      	continue;
+	      }
 	    	if ((reduce == null) || reduce.paintCols.contains(Integer.valueOf(i))) {
-	    		BioFabricNetwork.LinkInfo li = linkRefs_.get(linkIndex_[i]);
+
+	    		BioFabricNetwork.LinkInfo li = linkRefs_.get(linkIndex_[i - indexOffset_]);
           int sRow = li.topRow();
           int eRow = li.bottomRow();
           Color paintCol = getColorForLink(li, colGen_);
@@ -276,9 +285,11 @@ public class PaintCacheSmall implements PaintCache {
           line.setLine(x, yStrt, x, yEnd);
           int result = lp.reset(paintCol, line, x, Integer.MIN_VALUE, mm.reset(yStrt, yEnd)).paint(g2, clip, forSelection);
 		      retval = retval || (result > 0);
+		      count += (result > 0) ? 1 : 0;
          
           if (!li.isDirected()) {
-          	gp.reuse(paintCol, x, yStrt, yEnd, BB_HALF_WIDTH_, false);
+          	result = gp.reuse(paintCol, x, yStrt, yEnd, BB_HALF_WIDTH_, false).paint(g2, clip, forSelection);
+          	retval = retval || (result > 0);
           } else {
             int ySrc = li.getStartRow() * BioFabricPanel.GRID_SIZE;
             int yTrg = li.getEndRow() * BioFabricPanel.GRID_SIZE;
@@ -287,7 +298,9 @@ public class PaintCacheSmall implements PaintCache {
           }
 	    	}
 	    }
+	    System.out.println("Drew links "+ count + " s " + startCol + " e " + endCol);
     }
+
     
     if (reduce == null) {
 	    Iterator<String> pkit = pKeys.iterator();
@@ -338,7 +351,7 @@ public class PaintCacheSmall implements PaintCache {
   public void buildObjCache(List<BioFabricNetwork.NodeInfo> targets, List<BioFabricNetwork.LinkInfo> links, 
                             boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
                             Map<NID.WithName, List<Rectangle2D>> drainMap, Rectangle2D worldRect,
-                            BTProgressMonitor monitor, double startFrac, double endFrac) throws AsynchExitRequestException {
+                            BTProgressMonitor monitor) throws AsynchExitRequestException {
   	
   	
   	
@@ -358,8 +371,9 @@ public class PaintCacheSmall implements PaintCache {
    
     int numLinks = links.size();
     int maxCol = 0;
+    int minCol = Integer.MAX_VALUE;
     
-     LoopReporter lr0 = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.calcLinkExtents");
+    LoopReporter lr0 = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.calcLinkExtents");
     
     HashMap<Integer, MinMax> linkExtents = new HashMap<Integer, MinMax>();
     for (int i = 0; i < numLinks; i++) {
@@ -372,10 +386,16 @@ public class PaintCacheSmall implements PaintCache {
       if (num > maxCol) {
       	maxCol = num;
       }
+      if (num < minCol) {
+      	minCol = num;
+      }
     }
     
     nodes_ = new LinePath[targets.size()];
-    linkIndex_ = new int[maxCol + 1];
+    linkIndex_ = new int[maxCol + 1 - minCol];
+    indexOffset_ = minCol;  // In subviews, links do NOT start at column 0!
+    // And in subviews with non-contiguous links, we need to skip non-link columns, so init with -1:
+    Arrays.fill(linkIndex_, -1);
     linkRefs_ = links;
      
     LoopReporter lr = new LoopReporter(targets.size(), 20, monitor, 0.0, 1.0, "progress.buildNodeGraphics");
@@ -395,7 +415,7 @@ public class PaintCacheSmall implements PaintCache {
     for (int i = 0; i < numLinks; i++) {
       BioFabricNetwork.LinkInfo link = links.get(i);
       lr2.report();
-      linkIndex_[link.getUseColumn(showShadows)] = i;
+      linkIndex_[link.getUseColumn(showShadows) - indexOffset_] = i;
     }
 
     return;

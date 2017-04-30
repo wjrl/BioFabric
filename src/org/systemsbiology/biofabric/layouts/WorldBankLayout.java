@@ -36,6 +36,7 @@ import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
@@ -89,15 +90,12 @@ public class WorldBankLayout {
   */
   
   public void doLayout(BioFabricNetwork.RelayoutBuildData rbd,                            
-  		                 BTProgressMonitor monitor, 
-                       double startFrac, 
-                       double endFrac) throws AsynchExitRequestException { 
+  		                 BTProgressMonitor monitor) throws AsynchExitRequestException { 
 
-  	double perStep = (endFrac - startFrac) / 2.0;
   	System.out.println("doLays");   
-    doNodeLayout(rbd, monitor, startFrac, startFrac + perStep);
+    doNodeLayout(rbd, monitor);
     System.out.println("doLays2");   
-    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac + perStep, endFrac);
+    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
     System.out.println("doLays3");   
     return;
   }
@@ -108,18 +106,16 @@ public class WorldBankLayout {
   */
   
   public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd,
-  		                                   BTProgressMonitor monitor, 
-									                       double startFrac, 
-									                       double endFrac) throws AsynchExitRequestException {
+  		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
     
-    List<NID.WithName> targets = calcNodeOrder(rbd.allLinks, rbd.loneNodeIDs, monitor, startFrac, endFrac);       
+    List<NID.WithName> targets = calcNodeOrder(rbd.allLinks, rbd.loneNodeIDs, monitor);       
 
     //
     // Now have the ordered list of targets we are going to display.
     // Build target->row maps and the inverse:
     //
     
-    (new DefaultLayout()).installNodeOrder(targets, rbd, monitor, startFrac, endFrac);
+    (new DefaultLayout()).installNodeOrder(targets, rbd, monitor);
     return (targets);
   }
   
@@ -158,11 +154,16 @@ public class WorldBankLayout {
   ** Invert a map
   */
 
-  public SortedMap<Integer, SortedSet<NID.WithName>> invertDaCount(Map<NID.WithName, Integer> countMap) { 
-    TreeMap<Integer, SortedSet<NID.WithName>> retval = new TreeMap<Integer, SortedSet<NID.WithName>>(Collections.reverseOrder());
+  public SortedMap<Integer, SortedSet<NID.WithName>> invertDaCount(Map<NID.WithName, Integer> countMap, 
+  		                                                             BTProgressMonitor monitor) throws AsynchExitRequestException { 
+
+    LoopReporter lr = new LoopReporter(countMap.size(), 20, monitor, 0.0, 1.0, "progress.sortingByDegree");
+  	    
+  	TreeMap<Integer, SortedSet<NID.WithName>> retval = new TreeMap<Integer, SortedSet<NID.WithName>>(Collections.reverseOrder());
     Iterator<NID.WithName> cmit = countMap.keySet().iterator();
     while (cmit.hasNext()) {
       NID.WithName daKey = cmit.next();
+      lr.report();
       Integer daCount = countMap.get(daKey);
       SortedSet<NID.WithName> forCount = retval.get(daCount);
       if (forCount == null) {
@@ -171,6 +172,7 @@ public class WorldBankLayout {
       }
       forCount.add(daKey);
     }
+    lr.finish();
     return (retval);
   }
   
@@ -194,26 +196,19 @@ public class WorldBankLayout {
   */
 
   public List<NID.WithName> calcNodeOrder(Set<FabricLink> allLinks, Set<NID.WithName> loneNodes,
-  		                                    BTProgressMonitor monitor, 
-									                        double startFrac, 
-									                        double endFrac) throws AsynchExitRequestException {
+  		                                    BTProgressMonitor monitor) throws AsynchExitRequestException {
  
     ArrayList<NID.WithName> targets = new ArrayList<NID.WithName>();
     HashMap<NID.WithName, Integer> node2Degree = new HashMap<NID.WithName, Integer>();
     HashMap<NID.WithName, SortedSet<NID.WithName>> node2Neighbor = new HashMap<NID.WithName, SortedSet<NID.WithName>>(); 
     HashSet<NID.WithName> allNodes = new HashSet<NID.WithName>();
     
-    double perLoop = (endFrac - startFrac) / 4.0;
-    
-    System.out.println("fracs " + startFrac + " " + endFrac + "  " + perLoop);
-    double currStart1 = startFrac;
-    double currEnd1 = currStart1 + perLoop;
-    double inc1 = (currEnd1 - currStart1) / ((allLinks.size() == 0) ? 1 : allLinks.size());
-    double currProg1 = currStart1;
+    LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor, 0.0, 1.0, "progress.wblCalcNodeOrder");
 
     Iterator<FabricLink> alit = allLinks.iterator();
     while (alit.hasNext()) {
       FabricLink nextLink = alit.next();
+      lr.report();
       NID.WithName source = nextLink.getSrcID();
       NID.WithName target = nextLink.getTrgID();
  
@@ -225,30 +220,22 @@ public class WorldBankLayout {
       
       addANeighbor(node2Neighbor, source, target);
       addANeighbor(node2Neighbor, target, source);
-      
-      if (monitor != null) {
-        currProg1 += inc1;
-        if (!monitor.updateProgress((int)(currProg1 * 100.0))) {
-          throw new AsynchExitRequestException();
-        }
-      }
     }
-    System.out.println("currEnd1 " + currEnd1);
-    SortedMap<Integer, SortedSet<NID.WithName>> degree2Nodes = invertDaCount(node2Degree);
-     
-    double currStart2 = currEnd1;
-    double currEnd2 = currStart2 + perLoop;
-    double inc2 = (currEnd2 - currStart2) / ((node2Neighbor.size() == 0) ? 1 : node2Neighbor.size());
-    double currProg2 = currStart2;
+    lr.finish();
+    
+    SortedMap<Integer, SortedSet<NID.WithName>> degree2Nodes = invertDaCount(node2Degree, monitor);
     
     //
     // For nodes that have one neighbor, collect those popular neighbors:
     //
     
+    LoopReporter lr2 = new LoopReporter(node2Neighbor.size(), 20, monitor, 0.0, 1.0, "progress.wblPopNeighbors");
+    
     HashMap<NID.WithName, Set<NID.WithName>> oneNeighbor = new HashMap<NID.WithName, Set<NID.WithName>>();
     Iterator<NID.WithName> nit = node2Neighbor.keySet().iterator();
     while (nit.hasNext()) {
       NID.WithName node = nit.next();
+      lr2.report();
       SortedSet<NID.WithName> nextDoor = node2Neighbor.get(node);
       if (nextDoor.size() == 1) {        
         NID.WithName popular = nextDoor.first();
@@ -259,23 +246,15 @@ public class WorldBankLayout {
         }
         popFriends.add(node);
       }
-      
-      if (monitor != null) {
-        currProg2 += inc2;
-        if (!monitor.updateProgress((int)(currProg2 * 100.0))) {
-          throw new AsynchExitRequestException();
-        }
-      }
     }
-        System.out.println("currEnd2 " + currEnd2);
-    double currStart3 = currEnd2;
-    double currEnd3 = currStart3 + perLoop;
-    double inc3 = (currEnd3 - currStart3) / ((degree2Nodes.size() == 0) ? 1 : degree2Nodes.size());
-    double currProg3 = currStart3;
+    lr2.finish();
+    
+    LoopReporter lr3 = new LoopReporter(degree2Nodes.size(), 0, monitor, 0.0, 1.0, "progress.addingSatellites");
     
     Iterator<Integer> degit = degree2Nodes.keySet().iterator();
     while (degit.hasNext()) {
       Integer deg = degit.next();
+      lr3.report();
       SortedSet<NID.WithName> forDeg = degree2Nodes.get(deg);
       Iterator<NID.WithName> fdit = forDeg.iterator();
       while (fdit.hasNext()) {
@@ -290,31 +269,22 @@ public class WorldBankLayout {
             Integer upd = node2Degree.get(unPop);
             forDaPop.put(unPop, upd);            
           }
-          SortedMap<Integer, SortedSet<NID.WithName>> invFor = invertDaCount(forDaPop);
+          SortedMap<Integer, SortedSet<NID.WithName>> invFor = invertDaCount(forDaPop, null);
           targets.addAll(flattenDaCount(invFor));         
         }
-        
-        if (monitor != null) {
-	        currProg3 += inc3;
-	        if (!monitor.updateProgress((int)(currProg3 * 100.0))) {
-	          throw new AsynchExitRequestException();
-	        }
-	      }
       }
     }
-     
-        System.out.println("currEnd3 " + currEnd3);
-    double currStart4 = currEnd3;
-    double currEnd4 = currStart4 + perLoop;
-    double inc4 = (currEnd4 - currStart4) / ((degree2Nodes.size() == 0) ? 1 : degree2Nodes.size());
-    double currProg4 = currStart4;
-    
+    lr3.finish();
+ 
     HashSet<NID.WithName> stillToPlace = new HashSet<NID.WithName>(allNodes);
     stillToPlace.removeAll(targets);
 
+    LoopReporter lr4 = new LoopReporter(degree2Nodes.size(), 0, monitor, 0.0, 1.0, "progress.addingGlobalNodes");
+    
     Iterator<SortedSet<NID.WithName>> icmit = degree2Nodes.values().iterator();
     while (icmit.hasNext()) {
       SortedSet<NID.WithName> fdeg = icmit.next();
+      lr4.report();
       Iterator<NID.WithName> fdit = fdeg.iterator();
       while (fdit.hasNext()) {
         NID.WithName chkNode = fdit.next();
@@ -322,15 +292,9 @@ public class WorldBankLayout {
           targets.add(chkNode);
         }
       }
-      
-      if (monitor != null) {
-        currProg4 += inc4;
-        if (!monitor.updateProgress((int)(currProg4 * 100.0))) {
-          throw new AsynchExitRequestException();
-        }
-      }
     }
-    System.out.println("currEnd4 " + currEnd4);   
+    lr4.finish();
+
     //
     //
     // Tag on lone nodes.  If a node is by itself, but also shows up in the links,

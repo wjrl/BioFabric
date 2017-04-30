@@ -80,8 +80,7 @@ public class NodeClusterLayout {
   
    public void orderByClusterAssignment(BioFabricNetwork.RelayoutBuildData rbd, 
                                         NodeSimilarityLayout.CRParams crParams,
-                                        BTProgressMonitor monitor, 
-                                        double startFrac, double endFrac) throws AsynchExitRequestException { 
+                                        BTProgressMonitor monitor) throws AsynchExitRequestException { 
      
     //
     // Go through all the links. If a link source and target are both in the same cluster, we add the link to the cluster
@@ -209,16 +208,16 @@ public class NodeClusterLayout {
       } else {
         DefaultLayout dl = new DefaultLayout();
         List<NID.WithName> starts = (hubs == null) ? null : hubs.get(clustName);
-        targets = dl.defaultNodeOrder(pcrbd.allLinks, pcrbd.loneNodeIDs, starts, monitor, startFrac, endFrac);  
+        targets = dl.defaultNodeOrder(pcrbd.allLinks, pcrbd.loneNodeIDs, starts, monitor);  
       }
       allTargets.addAll(targets);
     }
     interNodesOnly.removeAll(allTargets);
     allTargets.addAll(interNodesOnly);
     
-    (new DefaultLayout()).installNodeOrder(allTargets, rbd, monitor, startFrac, endFrac);
+    (new DefaultLayout()).installNodeOrder(allTargets, rbd, monitor);
     
-    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
+    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
     
     if (params.iLink == ClusterParams.InterLink.BETWEEN) {
     	int origNum = rbd.linkOrder.size();

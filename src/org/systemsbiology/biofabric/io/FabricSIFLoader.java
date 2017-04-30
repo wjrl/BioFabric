@@ -92,17 +92,16 @@ public class FabricSIFLoader {
 
   public SIFStats readSIF(File infile, UniqueLabeller idGen, List<FabricLink> links, 
   		                    Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins, 
-  		                    BTProgressMonitor monitor, double startFrac, double endFrac) throws AsynchExitRequestException, IOException { 
+  		                    BTProgressMonitor monitor) throws AsynchExitRequestException, IOException { 
 
   	SIFStats retval = new SIFStats();
     long fileLen = infile.length();
-    double endRead = startFrac + ((endFrac - startFrac) * 0.75);
     HashMap<String, NID.WithName> nameToID = new HashMap<String, NID.WithName>();
     BufferedReader in = null;
     ArrayList<String[]> tokSets = new ArrayList<String[]>();
+    LoopReporter lr = new LoopReporter(fileLen, 20, monitor, 0.0, 1.0, "progress.readingFile");   
     try {
 	    in = new BufferedReader(new InputStreamReader(new FileInputStream(infile), "UTF-8")); 
-	    LoopReporter lr = new LoopReporter(fileLen, 20, monitor, startFrac, endRead, "progress.readingFile");   
 	    String line = null;
 	    while ((line = in.readLine()) != null) {
 	      lr.report(line.length() + 1);
@@ -127,9 +126,10 @@ public class FabricSIFLoader {
         in.close();
     	}
     }
+    lr.finish();
     
     int numLines = tokSets.size();
-    LoopReporter lr = new LoopReporter(numLines, 20, monitor, endRead, endFrac, "progress.buildingEdgesAndNodes");
+    lr = new LoopReporter(numLines, 20, monitor, 0.0, 1.0, "progress.buildingEdgesAndNodes");
     
     for (int i = 0; i < numLines; i++) {
       String[] tokens = tokSets.get(i);
@@ -216,6 +216,7 @@ public class FabricSIFLoader {
         loneNodeIDs.add(loneID);       
       }
     }
+    lr.finish();
     return (retval);
   }
 

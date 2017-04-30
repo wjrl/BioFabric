@@ -29,30 +29,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.systemsbiology.biofabric.analysis.CycleFinder;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
 **
-** This is a hierarchical layout of a DAG
+** This is a hierarchical layout for a directed acyclic graph
 */
 
 public class HierDAGLayout {
-  
-  ////////////////////////////////////////////////////////////////////////////
-  //
-  // PRIVATE CONSTANTS
-  //
-  //////////////////////////////////////////////////////////////////////////// 
-  
-  ////////////////////////////////////////////////////////////////////////////
-  //
-  // PUBLIC CONSTANTS
-  //
-  //////////////////////////////////////////////////////////////////////////// 
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -91,49 +81,67 @@ public class HierDAGLayout {
  
   /***************************************************************************
   **
-  ** Relayout the network!
+  ** Find out if the necessary conditions for this layout are met. 
+  */
+  
+  public boolean criteriaMet(BioFabricNetwork.RelayoutBuildData rbd,
+  		                       BTProgressMonitor monitor) throws AsynchExitRequestException {
+  	//
+  	// 1) All the relations in the network are directed
+  	// 2) There are no cycles in the network
+  	//
+
+  	CycleFinder cf = new CycleFinder(rbd.allNodeIDs, rbd.allLinks, monitor);
+  	
+    return (false);
+  }
+
+  /***************************************************************************
+  **
+  ** Layout the network
   */
   
   public void doLayout(BioFabricNetwork.RelayoutBuildData rbd,
-  		                 BTProgressMonitor monitor, 
-                       double startFrac, 
-                       double endFrac) throws AsynchExitRequestException {
-    doNodeLayout(rbd, monitor, startFrac, endFrac);
-    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
+  		                 BTProgressMonitor monitor) throws AsynchExitRequestException {
+    doNodeLayout(rbd, monitor);
+    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
     return;
   }
   
   /***************************************************************************
   **
-  ** Relayout the network!
+  ** Generate the Node ordering
   */
   
-  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, 
-  		   																 BTProgressMonitor monitor, 
-									                       double startFrac, 
-									                       double endFrac) throws AsynchExitRequestException {
+  private List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, 
+  		   																  BTProgressMonitor monitor) throws AsynchExitRequestException {
     
-    List<NID.WithName> targets = orderByNodeDegree(rbd);       
+    List<NID.WithName> targets = orderByNodeDegree(rbd, monitor);       
 
     //
     // Now have the ordered list of targets we are going to display.
     // Build target->row maps and the inverse:
     //
     
-    (new DefaultLayout()).installNodeOrder(targets, rbd, monitor, startFrac, endFrac);
+    (new DefaultLayout()).installNodeOrder(targets, rbd, monitor);
     return (targets);
   }
   
 
   /***************************************************************************
   **
-  ** Relayout the network!
+  ** Get the ordering of nodes by node degree:
   */
   
-  public List<NID.WithName> orderByNodeDegree(BioFabricNetwork.RelayoutBuildData rbd) {
+  private List<NID.WithName> orderByNodeDegree(BioFabricNetwork.RelayoutBuildData rbd, 
+  		                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
     
-    HashSet<NID.WithName> nodesToGo = new HashSet<NID.WithName>(rbd.allNodeIDs);      
-    linksToSources(rbd.allNodeIDs, rbd.allLinks);
+    HashSet<NID.WithName> nodesToGo = new HashSet<NID.WithName>(rbd.allNodeIDs);
+    
+    // Build map of sources to targets, also record in and out degrees of each node:
+    linksToSources(rbd.allNodeIDs, rbd.allLinks, monitor);
+    
+    
     List<NID.WithName> placeList = extractRoots();
     addToPlaceList(placeList);
     nodesToGo.removeAll(placeList);
@@ -154,22 +162,38 @@ public class HierDAGLayout {
   
   /***************************************************************************
   ** 
-  ** Build the set of guys we are looking at and degrees
+  ** Construct a map of the targets of each node. Note that instance members f
   */
 
-  public Map<NID.WithName, Set<NID.WithName>> linksToSources(Set<NID.WithName> nodeList, Set<FabricLink> linkList) {   
-      
+  public void linksToSources(Set<NID.WithName> nodeList, Set<FabricLink> linkList,
+  		                       BTProgressMonitor monitor) throws AsynchExitRequestException {
+    
+  	//
+  	// For each node, we initialize a map of nodes it is pointing at, and initialize the inDegree and outDegree
+  	// entries for it as well:
+  	//
+  	
+  	LoopReporter lr = new LoopReporter(nodeList.size(), 20, monitor, 0.0, 1.0, "progress.hDagLayoutInit");
+  	
     Iterator<NID.WithName> nit = nodeList.iterator();
     while (nit.hasNext()) {
       NID.WithName node = nit.next();
+      lr.report();
       l2s_.put(node, new HashSet<NID.WithName>());
       inDegs_.put(node, Integer.valueOf(0));
       outDegs_.put(node, Integer.valueOf(0));
     } 
     
+    //
+    // Crank thru the links, accumulate degrees and targets
+    //
+    
+    LoopReporter lr2 = new LoopReporter(linkList.size(), 20, monitor, 0.0, 1.0, "progress.hDagDegAndTargs");
+    
     Iterator<FabricLink> llit = linkList.iterator();
     while (llit.hasNext()) {
       FabricLink link = llit.next();
+      lr2.report();
       NID.WithName src = link.getSrcID();
       NID.WithName trg = link.getTrgID();
       Set<NID.WithName> toTarg = l2s_.get(src);
@@ -179,7 +203,7 @@ public class HierDAGLayout {
       deg = inDegs_.get(trg);
       inDegs_.put(trg, Integer.valueOf(deg.intValue() + 1)); 
     } 
-    return (l2s_);
+    return;
   }
   
   /***************************************************************************

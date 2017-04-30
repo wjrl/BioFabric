@@ -87,34 +87,30 @@ public class ControlTopLayout {
   
   /***************************************************************************
   **
-  ** Relayout the network!
+  ** Relayout the network.
   */
   
   public void doLayout(BioFabricNetwork.RelayoutBuildData rbd, List<NID.WithName> forcedTop,
-  		                 BTProgressMonitor monitor, 
-                       double startFrac, 
-                       double endFrac) throws AsynchExitRequestException {   
-    doNodeLayout(rbd, forcedTop, monitor, startFrac, endFrac);
-    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
+  		                 BTProgressMonitor monitor) throws AsynchExitRequestException {   
+    doNodeLayout(rbd, forcedTop, monitor);
+    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
     return;
   }
   
   /***************************************************************************
   **
-  ** Relayout the network!
+  ** Order the nodes
   */
   
   public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, List<NID.WithName> forcedTop, 
-  		                                   BTProgressMonitor monitor, 
-									                       double startFrac, 
-									                       double endFrac) throws AsynchExitRequestException {
+  		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
 									    
-    List<NID.WithName> targets = orderByNodeDegree(rbd, forcedTop);       
+    List<NID.WithName> targets = orderByNodeDegree(rbd, forcedTop, monitor);       
     //
     // Now have the ordered list of targets we are going to display.
     // Build target->row maps and the inverse:
     //
-    (new DefaultLayout()).installNodeOrder(targets, rbd, monitor, startFrac, endFrac);
+    (new DefaultLayout()).installNodeOrder(targets, rbd, monitor);
     return (targets);
   }
   
@@ -124,9 +120,11 @@ public class ControlTopLayout {
   ** to "odometer" thru the inputs
   */
   
-   private List<NID.WithName> orderByNodeDegree(BioFabricNetwork.RelayoutBuildData rbd, List<NID.WithName> forcedTop) {
+   private List<NID.WithName> orderByNodeDegree(BioFabricNetwork.RelayoutBuildData rbd, 
+  		                                          List<NID.WithName> forcedTop, 
+  		                                          BTProgressMonitor monitor) throws AsynchExitRequestException {
    
-    List<NID.WithName> snSorted = (forcedTop == null) ? controlSort(rbd.allNodeIDs, rbd.allLinks) : forcedTop;
+    List<NID.WithName> snSorted = (forcedTop == null) ? controlSort(rbd.allNodeIDs, rbd.allLinks, monitor) : forcedTop;
     HashSet<NID.WithName> snSortSet = new HashSet<NID.WithName>(snSorted);
     ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
     outList.addAll(snSorted);
@@ -163,7 +161,8 @@ public class ControlTopLayout {
   ** are currently broken arbitrarily:
   */
 
-  private List<NID.WithName> controlSort(Set<NID.WithName> nodes, Set<FabricLink> links) { 
+  private List<NID.WithName> controlSort(Set<NID.WithName> nodes, Set<FabricLink> links, 
+  		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     //
     // Create a set of all the source nodes:
@@ -204,8 +203,8 @@ public class ControlTopLayout {
       	continue;
       }
       testLinks.add(nextLink);              
-      CycleFinder cf = new CycleFinder(nodes, testLinks);
-      if (!cf.hasACycle()) {
+      CycleFinder cf = new CycleFinder(nodes, testLinks, monitor);
+      if (!cf.hasACycle(monitor)) {
         dagLinks.add(nextLink);
       } else {
         testLinks.remove(nextLink);
@@ -425,9 +424,10 @@ public class ControlTopLayout {
   ** Test frame
   */
 
-  private List<NID.WithName> mainSourceSortedTargs(Set<NID.WithName> nodes, Set<FabricLink> links) {
+  private List<NID.WithName> mainSourceSortedTargs(Set<NID.WithName> nodes, Set<FabricLink> links, 
+  		                                             BTProgressMonitor monitor) throws AsynchExitRequestException {
   
-    List<NID.WithName> snSorted = controlSort(nodes, links);
+    List<NID.WithName> snSorted = controlSort(nodes, links, monitor);
     HashSet<NID.WithName> snSortSet = new HashSet<NID.WithName>(snSorted);
     ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
     outList.addAll(snSorted);

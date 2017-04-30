@@ -79,12 +79,9 @@ public class DefaultLayout {
   */
   
   public void doLayout(BioFabricNetwork.RelayoutBuildData rbd, NodeSimilarityLayout.CRParams params,
-  		  		           BTProgressMonitor monitor, 
-                       double startFrac, 
-                       double endFrac) throws AsynchExitRequestException {
-  	double midFrac = (startFrac + endFrac) / 2.0;
-    doNodeLayout(rbd, ((Params)params).startNodes, monitor, startFrac, midFrac);
-    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, midFrac, endFrac);
+  		  		           BTProgressMonitor monitor) throws AsynchExitRequestException {
+    doNodeLayout(rbd, ((Params)params).startNodes, monitor);
+    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
     return;
   }
   
@@ -95,19 +92,16 @@ public class DefaultLayout {
   
   public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, 
   		                                   List<NID.WithName> startNodeIDs,
-  		                                   BTProgressMonitor monitor, 
-                                         double startFrac, 
-                                         double endFrac) throws AsynchExitRequestException { 
+  		                                   BTProgressMonitor monitor) throws AsynchExitRequestException { 
   	
-    List<NID.WithName> targetIDs = 
-      defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs, startNodeIDs, monitor, startFrac, endFrac);       
+    List<NID.WithName> targetIDs = defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs, startNodeIDs, monitor);       
 
     //
     // Now have the ordered list of targets we are going to display.
     // Build target->row maps and the inverse:
     //
     
-    installNodeOrder(targetIDs, rbd, monitor, startFrac, endFrac);
+    installNodeOrder(targetIDs, rbd, monitor);
     return (targetIDs);
   }
   
@@ -117,10 +111,9 @@ public class DefaultLayout {
   */
   
   public void installNodeOrder(List<NID.WithName> targetIDs, BioFabricNetwork.RelayoutBuildData rbd, 
-  		                         BTProgressMonitor monitor, double startFrac, double endFrac) 
-  		                        	 throws AsynchExitRequestException {
+  		                         BTProgressMonitor monitor) throws AsynchExitRequestException {
     int currRow = 0;
-    LoopReporter lr = new LoopReporter(targetIDs.size(), 20, monitor, startFrac, endFrac, "progress.installOrdering");
+    LoopReporter lr = new LoopReporter(targetIDs.size(), 20, monitor, 0.0, 1.0, "progress.installOrdering");
     
     HashMap<NID.WithName, Integer> nodeOrder = new HashMap<NID.WithName, Integer>();
     Iterator<NID.WithName> trit = targetIDs.iterator();
@@ -131,6 +124,7 @@ public class DefaultLayout {
       nodeOrder.put(target, rowTag);
     }  
     rbd.setNodeOrder(nodeOrder);
+    lr.finish();
     return;
   }
 
@@ -142,9 +136,7 @@ public class DefaultLayout {
   public List<NID.WithName> defaultNodeOrder(Set<FabricLink> allLinks,
   		                                       Set<NID.WithName> loneNodes, 
   		                                       List<NID.WithName> startNodes, 
-  		                                       BTProgressMonitor monitor, 
-                                             double startFrac, 
-                                             double endFrac) throws AsynchExitRequestException { 
+  		                                       BTProgressMonitor monitor) throws AsynchExitRequestException { 
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
     //
@@ -160,13 +152,8 @@ public class DefaultLayout {
          
     HashSet<NID.WithName> targsToGo = new HashSet<NID.WithName>();
     
-    double phase1 = startFrac + (0.2 * (endFrac - startFrac));
-    double phase2 = startFrac + (0.4 * (endFrac - startFrac));
-    double phase3 = startFrac + (0.6 * (endFrac - startFrac));
-    double phase4 = startFrac + (0.8 * (endFrac - startFrac));
-    
     int numLink = allLinks.size();
-    LoopReporter lr = new LoopReporter(numLink, 20, monitor, startFrac, phase1, "progress.calculateNodeDegree");
+    LoopReporter lr = new LoopReporter(numLink, 20, monitor, 0.0, 0.25, "progress.calculateNodeDegree");
     
     Iterator<FabricLink> alit = allLinks.iterator();
     while (alit.hasNext()) {
@@ -193,12 +180,13 @@ public class DefaultLayout {
       Integer trgCount = linkCounts.get(tidwn);
       linkCounts.put(tidwn, (trgCount == null) ? Integer.valueOf(1) : Integer.valueOf(trgCount.intValue() + 1));
     }
+    lr.finish();
     
     //
     // Rank the nodes by link count:
     //
     
-    lr = new LoopReporter(linkCounts.size(), 20, monitor, phase1, phase2, "progress.rankByDegree");
+    lr = new LoopReporter(linkCounts.size(), 20, monitor, 0.25, 0.50, "progress.rankByDegree");
     
     TreeMap<Integer, SortedSet<NID.WithName>> countRank = new TreeMap<Integer, SortedSet<NID.WithName>>(Collections.reverseOrder());
     Iterator<NID.WithName> lcit = linkCounts.keySet().iterator();
@@ -213,6 +201,7 @@ public class DefaultLayout {
       }
       perCount.add(src);
     }
+    lr.finish();
     
     //
     // Handle the specified starting nodes case:
@@ -223,7 +212,7 @@ public class DefaultLayout {
       targsToGo.removeAll(startNodes);
       targets.addAll(startNodes);
       queue.addAll(startNodes);
-      flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue, monitor, phase2, phase3);
+      flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue, monitor, 0.50, 0.75);
     }   
     
     //
@@ -243,7 +232,7 @@ public class DefaultLayout {
             ArrayList<NID.WithName> queue = new ArrayList<NID.WithName>();
             targsToGo.remove(node);
             targets.add(node);
-            addMyKidsNR(targets, targsPerSource, linkCounts, targsToGo, node, queue, monitor, phase3, phase4);
+            addMyKidsNR(targets, targsPerSource, linkCounts, targsToGo, node, queue, monitor, 0.75, 1.0);
           }
         }
       }
@@ -346,6 +335,7 @@ public class DefaultLayout {
         }
       }
     }
+    lr.finish();
     return;
   }
 

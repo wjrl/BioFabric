@@ -88,6 +88,9 @@ public class QuadTree {
 	  
   public boolean getNodes(Rectangle2D worldRect, int atDepth, List<QuadTreeNode> nodes) {
     if (atDepth >= maxDepth_) {
+    	UiUtil.fixMePrintout("Get here if load SimpleGOT after WorldBank: zoom screwed up");
+    	UiUtil.fixMePrintout("Or any second-loaded network it appears");
+    	System.err.println("atDepth versus maxDepth: " + atDepth + " : " + maxDepth_);
     	throw new IllegalArgumentException();
     }
   	return (root_.getNodes(worldRect, atDepth, nodes));

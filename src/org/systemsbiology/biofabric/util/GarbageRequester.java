@@ -92,7 +92,7 @@ public class GarbageRequester {
   ** Ask for GC run
   */
   
-  public void askForGC(BTProgressMonitor monitor, double startFrac, double endFrac) throws AsynchExitRequestException {
+  public void askForGC(BTProgressMonitor monitor) throws AsynchExitRequestException {
 
   	long freeMem;
     System.out.println("Tot " + Runtime.getRuntime().totalMemory());
@@ -101,16 +101,19 @@ public class GarbageRequester {
     System.out.println("Max " + Runtime.getRuntime().maxMemory());
     System.out.flush();
     
-    LoopReporter lr2 = new LoopReporter(1, 20, monitor, startFrac, endFrac, "progress.garbageRequest");
+    LoopReporter lr2 = new LoopReporter(1, 20, monitor, 0.0, 1.0, "progress.garbageRequest");
     lr2.report();
     UiUtil.fixMePrintout("ditch the INDET hack");
-    LoopReporter lr3 = new LoopReporter(1, 20, monitor, startFrac, endFrac, "INDET");
+    LoopReporter lr3 = new LoopReporter(1, 20, monitor, 0.0, 1.0, "INDET");
     lr3.report(); 	
 
     try {
       Thread.sleep(2000);
     } catch (InterruptedException iex) {
     }
+    
+    // Experiments show doing this twice has a significant effect
+  	Runtime.getRuntime().gc();
   	Runtime.getRuntime().gc();
   	for (int i = 0; i < 10; i++) {
     	try {

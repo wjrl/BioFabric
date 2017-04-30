@@ -26,6 +26,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
@@ -71,7 +73,8 @@ public class CycleFinder {
   ** Constructor
   */
 
-  public CycleFinder(Set<NID.WithName> nodes, Set<FabricLink> links) {
+  public CycleFinder(Set<NID.WithName> nodes, Set<FabricLink> links, 
+  		               BTProgressMonitor monitor) throws AsynchExitRequestException {
     nodes_ = nodes;
     links_ = links;
     linksForNode_ = new HashMap<NID.WithName, Set<FabricLink>>();
@@ -85,9 +88,9 @@ public class CycleFinder {
       }
       linksForSrc.add(link);
     }
-    white_ = new Integer(0);
-    grey_ = new Integer(1);
-    black_ = new Integer(2);    
+    white_ = Integer.valueOf(0);
+    grey_ = Integer.valueOf(1);
+    black_ = Integer.valueOf(2);    
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -101,7 +104,7 @@ public class CycleFinder {
   ** Answer if there is a cycle
   */
 
-  public boolean hasACycle() {
+  public boolean hasACycle(BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     //
     // Color vertices white:

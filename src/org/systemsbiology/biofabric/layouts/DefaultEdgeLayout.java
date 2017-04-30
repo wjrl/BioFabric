@@ -76,13 +76,9 @@ public class DefaultEdgeLayout {
   */
   
   public void layoutEdges(BioFabricNetwork.RelayoutBuildData rbd, 
-  		                    BTProgressMonitor monitor, 
-                          double startFrac, 
-                          double endFrac) throws AsynchExitRequestException {
+  		                    BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     Map<NID.WithName, Integer> nodeOrder = rbd.nodeOrder;
- 
-    
 
     //
     // Build target->row map:
@@ -126,21 +122,20 @@ public class DefaultEdgeLayout {
     // Do this discretely to allow progress bar:
     //
     
-    LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, startFrac, endFrac, "progress.linkLayout");
-    
+    LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.linkLayout");
     for (FabricLink link : rbd.allLinks) {
     	lr.report();
       order.add(link);
     }
     
-    LoopReporter lr2 = new LoopReporter(order.size(), 20, monitor, 0.0, 1.0, "progress.settingLinkOrder");
     SortedMap<Integer, FabricLink> retval = new TreeMap<Integer, FabricLink>();
     int count = 0;
     for (FabricLink link : order) {
     	retval.put(Integer.valueOf(count++), link);
-    	lr2.report();
+    	lr.report();
     }    
-    rbd.setLinkOrder(retval); 
+    rbd.setLinkOrder(retval);
+    lr.finish();
 
     return;
   }

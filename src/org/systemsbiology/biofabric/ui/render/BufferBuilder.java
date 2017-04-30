@@ -121,13 +121,14 @@ public class BufferBuilder {
   ** Constructor
   */
 
-  public BufferBuilder(BufBuildDrawer drawRender, BufBuildDrawer binRender) {
+  public BufferBuilder(BufBuildDrawer drawRender, BufBuildDrawer binRender, ImgAndBufPool bis) {
     drawRender_ = drawRender;
     binRender_ = binRender;
     allWorldsToImageName_ = new HashMap<Rectangle2D, WorldPieceOffering>();
     findWorldsQT_ = null;
     bbc_ = null;
     timeToExit_ = false;
+    bis_ = bis;
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -164,6 +165,12 @@ public class BufferBuilder {
     worldRect_ = new Rectangle2D.Double();
     binRender_.dimsForBuf(screenDim_, worldRect_); // Both will give same answer... 
     Rectangle worldPiece = UiUtil.rectFromRect2D(worldRect_);
+    UiUtil.fixMePrintout("Saw NPE here after recolor operation. Appears to be event-driven on non-main window");
+    UiUtil.fixMePrintout("Saw NPE here after non-main window was launched");
+    System.out.println(bis_ + " " + screenDim_);
+    if (bis_ == null) {
+    	System.out.println(bis_ + " " + screenDim_);
+    }
     BufferedImage bi = bis_.fetchImage(screenDim_.width, screenDim_.height, BufferedImage.TYPE_3BYTE_BGR);
     double lpp = linksPerPix(screenDim_, worldPiece);
     BufBuildDrawer useDrawer = (lpp < TRANSITION_LPP_) ? drawRender_ : binRender_;
@@ -194,20 +201,14 @@ public class BufferBuilder {
   */
   
   public BufferedImage buildBufs(int[] zooms, BufferBuilderClient bbc, int maxSize, 
-  		                           BTProgressMonitor monitor, 
-                                 double startFrac, 
-                                 double endFrac) throws IOException, AsynchExitRequestException {
+  		                           BTProgressMonitor monitor) throws IOException, AsynchExitRequestException {
     timeToExit_ = false;
     bbZooms_ = new int[zooms.length];
     System.arraycopy(zooms, 0, bbZooms_, 0, zooms.length);
     screenDim_ = new Dimension();
     worldRect_ = new Rectangle2D.Double();
     drawRender_.dimsForBuf(screenDim_, worldRect_); // These values are now ours
-    Rectangle worldPiece = UiUtil.rectFromRect2D(worldRect_);
-     
-    double inc = (endFrac - startFrac) / ((zooms.length == 0) ? 1 : zooms.length);
-    double currProg = startFrac;
-    
+    Rectangle worldPiece = UiUtil.rectFromRect2D(worldRect_);   
     findWorldsQT_ = new QuadTree(worldPiece, zooms.length);
          
     //
@@ -215,7 +216,7 @@ public class BufferBuilder {
     //
     
     List<QueueRequest> requestQueuePre = buildQueue(0, 1, 10); 
-    LoopReporter lr = new LoopReporter(requestQueuePre.size(), 20, monitor, startFrac, endFrac, "progress.stockingImageBufferTop");
+    LoopReporter lr = new LoopReporter(requestQueuePre.size(), 20, monitor, 0.0, 1.0, "progress.stockingImageBufferTop");
     while (!requestQueuePre.isEmpty()) {
       QueueRequest qr = requestQueuePre.remove(0);
       lr.report();
@@ -253,13 +254,18 @@ public class BufferBuilder {
   		throw new IOException();
   	}
     WorldPieceOffering wpo = allWorldsToImageName_.get(nodes.get(0).getWorldExtent());
+    if (wpo == null) { // After a new network is created....
+    	return (null);
+    }
     BufferedImage retval = null;
+    System.err.println("wpo is " + wpo);
+    System.err.println("cache is " + cache_);
+    
     //
     // It is true there are two locks floating around, one on this object, and one of the
     // bis_ BufImgStack. But since bis_ does not acquire any locks during its methods, we
     // do not need to worry about deadlock conditions.
     //
-    UiUtil.fixMePrintout("Refusal to restore after cancel gets us an NPE right here");
     synchronized (this) {
       retval = cache_.getAnImage(wpo.cacheHandle, bis_);
     }

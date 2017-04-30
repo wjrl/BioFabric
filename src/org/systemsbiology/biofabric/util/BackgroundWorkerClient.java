@@ -236,6 +236,11 @@ public class BackgroundWorkerClient {
     if (progressBar_ != null) {
       progressBar_.setIndeterminate(true);
     }
+    UiUtil.fixMePrintout("No this should be separate. Proof of concept");
+    if (cancelButton_ != null) {
+    	cancelButton_.setEnabled(false); 	
+    }
+    
     return (!cancelRequested_);
   }
 
