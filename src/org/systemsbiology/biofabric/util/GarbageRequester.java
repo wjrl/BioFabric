@@ -19,28 +19,6 @@
 
 package org.systemsbiology.biofabric.util;
 
-import java.awt.Dimension;
-import java.awt.Rectangle;
-import java.awt.geom.Rectangle2D;
-import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferByte;
-import java.awt.image.WritableRaster;
-import java.io.IOException;
-import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import javax.swing.SwingUtilities;
-
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
-import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
-import org.systemsbiology.biofabric.util.QuadTree;
-import org.systemsbiology.biofabric.util.UiUtil;
-
 /****************************************************************************
 **
 ** This builds and manages image chunks
@@ -93,13 +71,21 @@ public class GarbageRequester {
   */
   
   public void askForGC(BTProgressMonitor monitor) throws AsynchExitRequestException {
-
-  	long freeMem;
+  	
+    long totMem = Runtime.getRuntime().totalMemory();
     System.out.println("Tot " + Runtime.getRuntime().totalMemory());
-    freeMem = Runtime.getRuntime().freeMemory();
+    long freeMem = Runtime.getRuntime().freeMemory();
     System.out.println("Free " + freeMem);
     System.out.println("Max " + Runtime.getRuntime().maxMemory());
     System.out.flush();
+    
+    //
+    // This whole reclaiming bit is super-obnoxious, so only do it if we are getting low on memory:
+    //
+    
+    if ((freeMem / ((double)totMem)) > 0.33) {
+      return;
+    }
     
     LoopReporter lr2 = new LoopReporter(1, 20, monitor, 0.0, 1.0, "progress.garbageRequest");
     lr2.report();
@@ -124,6 +110,7 @@ public class GarbageRequester {
     	if (freeNow > freeMem) {
     		break;
     	}
+    	System.out.println("On yam, seeing 10 loops of **decreasing** free memory " + Runtime.getRuntime().freeMemory());
   		System.out.println("Tot " + Runtime.getRuntime().totalMemory());
   	  System.out.println("Free " + Runtime.getRuntime().freeMemory());
   	  System.out.println("Max " + Runtime.getRuntime().maxMemory());

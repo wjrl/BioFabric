@@ -28,6 +28,7 @@ import java.util.Iterator;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
@@ -78,9 +79,13 @@ public class CycleFinder {
     nodes_ = nodes;
     links_ = links;
     linksForNode_ = new HashMap<NID.WithName, Set<FabricLink>>();
+    
+    LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.cycleFinderSetup");
+
     Iterator<FabricLink> lit = links_.iterator();
     while (lit.hasNext()) {
       FabricLink link = lit.next();
+      lr.report();
       Set<FabricLink> linksForSrc = linksForNode_.get(link.getSrcID());
       if (linksForSrc == null) {
         linksForSrc = new HashSet<FabricLink>();
@@ -90,7 +95,8 @@ public class CycleFinder {
     }
     white_ = Integer.valueOf(0);
     grey_ = Integer.valueOf(1);
-    black_ = Integer.valueOf(2);    
+    black_ = Integer.valueOf(2);
+    lr.finish();
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -109,29 +115,38 @@ public class CycleFinder {
     //
     // Color vertices white:
     //
+ 
+    LoopReporter lr0 = new LoopReporter(nodes_.size(), 20, monitor, 0.0, 1.0, "progress.cycleFinderVisit");
+    
     
     HashMap<NID.WithName, Integer> colors = new HashMap<NID.WithName, Integer>();
     Iterator<NID.WithName> vit = nodes_.iterator();
     while (vit.hasNext()) {
       NID.WithName node = vit.next();
+      lr0.report();
       colors.put(node, white_);
     }
+    lr0.finish();
     
     //
     // Visit each white vertex:
     //
     
+    LoopReporter lr = new LoopReporter(nodes_.size(), 20, monitor, 0.0, 1.0, "progress.cycleFinderVisit");
+ 
     vit = nodes_.iterator();
     while (vit.hasNext()) {
-      NID.WithName node = vit.next();
+      NID.WithName node = vit.next();      
       Integer color = colors.get(node);
       if (color.equals(white_)) {
-        if (visit(node, colors)) {
+        if (visit(node, colors, lr)) {
+          lr.finish();
           return (true);
         }
       }
     }
     
+    lr.finish();
     return (false);
   }
  
@@ -140,8 +155,9 @@ public class CycleFinder {
   ** Visit a node.  Return true if a cycle
   */
 
-  private boolean visit(NID.WithName vertex, Map<NID.WithName, Integer> colors) {
+  private boolean visit(NID.WithName vertex, Map<NID.WithName, Integer> colors, LoopReporter lr) throws AsynchExitRequestException {
     colors.put(vertex, grey_);
+    lr.report();
     Set<FabricLink> linksForVertex = linksForNode_.get(vertex);
     if (linksForVertex != null) {
       Iterator<FabricLink> lit = linksForVertex.iterator();
@@ -149,9 +165,10 @@ public class CycleFinder {
         FabricLink link = lit.next();
         Integer targColor = colors.get(link.getTrgID());
         if (targColor.equals(grey_)) {
-          return (true);
+          System.err.println("link " + link + "creates cycle");
+          return (true);          
         } else if (targColor.equals(white_)) {
-          if (visit(link.getTrgID(), colors)) {
+          if (visit(link.getTrgID(), colors, lr)) {
             return (true);
           }
         }

@@ -283,7 +283,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
       
     File file = cset.getTheFile(".noa", ".na", "AttribDirectory", "filterName.noa");
     if (file == null) {
-      return (true);
+      return (false);
     }
     Map<AttributeLoader.AttributeKey, String> nodeAttributes = cset.loadTheFile(file, null, true);
     if (nodeAttributes == null) {

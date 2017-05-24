@@ -89,7 +89,9 @@ public class BioFabricNetwork {
                          NODE_CLUSTER_LAYOUT,
                          CONTROL_TOP_LAYOUT,
                          HIER_DAG_LAYOUT,
+                         MULTI_MODE_DAG_LAYOUT,
                          WORLD_BANK_LAYOUT,
+                         SET_LAYOUT,
                          GROUP_PER_NETWORK_CHANGE,
                         };
                                                 
@@ -194,6 +196,8 @@ public class BioFabricNetwork {
       case NODE_CLUSTER_LAYOUT:
       case CONTROL_TOP_LAYOUT: 
       case HIER_DAG_LAYOUT:
+      case MULTI_MODE_DAG_LAYOUT:
+      case SET_LAYOUT:
       case WORLD_BANK_LAYOUT:
         RelayoutBuildData rbd = (RelayoutBuildData)bd;
         normalCols_ = new ColumnAssign();
@@ -550,6 +554,8 @@ public class BioFabricNetwork {
                                  (mode == BuildMode.DEFAULT_LAYOUT) ||
                                  (mode == BuildMode.CONTROL_TOP_LAYOUT) ||
                                  (mode == BuildMode.HIER_DAG_LAYOUT) ||
+                                 (mode == BuildMode.MULTI_MODE_DAG_LAYOUT) ||
+                                 (mode == BuildMode.SET_LAYOUT) ||
                                  (mode == BuildMode.WORLD_BANK_LAYOUT) ||
                                  (mode == BuildMode.NODE_CLUSTER_LAYOUT) || 
                                  (mode == BuildMode.CLUSTERED_LAYOUT) || 
@@ -2248,7 +2254,7 @@ public class BioFabricNetwork {
     public Set<NID.WithName> allNodeIDs;
     public Map<NID.WithName, String> clustAssign;
     public LayoutMode layoutMode;
-    public UniqueLabeller idGen; 
+    public UniqueLabeller idGen;
     
     public RelayoutBuildData(BioFabricNetwork fullNet, BuildMode mode, BTProgressMonitor monitor) throws AsynchExitRequestException {
       super(mode);
@@ -2282,7 +2288,7 @@ public class BioFabricNetwork {
       this.loneNodeIDs = loneNodeIDs;
       this.allNodeIDs = null;
       this.layoutMode = LayoutMode.PER_NODE_MODE;   
-      this.idGen = idGen; 
+      this.idGen = idGen;
     } 
 
     public Map<String, Set<NID.WithName>> genNormNameToID() {

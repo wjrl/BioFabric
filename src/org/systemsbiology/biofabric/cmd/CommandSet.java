@@ -96,9 +96,11 @@ import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.io.FabricSIFLoader;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
+import org.systemsbiology.biofabric.layouts.SetLayout;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.HierDAGLayout;
+import org.systemsbiology.biofabric.layouts.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.layouts.WorldBankLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
@@ -112,7 +114,9 @@ import org.systemsbiology.biofabric.ui.ImageExporter;
 import org.systemsbiology.biofabric.ui.dialogs.BreadthFirstLayoutDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ClusterLayoutSetupDialog;
 import org.systemsbiology.biofabric.ui.dialogs.NodeSimilarityLayoutSetupDialog;
+import org.systemsbiology.biofabric.ui.dialogs.PointUpOrDownDialog;
 import org.systemsbiology.biofabric.ui.dialogs.CompareNodesSetupDialog;
+import org.systemsbiology.biofabric.ui.dialogs.ControlTopLayoutSetupDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ExportSettingsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ExportSettingsPublishDialog;
 import org.systemsbiology.biofabric.ui.dialogs.FabricDisplayOptionsDialog;
@@ -200,6 +204,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public static final int ADD_FIRST_NEIGHBORS = 14;
   public static final int BUILD_SELECT        = 15;
   public static final int SET_DISPLAY_OPTIONS = 16;
+  public static final int SET_LAYOUT          = 17;
   
   // Former Gaggle Commands 17-24 dropped
   
@@ -516,6 +521,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           break;
         case HIER_DAG_LAYOUT:
           retval = new HierDAGLayoutAction(withIcon); 
+          break;
+        case SET_LAYOUT:
+          retval = new SetLayoutAction(withIcon); 
           break;
         case RELAYOUT_USING_SHAPE_MATCH:
           retval = new LayoutViaShapeMatchAction(withIcon); 
@@ -2486,6 +2494,35 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     LayoutTopControlAction(boolean doIcon) {
       super(doIcon, "command.TopControlLayout", "command.TopControlLayoutMnem", BioFabricNetwork.BuildMode.CONTROL_TOP_LAYOUT);
     }
+    
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      ControlTopLayoutSetupDialog ctlsud = new ControlTopLayoutSetupDialog(topWindow_);
+      ctlsud.setVisible(true);
+      if (ctlsud.haveResult()) {
+        List<String> fixedList = null;
+        ControlTopLayout.CtrlMode cMode = ctlsud.getCMode();
+        ControlTopLayout.TargMode tMode = ctlsud.getTMode();
+        if (cMode == ControlTopLayout.CtrlMode.FIXED_LIST) {
+          File fileEda = getTheFile(".txt", null, "AttribDirectory", "filterName.txt");
+          if (fileEda == null) {
+            return;
+          }
+          fixedList = UiUtil.simpleFileRead(fileEda);
+          if (fixedList == null) {
+            return;
+          }
+        }  
+        NetworkRelayout nb = new NetworkRelayout();
+        nb.setControlTopModes(cMode, tMode, fixedList);
+        try {
+          nb.doNetworkRelayout(bfp_.getNetwork(), BioFabricNetwork.BuildMode.CONTROL_TOP_LAYOUT); 
+        } catch (Exception ex) {
+          ExceptionHandler.getHandler().displayException(ex);
+        }
+      }
+      return;
+    } 
   }  
   
   /***************************************************************************
@@ -2500,8 +2537,58 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     HierDAGLayoutAction(boolean doIcon) {
       super(doIcon, "command.HierDAGLayout", "command.HierDAGLayoutMnem", BioFabricNetwork.BuildMode.HIER_DAG_LAYOUT);
     }
+    
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      PointUpOrDownDialog puodd = new PointUpOrDownDialog(topWindow_);
+      puodd.setVisible(true);
+      boolean pointUp = false;
+      if (puodd.haveResult()) {
+        pointUp = puodd.getPointUp();
+        NetworkRelayout nb = new NetworkRelayout();
+        nb.setPointUp(pointUp);
+        try {
+          nb.doNetworkRelayout(bfp_.getNetwork(), BioFabricNetwork.BuildMode.HIER_DAG_LAYOUT); 
+        } catch (Exception ex) {
+          ExceptionHandler.getHandler().displayException(ex);
+        }
+      }
+      return;
+    }
   }
   
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+   
+  private class SetLayoutAction extends BasicLayoutAction {
+     
+    private static final long serialVersionUID = 1L;
+    
+    SetLayoutAction(boolean doIcon) {
+      super(doIcon, "command.SetLayout", "command.SetLayoutMnem", BioFabricNetwork.BuildMode.SET_LAYOUT);
+    }
+    
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      PointUpOrDownDialog puodd = new PointUpOrDownDialog(topWindow_);
+      puodd.setVisible(true);
+      boolean pointUp = false;
+      if (puodd.haveResult()) {
+        pointUp = puodd.getPointUp();
+        NetworkRelayout nb = new NetworkRelayout();
+        nb.setPointUp(pointUp);
+        try {
+          nb.doNetworkRelayout(bfp_.getNetwork(), BioFabricNetwork.BuildMode.SET_LAYOUT); 
+        } catch (Exception ex) {
+          ExceptionHandler.getHandler().displayException(ex);
+        }
+      }
+      return;
+    }
+ 
+  } 
   /***************************************************************************
   **
   ** Command
@@ -3982,6 +4069,23 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   	  return;
     }  
     
+    public void setPointUp(boolean pointUp) {
+      runner_.setPointUp(pointUp);
+      return;
+    }
+    
+ 
+    public void setControlTopModes(ControlTopLayout.CtrlMode cMode,  ControlTopLayout.TargMode tMode, List<String> fixedList) {
+      runner_.setControlTopModes(cMode, tMode, fixedList);
+      return;      
+    }
+    
+    
+    
+    
+    
+    
+     
     public void setLinkOrder(SortedMap<Integer, FabricLink> linkOrder) {
       runner_.setLinkOrder( linkOrder);
       return;
@@ -4008,6 +4112,17 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     public boolean handleRemoteException(Exception remoteEx) {
       if (remoteEx instanceof IOException) {
         finishedImport(null, (IOException)remoteEx);
+        return (true);
+      }
+      if (remoteEx instanceof LayoutCriterionFailureException) {
+        ResourceManager rMan = ResourceManager.getManager();
+        JOptionPane.showMessageDialog(topWindow_, 
+                                      rMan.getString("netLayout.unmetCriteriaMessage"), 
+                                      rMan.getString("netLayout.unmetCriteriaTitle"),
+                                      JOptionPane.ERROR_MESSAGE);
+        
+        
+        cancelAndRestore(holdIt_);     
         return (true);
       }
       return (false);
@@ -4417,8 +4532,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private File holdIt_;
     private List<String> groupOrder_; 
     private BioFabricNetwork.LayoutMode layMode_;
-    SortedMap<Integer, FabricLink> linkOrder_;
-
+    private Boolean pointUp_;
+    private SortedMap<Integer, FabricLink> linkOrder_;
+    private ControlTopLayout.CtrlMode cMode_; 
+    private ControlTopLayout.TargMode tMode_; 
+    private List<String> fixedList_;
+  
     NetworkRelayoutRunner() {
       super(new BufferedImage(1, 1, BufferedImage.TYPE_3BYTE_BGR)); 
     }
@@ -4446,9 +4565,21 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     	return;
     }
     
-   void setLinkOrder(SortedMap<Integer, FabricLink> linkOrder) {
-    	linkOrder_ = linkOrder;
-    	return;
+    void setPointUp(boolean pointUp) {
+      pointUp_ = Boolean.valueOf(pointUp);
+      return;
+    }
+    
+    void setControlTopModes(ControlTopLayout.CtrlMode cMode,  ControlTopLayout.TargMode tMode, List<String> fixedList) {
+      cMode_ = cMode;
+      tMode_ = tMode;
+      fixedList_ = fixedList;
+      return;      
+    }
+
+    void setLinkOrder(SortedMap<Integer, FabricLink> linkOrder) {
+      linkOrder_ = linkOrder;
+      return;
     }
  
     public Object runCore() throws AsynchExitRequestException {
@@ -4469,21 +4600,48 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       try {            
         switch (mode_) {
           case DEFAULT_LAYOUT:
-            (new DefaultLayout()).doLayout(rbd_, params_, this);
+            DefaultLayout dl = new DefaultLayout();
+            boolean dlok = dl.criteriaMet(rbd_, this);
+            if (!dlok) {
+              throw new IllegalStateException(); // Should not happen, failure throws exception
+            }
+            dl.doLayout(rbd_, params_, this);
             break;
           case CONTROL_TOP_LAYOUT:
-            List<NID.WithName> forcedTop = new ArrayList<NID.WithName>();
-            // forcedTop.add("VIM");
-            //  forcedTop.add("PACS1");    
-            // this has to be FORCED; the layers after the first are laid out in a crap fashion!
-            UiUtil.fixMePrintout("Gotta handle the forced top!");
-            (new ControlTopLayout()).doLayout(rbd_, forcedTop, this);
+            Map<String, Set<NID.WithName>> normNameToIDs = (fixedList_ == null) ? null : bfp_.getNetwork().getNormNameToIDs();
+            ControlTopLayout ctl = new ControlTopLayout(cMode_, tMode_, fixedList_, normNameToIDs);
+            boolean ctok = ctl.criteriaMet(rbd_, this);
+            if (!ctok) {
+              throw new IllegalStateException(); // Should not happen, failure throws exception
+            }
+            ctl.doLayout(rbd_, this);
             break;
           case HIER_DAG_LAYOUT:
-            (new HierDAGLayout()).doLayout(rbd_, this);
+            HierDAGLayout hdl = new HierDAGLayout(pointUp_.booleanValue());
+            boolean ok = hdl.criteriaMet(rbd_, this);
+            if (!ok) {
+              throw new IllegalStateException(); // Should not happen, failure throws exception
+            }
+            hdl.doLayout(rbd_, this);
             break;
+          case SET_LAYOUT:
+            UiUtil.fixMePrintout("Get customized set dialog");
+            FabricLink link = rbd_.allLinks.iterator().next();
+            System.out.print(link + " means what?");            
+            SetLayout sel = new SetLayout(pointUp_.booleanValue() ? SetLayout.LinkMeans.BELONGS_TO : SetLayout.LinkMeans.CONTAINS);
+            boolean sok = sel.criteriaMet(rbd_, this);
+            if (!sok) {
+              throw new IllegalStateException(); // Should not happen, failure throws exception
+            }
+            sel.doLayout(rbd_, this);
+            break; 
           case WORLD_BANK_LAYOUT:
-            (new WorldBankLayout()).doLayout(rbd_, this);
+            WorldBankLayout wbl = new WorldBankLayout();
+            boolean wbok = wbl.criteriaMet(rbd_, this);
+            if (!wbok) {
+              throw new IllegalStateException(); // Should not happen, failure throws exception
+            }
+            wbl.doLayout(rbd_, this);
             break;
           case NODE_ATTRIB_LAYOUT:
           case LINK_ATTRIB_LAYOUT:
@@ -4512,6 +4670,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         (new GarbageRequester()).askForGC(this);
         return (bi);
       } catch (IOException ex) {
+        stashException(ex);
+        return (null);
+      } catch (LayoutCriterionFailureException ex) {
         stashException(ex);
         return (null);
       }

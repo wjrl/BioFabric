@@ -281,11 +281,6 @@ public class BackgroundWorkerClient {
     if (memErr != null) {
       ExceptionHandler.getHandler().displayOutOfMemory(memErr);
     }
-    if (remoteEx != null) {
-      if (!owner_.handleRemoteException(remoteEx)) {
-        ExceptionHandler.getHandler().displayException(remoteEx);
-      }
-    }      
     try {
       UiUtil.fixMePrintout("NO! If IO ERROR, DO NOT CLOSE, RIGHT??");
       if (support_ != null) {
@@ -294,6 +289,11 @@ public class BackgroundWorkerClient {
       if (progressDialog_ != null) {
         progressDialog_.setVisible(false);
         progressDialog_.dispose();
+      }
+      if (remoteEx != null) {
+        if (!owner_.handleRemoteException(remoteEx)) {
+          ExceptionHandler.getHandler().displayException(remoteEx);
+        }
       }
       owner_.cleanUpPreEnable(result);      
       if (suw_ != null) {
@@ -304,6 +304,7 @@ public class BackgroundWorkerClient {
     } catch (Exception ex) {
       ExceptionHandler.getHandler().displayException(ex);
     }
+  
     return;
   }
   

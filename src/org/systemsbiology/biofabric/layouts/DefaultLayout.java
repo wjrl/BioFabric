@@ -75,6 +75,18 @@ public class DefaultLayout {
   
   /***************************************************************************
   **
+  ** Find out if the necessary conditions for this layout are met. This layout handles
+  ** anything.
+  */
+   
+  public boolean criteriaMet(BioFabricNetwork.RelayoutBuildData rbd,
+                             BTProgressMonitor monitor) throws AsynchExitRequestException, 
+                                                               LayoutCriterionFailureException {
+    return (true);
+  }
+
+  /***************************************************************************
+  **
   ** Relayout the network!
   */
   
@@ -245,7 +257,10 @@ public class DefaultLayout {
     //
     
     HashSet<NID.WithName> remains = new HashSet<NID.WithName>(loneNodes);
+    // GOES AWAY IF remains 190804 targets 281832
+    System.err.println("remains " + remains.size() + " targets " + targets.size());
     remains.removeAll(targets);
+    System.err.println("remains now " + remains.size());
     targets.addAll(new TreeSet<NID.WithName>(remains));
     return (targets);
   }

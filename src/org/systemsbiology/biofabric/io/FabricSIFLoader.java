@@ -213,7 +213,8 @@ public class FabricSIFLoader {
         	loneID = new NID.WithName(loneNID, loner);
         	nameToID.put(normLoner, loneID);
         }
-        loneNodeIDs.add(loneID);       
+        loneNodeIDs.add(loneID); 
+        System.err.println("new lone " + loneID);
       }
     }
     lr.finish();

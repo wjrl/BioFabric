@@ -163,7 +163,7 @@ public class NodeClusterLayout {
     List<String> bfc;
     switch (params.order) {
     	case BREADTH:
-        bfc = breadthFirstClustering(params, interClust.keySet(), startClust);
+        bfc = breadthFirstClustering(params, interClust.keySet(), startClust, monitor);
         break;
     	case LINK_SIZE:
     		bfc = clusterSizeOrder(perClust, false, startClust);
@@ -422,7 +422,8 @@ public class NodeClusterLayout {
   **
   */
   
-  private List<String> breadthFirstClustering(ClusterParams params, Set<Tuple> iclinks, String startClust) { 
+  private List<String> breadthFirstClustering(ClusterParams params, Set<Tuple> iclinks, String startClust,
+                                              BTProgressMonitor monitor) throws AsynchExitRequestException {
     
   	UniqueLabeller uLab = new UniqueLabeller();
   	Map<String, NID.WithName> fakeNodes = new HashMap<String, NID.WithName>();
@@ -446,7 +447,7 @@ public class NodeClusterLayout {
   		useRoots.add(fakeNodes.get(startClust));
   	}
     GraphSearcher gs = new GraphSearcher(new HashSet<NID.WithName>(fakeNodes.values()), links);
-    List<GraphSearcher.QueueEntry> qes = gs.breadthSearch(useRoots);
+    List<GraphSearcher.QueueEntry> qes = gs.breadthSearch(useRoots, monitor);
     ArrayList<String> retval = new ArrayList<String>(); 
     for (GraphSearcher.QueueEntry aqe : qes) {
       retval.add(aqe.name.getName());

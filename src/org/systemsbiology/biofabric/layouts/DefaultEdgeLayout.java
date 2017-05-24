@@ -200,6 +200,11 @@ public class DefaultEdgeLayout {
 	  */
   	  	
   	public int compare(FabricLink link1, FabricLink link2) {
+  	  
+  	  if (link1.equals(link2)) {
+  	    return (0);
+  	  }
+  	  
   		NID.WithName l1s = link1.getSrcID();
   		NID.WithName l1t = link1.getTrgID();
   		NID.WithName l2s = link2.getSrcID();
@@ -209,7 +214,7 @@ public class DefaultEdgeLayout {
   	  Integer l1tR = nodeToRow_.get(l1t);  			
   		Integer l2sR = nodeToRow_.get(l2s);
   		Integer l2tR = nodeToRow_.get(l2t);
-
+  		
   		int link1Top = Math.min(l1sR.intValue(), l1tR.intValue());
   		int link1Bot = Math.max(l1sR.intValue(), l1tR.intValue());
   		int link2Top = Math.min(l2sR.intValue(), l2tR.intValue());

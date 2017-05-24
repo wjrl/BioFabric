@@ -232,7 +232,7 @@ public class PaintCacheSmall implements PaintCache {
 	    startRow = (startRow < 0) ? 0 : startRow;
 	    endRow = (endRow >= nodes_.length) ? nodes_.length - 1 : endRow;
 	    
-	    for (int i = startRow; i < endRow; i++) {
+	    for (int i = startRow; i <= endRow; i++) {
 	    	if ((reduce == null) || reduce.paintRows.contains(Integer.valueOf(i))) {
 	       	if (nodes_[i] != null) {
 		        int result = nodes_[i].paint(g2, clip, forSelection);
@@ -266,7 +266,7 @@ public class PaintCacheSmall implements PaintCache {
       GlyphPath gp = new GlyphPath();
 
       int count = 0;
-	    for (int i = startCol; i < endCol; i++) {
+	    for (int i = startCol; i <= endCol; i++) {
 	    	// If we are not drawing contiguous links (subviews with gaps) we will hit non-link columns to skip:
 	      if (linkIndex_[i - indexOffset_] == -1) {
 	      	continue;
@@ -392,7 +392,7 @@ public class PaintCacheSmall implements PaintCache {
     }
     
     nodes_ = new LinePath[targets.size()];
-    linkIndex_ = new int[maxCol + 1 - minCol];
+    linkIndex_ = new int[(numLinks == 0) ? 0 : maxCol + 1 - minCol];
     indexOffset_ = minCol;  // In subviews, links do NOT start at column 0!
     // And in subviews with non-contiguous links, we need to skip non-link columns, so init with -1:
     Arrays.fill(linkIndex_, -1);
@@ -403,6 +403,9 @@ public class PaintCacheSmall implements PaintCache {
     while (trit.hasNext()) {
       BioFabricNetwork.NodeInfo target = trit.next();
       lr.report();
+      if (target.getNodeName().equals("itV(UAC)B")) {
+        System.out.println("HELLO");
+      }
       buildALineHorz(target, frc, colGen_, linkExtents, shadeNodes, 
       		           showShadows, nameMap, drainMap);
     }
@@ -415,6 +418,10 @@ public class PaintCacheSmall implements PaintCache {
     for (int i = 0; i < numLinks; i++) {
       BioFabricNetwork.LinkInfo link = links.get(i);
       lr2.report();
+      if (i == (numLinks - 1)) {
+        System.out.println("HELLO");
+      }
+      
       linkIndex_[link.getUseColumn(showShadows) - indexOffset_] = i;
     }
 
