@@ -80,8 +80,7 @@ public class NodeClusterLayout {
   
    public void orderByClusterAssignment(BioFabricNetwork.RelayoutBuildData rbd, 
                                         NodeSimilarityLayout.CRParams crParams,
-                                        BTProgressMonitor monitor, 
-                                        double startFrac, double endFrac) throws AsynchExitRequestException { 
+                                        BTProgressMonitor monitor) throws AsynchExitRequestException { 
      
     //
     // Go through all the links. If a link source and target are both in the same cluster, we add the link to the cluster
@@ -164,7 +163,7 @@ public class NodeClusterLayout {
     List<String> bfc;
     switch (params.order) {
     	case BREADTH:
-        bfc = breadthFirstClustering(params, interClust.keySet(), startClust);
+        bfc = breadthFirstClustering(params, interClust.keySet(), startClust, monitor);
         break;
     	case LINK_SIZE:
     		bfc = clusterSizeOrder(perClust, false, startClust);
@@ -209,16 +208,16 @@ public class NodeClusterLayout {
       } else {
         DefaultLayout dl = new DefaultLayout();
         List<NID.WithName> starts = (hubs == null) ? null : hubs.get(clustName);
-        targets = dl.defaultNodeOrder(pcrbd.allLinks, pcrbd.loneNodeIDs, starts);  
+        targets = dl.defaultNodeOrder(pcrbd.allLinks, pcrbd.loneNodeIDs, starts, monitor);  
       }
       allTargets.addAll(targets);
     }
     interNodesOnly.removeAll(allTargets);
     allTargets.addAll(interNodesOnly);
     
-    (new DefaultLayout()).installNodeOrder(allTargets, rbd);
+    (new DefaultLayout()).installNodeOrder(allTargets, rbd, monitor);
     
-    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
+    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
     
     if (params.iLink == ClusterParams.InterLink.BETWEEN) {
     	int origNum = rbd.linkOrder.size();
@@ -423,7 +422,8 @@ public class NodeClusterLayout {
   **
   */
   
-  private List<String> breadthFirstClustering(ClusterParams params, Set<Tuple> iclinks, String startClust) { 
+  private List<String> breadthFirstClustering(ClusterParams params, Set<Tuple> iclinks, String startClust,
+                                              BTProgressMonitor monitor) throws AsynchExitRequestException {
     
   	UniqueLabeller uLab = new UniqueLabeller();
   	Map<String, NID.WithName> fakeNodes = new HashMap<String, NID.WithName>();
@@ -447,7 +447,7 @@ public class NodeClusterLayout {
   		useRoots.add(fakeNodes.get(startClust));
   	}
     GraphSearcher gs = new GraphSearcher(new HashSet<NID.WithName>(fakeNodes.values()), links);
-    List<GraphSearcher.QueueEntry> qes = gs.breadthSearch(useRoots);
+    List<GraphSearcher.QueueEntry> qes = gs.breadthSearch(useRoots, monitor);
     ArrayList<String> retval = new ArrayList<String>(); 
     for (GraphSearcher.QueueEntry aqe : qes) {
       retval.add(aqe.name.getName());

@@ -33,13 +33,24 @@ import java.util.Set;
 public class QuadTree {
   
   private int maxDepth_;
+  private Rectangle2D worldExtent_;
   private QuadTreeNode root_;
   
   public QuadTree(Rectangle2D worldExtent, int maxDepth) {
   	maxDepth_ = maxDepth;
+  	worldExtent_ = worldExtent;
   	root_ = new QuadTreeNode(worldExtent, maxDepth);
   } 
  
+  /***************************************************************************
+	**
+	** Clear tree to free up memory
+	*/
+  
+  public void clear() {
+  	root_ = new QuadTreeNode(worldExtent_, maxDepth_);
+  }
+
   /***************************************************************************
 	**
 	** Stick a payload into the tree
@@ -77,6 +88,9 @@ public class QuadTree {
 	  
   public boolean getNodes(Rectangle2D worldRect, int atDepth, List<QuadTreeNode> nodes) {
     if (atDepth >= maxDepth_) {
+    	UiUtil.fixMePrintout("Get here if load SimpleGOT after WorldBank: zoom screwed up");
+    	UiUtil.fixMePrintout("Or any second-loaded network it appears");
+    	System.err.println("atDepth versus maxDepth: " + atDepth + " : " + maxDepth_);
     	throw new IllegalArgumentException();
     }
   	return (root_.getNodes(worldRect, atDepth, nodes));

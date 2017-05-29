@@ -417,6 +417,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     lMenu.add(fc.getAction(CommandSet.LAYOUT_VIA_NODE_CLUSTER_ASSIGN, false, null));   
     lMenu.add(fc.getAction(CommandSet.LAYOUT_TOP_CONTROL, false, null)); 
     lMenu.add(fc.getAction(CommandSet.HIER_DAG_LAYOUT, false, null)); 
+    lMenu.add(fc.getAction(CommandSet.SET_LAYOUT, false, null)); 
     lMenu.add(fc.getAction(CommandSet.WORLD_BANK_LAYOUT, false, null)); 
     lMenu.add(fc.getAction(CommandSet.SET_LINK_GROUPS, false, null));
  

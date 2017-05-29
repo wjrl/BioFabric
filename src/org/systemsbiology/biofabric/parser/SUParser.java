@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -20,9 +20,9 @@
 package org.systemsbiology.biofabric.parser;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Iterator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.List;
 import java.io.File;
@@ -37,7 +37,9 @@ import org.xml.sax.XMLReader;
 import org.xml.sax.InputSource;
 import org.xml.sax.helpers.XMLReaderFactory;
 import org.xml.sax.helpers.DefaultHandler;
-
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.ResourceManager;
 
 /****************************************************************************
@@ -48,7 +50,9 @@ import org.systemsbiology.biofabric.util.ResourceManager;
 */
 
 public class SUParser extends DefaultHandler {
-  
+
+	private final static String ASYNC_FLAG_ = "__AEXR__";
+	
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE INSTANCES
@@ -56,9 +60,15 @@ public class SUParser extends DefaultHandler {
   ////////////////////////////////////////////////////////////////////////////
   
   private XMLReader parser_;
+  private HashSet<Double> seen_;
   private HashMap<String, ParserClient> clients_;
   private ParserClient currClient_;
   private String lastElement_;
+  private ProgressFilterInputStream pfis_;  
+  private BTProgressMonitor monitor_; 
+  private double startFrac_;
+  private double endFrac_;
+  private LoopReporter lr_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -155,10 +165,20 @@ public class SUParser extends DefaultHandler {
   ** Parse the given input stream
   */
 
-  public void parse(InputStream stream) throws IOException {
+  public void parse(ProgressFilterInputStream pfis, BTProgressMonitor monitor, boolean forCache) 
+    throws AsynchExitRequestException, IOException {
+  	
+  	pfis_ = pfis;
+  	seen_ = new HashSet<Double>();
+  	monitor_ = monitor;
+  	lr_ = new LoopReporter(20, 0, monitor_, 0.0, 1.0, (forCache) ? "progress.fromCache" : "progress.readXML");
+  	
     try {
-      parser_.parse(new InputSource(stream));
+      parser_.parse(new InputSource(pfis_));
     } catch (SAXException e) {
+    	if (e.getMessage().equals(ASYNC_FLAG_)) {
+    		throw new AsynchExitRequestException();
+    	}
       String msg = formatSAXExceptionMessage(e);
       System.err.println("Got a SAX exception: " + msg);
       throw new IOException(msg);
@@ -166,6 +186,7 @@ public class SUParser extends DefaultHandler {
       System.err.println("Got an IO exception: " + e);
       throw rebundleIOException(e);
     }
+    return;
   }  
 
   /***************************************************************************
@@ -173,6 +194,7 @@ public class SUParser extends DefaultHandler {
   ** Called at start of the document
   */
 
+  @Override
   public void startDocument() throws SAXException {
     return;
   }
@@ -182,15 +204,30 @@ public class SUParser extends DefaultHandler {
   ** Called at start of an element
   */
 
+  @Override
   public void startElement(String uri, String local, String raw,
                            Attributes attrs) throws SAXException {
 
+  	if (pfis_ != null) {
+	  	double prog = pfis_.getProgress();
+	  	Double step = Double.valueOf(Math.floor(prog * 20.0));
+	  	if (!seen_.contains(step)) {
+	  		System.out.println("Seen " + step);
+	  		seen_.add(step);
+	  		try {
+	  		  lr_.report();
+	  		} catch (AsynchExitRequestException aex) {
+          throw (rebundleAsyncExceptionToSAX(aex));
+        }
+	  	}
+  	}
+  		
     //
     // If we have a current client, we send him the element.  If
     // not, we find the client that is interested in the element
     // and send it to him:
     //
-    
+  	
     if (currClient_ != null) {
       try {
         lastElement_ = local;
@@ -229,6 +266,7 @@ public class SUParser extends DefaultHandler {
   ** Called at the end of an element
   */  
   
+  @Override
   public void endElement(String uri, String local, String raw) throws SAXException {
     if (currClient_ == null) {
       return;
@@ -248,6 +286,7 @@ public class SUParser extends DefaultHandler {
   ** Called for characters
   */
 
+  @Override
   public void characters(char ch[], int start, int length) throws SAXException {
     if (currClient_ != null) {
       currClient_.processCharacters(ch, start, length);
@@ -260,6 +299,7 @@ public class SUParser extends DefaultHandler {
   ** Called for ignorable whitespace
   */
 
+  @Override
   public void ignorableWhitespace(char ch[], int start, int length) throws SAXException {
     return;
   }
@@ -269,14 +309,17 @@ public class SUParser extends DefaultHandler {
   ** Error callbacks
   */
 
+  @Override
   public void warning(SAXParseException ex) throws SAXException {
     printError("Warning", ex);
   }
 
+  @Override
   public void error(SAXParseException ex) throws SAXException {
     printError("Error", ex);
   }
 
+  @Override
   public void fatalError(SAXParseException ex) throws SAXException {
     printError("Fatal Error", ex);
   }
@@ -440,6 +483,15 @@ public class SUParser extends DefaultHandler {
   
   private SAXException rebundleIOExceptionToSAX(IOException e) {
     return (new SAXException(buildIOExceptionMsg(e)));       
+  }  
+   
+  /***************************************************************************
+  ** 
+  ** Rebundle Async exception to SAX
+  */
+  
+  private SAXException rebundleAsyncExceptionToSAX(AsynchExitRequestException amex) {
+    return (new SAXException(ASYNC_FLAG_));       
   }  
   
   /***************************************************************************

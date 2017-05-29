@@ -19,28 +19,14 @@
 
 package org.systemsbiology.biofabric.ui.render;
 
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
-import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
-import java.awt.geom.GeneralPath;
-import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.ui.FabricColorGenerator;
-import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.util.MinMax;
-import org.systemsbiology.biofabric.util.NID;
-import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -56,30 +42,27 @@ public class PaintedPath {
   //////////////////////////////////////////////////////////////////////////// 
   
   Color col;
-  Line2D path;
-  GeneralPath gp;
   int px;
   int py;
   Rectangle2D rect;
   Rectangle2D rect2;
   String name;
-  float nameX;
-  float nameY;
-  float tnameX;
-  float tnameY;
+  double nameX;
+  double nameY;
+  double tnameX;
+  double tnameY;
   boolean doRotateName;
   Rectangle2D nameRect;
   Rectangle2D dumpRect;
   MinMax range;
   int font;
   Rectangle nodeShadeRect;
-  Rectangle2D gpBounds;
   
   //
   // Used for node labels for nodes without drain zones
   //
   
-  PaintedPath(Color col, String name, float x, float y, Rectangle2D nameRect) {
+  PaintedPath(Color col, String name, double x, double y, Rectangle2D nameRect) {
     this.col = col;
     this.name = name;
     nameX = x;
@@ -100,8 +83,8 @@ public class PaintedPath {
   // Used for text drawing:
   //
   
-  PaintedPath(Color col, String name, float x, float y, 
-              float tx, float ty, boolean doRotateName, int font, 
+  PaintedPath(Color col, String name, double x, double y, 
+              double tx, double ty, boolean doRotateName, int font, 
               Rectangle2D nameRect, Rectangle2D dumpRect) {
     this.col = col;
     this.name = name;
@@ -142,7 +125,7 @@ public class PaintedPath {
     //
     // First section: Text drawing:
     //
-    if ((name != null) && (path == null)) {
+    if (name != null) {
       // NODE LABELS: only PaintedPaths that use the "node labels only" constructor can draw node labels
       if (((nameRect == null) && (dumpRect == null)) || (bounds == null) ||
           ((nameRect.getMaxX() > bounds.getMinX()) && 
@@ -151,7 +134,7 @@ public class PaintedPath {
            (nameRect.getMinY() < bounds.getMaxY()))) { 
         //g2.drawLine((int)nameRect.getMinX(), (int)nameRect.getMinY(), (int)nameRect.getMaxX(), (int)nameRect.getMaxY());     
         g2.setFont(fonts[PaintCache.TINY]);
-        g2.drawString(name, nameX, nameY); // name next to horiz line
+        g2.drawString(name, (int)nameX, (int)nameY); // name next to horiz line
         didPaint++;
       }
       // DRAIN ZONES:
@@ -188,7 +171,7 @@ public class PaintedPath {
                 throw new IllegalArgumentException();
             }
             g2.setFont(useit);
-            g2.drawString(name, tnameX, tnameY);   // zone node names
+            g2.drawString(name, (int)tnameX, (int)tnameY);   // zone node names
             didPaint++;
           }
         }

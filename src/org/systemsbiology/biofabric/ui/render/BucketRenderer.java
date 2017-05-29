@@ -57,7 +57,7 @@ public class BucketRenderer implements BufBuildDrawer {
   private Dimension screenDim_;
   private boolean showShadows_;
   private Rectangle2D worldRect_;
-  private BufImgStack bis_;
+  private ImgAndBufPool bis_;
 
   
   ////////////////////////////////////////////////////////////////////////////
@@ -115,7 +115,7 @@ public class BucketRenderer implements BufBuildDrawer {
   ** Install a model size
   */
    
-  public void setModelDims(Dimension screenDim, Rectangle2D worldRect, BufImgStack bis) { 
+  public void setModelDims(Dimension screenDim, Rectangle2D worldRect, ImgAndBufPool bis) { 
     screenDim_ = screenDim;
     worldRect_.setRect(worldRect);
     bis_ = bis;

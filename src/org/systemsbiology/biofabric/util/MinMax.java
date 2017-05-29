@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -75,11 +75,18 @@ public class MinMax implements Cloneable, Comparable<MinMax> {
       throw new IllegalStateException();     
     }    
   }
+
+  public MinMax reset(int min, int max) {
+    this.min = min;
+    this.max = max;
+    return (this);
+  }
   
-  @Override
+    @Override
   public int hashCode() {
     return (min + max);
   }
+  
   
   @Override
   public boolean equals(Object other) {

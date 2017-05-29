@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -23,20 +23,24 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.Vector;
 
 import org.systemsbiology.biofabric.analysis.CycleFinder;
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
+import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout.DefaultFabricLinkLocater;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.ResourceManager;
+import org.systemsbiology.biofabric.util.TrueObjChoiceContent;
 import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
@@ -58,11 +62,65 @@ public class ControlTopLayout {
   //
   //////////////////////////////////////////////////////////////////////////// 
   
+  public enum CtrlMode {
+    
+    CTRL_PARTIAL_ORDER("ctrlTop.ctrlPartialOrder"), 
+    CTRL_INTRA_DEGREE_ONLY("ctrlTop.ctrlIntraDegree"), 
+    CTRL_MEDIAN_TARGET_DEGREE("ctrlTop.ctrlMedianTarg"), 
+    CTRL_DEGREE_ONLY("ctrlTop.ctrlDegreeOnly"), 
+    FIXED_LIST("ctrlTop.ctrlInputList"),
+    ;    
+ 
+    private String resource_;
+     
+    CtrlMode(String resource) {
+      resource_ = resource;  
+    }
+     
+    public static Vector<TrueObjChoiceContent<CtrlMode>> getControlChoices() {
+      ResourceManager rMan = ResourceManager.getManager();
+      Vector<TrueObjChoiceContent<CtrlMode>> retval = new Vector<TrueObjChoiceContent<CtrlMode>>();
+      for (CtrlMode cm : CtrlMode.values()) {
+        retval.add(new TrueObjChoiceContent<CtrlMode>(rMan.getString(cm.resource_), cm));
+      }
+      return (retval);
+    }
+  }
+  
+  
+  public enum TargMode {
+    TARGET_DEGREE("ctrlTop.trgTargDegree"), 
+    GRAY_CODE("ctrlTop.trgGrayCode"), 
+    BREADTH_ORDER("ctrlTop.trgBreadth"), 
+    NODE_DEGREE_ODOMETER_SOURCE("ctrlTop.degreeOdometer"),
+    ;
+    
+    private String resource_;
+    
+    TargMode(String resource) {
+      resource_ = resource;  
+    }
+     
+    public static Vector<TrueObjChoiceContent<TargMode>> getTargChoices() {
+      ResourceManager rMan = ResourceManager.getManager();
+      Vector<TrueObjChoiceContent<TargMode>> retval = new Vector<TrueObjChoiceContent<TargMode>>();
+      for (TargMode tm : TargMode.values()) {
+        retval.add(new TrueObjChoiceContent<TargMode>(rMan.getString(tm.resource_), tm));
+      }
+      return (retval);
+    }
+  }
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE INSTANCE MEMBERS
   //
   ////////////////////////////////////////////////////////////////////////////
+  
+  private CtrlMode ctrlMode_;
+  private TargMode targMode_;
+  private List<String> fixedOrder_;
+  Map<String, Set<NID.WithName>> normNameToIDs_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -75,8 +133,11 @@ public class ControlTopLayout {
   ** Constructor
   */
 
-  public ControlTopLayout() {
- 
+  public ControlTopLayout(CtrlMode cMode, TargMode tMode, List<String> fixedOrder, Map<String, Set<NID.WithName>> normNameToIDs) {
+    ctrlMode_ = cMode;
+    targMode_ = tMode;
+    fixedOrder_ = fixedOrder;
+    normNameToIDs_ = normNameToIDs;
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -87,125 +148,225 @@ public class ControlTopLayout {
   
   /***************************************************************************
   **
-  ** Relayout the network!
+  ** Find out if the necessary conditions for this layout are met. 
   */
   
-  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd, List<NID.WithName> forcedTop,
-  		                 BTProgressMonitor monitor, 
-                       double startFrac, 
-                       double endFrac) throws AsynchExitRequestException {   
-    doNodeLayout(rbd, forcedTop);
-    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor, startFrac, endFrac);
+  public boolean criteriaMet(BioFabricNetwork.RelayoutBuildData rbd,
+                           BTProgressMonitor monitor) throws AsynchExitRequestException, 
+                                                             LayoutCriterionFailureException {
+    //
+    // 1) What are the requirements?
+    // 2) If we ae given a fixed list, we need to map to nodes, and make sure it is 1:1 and onto.
+    // Do we handle singleton nodes OK???
+    //
+    
+    LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.ControlTopLayoutCriteriaCheck");
+    
+    if ((fixedOrder_ != null) && (normNameToIDs_ == null)) {
+      throw new LayoutCriterionFailureException();
+    }
+    lr.finish();
+    
+    System.out.println("ACTUALLY CHECK SOMETHING OK???");
+    return (true);  
+  }
+  
+  /***************************************************************************
+  **
+  ** Relayout the network.
+  */
+  
+  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd,
+  		                 BTProgressMonitor monitor) throws AsynchExitRequestException {   
+    doNodeLayout(rbd, monitor);
+    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
     return;
   }
   
   /***************************************************************************
   **
-  ** Relayout the network!
+  ** Order the nodes
   */
   
-  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, List<NID.WithName> forcedTop) {
+  private List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd,
+  		                                    BTProgressMonitor monitor) throws AsynchExitRequestException {
+									    
     
-    List<NID.WithName> targets = orderByNodeDegree(rbd, forcedTop);       
+    List<NID.WithName> ctrlList;
+    SortedSet<NID.WithName> cnSet = new TreeSet<NID.WithName>(controlNodes(rbd.allNodeIDs, rbd.allLinks, monitor));
+    List<NID.WithName> dfo = null;
+    
+    switch (ctrlMode_) {
+      case CTRL_PARTIAL_ORDER:
+        dfo = allNodeOrder(rbd.allNodeIDs, rbd.allLinks, monitor);
+        ctrlList = controlSortPartialOrder(rbd.allNodeIDs, rbd.allLinks, cnSet, dfo, monitor);
+        break;
+      case CTRL_INTRA_DEGREE_ONLY:       
+        ctrlList = controlSortIntraDegreeOnly(rbd.allNodeIDs, rbd.allLinks, cnSet, monitor);
+        break;
+      case CTRL_DEGREE_ONLY:
+        dfo = allNodeOrder(rbd.allNodeIDs, rbd.allLinks, monitor);
+        ctrlList = orderPureDegree(cnSet, dfo, monitor);
+        break;   
+      case CTRL_MEDIAN_TARGET_DEGREE:
+        ctrlList = orderCtrlMedianTargetDegree(rbd.allNodeIDs, rbd.allLinks, monitor);
+        break;
+      case FIXED_LIST:
+        ctrlList = null; // forcedTop;
+        break;
+      default:
+        throw new IllegalStateException();
+    }
+     
+    List<NID.WithName> nodeOrder;
+    
+    switch (targMode_) {
+      case GRAY_CODE:
+        nodeOrder = targetsBySourceGrayCode(ctrlList,cnSet, rbd.allNodeIDs, rbd.allLinks, monitor);
+        break;
+      case NODE_DEGREE_ODOMETER_SOURCE:
+        nodeOrder = targetsByNodeDegreeOdometerSource(ctrlList, cnSet, rbd.allNodeIDs, rbd.allLinks, monitor);
+        break;
+      case TARGET_DEGREE:
+        if (dfo == null) {
+          dfo = allNodeOrder(rbd.allNodeIDs, rbd.allLinks, monitor);
+        }
+        Set<NID.WithName> targs = new HashSet<NID.WithName>(rbd.allNodeIDs);
+        targs.removeAll(cnSet);
+        nodeOrder = new ArrayList<NID.WithName>(ctrlList);
+        nodeOrder.addAll(orderPureDegree(targs, dfo, monitor));
+        break;
+      case BREADTH_ORDER:
+        nodeOrder = orderTargetsBreadth(ctrlList, cnSet, rbd.allNodeIDs, rbd.allLinks, monitor);
+        break;
+      default:
+        throw new IllegalStateException();
+    }
+    
     //
     // Now have the ordered list of targets we are going to display.
     // Build target->row maps and the inverse:
     //
-    (new DefaultLayout()).installNodeOrder(targets, rbd);
-    return (targets);
+    (new DefaultLayout()).installNodeOrder(nodeOrder, rbd, monitor);
+    return (nodeOrder);
   }
   
-  /***************************************************************************
-  **
-  ** Target nodes are ordered by degree. Within degree, targets are arranged
-  ** to "odometer" thru the inputs
-  */
   
-   private List<NID.WithName> orderByNodeDegree(BioFabricNetwork.RelayoutBuildData rbd, List<NID.WithName> forcedTop) {
-   
-    List<NID.WithName> snSorted = (forcedTop == null) ? controlSort(rbd.allNodeIDs, rbd.allLinks) : forcedTop;
-    HashSet<NID.WithName> snSortSet = new HashSet<NID.WithName>(snSorted);
-    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
-    outList.addAll(snSorted);
-    
-    UiUtil.fixMePrintout("UGLY HACK");
-    
-    HashSet<FabricLink> repLin = new HashSet<FabricLink>();
-    Iterator<FabricLink> alit = rbd.allLinks.iterator();
-    while (alit.hasNext()) {
-      FabricLink nLink = alit.next();
-      if ((forcedTop != null) && !forcedTop.contains(nLink.getSrcID()) && !nLink.isFeedback()) {
-        repLin.add(nLink.flipped());
-      } else {
-        repLin.add(nLink);
-      }
-    }
-    
-    GraphSearcher gs = new GraphSearcher(rbd.allNodeIDs, repLin); //rbd.allLinks); 
-    SortedSet<GraphSearcher.SourcedNodeDegree> snds = gs.nodeDegreeSetWithSource(snSorted);
-      
-    Iterator<GraphSearcher.SourcedNodeDegree> dfit = snds.iterator();
-    while (dfit.hasNext()) {
-      GraphSearcher.SourcedNodeDegree node = dfit.next();
-      if (!snSortSet.contains(node.getNode())) {
-        outList.add(node.getNode());
-      }
-    }
-    return (outList);
-  }
- 
   /***************************************************************************
   ** 
-  ** Calculate control node order; this will create a partial ordering. Cycles
-  ** are currently broken arbitrarily:
+  ** Since we define control nodes as those with outputs, getting the source nodes
+  ** from all the links gives us the set.
   */
 
-  private List<NID.WithName> controlSort(Set<NID.WithName> nodes, Set<FabricLink> links) { 
+  private Set<NID.WithName> controlNodes(Set<NID.WithName> nodes, Set<FabricLink> links, 
+                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
     
-    //
-    // Create a set of all the source nodes:
-    //
+    
+    LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.findControlNodes"); 
     
     HashSet<NID.WithName> srcs = new HashSet<NID.WithName>();
-    Iterator<FabricLink> lit = links.iterator();
-    while (lit.hasNext()) {
-      FabricLink nextLink = lit.next();
+    for (FabricLink nextLink : links) {
+      lr.report();
       srcs.add(nextLink.getSrcID());
-    }     
+    }
+    lr.finish();
+    return (srcs);
+  }
+  
+  /***************************************************************************
+  ** 
+  ** This method orders the control nodes using a partial ordering generated using
+  ** a DAG subset of the links between the control nodes. Warning! Cycles are currently broken arbitrarily:
+  */
+
+  private List<NID.WithName> controlSortPartialOrder(Set<NID.WithName> nodes, Set<FabricLink> links, 
+                                                     SortedSet<NID.WithName> cnSet, List<NID.WithName> dfo, 
+                                                     BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     //
-    // Create a set of links that are internal to the control
-    // subnetwork:
+    // Figure out the links between control nodes:
     //
     
     HashSet<FabricLink> ctrlLinks = new HashSet<FabricLink>();
-    lit = links.iterator();
-    while (lit.hasNext()) {
-      FabricLink nextLink = lit.next();
-      if (srcs.contains(nextLink.getTrgID())) {
+    for (FabricLink nextLink : links) {
+      if (cnSet.contains(nextLink.getTrgID())) {
         ctrlLinks.add(nextLink);
       }
-    }   
- 
+    } 
+
+    //
+    // Get an ordering of nodes, based on degree, that we use to break cycles. Get the control-set
+    // links at the same time:
+    //
+    
+    List<NID.WithName> ctrlNodes = orderPureDegree(cnSet, dfo, monitor);
+    
+    //
+    // Use the order to create a reverse mapping:
+    // 
+  
+    HashMap<NID.WithName, Integer> nodeToRow = new HashMap<NID.WithName, Integer>();
+    
+    int numNodes = ctrlNodes.size();
+    for (int i = 0; i < numNodes; i++) {
+      NID.WithName ctrlNode = ctrlNodes.get(i);
+      nodeToRow.put(ctrlNode, Integer.valueOf(i));
+    }
+
+    //
+    // Need to create a DAG, so we need to break cycles. Given our ordering, we hold out
+    // links that point "up" until the end, and start adding them in, one at a time. If
+    // we get a cycle (and we may not) we pull it back out. Not "optimum", but not 
+    // arbitrary:
+    //
+    
+    HashSet<FabricLink> downLinks = new HashSet<FabricLink>();
+    HashSet<FabricLink> upLinks = new HashSet<FabricLink>();
+    HashSet<FabricLink> autoFeedLinks = new HashSet<FabricLink>();
+    
+    for (FabricLink ctrlLink : ctrlLinks) {
+      if (ctrlLink.isShadow()) {
+        continue;
+      }
+      NID.WithName srcID = ctrlLink.getSrcID();
+      NID.WithName trgID = ctrlLink.getTrgID();
+      int srcRow = nodeToRow.get(srcID).intValue();
+      int trgRow = nodeToRow.get(trgID).intValue();
+      if (srcRow < trgRow) {
+        downLinks.add(ctrlLink);
+      } else if (srcRow > trgRow) {
+        upLinks.add(ctrlLink);
+      } else {
+        autoFeedLinks.add(ctrlLink);
+      }
+    }
+    
+    //
+    // This fixes the order of the testing of up links so it is deterministic:
+    //
+    
+    DefaultFabricLinkLocater dfll = 
+      new DefaultFabricLinkLocater(nodeToRow, null, null, BioFabricNetwork.LayoutMode.UNINITIALIZED_MODE);
+    TreeSet<FabricLink> upLinkOrder = new TreeSet<FabricLink>(dfll);
+    upLinkOrder.addAll(upLinks);
+
     //
     // Create a subset of the control links that form a DAG:
     // Note the order is arbitrary:
     //
     
-    HashSet<FabricLink> dagLinks = new HashSet<FabricLink>();
-    HashSet<FabricLink> testLinks = new HashSet<FabricLink>();
-    lit = ctrlLinks.iterator();
-    while (lit.hasNext()) {
-      FabricLink nextLink = lit.next();
-      if (nextLink.isShadow()) {
-      	continue;
-      }
-      testLinks.add(nextLink);              
-      CycleFinder cf = new CycleFinder(nodes, testLinks);
-      if (!cf.hasACycle()) {
-        dagLinks.add(nextLink);
+    HashSet<FabricLink> dagLinks = new HashSet<FabricLink>(downLinks);
+    HashSet<FabricLink> testLinks = new HashSet<FabricLink>(dagLinks);
+    HashSet<FabricLink> heldOut = new HashSet<FabricLink>(dagLinks);
+     
+    for (FabricLink testLink : upLinkOrder) {
+      testLinks.add(testLink);
+      CycleFinder cf = new CycleFinder(nodes, testLinks, monitor); 
+      if (!cf.hasACycle(monitor)) {
+        dagLinks.add(testLink);
       } else {
-        testLinks.remove(nextLink);
+        testLinks.remove(testLink);
+        heldOut.add(testLink);
       }
     }
     
@@ -213,9 +374,10 @@ public class ControlTopLayout {
     // Topo sort the nodes:
     //
  
-    GraphSearcher gs = new GraphSearcher(srcs, dagLinks);
+    UiUtil.fixMePrintout("NO! Still arbitrary? (HashSet iteration??)");
+    GraphSearcher gs = new GraphSearcher(new HashSet<NID.WithName>(ctrlNodes), dagLinks);
     Map<NID.WithName, Integer> ts = gs.topoSort(false);
-    List<NID.WithName> retval = gs.topoSortToPartialOrdering(ts, links);
+    List<NID.WithName> retval = gs.topoSortToPartialOrdering(ts, links, monitor);
     
     //
     // Nodes that were dropped due to cycles still need to be added as 
@@ -223,7 +385,7 @@ public class ControlTopLayout {
     //
     //
     
-    TreeSet<NID.WithName> remaining = new TreeSet<NID.WithName>(srcs);
+    TreeSet<NID.WithName> remaining = new TreeSet<NID.WithName>(ctrlNodes);
     remaining.removeAll(retval);
     retval.addAll(remaining);
  
@@ -232,30 +394,171 @@ public class ControlTopLayout {
 
   /***************************************************************************
   ** 
-  ** Calculate an ordering of nodes that puts the highest degree nodes first:
+  ** Calculate an ordering of ALL (source, target) nodes that puts the highest degree nodes first:
   */
 
-  private List<NID.WithName> allNodeOrder(Set<NID.WithName> nodes, Set<FabricLink> links) {    
+  private List<NID.WithName> allNodeOrder(Set<NID.WithName> nodes, Set<FabricLink> links, 
+                                          BTProgressMonitor monitor) throws AsynchExitRequestException {  
     GraphSearcher gs = new GraphSearcher(nodes, links); 
-    List<NID.WithName> retval = gs.nodeDegreeOrder();
+    List<NID.WithName> retval = gs.nodeDegreeOrder(monitor);
+    Collections.reverse(retval);
+    return (retval);
+  }
+
+  /***************************************************************************
+  ** 
+  ** Calculate a control node order based purely on degree of *intra-control*
+  ** block links:
+  */
+
+  private List<NID.WithName> controlSortIntraDegreeOnly(Set<NID.WithName> nodes, Set<FabricLink> links, 
+                                                        SortedSet<NID.WithName> ctrlNodes,
+                                                        BTProgressMonitor monitor) throws AsynchExitRequestException {    
+    //
+    // Sort the nodes so we can apply a standard order to the nodes of zero degree at the start:
+    //
+    
+    HashSet<FabricLink> ctrlLinks = new HashSet<FabricLink>();
+    for (FabricLink nextLink : links) {
+      if (ctrlNodes.contains(nextLink.getTrgID())) {
+        ctrlLinks.add(nextLink);
+      }
+    }   
+ 
+    GraphSearcher gs = new GraphSearcher(ctrlNodes, ctrlLinks); 
+    List<NID.WithName> retval = gs.nodeDegreeOrder(monitor);
+    
+    //
+    // Not all of the nodes get returned, if they have no inbound control links. So
+    // this step adds them:
+    //
+    
+    ctrlNodes.removeAll(retval);
+    retval.addAll(ctrlNodes);
+  
     Collections.reverse(retval);
     return (retval);
   }
  
   /***************************************************************************
-  ** 
-  ** Order source nodes by median target degree
+  **
+  ** Pure target nodes are ordered by breadth-first search from the 
+  ** provided control nodes. 
   */
 
-  private SortedSet<GraphSearcher.NodeDegree> medianTargetDegree(Set<NID.WithName> nodes, Set<FabricLink> links) { 
+  private List<NID.WithName> orderTargetsBreadth(List<NID.WithName> ctrlList,
+                                                 Set<NID.WithName> cnSet,
+                                                 Set<NID.WithName> nodes, 
+                                                 Set<FabricLink> links, 
+                                                 BTProgressMonitor monitor) throws AsynchExitRequestException {
+   
+    GraphSearcher gs = new GraphSearcher(nodes, links);
+    List<GraphSearcher.QueueEntry> queue = gs.breadthSearch(ctrlList, monitor);
+    
+    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>(ctrlList);
+    for (GraphSearcher.QueueEntry qe : queue) {
+      if (!cnSet.contains(qe.name)) {
+        outList.add(qe.name);
+      }
+    }
+    return (outList);
+  }
+  
+  /***************************************************************************
+  **
+  ** Target nodes are ordered by degree. Within degree, targets are arranged
+  ** to "odometer" thru the inputs
+  */
+  
+  private List<NID.WithName> targetsBySourceGrayCode(List<NID.WithName> ctrlList,
+                                                     Set<NID.WithName> cnSet,
+                                                     Set<NID.WithName> nodes, 
+                                                     Set<FabricLink> links,
+                                                     BTProgressMonitor monitor) throws AsynchExitRequestException {
+   
+    
+    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>(ctrlList);
+    GraphSearcher gs = new GraphSearcher(nodes, links);
+    SortedSet<GraphSearcher.SourcedNodeGray> sngr = gs.nodeGraySetWithSource(ctrlList);
+    for (GraphSearcher.SourcedNodeGray node : sngr) {
+      if (!cnSet.contains(node.getNodeID())) {
+        outList.add(node.getNodeID());
+      }
+    } 
+    return (outList);
+  }
+  
+  /***************************************************************************
+  **
+  ** Target nodes are ordered by degree. Within degree, targets are arranged
+  ** to "odometer" thru the inputs
+  */
+  
+  private List<NID.WithName> targetsByNodeDegreeOdometerSource(List<NID.WithName> ctrlList,
+                                                               Set<NID.WithName> cnSet,
+                                                               Set<NID.WithName> nodes, 
+                                                               Set<FabricLink> links,
+                                                               BTProgressMonitor monitor) throws AsynchExitRequestException {
+   
+    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>(ctrlList);
+    GraphSearcher gs = new GraphSearcher(nodes, links); 
+    SortedSet<GraphSearcher.SourcedNodeDegree> snds = gs.nodeDegreeSetWithSource(ctrlList);        
+    for (GraphSearcher.SourcedNodeDegree node : snds) {
+      if (!cnSet.contains(node.getNode())) {
+        outList.add(node.getNode());
+      }
+    }
+    return (outList);
+  }
+
+  /***************************************************************************
+  **
+  ** Order nodes by decreasing degree. Can be used for ctrl OR targets.
+  */
+
+  private List<NID.WithName> orderPureDegree(Set<NID.WithName> nodeSet, List<NID.WithName> dfo,
+                                             BTProgressMonitor monitor) throws AsynchExitRequestException {
+             
+    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
+    for (NID.WithName node : dfo) {
+      if (nodeSet.contains(node)) {
+        outList.add(node);
+      }
+    }
+    return (outList);
+  }
+  
+  /***************************************************************************
+  **
+  ** This creates an ordering of control nodes based on their median degree of their
+  ** target nodes. 
+  */
+  
+  private List<NID.WithName> orderCtrlMedianTargetDegree(Set<NID.WithName> nodes, Set<FabricLink> links, 
+                                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
+        
+    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
+    SortedSet<GraphSearcher.NodeDegree> ctrlMed = medianTargetDegree(nodes, links, monitor);
+    for (GraphSearcher.NodeDegree nodeDeg : ctrlMed) {
+      outList.add(nodeDeg.getNodeID());
+    }
+    Collections.reverse(outList);
+    return (outList);
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Creates an ordered set of source nodes ordered by their median target degree
+  */
+
+  private SortedSet<GraphSearcher.NodeDegree> medianTargetDegree(Set<NID.WithName> nodes, Set<FabricLink> links,
+                                                                 BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     GraphSearcher gs = new GraphSearcher(nodes, links); 
-    Map<NID.WithName, Integer> nDeg = gs.nodeDegree(true);
+    Map<NID.WithName, Integer> nDeg = gs.nodeDegree(true, monitor);
     
     HashMap<NID.WithName, List<Integer>> deg = new HashMap<NID.WithName, List<Integer>>();
-    Iterator<FabricLink> lit = links.iterator();
-    while (lit.hasNext()) {
-      FabricLink nextLink = lit.next();
+    for (FabricLink nextLink : links) {
       NID.WithName src = nextLink.getSrcID();
       NID.WithName trg = nextLink.getTrgID();
       Integer trgDeg = nDeg.get(trg);
@@ -268,9 +571,7 @@ public class ControlTopLayout {
     }  
         
     TreeSet<GraphSearcher.NodeDegree> retval = new TreeSet<GraphSearcher.NodeDegree>();
-    Iterator<NID.WithName> sit = deg.keySet().iterator();
-    while (sit.hasNext()) {
-      NID.WithName src = sit.next();
+    for (NID.WithName src : deg.keySet()) {
       List<Integer> forSrc = deg.get(src);
       Collections.sort(forSrc);
       int size = forSrc.size();    
@@ -279,167 +580,5 @@ public class ControlTopLayout {
       retval.add(new GraphSearcher.NodeDegree(src, med.intValue()));
     }
     return (retval);
-  }
-
-  /***************************************************************************
-  ** 
-  ** Calculate control node order
-  */
-
-  private List<NID.WithName> controlSortDegreeOnly(Set<NID.WithName> nodes, Set<FabricLink> links) { 
-    
-    HashSet<NID.WithName> srcs = new HashSet<NID.WithName>();
-    Iterator<FabricLink> lit = links.iterator();
-    while (lit.hasNext()) {
-      FabricLink nextLink = lit.next();
-      srcs.add(nextLink.getSrcID());
-    }  
-       
-    HashSet<FabricLink> ctrlLinks = new HashSet<FabricLink>();
-    lit = links.iterator();
-    while (lit.hasNext()) {
-      FabricLink nextLink = lit.next();
-      if (srcs.contains(nextLink.getTrgID())) {
-        ctrlLinks.add(nextLink);
-      }
-    }   
- 
-    GraphSearcher gs = new GraphSearcher(srcs, ctrlLinks); 
-    List<NID.WithName> retval = gs.nodeDegreeOrder();
-    Collections.reverse(retval);
-    return (retval);
-  }
-  
-  /***************************************************************************
-  ** 
-  ** Return source nodes
-  */
-
-  private Set<NID.WithName> controlNodes(Set<NID.WithName> nodes, Set<FabricLink> links) { 
-    
-    HashSet<NID.WithName> srcs = new HashSet<NID.WithName>();
-    Iterator<FabricLink> lit = links.iterator();
-    while (lit.hasNext()) {
-      FabricLink nextLink = lit.next();
-      srcs.add(nextLink.getSrcID());
-    }  
-    return (srcs);
-  }
-  
-  /***************************************************************************
-  **
-  ** Generate breadth-first-order
-  */
-
-  private List<NID.WithName> orderBreadth(Set<NID.WithName> nodes, Set<FabricLink> links) {
-   
-   //   List<String> controlNodes  = cp.controlSortDegreeOnly(nodes, links); //cp.controlSort(nodes, links);
-      
-    ArrayList<NID.WithName> ctrlList = new ArrayList<NID.WithName>();
-    Set<NID.WithName> cnSet = controlNodes(nodes, links);
-    
-    
-    List<NID.WithName> dfo = allNodeOrder(nodes, links);
-    Iterator<NID.WithName> dfit = dfo.iterator();
-    while (dfit.hasNext()) {
-      NID.WithName node = dfit.next();
-      if (cnSet.contains(node)) {
-        ctrlList.add(node);
-      }
-    }
-    
-    GraphSearcher gs = new GraphSearcher(nodes, links);
-    List<GraphSearcher.QueueEntry> queue = gs.breadthSearch(ctrlList);
-    
-    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
-    Iterator<GraphSearcher.QueueEntry> qit = queue.iterator();
-    while (qit.hasNext()) {
-      GraphSearcher.QueueEntry qe = qit.next();
-      outList.add(qe.name);
-    }
-    return (outList);
-  }
-  
-  /***************************************************************************
-  **
-  ** Test frame
-  */
-
-  private List<NID.WithName> orderPureDegree(Set<NID.WithName> nodes, Set<FabricLink> links) {
-       
-    Set<NID.WithName> cnSet = controlNodes(nodes, links);           
-    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
-
-    List<NID.WithName> dfo = allNodeOrder(nodes, links);
-    Iterator<NID.WithName> dfit = dfo.iterator();
-    while (dfit.hasNext()) {
-      NID.WithName node = dfit.next();
-      if (cnSet.contains(node)) {
-        outList.add(node);
-      }
-    }
-    dfit = dfo.iterator();
-    while (dfit.hasNext()) {
-      NID.WithName node = dfit.next();
-      if (!cnSet.contains(node)) {
-        outList.add(node);
-      }
-    }
-    return (outList);
-  }
-  
-  /***************************************************************************
-  **
-  ** Test frame
-  */
-
-  private List<NID.WithName> orderCtrlMedianTargetDegree(Set<NID.WithName> nodes, Set<FabricLink> links) {
- 
-    Set<NID.WithName> cnSet = controlNodes(nodes, links);           
-    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
-    
-    SortedSet<GraphSearcher.NodeDegree> ctrlMed = medianTargetDegree(nodes, links);
-    Iterator<GraphSearcher.NodeDegree> ndit = ctrlMed.iterator();
-    while (ndit.hasNext()) {
-      GraphSearcher.NodeDegree nodeDeg = ndit.next();
-      outList.add(nodeDeg.getNode());
-    }
-    Collections.reverse(outList);
-      
-    List<NID.WithName> dfo = allNodeOrder(nodes, links);
-    Iterator<NID.WithName> dfit = dfo.iterator();
-    while (dfit.hasNext()) {
-      NID.WithName node = dfit.next();
-      if (!cnSet.contains(node)) {
-        outList.add(node);
-      }
-    }
-    return (outList);
-  }
-  
-  /***************************************************************************
-  **
-  ** Test frame
-  */
-
-  private List<NID.WithName> mainSourceSortedTargs(Set<NID.WithName> nodes, Set<FabricLink> links) {
-  
-    List<NID.WithName> snSorted = controlSort(nodes, links);
-    HashSet<NID.WithName> snSortSet = new HashSet<NID.WithName>(snSorted);
-    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
-    outList.addAll(snSorted);
-    
-    GraphSearcher gs = new GraphSearcher(nodes, links); 
-    SortedSet<GraphSearcher.SourcedNodeDegree> snds = gs.nodeDegreeSetWithSource(snSorted);
-      
-    Iterator<GraphSearcher.SourcedNodeDegree> dfit = snds.iterator();
-    while (dfit.hasNext()) {
-      GraphSearcher.SourcedNodeDegree node = dfit.next();
-      if (!snSortSet.contains(node.getNode())) {
-        outList.add(node.getNode());
-      }
-    }
-    return (outList);
-  }
+  } 
 }
-

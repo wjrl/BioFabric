@@ -243,7 +243,7 @@ public class FabricLink implements Cloneable, AttributeLoader.AttributeKey {
   **
   ** Comparator for Fabric Links
   ** This is kinda bogus and old, and is just used to cleanse input. Replace
-  ** with comething newer?
+  ** with something newer?
   */  
   
   public static class FabLinkComparator implements Comparator<FabricLink> {
@@ -355,6 +355,4 @@ public class FabricLink implements Cloneable, AttributeLoader.AttributeKey {
       return ("rel = " + relation + " isShadow = " + isShadow);
     }    
   }
-  
-
 }
