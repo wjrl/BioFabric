@@ -2678,7 +2678,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   ** Command
   */ 
    
-  private class LayoutNetworkAlignment extends ChecksForEnabled {
+  private class LayoutNetworkAlignment extends ChecksForEnabled implements BackgroundWorkerOwner {
   
     private static final long serialVersionUID = 1L;
     
@@ -2705,25 +2705,59 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
   
     private boolean performOperation(Object[] args) {
+      try {
+    
+        NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topWindow_);
+        nad.setVisible(true);
   
-      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topWindow_);
-      nad.setVisible(true);
-      
-      NetworkAlignment.NetworkAlignInfo nai = nad.getNAInfo();
-      
-      NetworkAlignment na = new NetworkAlignment(nai);
-  
+        NetworkAlignment netAlign = new NetworkAlignment(nad.getNAInfo());
+
 //      System.out.println(na.getSmall().getSize());
 //      System.out.println(na.getLarge().getSize());
-      
+  
+  
+        System.out.println(bfp_.getNetwork());
+        BioFabricNetwork.NetAlignBuildData bfnd = new BioFabricNetwork.NetAlignBuildData(netAlign, colGen_);
+////      NetworkRelayout nb = new NetworkRelayout();
+//      NewNetworkRunner nnr = new NewNetworkRunner(bfnd, true);
+//      try {
+//        nnr.runCore();
+//      } catch (AsynchExitRequestException exception) {
+////        Exception
+//      }
+//      nb.doNetworkRelayout(bfnd, null);
+        NewNetworkRunner runner = new NewNetworkRunner(bfnd, isForMain_);
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_,
+                "netBuild.waitTitle", "netBuild.wait", null, false);
+  
+        runner.setClient(bwc);
+        bwc.launchWorker();
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }
+  
       return (true);
     }
   
-//    @Override
-//    protected boolean checkGuts() {
-//      return (bfp_.hasAModel());
-//    }
+    @Override
+    public boolean handleRemoteException(Exception remoteEx) {
+      return false;
+    }
   
+    @Override
+    public void handleCancellation() {
+    
+    }
+  
+    @Override
+    public void cleanUpPreEnable(Object result) {
+    
+    }
+  
+    @Override
+    public void cleanUpPostRepaint(Object result) {
+    
+    }
   }
   
   /***************************************************************************
@@ -4203,6 +4237,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           case BUILD_FROM_XML:
           case BUILD_FROM_SIF:
           case BUILD_FROM_GAGGLE:
+          case BUILD_NETWORK_ALIGNMENT:
           default:
             throw new IllegalArgumentException();
         }
