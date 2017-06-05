@@ -33,7 +33,6 @@ import java.util.Set;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
@@ -43,7 +42,7 @@ import org.systemsbiology.biofabric.util.UniqueLabeller;
 ** This loads SIF files
 */
 
-public class FabricSIFLoader {
+public abstract class FabricImportLoader {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -74,7 +73,7 @@ public class FabricSIFLoader {
   ** Constructor
   */
 
-  public FabricSIFLoader() {
+  public FabricImportLoader() {
  
   }
 
@@ -83,16 +82,31 @@ public class FabricSIFLoader {
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
+   
+  /***************************************************************************
+  ** 
+  ** Parse a line to tokens
+  */
 
+  protected abstract String[] lineToToks(String line, SIFStats stats) throws IOException; 
+  
+  /***************************************************************************
+  ** 
+  ** Consume tokens, make links
+  */
+
+  protected abstract void consumeTokens(String[] tokens, UniqueLabeller idGen, List<FabricLink> links, 
+  		                                  Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins, 
+  		                                  HashMap<String, NID.WithName> nameToID, SIFStats stats) throws IOException; 
     
   /***************************************************************************
   ** 
   ** Process a SIF input
   */
 
-  public SIFStats readSIF(File infile, UniqueLabeller idGen, List<FabricLink> links, 
-  		                    Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins, 
-  		                    BTProgressMonitor monitor) throws AsynchExitRequestException, IOException { 
+  public SIFStats importFabric(File infile, UniqueLabeller idGen, List<FabricLink> links, 
+  		                         Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins, 
+  		                         BTProgressMonitor monitor) throws AsynchExitRequestException, IOException { 
 
   	SIFStats retval = new SIFStats();
     long fileLen = infile.length();
@@ -108,16 +122,8 @@ public class FabricSIFLoader {
 	    	if (line.trim().equals("")) {
 	    		continue;
 	    	}
-	      String[] tokens = line.split("\\t");
-	      if ((tokens.length == 1) && (line.indexOf("\\t") == -1)) {
-	        tokens = line.split(" ");
-	      }
-	      if (tokens.length == 0) {
-	        continue;
-	      } else if ((tokens.length == 2) || (tokens.length > 3)) {
-	        retval.badLines.add(line);
-	        continue;
-	      } else {        
+	    	String[] tokens = lineToToks(line, retval);
+	    	if (tokens != null) {
 	        tokSets.add(tokens);
 	      }
 	    }
@@ -134,88 +140,7 @@ public class FabricSIFLoader {
     for (int i = 0; i < numLines; i++) {
       String[] tokens = tokSets.get(i);
       lr.report();
-      if (tokens.length == 3) {
-        String source = tokens[0].trim();
-        if ((source.indexOf("\"") == 0) && (source.lastIndexOf("\"") == (source.length() - 1))) {
-          source = source.replaceAll("\"", "");
-        }
-        String target = tokens[2].trim();
-        if ((target.indexOf("\"") == 0) && (target.lastIndexOf("\"") == (target.length() - 1))) {
-          target = target.replaceAll("\"", "");
-        }
-        //
-        // This name map is for the load SIF with node attributes feature:
-        //
-        
-        if (nameMap != null) {
-          String mappedSource = nameMap.get(source);
-          if (mappedSource != null) {
-            source = mappedSource;
-          }
-          String mappedTarget = nameMap.get(target);
-          if (mappedTarget != null) {
-            target = mappedTarget;
-          }
-        }
-        
-        //
-        // Map the name to an ID, if none yet, get a new ID and assign it
-        //
-        
-        String normSrc = DataUtil.normKey(source);
-        String normTrg = DataUtil.normKey(target);
-        
-        NID.WithName srcID = nameToID.get(normSrc);
-        if (srcID == null) {
-        	NID srcNID = idGen.getNextOID();
-        	srcID = new NID.WithName(srcNID, source);
-        	nameToID.put(normSrc, srcID);
-        }
-        
-        NID.WithName trgID = nameToID.get(normTrg);
-        if (trgID == null) {
-        	NID trgNID = idGen.getNextOID();
-        	trgID = new NID.WithName(trgNID, target);
-        	nameToID.put(normTrg, trgID);
-        }
-
-        String rel = tokens[1].trim();
-        if ((rel.indexOf("\"") == 0) && (rel.lastIndexOf("\"") == (rel.length() - 1))) {
-          rel = rel.replaceAll("\"", "");
-        }
-
-	      FabricLink nextLink = new FabricLink(srcID, trgID, rel, false);
-	      links.add(nextLink);
-	      
-	      // We never create shadow feedback links!
-	      if (!srcID.equals(trgID)) {
-	        FabricLink nextShadowLink = new FabricLink(srcID, trgID, rel, true);
-	        links.add(nextShadowLink);
-	      }
- 
-      } else {
-        String loner = tokens[0].trim();
-        if ((loner.indexOf("\"") == 0) && (loner.lastIndexOf("\"") == (loner.length() - 1))) {
-          loner = loner.replaceAll("\"", "");
-        }
-        if (nameMap != null) {
-          String mappedLoner = nameMap.get(loner);
-          if (mappedLoner != null) {
-            loner = mappedLoner;
-          }
-        }
-        
-        String normLoner = DataUtil.normKey(loner);
-        
-        NID.WithName loneID = nameToID.get(normLoner);
-        if (loneID == null) {
-        	NID loneNID = idGen.getNextOID();
-        	loneID = new NID.WithName(loneNID, loner);
-        	nameToID.put(normLoner, loneID);
-        }
-        loneNodeIDs.add(loneID); 
-        System.err.println("new lone " + loneID);
-      }
+      consumeTokens(tokens, idGen, links, loneNodeIDs, nameMap, magBins, nameToID, retval);
     }
     lr.finish();
     return (retval);

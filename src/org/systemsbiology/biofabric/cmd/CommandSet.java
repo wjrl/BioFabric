@@ -93,7 +93,8 @@ import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.event.SelectionChangeListener;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FabricFactory;
-import org.systemsbiology.biofabric.io.FabricSIFLoader;
+import org.systemsbiology.biofabric.io.FabricImportLoader;
+import org.systemsbiology.biofabric.io.SIFImportLoader;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.layouts.SetLayout;
@@ -587,9 +588,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
 
     HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
     TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
-    FabricSIFLoader.SIFStats sss;
+    FabricImportLoader.SIFStats sss;
     if (file.length() > FILE_LENGTH_FOR_BACKGROUND_SIF_READ_) {
-      sss = new FabricSIFLoader.SIFStats();
+      sss = new FabricImportLoader.SIFStats();
       BackgroundFileReader br = new BackgroundFileReader();
       //
       // This gets file file in:
@@ -608,7 +609,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       return (true);
     } else {
       try { 
-        sss = (new FabricSIFLoader()).readSIF(file, idGen, links, loneNodes, nodeNames, magBins, null);
+        sss = (new SIFImportLoader()).importFabric(file, idGen, links, loneNodes, nodeNames, magBins, null);
         BioFabricNetwork.extractRelations(links, relMap, null);
         boolean finished = loadFromSIFSourceStepTwo(file, idGen, sss, links, loneNodes, 
         		                                        (magBins != null), relMap, reducedLinks, holdIt);
@@ -658,7 +659,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   ** Second step fro loading from SIF
   */
     
-  private boolean loadFromSIFSourceStepTwo(File file, UniqueLabeller idGen, FabricSIFLoader.SIFStats sss, 
+  private boolean loadFromSIFSourceStepTwo(File file, UniqueLabeller idGen, FabricImportLoader.SIFStats sss, 
   		                                     List<FabricLink> links, Set<NID.WithName> loneNodeIDs, 
   		                                     boolean binMag, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
   		                                     Set<FabricLink> reducedLinks, File holdIt) {
@@ -4192,7 +4193,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
      
     public boolean doBackgroundSIFRead(File file, UniqueLabeller idGen,
 		    		                           List<FabricLink> links, Set<NID.WithName> loneNodeIDs, 
-		    		                           Map<String, String> nameMap, FabricSIFLoader.SIFStats sss, 
+		    		                           Map<String, String> nameMap, FabricImportLoader.SIFStats sss, 
 		    		                           Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relMap,
 		    		                           File holdIt) {
 
@@ -4818,14 +4819,14 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private Set<NID.WithName> loneNodeIDs_;
     private UniqueLabeller idGen_; 
     private Map<String, String> nameMap_;
-    private FabricSIFLoader.SIFStats sss_;
+    private FabricImportLoader.SIFStats sss_;
     private Integer magBins_;
     private SortedMap<FabricLink.AugRelation, Boolean> relaMap_;
     private File restoreCacheFile_;
     
     public SIFReaderRunner(File file, UniqueLabeller idGen, List<FabricLink> links, 
     		                   Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, 
-    		                   FabricSIFLoader.SIFStats sss, 
+    		                   FabricImportLoader.SIFStats sss, 
     		                   Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
     		                   File restoreCacheFile) {
       super(new Boolean(false));
@@ -4846,7 +4847,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           buildRestoreCache(restoreCacheFile_, this);
       	}
         preLoadOperations();
-        FabricSIFLoader.SIFStats sss = (new FabricSIFLoader()).readSIF(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, this);
+        FabricImportLoader.SIFStats sss = (new SIFImportLoader()).importFabric(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, this);
         sss_.copyInto(sss);
         BioFabricNetwork.extractRelations(links_, relaMap_, this);     
         return (new Boolean(true));
