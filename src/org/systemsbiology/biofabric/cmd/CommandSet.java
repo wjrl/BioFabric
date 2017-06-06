@@ -2915,20 +2915,44 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
         System.out.println(bfp_.getNetwork());
         BioFabricNetwork.NetAlignBuildData bfnd = new BioFabricNetwork.NetAlignBuildData(netAlign, colGen_);
+        
+//        NetworkRelayout nb = new NetworkRelayout();
+//        nb.doNetworkRelayout(new BioFabricNetwork(bfnd,null), BioFabricNetwork.BuildMode.BUILD_NETWORK_ALIGNMENT);
+//        nb.
 ////      NetworkRelayout nb = new NetworkRelayout();
-//      NewNetworkRunner nnr = new NewNetworkRunner(bfnd, true);
-//      try {
-//        nnr.runCore();
-//      } catch (AsynchExitRequestException exception) {
-////        Exception
-//      }
-//      nb.doNetworkRelayout(bfnd, null);
-        NewNetworkRunner runner = new NewNetworkRunner(bfnd, isForMain_);
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_,
-                "netBuild.waitTitle", "netBuild.wait", null, false);
+        
+//        NewNetworkRunner nnr = new NewNetworkRunner(true, null);
   
-        runner.setClient(bwc);
-        bwc.launchWorker();
+        File holdIt;
+        try {
+          holdIt = File.createTempFile("BioFabricHold", ".zip");
+          holdIt.deleteOnExit();
+        } catch (IOException ioex) {
+          holdIt = null;
+        }
+        try { // I'M PIGGY-BACKING ON BUILD FROM SIF HERE
+          NetworkBuilder nb = new NetworkBuilder(true, holdIt);
+          nb.setForSifBuild(netAlign.getIdGen(), bfnd.allLinks, new HashSet<NID.WithName>(),
+                  BioFabricNetwork.BuildMode.BUILD_FROM_SIF);
+          nb.doNetworkBuild();
+        } catch (OutOfMemoryError oom) {
+          ExceptionHandler.getHandler().displayOutOfMemory(oom);
+          return (false);
+        } // CHANGE THE WINDOW NAME GO BACK TO WEHRE I GOT THIS -RISHI 5-30-17
+        
+//        NetworkBuilder nb = new NetworkBuilder(isForMain_, null);
+//        try {
+//          nnr.runCore();
+//        } catch (AsynchExitRequestException exception) {
+//          ExceptionHandler.getHandler().displayException(exception);
+//        }
+//      nb.doNetworkRelayout(bfnd, null);
+//        NewNetworkRunner runner = new NewNetworkRunner(isForMain_, null);
+//        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_,
+//                "netBuild.waitTitle", "netBuild.wait", null, false);
+//
+//        runner.setClient(bwc);
+//        bwc.launchWorker();
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }

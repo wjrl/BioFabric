@@ -43,7 +43,7 @@ import org.systemsbiology.biofabric.util.UniqueLabeller;
 ** This loads SIF files
 */
 
-public class FabricSIFLoader {
+public class FabricSIFLoader { // MAKE THIS GENERALIZED
   
   ////////////////////////////////////////////////////////////////////////////
   //

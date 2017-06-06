@@ -215,6 +215,7 @@ public class BioFabricNetwork {
         relayoutNetwork(rbd, monitor);
         break;
       case BUILD_NETWORK_ALIGNMENT:
+        System.out.println("BUILDING NETWORK ALIGNMENT!!!!!");
         NetAlignBuildData nad = (NetAlignBuildData) bd;
         normalCols_ = new ColumnAssign();
         shadowCols_ = new ColumnAssign();

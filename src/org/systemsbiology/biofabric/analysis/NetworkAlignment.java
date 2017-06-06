@@ -19,7 +19,6 @@
 
 package org.systemsbiology.biofabric.analysis;
 
-import com.sun.corba.se.impl.orbutil.graph.Graph;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.NID;
@@ -29,15 +28,20 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.StringTokenizer;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 public class NetworkAlignment {
   
   private GraphNA small_, large_;
   private AlignmentNA align_;
   
-  private Set<FabricLink> allLinks;
-  private UniqueLabeller idGen;
+  private Set<FabricLink> allLinks_;
+  private UniqueLabeller idGen_;
   private static final String TAG_G1 = "G1", TAG_CC = "CC", TAG_G2 = "G2"; // link group tags and relations
   
   public NetworkAlignment(NetworkAlignInfo nai) {
@@ -78,17 +82,17 @@ public class NetworkAlignment {
   
   private void makeAllLinks() {
   
-    idGen = new UniqueLabeller();
+    idGen_ = new UniqueLabeller();
     
     Map<NodeNA, NID.WithName> NAtoNID = new TreeMap<NodeNA, NID.WithName>();
     
-    addNodesToMap(small_, idGen, NAtoNID);
-    addNodesToMap(large_, idGen, NAtoNID);
+    addNodesToMap(small_, idGen_, NAtoNID);
+    addNodesToMap(large_, idGen_, NAtoNID);
     
 //    for (NodeNA nodeNA : small_.edges_.keySet()) {
 //
 //      if (NAtoNID.get(nodeNA) == null) {
-//        NID nid = idGen.getNextOID();
+//        NID nid = idGen_.getNextOID();
 //        NID.WithName withName = new NID.WithName(nid, nodeNA.getName());
 //
 //        NAtoNID.put(nodeNA, withName);
@@ -98,7 +102,7 @@ public class NetworkAlignment {
 //    for (NodeNA nodeNA : large_.edges_.keySet()) {
 //
 //      if (NAtoNID.get(nodeNA) == null) {
-//        NID nid = idGen.getNextOID();
+//        NID nid = idGen_.getNextOID();
 //        NID.WithName withName = new NID.WithName(nid, nodeNA.getName());
 //
 //        NAtoNID.put(nodeNA, withName);
@@ -110,11 +114,11 @@ public class NetworkAlignment {
     
     createEdgeGroups(small_, large_, NAtoNID, G1, CC, G2);
     
-    allLinks = new HashSet<FabricLink>();
+    allLinks_ = new HashSet<FabricLink>();
     
-    allLinks.addAll(G1);
-    allLinks.addAll(CC);
-    allLinks.addAll(G2);
+    allLinks_.addAll(G1);
+    allLinks_.addAll(CC);
+    allLinks_.addAll(G2);
     
 //    for (Map.Entry<NodeNA, Set<NodeNA>> entry : small_.getEdges().entrySet()) {
 //      String A = entry.getKey().getName();
@@ -138,10 +142,10 @@ public class NetworkAlignment {
       for (NodeNA B_G1 : entry.getValue()) {
   
         if (large.edges_.get(A_G1).contains(B_G1)) { // check if it's in CC
-          FabricLink fl = new FabricLink(NAtoNID.get(A_G1), NAtoNID.get(B_G1), TAG_CC, false);
+          FabricLink fl = new FabricLink(NAtoNID.get(A_G1), NAtoNID.get(B_G1), TAG_CC, false, false);
           CC_edges.add(fl);
         } else {
-          FabricLink fl = new FabricLink(NAtoNID.get(A_G1), NAtoNID.get(B_G1), TAG_G1, false);
+          FabricLink fl = new FabricLink(NAtoNID.get(A_G1), NAtoNID.get(B_G1), TAG_G1, false, false);
           G1_edges.add(fl);
         }
       }
@@ -151,12 +155,11 @@ public class NetworkAlignment {
     
       NodeNA A_G1 = entry.getKey();
       for (NodeNA B_G1 : entry.getValue()) {
-      
         
         if (! small.edges_.keySet().contains(A_G1) ||
                 ! small.edges_.get(A_G1).contains(B_G1)) { // not all nodes in G2 are aligned
           
-          FabricLink fl = new FabricLink(NAtoNID.get(A_G1), NAtoNID.get(B_G1), TAG_G2, false);
+          FabricLink fl = new FabricLink(NAtoNID.get(A_G1), NAtoNID.get(B_G1), TAG_G2, false, false);
           G2_edges.add(fl);
         }
       }
@@ -186,11 +189,11 @@ public class NetworkAlignment {
   }
   
   public Set<FabricLink> getAllLinks() {
-    return new HashSet<FabricLink>(allLinks);
+    return new HashSet<FabricLink>(allLinks_);
   }
   
   public UniqueLabeller getIdGen() {
-    return idGen;
+    return idGen_;
   }
   
 //  public GraphNA getSmall() {
@@ -377,17 +380,17 @@ public class NetworkAlignment {
   
   private static class NodeNA implements Comparable<NodeNA> {
     
-    final String name;
+    private final String name_;
     
     NodeNA(String name) {
       if (name == null) {
-        ExceptionHandler.getHandler().displayException(new IllegalArgumentException("NodeNA name null"));
+        ExceptionHandler.getHandler().displayException(new IllegalArgumentException("NodeNA name_ null"));
       }
-      this.name = name;
+      this.name_ = name;
     }
   
     public String getName() {
-      return name;
+      return name_;
     }
   
     @Override
@@ -397,17 +400,17 @@ public class NetworkAlignment {
     
       NodeNA nodeNA = (NodeNA) o;
   
-      return name != null ? name.equals(nodeNA.name) : nodeNA.name == null;
+      return name_ != null ? name_.equals(nodeNA.name_) : nodeNA.name_ == null;
     }
   
     @Override
     public int hashCode() {
-      return name != null ? name.hashCode() : 0;
+      return name_ != null ? name_.hashCode() : 0;
     }
   
     @Override
     public int compareTo(NodeNA o) {
-      return name.compareTo(o.name);
+      return name_.compareTo(o.name_);
     }
   }
   
