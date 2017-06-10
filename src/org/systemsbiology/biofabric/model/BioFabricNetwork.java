@@ -32,6 +32,8 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import com.sun.org.apache.regexp.internal.RE;
+import org.systemsbiology.biofabric.analysis.NetworkAlignment;
 import org.xml.sax.Attributes;
 
 import org.systemsbiology.biofabric.analysis.Link;
@@ -93,6 +95,7 @@ public class BioFabricNetwork {
                          WORLD_BANK_LAYOUT,
                          SET_LAYOUT,
                          GROUP_PER_NETWORK_CHANGE,
+                         BUILD_NETWORK_ALIGNMENT
                         };
                                                 
   public enum LayoutMode {
@@ -210,6 +213,19 @@ public class BioFabricNetwork {
         colGen_ = rbd.colGen;
         layoutMode_ = rbd.layoutMode;
         relayoutNetwork(rbd, monitor);
+        break;
+      case BUILD_NETWORK_ALIGNMENT:
+        System.out.println("BUILDING NETWORK ALIGNMENT!!!!!");
+        NetAlignBuildData nad = (NetAlignBuildData) bd;
+        normalCols_ = new ColumnAssign();
+        shadowCols_ = new ColumnAssign();
+        rowToTargID_ = new HashMap<Integer, NID.WithName>();
+        fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
+        nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
+        nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
+        linkGrouping_ = new ArrayList<String>(nad.linkGroups);
+        colGen_ = nad.colGen;
+        layoutMode_ = nad.layoutMode;
         break;
       case BUILD_FOR_SUBMODEL:
         SelectBuildData sbd = (SelectBuildData)bd;
@@ -722,6 +738,9 @@ public class BioFabricNetwork {
 
     Map<NID.WithName, List<DrainZone>> nodeToZones = new TreeMap<NID.WithName, List<DrainZone>>();
 
+    if (links.size() == 0) {
+      return;
+    }
     LinkInfo current = links.get(0);  // these keep track of start of zone and zone's node
     int startIdx = 0;
     
@@ -2287,7 +2306,7 @@ public class BioFabricNetwork {
       this.clustAssign = clustAssign;
       this.loneNodeIDs = loneNodeIDs;
       this.allNodeIDs = null;
-      this.layoutMode = LayoutMode.PER_NODE_MODE;   
+      this.layoutMode = LayoutMode.PER_NODE_MODE;
       this.idGen = idGen;
     } 
 
@@ -2343,6 +2362,28 @@ public class BioFabricNetwork {
       this.linkGroups = groupOrder;
       this.layoutMode = mode;
       return;
+    }
+    
+  }
+  
+  /***************************************************************************
+   **
+   ** For passing around Network Alignment data
+   */
+  
+  public static class NetAlignBuildData extends RelayoutBuildData {
+  
+    private NetworkAlignment netAlign;
+  
+    public NetAlignBuildData(NetworkAlignment netAlign,
+                             FabricColorGenerator colGen) {
+      super(netAlign.getIdGen(), netAlign.getAllLinks(), new HashSet<NID.WithName>(),
+              new HashMap<NID.WithName, String>(), colGen, BuildMode.BUILD_NETWORK_ALIGNMENT);
+      this.netAlign = netAlign;
+      this.layoutMode = LayoutMode.PER_NETWORK_MODE;
+//      linkGroups.add("G2");
+//      linkGroups.add("CC");
+//      linkGroups.add("G1"); // SHOULD I BE DOING THIS
     }
   }
  
