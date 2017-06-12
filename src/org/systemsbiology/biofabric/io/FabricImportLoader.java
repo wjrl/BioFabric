@@ -33,6 +33,7 @@ import java.util.Set;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
@@ -148,7 +149,80 @@ public abstract class FabricImportLoader {
 
   ////////////////////////////////////////////////////////////////////////////
   //
-  // PUBLIC INNER CLASES
+  // PROTECTED METHODS
+  //
+  ////////////////////////////////////////////////////////////////////////////  
+    
+  /***************************************************************************
+  ** 
+  ** Strip quoted string
+  */
+
+  protected String stripQuotes(String inString) { 
+    String procString = inString.trim();
+    if ((procString.indexOf("\"") == 0) && (procString.lastIndexOf("\"") == (procString.length() - 1))) {
+      procString = procString.replaceAll("\"", "");
+    }
+    return (procString);
+  }
+
+  /***************************************************************************
+  ** 
+  ** Map name
+  */
+
+  protected String mapName(String inString, Map<String, String> nameMap) {
+    String retval = inString;
+    if (nameMap == null) {
+      return (retval);
+    }
+    String mappedString = nameMap.get(inString);
+    if (mappedString != null) {
+      retval = mappedString;
+    }
+    return (retval);
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Get an actual node ID
+  */
+
+  protected NID.WithName nameToNode(String inString, UniqueLabeller idGen, Map<String, NID.WithName> nameToID) {
+  
+  String normName = DataUtil.normKey(inString);
+  
+    NID.WithName nodeID = nameToID.get(normName);
+    if (nodeID == null) {
+      NID nid = idGen.getNextOID();
+      nodeID = new NID.WithName(nid, inString);
+      nameToID.put(normName, nodeID);
+    }
+    return (nodeID);
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Get an actual node ID
+  */
+
+  protected void buildLinkAndShadow(NID.WithName srcID, NID.WithName trgID, String rel, List<FabricLink> links) {  
+  
+    FabricLink nextLink = new FabricLink(srcID, trgID, rel, false);
+    links.add(nextLink);
+  
+    // We never create shadow feedback links!
+    if (!srcID.equals(trgID)) {
+      FabricLink nextShadowLink = new FabricLink(srcID, trgID, rel, true);
+      links.add(nextShadowLink);
+    }
+    
+    return;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC INNER CLASSES
   //
   ////////////////////////////////////////////////////////////////////////////
 
