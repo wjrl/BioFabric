@@ -39,9 +39,9 @@ import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
 
 /****************************************************************************
-**
-** This loads SIF files
-*/
+ **
+ ** This loads SIF files
+ */
 
 public abstract class FabricImportLoader {
   
@@ -49,89 +49,89 @@ public abstract class FabricImportLoader {
   //
   // PRIVATE CONSTANTS
   //
-  //////////////////////////////////////////////////////////////////////////// 
+  ////////////////////////////////////////////////////////////////////////////
   
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTANTS
   //
-  //////////////////////////////////////////////////////////////////////////// 
+  ////////////////////////////////////////////////////////////////////////////
   
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE INSTANCE MEMBERS
   //
   ////////////////////////////////////////////////////////////////////////////
-   
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTRUCTORS
   //
   ////////////////////////////////////////////////////////////////////////////
-
+  
   /***************************************************************************
-  **
-  ** Constructor
-  */
-
+   **
+   ** Constructor
+   */
+  
   public FabricImportLoader() {
- 
+  
   }
-
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-   
-  /***************************************************************************
-  ** 
-  ** Parse a line to tokens
-  */
-
-  protected abstract String[] lineToToks(String line, SIFStats stats) throws IOException; 
   
   /***************************************************************************
-  ** 
-  ** Consume tokens, make links
-  */
-
-  protected abstract void consumeTokens(String[] tokens, UniqueLabeller idGen, List<FabricLink> links, 
-  		                                  Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins, 
-  		                                  HashMap<String, NID.WithName> nameToID, SIFStats stats) throws IOException; 
-    
+   **
+   ** Parse a line to tokens
+   */
+  
+  protected abstract String[] lineToToks(String line, SIFStats stats) throws IOException;
+  
   /***************************************************************************
-  ** 
-  ** Process a SIF input
-  */
-
-  public SIFStats importFabric(File infile, UniqueLabeller idGen, List<FabricLink> links, 
-  		                         Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins, 
-  		                         BTProgressMonitor monitor) throws AsynchExitRequestException, IOException { 
-
-  	SIFStats retval = new SIFStats();
+   **
+   ** Consume tokens, make links
+   */
+  
+  protected abstract void consumeTokens(String[] tokens, UniqueLabeller idGen, List<FabricLink> links,
+                                        Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins,
+                                        HashMap<String, NID.WithName> nameToID, SIFStats stats) throws IOException;
+  
+  /***************************************************************************
+   **
+   ** Process a SIF input
+   */
+  
+  public SIFStats importFabric(File infile, UniqueLabeller idGen, List<FabricLink> links,
+                               Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins,
+                               BTProgressMonitor monitor) throws AsynchExitRequestException, IOException {
+    
+    SIFStats retval = new SIFStats();
     long fileLen = infile.length();
     HashMap<String, NID.WithName> nameToID = new HashMap<String, NID.WithName>();
     BufferedReader in = null;
     ArrayList<String[]> tokSets = new ArrayList<String[]>();
-    LoopReporter lr = new LoopReporter(fileLen, 20, monitor, 0.0, 1.0, "progress.readingFile");   
+    LoopReporter lr = new LoopReporter(fileLen, 20, monitor, 0.0, 1.0, "progress.readingFile");
     try {
-	    in = new BufferedReader(new InputStreamReader(new FileInputStream(infile), "UTF-8")); 
-	    String line = null;
-	    while ((line = in.readLine()) != null) {
-	      lr.report(line.length() + 1);
-	    	if (line.trim().equals("")) {
-	    		continue;
-	    	}
-	    	String[] tokens = lineToToks(line, retval);
-	    	if (tokens != null) {
-	        tokSets.add(tokens);
-	      }
-	    }
+      in = new BufferedReader(new InputStreamReader(new FileInputStream(infile), "UTF-8"));
+      String line = null;
+      while ((line = in.readLine()) != null) {
+        lr.report(line.length() + 1);
+        if (line.trim().equals("")) {
+          continue;
+        }
+        String[] tokens = lineToToks(line, retval);
+        if (tokens != null) {
+          tokSets.add(tokens);
+        }
+      }
     } finally {
-    	if (in != null) {
+      if (in != null) {
         in.close();
-    	}
+      }
     }
     lr.finish();
     
@@ -146,31 +146,31 @@ public abstract class FabricImportLoader {
     lr.finish();
     return (retval);
   }
-
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PROTECTED METHODS
   //
-  ////////////////////////////////////////////////////////////////////////////  
-    
+  ////////////////////////////////////////////////////////////////////////////
+  
   /***************************************************************************
-  ** 
-  ** Strip quoted string
-  */
-
-  protected String stripQuotes(String inString) { 
+   **
+   ** Strip quoted string
+   */
+  
+  protected String stripQuotes(String inString) {
     String procString = inString.trim();
     if ((procString.indexOf("\"") == 0) && (procString.lastIndexOf("\"") == (procString.length() - 1))) {
       procString = procString.replaceAll("\"", "");
     }
     return (procString);
   }
-
+  
   /***************************************************************************
-  ** 
-  ** Map name
-  */
-
+   **
+   ** Map name
+   */
+  
   protected String mapName(String inString, Map<String, String> nameMap) {
     String retval = inString;
     if (nameMap == null) {
@@ -184,14 +184,14 @@ public abstract class FabricImportLoader {
   }
   
   /***************************************************************************
-  ** 
-  ** Get an actual node ID
-  */
-
+   **
+   ** Get an actual node ID
+   */
+  
   protected NID.WithName nameToNode(String inString, UniqueLabeller idGen, Map<String, NID.WithName> nameToID) {
-  
-  String normName = DataUtil.normKey(inString);
-  
+    
+    String normName = DataUtil.normKey(inString);
+    
     NID.WithName nodeID = nameToID.get(normName);
     if (nodeID == null) {
       NID nid = idGen.getNextOID();
@@ -202,15 +202,15 @@ public abstract class FabricImportLoader {
   }
   
   /***************************************************************************
-  ** 
-  ** Get an actual node ID
-  */
-
-  protected void buildLinkAndShadow(NID.WithName srcID, NID.WithName trgID, String rel, List<FabricLink> links) {  
+   **
+   ** Get an actual node ID
+   */
   
+  protected void buildLinkAndShadow(NID.WithName srcID, NID.WithName trgID, String rel, List<FabricLink> links) {
+    
     FabricLink nextLink = new FabricLink(srcID, trgID, rel, false);
     links.add(nextLink);
-  
+    
     // We never create shadow feedback links!
     if (!srcID.equals(trgID)) {
       FabricLink nextShadowLink = new FabricLink(srcID, trgID, rel, true);
@@ -219,13 +219,13 @@ public abstract class FabricImportLoader {
     
     return;
   }
-
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC INNER CLASSES
   //
   ////////////////////////////////////////////////////////////////////////////
-
+  
   public static class SIFStats {
     public ArrayList<String> badLines;
     
@@ -237,5 +237,5 @@ public abstract class FabricImportLoader {
       this.badLines = new ArrayList<String>(other.badLines);
       return;
     }
-  }   
+  }
 }
