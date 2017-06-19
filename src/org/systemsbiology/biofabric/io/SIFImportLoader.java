@@ -109,85 +109,42 @@ public class SIFImportLoader extends FabricImportLoader {
   		                         HashMap<String, NID.WithName> nameToID, SIFStats stats) throws IOException {
     if (tokens.length == 3) {
       String source = tokens[0].trim();
-      if ((source.indexOf("\"") == 0) && (source.lastIndexOf("\"") == (source.length() - 1))) {
-        source = source.replaceAll("\"", "");
-      }
+      source = stripQuotes(source);
+    
       String target = tokens[2].trim();
-      if ((target.indexOf("\"") == 0) && (target.lastIndexOf("\"") == (target.length() - 1))) {
-        target = target.replaceAll("\"", "");
-      }
+      target = stripQuotes(target);
+     
       //
       // This name map is for the load SIF with node attributes feature:
       //
       
-      if (nameMap != null) {
-        String mappedSource = nameMap.get(source);
-        if (mappedSource != null) {
-          source = mappedSource;
-        }
-        String mappedTarget = nameMap.get(target);
-        if (mappedTarget != null) {
-          target = mappedTarget;
-        }
-      }
+      source = mapName(source, nameMap);
+      target = mapName(target, nameMap);
       
       //
       // Map the name to an ID, if none yet, get a new ID and assign it
       //
       
-      String normSrc = DataUtil.normKey(source);
-      String normTrg = DataUtil.normKey(target);
+      NID.WithName srcID = nameToNode(source, idGen, nameToID);
+      NID.WithName trgID = nameToNode(target, idGen, nameToID);
       
-      NID.WithName srcID = nameToID.get(normSrc);
-      if (srcID == null) {
-      	NID srcNID = idGen.getNextOID();
-      	srcID = new NID.WithName(srcNID, source);
-      	nameToID.put(normSrc, srcID);
-      }
-      
-      NID.WithName trgID = nameToID.get(normTrg);
-      if (trgID == null) {
-      	NID trgNID = idGen.getNextOID();
-      	trgID = new NID.WithName(trgNID, target);
-      	nameToID.put(normTrg, trgID);
-      }
 
       String rel = tokens[1].trim();
-      if ((rel.indexOf("\"") == 0) && (rel.lastIndexOf("\"") == (rel.length() - 1))) {
-        rel = rel.replaceAll("\"", "");
-      }
-
-      FabricLink nextLink = new FabricLink(srcID, trgID, rel, false);
-      links.add(nextLink);
+      rel = stripQuotes(rel);
+    
+      //
+      // Build the link, pus shadow if not auto feedback:
+      //
       
-      // We never create shadow feedback links!
-	      if (!srcID.equals(trgID)) {
-	        FabricLink nextShadowLink = new FabricLink(srcID, trgID, rel, true);
-	        links.add(nextShadowLink);
-	      }
- 
-      } else {
-        String loner = tokens[0].trim();
-        if ((loner.indexOf("\"") == 0) && (loner.lastIndexOf("\"") == (loner.length() - 1))) {
-        loner = loner.replaceAll("\"", "");
-      }
-      if (nameMap != null) {
-        String mappedLoner = nameMap.get(loner);
-        if (mappedLoner != null) {
-          loner = mappedLoner;
-        }
-      }
+      buildLinkAndShadow(srcID, trgID, rel, links);
       
-      String normLoner = DataUtil.normKey(loner);
-      
-      NID.WithName loneID = nameToID.get(normLoner);
-      if (loneID == null) {
-      	NID loneNID = idGen.getNextOID();
-      	loneID = new NID.WithName(loneNID, loner);
-      	nameToID.put(normLoner, loneID);
-      }
-      loneNodeIDs.add(loneID); 
-      System.err.println("new lone " + loneID);
+    } else {
+      String loner = tokens[0].trim();
+      loner = stripQuotes(loner);
+      loner = mapName(loner, nameMap);
+       
+      NID.WithName lonerID = nameToNode(loner, idGen, nameToID);  
+      loneNodeIDs.add(lonerID); 
     }
     return;
   }
