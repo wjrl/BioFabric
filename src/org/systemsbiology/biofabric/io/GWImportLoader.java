@@ -43,13 +43,7 @@ public class GWImportLoader extends FabricImportLoader {
   ////////////////////////////////////////////////////////////////////////////
   
   private final String DEFAULT_RELATION = "pp";
-  private final int PARAM_LINES = 4; // # of parameter/version info lines
-  
-  ////////////////////////////////////////////////////////////////////////////
-  //
-  // PUBLIC CONSTANTS
-  //
-  ////////////////////////////////////////////////////////////////////////////
+  private final int HEADER_LINES = 4; // # of header/parameter/version-info lines at the beginning of file
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -57,10 +51,8 @@ public class GWImportLoader extends FabricImportLoader {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  private int lnToTokIndex_, consTokIndex_;
+  private int lineToTokIndex_, consTokIndex_;
   private Integer numNodes_, numEdges_;
-//  private boolean forNetAlign_;
-//  private String netAlignRel_;
   private Map<Integer, String> indexToName_;
   private Map<Integer, Boolean> indexToBeenUsed_;
   
@@ -75,15 +67,9 @@ public class GWImportLoader extends FabricImportLoader {
    ** Constructor
    */
   
-  public GWImportLoader(/* boolean forNetAlign, String netAlignRelation */) {
-//    if (forNetAlign) {
-//      this.netAlignRel_ = netAlignRelation; // for network alignments, all edges have same relation
-//    } else {
-//      this.netAlignRel_ = null; // won't be used
-//    }
-//    this.forNetAlign_ = forNetAlign;
-    this.lnToTokIndex_ = 0;
-    this.consTokIndex_ = 0;
+  public GWImportLoader() {
+    this.lineToTokIndex_ = 0; // counter while reading tokens
+    this.consTokIndex_ = 0;   // counter while consuming tokens
     this.indexToName_ = new HashMap<Integer, String>();
     this.indexToBeenUsed_ = new HashMap<Integer, Boolean>();
   }
@@ -108,22 +94,22 @@ public class GWImportLoader extends FabricImportLoader {
       return (null);
     } else {
       
-      if (lnToTokIndex_ == PARAM_LINES) {
+      if (lineToTokIndex_ == HEADER_LINES) {
         try {
           numNodes_ = Integer.parseInt(tokens[0].trim());
         } catch (Exception ex) {
-          throw new IOException();
+          throw new IOException("We assume 4 header lines");
         }
       }
-      if (numNodes_ != null && lnToTokIndex_ == PARAM_LINES + numNodes_ + 1) { // AM I DOING THIS RIGHT
+      if (numNodes_ != null && lineToTokIndex_ == HEADER_LINES + numNodes_ + 1) {
         try {
           numEdges_ = Integer.parseInt(tokens[0].trim());
         } catch (Exception ex) {
-          throw new IOException();
+          throw new IOException("We assume 4 header lines");
         }
       }
       
-      lnToTokIndex_++;
+      lineToTokIndex_++;
       
       return (tokens);
     }
@@ -141,9 +127,9 @@ public class GWImportLoader extends FabricImportLoader {
     
     if (tokens.length == 1) {
   
-      if (consTokIndex_ > PARAM_LINES && consTokIndex_ != PARAM_LINES + numNodes_ + 1) {
+      if (consTokIndex_ > HEADER_LINES && consTokIndex_ != HEADER_LINES + numNodes_ + 1) {
         
-        int index = consTokIndex_ - PARAM_LINES; // nodes index starts w/ one
+        int index = consTokIndex_ - HEADER_LINES; // nodes index starts with one
         
         String nodeName = tokens[0].trim();
         nodeName = stripBrackets(nodeName);
@@ -162,7 +148,7 @@ public class GWImportLoader extends FabricImportLoader {
         sourceIndex = Integer.parseInt(sourceIndexStr);
         targetIndex = Integer.parseInt(targetIndexStr);
       } catch (Exception ex) {
-        throw new IOException();
+        throw new IOException("Could not parse integer");
       }
       
       indexToBeenUsed_.put(sourceIndex, true);
@@ -187,11 +173,7 @@ public class GWImportLoader extends FabricImportLoader {
       // Build the link, plus shadow if not auto feedback:
       //
   
-//      if (forNetAlign_) {
-//        buildLinkAndShadow(srcID, trgID, netAlignRel_, links);   // WHAT ABOUT LONE NODES
-//      } else {
       buildLinkAndShadow(srcID, trgID, edgeRelation, links);
-//      }
   
     } else {
       throw new IllegalArgumentException();
@@ -199,11 +181,7 @@ public class GWImportLoader extends FabricImportLoader {
     
     consTokIndex_++;
     
-    if (consTokIndex_ == PARAM_LINES + numNodes_ + 1 + numEdges_ + 1) {
-//      System.out.println(numNodes_ + " " + numEdges_);
-//      for (int i = 0; i<10;i++) {
-//        System.out.println("CODE HAS REACHED END OF GW FILE");
-//      }
+    if (consTokIndex_ == HEADER_LINES + numNodes_ + 1 + numEdges_ + 1) {
       addLoneNodes(idGen, loneNodeIDs, nameToID);
     }
     
@@ -224,146 +202,4 @@ public class GWImportLoader extends FabricImportLoader {
     return;
   }
   
-//  /***************************************************************************
-//   **
-//   ** Process a GW Files
-//   */
-//
-//  public FileImportStats processFile(File infile, UniqueLabeller idGen, List<FabricLink> links,
-//                             Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins,
-//                             BTProgressMonitor monitor) throws AsynchExitRequestException, IOException {
-//
-//    FabricImportLoader.FileImportStats retval = new FabricImportLoader.FileImportStats();
-//
-//    long fileLen = infile.length();
-//    ArrayList<String[]> tokSets = new ArrayList<String[]>();
-//    LoopReporter lr = new LoopReporter(fileLen, 20, monitor, 0.0, 1.0, "progress.readingFile");
-//
-//    BufferedReader in = null;
-//    try {
-//      in = new BufferedReader(new InputStreamReader(new FileInputStream(infile), "UTF-8"));
-//      // First 4 lines
-//      String str1 = in.readLine(), str2 = in.readLine(), str3 = in.readLine(), str4 = in.readLine();
-//
-//      final int numNodes = Integer.parseInt(in.readLine());
-//
-//      for (int i = 1; i <= numNodes; i++) {
-//        String line = in.readLine();
-//        if (line == null) { // WHAT DO I DO HERE
-//          break;
-//        }
-//        lr.report(line.length() + 1);
-//        if (line.trim().equals("")) {
-//          continue;
-//        }
-//
-//        String[] toks  = lineToToks(line, retval);
-//        if (toks != null) {
-//          tokSets.add(toks);
-//        }
-//
-////        ret.addNode(i, new NodeNA(line));
-//      }
-//
-//      final int numEdges_ = Integer.parseInt(in.readLine());
-//
-//      for (int i = 1; i <= numEdges_; i++) {
-//        String line = in.readLine();
-//        if (line == null) { // WHAT DO I DO HERE
-//          break;
-//        }
-//        lr.report(line.length() + 1);
-//        if (line.trim().equals("")) {
-//          continue;
-//        }
-//
-//        String[] toks  = lineToToks(line, retval);
-//        if (toks != null) {
-//          tokSets.add(toks);
-//        }
-//      }
-//    } finally {
-//      if (in != null) {
-//        in.close();
-//      }
-//    }
-//    lr.finish();
-//
-//    int numLines = tokSets.size();
-//    lr = new LoopReporter(numLines, 20, monitor, 0.0, 1.0, "progress.buildingEdgesAndNodes");
-//
-//    HashMap<String, NID.WithName> nameToID = new HashMap<String, NID.WithName>();
-//
-//    for (int i = 0; i < numLines; i++) {
-//      String[] tokens = tokSets.get(i);
-//      lr.report();
-//      consumeTokens(tokens, idGen, links, loneNodeIDs, nameMap, magBins, nameToID, retval);
-//    }
-//    lr.finish();
-//
-//    return (retval);
-//  }
-  
-  
-//  public static class GWStats extends FileImportStats {
-//    public ArrayList<String> badLines;
-    
-//    public GWStats() {
-//      badLines = new ArrayList<String>();
-//    }
-    
-//    public void copyInto(GWStats other) {
-//      this.badLines = new ArrayList<String>(other.badLines);
-//      return;
-//    }
-//  }
-  
 }
-
-//class ALIGNImportLoader extends FabricImportLoader {
-//
-//  ////////////////////////////////////////////////////////////////////////////
-//  //
-//  // PRIVATE CONSTANTS
-//  //
-//  ////////////////////////////////////////////////////////////////////////////
-//
-//  ////////////////////////////////////////////////////////////////////////////
-//  //
-//  // PUBLIC CONSTANTS
-//  //
-//  ////////////////////////////////////////////////////////////////////////////
-//
-//  ////////////////////////////////////////////////////////////////////////////
-//  //
-//  // PRIVATE INSTANCE MEMBERS
-//  //
-//  ////////////////////////////////////////////////////////////////////////////
-//
-//  ////////////////////////////////////////////////////////////////////////////
-//  //
-//  // PUBLIC CONSTRUCTORS
-//  //
-//  ////////////////////////////////////////////////////////////////////////////
-//
-//  /***************************************************************************
-//   **
-//   ** Constructor
-//   */
-//
-//  public ALIGNImportLoader() {}
-//
-//  @Override
-//  protected String[] lineToToks(String line, SIFStats stats) throws IOException {
-//    return new String[0];
-//  }
-//
-//  @Override
-//  protected void consumeTokens(String[] tokens, UniqueLabeller idGen, List<FabricLink> links,
-//                               Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap,
-//                               Integer magBins, HashMap<String, NID.WithName> nameToID,
-//                               SIFStats stats) throws IOException {
-//
-//  }
-//
-//}

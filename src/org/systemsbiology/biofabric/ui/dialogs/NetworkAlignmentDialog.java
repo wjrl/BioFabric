@@ -40,10 +40,6 @@ import java.io.File;
 
 public class NetworkAlignmentDialog extends JDialog {
   
-//  private final int GRAPH_ONE_FILE = 1;
-//  private final int GRAPH_TWO_FILE = 2;
-//  private final int ALIGNMENT_FILE = 3;
-  
   private enum FileIndex {
     GRAPH_ONE_FILE, GRAPH_TWO_FILE, ALIGNMENT_FILE
   }
@@ -194,10 +190,6 @@ public class NetworkAlignmentDialog extends JDialog {
       return;
     }
     
-//    if (! check(file)) {
-//
-//    }
-    
     switch (mode) { // CAN I COMBINE THIS WITH THE TOP SWITCH CLAUSE???
       case GRAPH_ONE_FILE:
         graph1_ = file;
@@ -215,21 +207,17 @@ public class NetworkAlignmentDialog extends JDialog {
     return;
   }
   
-//  private boolean check(File file) { //  TO CHECK FILE
-//    return true;
-//  }
-  
   /**
    * The unread files for G1, G2, and the Alignment
    */
   
   public static class NetworkAlignInfo {
     
-    public final File small, large, align;
+    public final File graph1, graph2, align;
     
-    public NetworkAlignInfo(File small, File large, File align) {
-      this.small = small;
-      this.large = large;
+    public NetworkAlignInfo(File graph1, File graph2, File align) {
+      this.graph1 = graph1;
+      this.graph2 = graph2;
       this.align = align;
     }
     

@@ -171,7 +171,7 @@ public abstract class FabricImportLoader {
    ** Strip Brackets |{ }| from String
    */
   
-  protected String stripBrackets(String inString) { // AM I DOING THIS RIGHT
+  protected String stripBrackets(String inString) {
     String procString = inString.trim();
     if ((procString.indexOf("|{") == 0) && (procString.lastIndexOf("}|") == (procString.length() - 2))) {
       procString = procString.replaceAll("\\|\\{", "");
