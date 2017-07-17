@@ -81,19 +81,21 @@ import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.filechooser.FileFilter;
 
-import org.systemsbiology.biofabric.analysis.NetworkAlignment;
 //import org.freehep.graphics2d.VectorGraphics;
 //import org.freehep.graphicsio.PageConstants;
 //import org.freehep.graphicsio.pdf.PDFGraphics2D;
 //import org.freehep.graphicsio.ps.PSGraphics2D;
+import org.systemsbiology.biofabric.analysis.NetworkAlignment;
 import org.systemsbiology.biofabric.app.BioFabricApplication;
 import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.event.SelectionChangeListener;
+import org.systemsbiology.biofabric.io.AlignmentLoader;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.io.FabricImportLoader;
+import org.systemsbiology.biofabric.io.GWImportLoader;
 import org.systemsbiology.biofabric.io.SIFImportLoader;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
@@ -238,7 +240,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public static final int HIER_DAG_LAYOUT              = 51;
   public static final int WORLD_BANK_LAYOUT            = 52;
   public static final int LOAD_WITH_EDGE_WEIGHTS       = 53;
-  public static final int LAYOUT_NETWORK_ALIGNMENT     = 54;
+  public static final int LOAD_NETWORK_ALIGNMENT       = 54;
  
   public static final int GENERAL_PUSH   = 0x01;
   public static final int ALLOW_NAV_PUSH = 0x02;
@@ -429,7 +431,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           break;          
         case LOAD_WITH_NODE_ATTRIBUTES:
           retval = new LoadWithNodeAttributesAction(withIcon); 
-          break;  
+          break;
+        case LOAD_NETWORK_ALIGNMENT:
+          retval = new LoadNetworkAlignmentAction(withIcon);
+          break;
         case SAVE_AS:
           retval = new SaveAsAction(withIcon); 
           break;
@@ -531,9 +536,6 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           break;  
         case SET_LINK_GROUPS:
           retval = new SetLinkGroupsAction(withIcon);
-          break;  
-        case LAYOUT_NETWORK_ALIGNMENT:
-          retval = new LayoutNetworkAlignment(withIcon);
           break;
         case COMPARE_NODES:
           retval = new CompareNodesAction(withIcon);           
@@ -588,9 +590,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
 
     HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
     TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
-    FabricImportLoader.SIFStats sss;
+    FabricImportLoader.FileImportStats sss;
     if (file.length() > FILE_LENGTH_FOR_BACKGROUND_SIF_READ_) {
-      sss = new FabricImportLoader.SIFStats();
+      sss = new FabricImportLoader.FileImportStats();
       BackgroundFileReader br = new BackgroundFileReader();
       //
       // This gets file file in:
@@ -659,7 +661,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   ** Second step fro loading from SIF
   */
     
-  private boolean loadFromSIFSourceStepTwo(File file, UniqueLabeller idGen, FabricImportLoader.SIFStats sss, 
+  private boolean loadFromSIFSourceStepTwo(File file, UniqueLabeller idGen, FabricImportLoader.FileImportStats sss,
   		                                     List<FabricLink> links, Set<NID.WithName> loneNodeIDs, 
   		                                     boolean binMag, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
   		                                     Set<FabricLink> reducedLinks, File holdIt) {
@@ -794,7 +796,273 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       return (false);  
     }
     return (true);
-  }  
+  }
+  
+  /***************************************************************************
+   **
+   ** First step for loading from GW :: Background thread initializations
+   */
+  
+  private boolean loadFromGWSourceStepOne(File file, ArrayList<FabricLink> links,
+                                          HashSet<NID.WithName> loneNodes, Integer magBins,
+                                          UniqueLabeller idGen) {
+  
+  
+//    ArrayList<FabricLink> links = new ArrayList<FabricLink>();
+//    HashSet<NID.WithName> loneNodes = new HashSet<NID.WithName>();
+    HashMap<String, String> nodeNames = null;
+    
+    File holdIt;
+    try {
+      holdIt = File.createTempFile("BioFabricHold", ".zip");
+      holdIt.deleteOnExit();
+    } catch (IOException ioex) {
+      holdIt = null;
+    }
+  
+    HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
+    TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
+    FabricImportLoader.FileImportStats sss = new FabricImportLoader.FileImportStats();
+    
+    BackgroundFileReader br = new BackgroundFileReader();
+    // This gets file file in:
+
+    boolean finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
+    
+    //
+    // This looks for dups to toss and prep work:
+    //
+
+    if (finished) {
+      finished = loadFromGWSourceStepTwo(file, idGen, sss, links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt);
+    }
+//    if (finished) {
+//      loadFromGWSourceStepThree(file, idGen, loneNodes, reducedLinks, holdIt);
+//    }
+    return (true);
+  }
+  
+  /***************************************************************************
+   **
+   ** Second step for loading from GW :: Error Checking, Alignment Reading
+   */
+  
+  private boolean loadFromGWSourceStepTwo(File file, UniqueLabeller idGen, FabricImportLoader.FileImportStats sss,
+                                          List<FabricLink> links, Set<NID.WithName> loneNodeIDs,
+                                          boolean binMag, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
+                                          Set<FabricLink> reducedLinks, File holdIt) {
+  
+    ResourceManager rMan = ResourceManager.getManager();
+    try {
+      if (!sss.badLines.isEmpty()) {
+        String badLineFormat = rMan.getString("fabricRead.badLineFormat");
+        String badLineMsg = MessageFormat.format(badLineFormat, new Object[] {Integer.valueOf(sss.badLines.size())});
+        JOptionPane.showMessageDialog(topWindow_, badLineMsg,
+                rMan.getString("fabricRead.badLineTitle"),
+                JOptionPane.WARNING_MESSAGE);
+      }
+    
+//      RelationDirectionDialog rdd = new RelationDirectionDialog(topWindow_, relaMap);
+//      rdd.setVisible(true);
+//      if (!rdd.haveResult()) {
+//        return (false);
+//      }
+//      if (rdd.getFromFile()) {
+//        File fileEda = getTheFile(".rda", ".txt", "AttribDirectory", "filterName.rda");
+//        if (fileEda == null) {
+//          return (true);
+//        }
+//        Map<AttributeLoader.AttributeKey, String> relAttributes = loadTheFile(fileEda, null, true);  // Use the simple a = b format of node attributes
+//        if (relAttributes == null) {
+//          return (true);
+//        }
+
+//        HashSet<FabricLink.AugRelation> needed = new HashSet<FabricLink.AugRelation>(relaMap.keySet());
+
+//        boolean tooMany = false;
+//        Iterator<AttributeLoader.AttributeKey> rit = relAttributes.keySet().iterator();
+//        while (rit.hasNext()) {
+//          AttributeLoader.StringKey sKey = (AttributeLoader.StringKey)rit.next();
+//          String key = sKey.key;
+//          String val = relAttributes.get(sKey);
+//          Boolean dirVal = Boolean.valueOf(val);
+//          FabricLink.AugRelation forNorm = new FabricLink.AugRelation(key, false);
+//          FabricLink.AugRelation forShad = new FabricLink.AugRelation(key, true);
+//          boolean matched = false;
+//          if (needed.contains(forNorm)) {
+//            matched = true;
+//            relaMap.put(forNorm, dirVal);
+//            needed.remove(forNorm);
+//          }
+//          if (needed.contains(forShad)) {
+//            matched = true;
+//            relaMap.put(forShad, dirVal);
+//            needed.remove(forShad);
+//          }
+//          if (!matched) {
+//            tooMany = true;
+//            break;
+//          }
+//        }
+//        if (!needed.isEmpty() || tooMany) {
+//          JOptionPane.showMessageDialog(topWindow_, rMan.getString("fabricRead.directionMapLoadFailure"),
+//                  rMan.getString("fabricRead.directionMapLoadFailureTitle"),
+//                  JOptionPane.ERROR_MESSAGE);
+//          return (false);
+//        }
+//      } else {
+//        relaMap = rdd.getRelationMap();
+//      }
+    
+      HashSet<FabricLink> culledLinks = new HashSet<FabricLink>();
+      PreprocessNetwork pn = new PreprocessNetwork();
+      boolean didFinish = pn.doNetworkPreprocess(links, relaMap, reducedLinks, culledLinks, holdIt);
+      if (!didFinish) {
+        return (false);
+      }
+    
+      if (!culledLinks.isEmpty()) {
+        String dupLinkFormat = rMan.getString("fabricRead.dupLinkFormat");
+        // Ignore shadow link culls: / 2
+        String dupLinkMsg = MessageFormat.format(dupLinkFormat, new Object[] {Integer.valueOf(culledLinks.size() / 2)});
+        JOptionPane.showMessageDialog(topWindow_, dupLinkMsg,
+                rMan.getString("fabricRead.dupLinkTitle"),
+                JOptionPane.WARNING_MESSAGE);
+      }
+    
+      //
+      // For big files, user may want to specify layout options before the default layout with no
+      // shadows. Let them set this here:
+      //
+    
+      if (reducedLinks.size() > SIZE_TO_ASK_ABOUT_SHADOWS_) {
+        String shadowMessage = rMan.getString("fabricRead.askAboutShadows");
+        int doShadow =
+                JOptionPane.showConfirmDialog(topWindow_, shadowMessage,
+                        rMan.getString("fabricRead.askAboutShadowsTitle"),
+                        JOptionPane.YES_NO_CANCEL_OPTION);
+        if (doShadow == JOptionPane.CANCEL_OPTION) {
+          return (false);
+        }
+        FabricDisplayOptions dops = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
+        dops.setDisplayShadows((doShadow == JOptionPane.YES_OPTION));
+      }
+    
+      //
+      // Handle magnitude bins:
+      //
+    
+      if (binMag) {
+        HashSet<FabricLink> binnedLinks = new HashSet<FabricLink>();
+        Pattern p = Pattern.compile("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?");
+      
+        Iterator<FabricLink> alit = reducedLinks.iterator();
+        while (alit.hasNext()) {
+          FabricLink nextLink = alit.next();
+          FabricLink.AugRelation rel = nextLink.getAugRelation();
+          Matcher m = p.matcher(rel.relation);
+          int magCount = 0;
+          if (m.find()) {
+            double d = Double.parseDouble(m.group(0));
+            magCount = (int)Math.floor((Math.abs(d) * 10.0) - 5.0);
+          }
+        }
+      }
+    } catch (OutOfMemoryError oom) {
+      ExceptionHandler.getHandler().displayOutOfMemory(oom);
+      return (false);
+    }
+    return (true);
+    
+  }
+  
+  /***************************************************************************
+   **
+   ** Third step for loading from GW :: Laying out
+   */
+  
+  private boolean loadFromGWSourceStepThree(File file, UniqueLabeller idGen,
+                                             Set<NID.WithName> loneNodeIDs,
+                                             Set<FabricLink> reducedLinks, File holdIt) {
+    try {
+      NetworkBuilder nb = new NetworkBuilder(true, holdIt);
+      nb.setForNetAlignBuild(idGen, reducedLinks, new HashSet<NID.WithName>(), // THIS NEEDS TO BE FIXED
+              BioFabricNetwork.BuildMode.BUILD_NETWORK_ALIGNMENT);
+      nb.doNetworkBuild();
+    } catch (OutOfMemoryError oom) {
+      ExceptionHandler.getHandler().displayOutOfMemory(oom);
+      return (false);
+    }
+    currentFile_ = null;
+    FabricCommands.setPreference("LoadDirectory", file.getAbsoluteFile().getParent());
+    manageWindowTitle(file.getName()); // MAKE SURE TITLE NAME IS ALIGN FILE NAME
+    return (true);
+  }
+  
+  /***************************************************************************
+   **
+   ** Create network alignment from two .gw files and one .align file
+   */
+  
+  private boolean createNetAlignFromGWSources(File graph1, File graph2, File align) {
+    
+    UniqueLabeller idGen = new UniqueLabeller();
+    
+    //
+    // create the individual networks (links + lone nodes)
+    //
+  
+    ArrayList<FabricLink> linksGraph1 = new ArrayList<FabricLink>();
+    HashSet<NID.WithName> lonersGraph1 = new HashSet<NID.WithName>();
+    
+    loadFromGWSourceStepOne(graph1, linksGraph1, lonersGraph1, null, idGen);
+  
+    ArrayList<FabricLink> linksGraph2 = new ArrayList<FabricLink>();
+    HashSet<NID.WithName> lonersGraph2 = new HashSet<NID.WithName>();
+    
+    loadFromGWSourceStepOne(graph2, linksGraph2, lonersGraph2, null, idGen);
+    
+    //
+    // alignment, processing
+    //
+    
+    Map<NID.WithName, NID.WithName> mapG1toG2 =
+            loadTheAlignmentFile(align, linksGraph1, lonersGraph1, linksGraph2, lonersGraph2);
+  
+    File holdIt;
+    try {
+      holdIt = File.createTempFile("BioFabricHold", ".zip");
+      holdIt.deleteOnExit();
+    } catch (IOException ioex) {
+      holdIt = null;
+    }
+  
+    NetworkAlignmentBuilder nab = new NetworkAlignmentBuilder();
+  
+    Set<FabricLink> finalLinks = new HashSet<FabricLink>();
+    Set<NID.WithName> finalLoneNodeIDs = new HashSet<NID.WithName>();
+  
+    boolean finished = nab.processNetAlign(finalLinks, finalLoneNodeIDs, mapG1toG2,
+            linksGraph1, lonersGraph1, linksGraph2, lonersGraph2, idGen, holdIt);
+    
+    try {
+      NetworkBuilder nb = new NetworkBuilder(true, holdIt);
+      nb.setForNetAlignBuild(idGen, finalLinks, finalLoneNodeIDs,
+              BioFabricNetwork.BuildMode.BUILD_NETWORK_ALIGNMENT);
+      nb.doNetworkBuild();
+    } catch (OutOfMemoryError oom) {
+      ExceptionHandler.getHandler().displayOutOfMemory(oom);
+      return (false);
+    }
+    currentFile_ = null;
+    FabricCommands.setPreference("LoadDirectory", align.getAbsoluteFile().getParent());
+    manageWindowTitle(align.getName());
+    return true;
+  }
+  
+  
+  
+  
 
   /***************************************************************************
   **
@@ -1025,7 +1293,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   */
      
   public Map<AttributeLoader.AttributeKey, String> loadTheFile(File file, Map<String, Set<NID.WithName>> nameToIDs, boolean forNodes) {
-    HashMap<AttributeLoader.AttributeKey, String> attributes = new HashMap<AttributeLoader.AttributeKey, String>();   
+    HashMap<AttributeLoader.AttributeKey, String> attributes = new HashMap<AttributeLoader.AttributeKey, String>();
     try {    
       AttributeLoader.ReadStats stats = new AttributeLoader.ReadStats();
       AttributeLoader alod = new AttributeLoader(); 
@@ -1061,6 +1329,58 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     FabricCommands.setPreference("AttribDirectory", file.getAbsoluteFile().getParent());
     return (attributes);
+  }
+  
+  /**************************************************************************
+   **
+   ** Load the alignment file
+   */
+  
+  public Map<NID.WithName, NID.WithName> loadTheAlignmentFile(File file,
+                                                              ArrayList<FabricLink> linksGraph1, HashSet<NID.WithName> loneNodesGraph1,
+                                                              ArrayList<FabricLink> linksGraph2, HashSet<NID.WithName> loneNodesGraph2) {
+    
+    Map<NID.WithName, NID.WithName> mapG1toG2 = new HashMap<NID.WithName, NID.WithName>();
+    try {
+  
+      AlignmentLoader.NetAlignStats stats = new AlignmentLoader.NetAlignStats();
+      AlignmentLoader alod = new AlignmentLoader();
+      
+//      Set<NID.WithName> nodesGraph1 = .extractNodes(linksGraph1, loneNodesGraph1);
+//      Set<NID.WithName> nodesGraph2 = .extractNodes(linksGraph2, loneNodesGraph2);
+      
+      alod.readAlignment(file, mapG1toG2, stats, linksGraph1, loneNodesGraph1, linksGraph2, loneNodesGraph2);
+  
+      if (!stats.badLines.isEmpty()) {
+        ResourceManager rMan = ResourceManager.getManager();
+        String badLineFormat = rMan.getString("netAlignRead.badLineFormat");
+        String badLineMsg = MessageFormat.format(badLineFormat, new Object[] {Integer.valueOf(stats.badLines.size())});
+        JOptionPane.showMessageDialog(topWindow_, badLineMsg,
+                rMan.getString("netAlignRead.badLineTitle"),
+                JOptionPane.WARNING_MESSAGE);
+      }
+      if (!stats.dupLines.isEmpty()) {
+        ResourceManager rMan = ResourceManager.getManager();
+        String dupLineFormat = rMan.getString("netAlignRead.dupLineFormat");
+        String dupLineMsg = MessageFormat.format(dupLineFormat, new Object[] {Integer.valueOf(stats.dupLines.size())});
+        JOptionPane.showMessageDialog(topWindow_, dupLineMsg,
+                rMan.getString("netAlignRead.dupLineTitle"),
+                JOptionPane.WARNING_MESSAGE);
+      }
+      if (!stats.mappedAllNodes) { // DO I NEED THIS
+        ResourceManager rMan = ResourceManager.getManager();
+        JOptionPane.showMessageDialog(topWindow_, rMan.getString("netAlignRead.incompleteMapError"),
+                rMan.getString("netAlignRead.incompleteMapTitle"),
+                JOptionPane.ERROR_MESSAGE);
+        return (null);
+      }
+      
+    } catch (IOException ioe) {
+//      System.out.println("ALIGNMENT FILE ERROR\n\n\n\n\n");
+      displayFileInputError(ioe);
+    }
+    
+    return (mapG1toG2);
   }
   
   /***************************************************************************
@@ -2876,11 +3196,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   ** Command
   */ 
    
-  private class LayoutNetworkAlignment extends ChecksForEnabled implements BackgroundWorkerOwner {
+  private class LoadNetworkAlignmentAction extends ChecksForEnabled {
   
     private static final long serialVersionUID = 1L;
     
-    LayoutNetworkAlignment(boolean doIcon) {
+    LoadNetworkAlignmentAction(boolean doIcon) {
       ResourceManager rMan = ResourceManager.getManager();
       putValue(Action.NAME, rMan.getString("command.LayoutNetworkAlignment"));
       if (doIcon) {
@@ -2903,82 +3223,46 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
   
     private boolean performOperation(Object[] args) {
-      try {
     
-        NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topWindow_);
-        nad.setVisible(true);
+      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topWindow_);
+      nad.setVisible(true);
   
-        NetworkAlignment netAlign = new NetworkAlignment(nad.getNAInfo());
+      NetworkAlignmentDialog.NetworkAlignInfo nai = nad.getNAInfo();
+      
+      File graph_1 = nai.small, graph_2 = nai.large, align = nai.align;
+//      NetworkAlignment netAlign = new NetworkAlignment(nad.getNAInfo());
 
-//      System.out.println(na.getSmall().getSize());
-//      System.out.println(na.getLarge().getSize());
-  
-  
-        System.out.println(bfp_.getNetwork());
-        BioFabricNetwork.NetAlignBuildData bfnd = new BioFabricNetwork.NetAlignBuildData(netAlign, colGen_);
+      
+      // should i do all the checking like in ImportSif
+      
+      
         
-//        NetworkRelayout nb = new NetworkRelayout();
-//        nb.doNetworkRelayout(new BioFabricNetwork(bfnd,null), BioFabricNetwork.BuildMode.BUILD_NETWORK_ALIGNMENT);
-//        nb.
-////      NetworkRelayout nb = new NetworkRelayout();
-        
-//        NewNetworkRunner nnr = new NewNetworkRunner(true, null);
-  
-        File holdIt;
-        try {
-          holdIt = File.createTempFile("BioFabricHold", ".zip");
-          holdIt.deleteOnExit();
-        } catch (IOException ioex) {
-          holdIt = null;
-        }
-        try { // I'M PIGGY-BACKING ON BUILD FROM SIF HERE
-          NetworkBuilder nb = new NetworkBuilder(true, holdIt);
-          nb.setForSifBuild(netAlign.getIdGen(), bfnd.allLinks, new HashSet<NID.WithName>(),
-                  BioFabricNetwork.BuildMode.BUILD_FROM_SIF);
-          nb.doNetworkBuild();
-        } catch (OutOfMemoryError oom) {
-          ExceptionHandler.getHandler().displayOutOfMemory(oom);
-          return (false);
-        } // CHANGE THE WINDOW NAME GO BACK TO WEHRE I GOT THIS -RISHI 5-30-17
-        
-//        NetworkBuilder nb = new NetworkBuilder(isForMain_, null);
-//        try {
-//          nnr.runCore();
-//        } catch (AsynchExitRequestException exception) {
-//          ExceptionHandler.getHandler().displayException(exception);
-//        }
-//      nb.doNetworkRelayout(bfnd, null);
-//        NewNetworkRunner runner = new NewNetworkRunner(isForMain_, null);
-//        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_,
-//                "netBuild.waitTitle", "netBuild.wait", null, false);
-//
-//        runner.setClient(bwc);
-//        bwc.launchWorker();
-      } catch (Exception ex) {
-        ExceptionHandler.getHandler().displayException(ex);
-      }
-      return (true);
+//      File holdIt;
+//      try {
+//        holdIt = File.createTempFile("BioFabricHold", ".zip");
+//        holdIt.deleteOnExit();
+//      } catch (IOException ioex) {
+//        holdIt = null;
+//      }
+//      UniqueLabeller idGen = new UniqueLabeller();
+      
+      return createNetAlignFromGWSources(graph_1, graph_2, align);
+//       loadFromGWSourceStepOne(graph_1, null,null, idGen);
+
+//      return (loadFromGWSourceStepOne(graph_1, null,null, idGen));
+
+//      try {
+//        NetworkBuilder nb = new NetworkBuilder(true, holdIt);
+//        nb.setForNetAlignBuild(netAlign.getIdGen(), netAlign.getAllLinks(), new HashSet<NID.WithName>(),
+//                BioFabricNetwork.BuildMode.BUILD_NETWORK_ALIGNMENT);
+//        nb.doNetworkBuild();
+//      } catch (OutOfMemoryError oom) {
+//        ExceptionHandler.getHandler().displayOutOfMemory(oom);
+//        return (false);
+//      } // CHANGE THE WINDOW NAME GO BACK TO WEHRE I GOT THIS -RISHI 5-30-17
+//      return (true);
     }
   
-    @Override
-    public boolean handleRemoteException(Exception remoteEx) {
-      return false;
-    }
-  
-    @Override
-    public void handleCancellation() {
-    
-    }
-  
-    @Override
-    public void cleanUpPreEnable(Object result) {
-    
-    }
-  
-    @Override
-    public void cleanUpPostRepaint(Object result) {
-    
-    }
   }
   
   /***************************************************************************
@@ -4039,6 +4323,15 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   		return;
   	}
   	
+  	void setForNetAlignBuild(UniqueLabeller idGen, Set<FabricLink> links,
+                             Set<NID.WithName> loneNodeIDs, BioFabricNetwork.BuildMode bMode) {
+  	  if (bMode != BioFabricNetwork.BuildMode.BUILD_NETWORK_ALIGNMENT) {
+  	    throw new IllegalArgumentException();
+      }
+      runner_.setBuildDataForNetAlign(idGen, links, loneNodeIDs, bMode); // SHOULD THIS BE CHANGED?
+  	  return;
+    }
+  	
   	void setForDisplayOptionChange(BioFabricNetwork bfn, BioFabricNetwork.BuildMode bMode) {
   		if (bMode != BioFabricNetwork.BuildMode.SHADOW_LINK_CHANGE) {
   			throw new IllegalArgumentException();
@@ -4215,7 +4508,59 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       return;
     }
   }
-
+  
+  /***************************************************************************
+   **
+   ** Class for building network alignments
+   */
+  
+  private class NetworkAlignmentBuilder implements BackgroundWorkerOwner {
+    
+    private File holdIt_;
+    private boolean finished_;
+    
+    public boolean processNetAlign(Set<FabricLink> finalLinks, Set<NID.WithName> finalLoners,
+                                   Map<NID.WithName, NID.WithName> mapG1toG2,
+                                   ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
+                                   ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
+                                   UniqueLabeller idGen, File holdIt) {
+      
+      holdIt_ = holdIt;
+      try {
+        NetworkAlignmentRunner runner = new NetworkAlignmentRunner(finalLinks, finalLoners, mapG1toG2,
+                linksG1, lonersG1, linksG2, lonersG2, idGen);
+        
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_,
+                "fileLoad.waitTitle", "fileLoad.wait", null, true);
+        
+        runner.setClient(bwc);
+        bwc.launchWorker();
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }
+      return (finished_);
+    }
+    
+    // NOT SURE IF ALL OF THE METHODS BELOW ARE CORRECT
+    public boolean handleRemoteException(Exception remoteEx) {
+      finished_ = false;
+      return (false);
+    }
+    
+    public void handleCancellation() {
+      finished_ = false;
+      cancelAndRestore(holdIt_);
+    }
+    
+    public void cleanUpPreEnable(Object result) {
+      return;
+    }
+    
+    public void cleanUpPostRepaint(Object result) {
+      return;
+    }
+  }
+  
   /***************************************************************************
   **
   ** Class for loading huge files in
@@ -4253,7 +4598,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
      
     public boolean doBackgroundSIFRead(File file, UniqueLabeller idGen,
 		    		                           List<FabricLink> links, Set<NID.WithName> loneNodeIDs, 
-		    		                           Map<String, String> nameMap, FabricImportLoader.SIFStats sss, 
+		    		                           Map<String, String> nameMap, FabricImportLoader.FileImportStats sss,
 		    		                           Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relMap,
 		    		                           File holdIt) {
 
@@ -4266,6 +4611,27 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                                                                  "fileLoad.waitTitle", "fileLoad.wait", null, true);
         runner.setClient(bwc);
         bwc.launchWorker();         
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }
+      return (finished_);
+    }
+    
+    public boolean doBackgroundGWRead(File file, UniqueLabeller idGen,
+                                      List<FabricLink> links, Set<NID.WithName> loneNodeIDs,
+                                      Map<String, String> nameMap, FabricImportLoader.FileImportStats gws,
+                                      Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relMap,
+                                      File holdIt) {
+      holdIt_ = holdIt;
+      finished_ = true;
+      forRecovery_ = false;
+      try {
+        GWReaderRunner runner = new GWReaderRunner(file, idGen, links, loneNodeIDs, nameMap, gws, magBins, relMap, holdIt_);
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_,
+                "fileLoad.waitTitle", "fileLoad.wait", null, true);
+        
+        runner.setClient(bwc);
+        bwc.launchWorker();
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -4495,6 +4861,54 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       return;
     }
   }
+  
+  /***************************************************************************
+   **
+   ** Background network alignment processing
+   */
+  
+  private class NetworkAlignmentRunner extends BackgroundWorker {
+    
+    private Set<FabricLink> finalLinks_;
+    private Set<NID.WithName> finalLoners_;
+    private Map<NID.WithName, NID.WithName> mapG1toG2_;
+    private ArrayList<FabricLink> linksG1_;
+    private HashSet<NID.WithName> lonersG1_;
+    private ArrayList<FabricLink> linksG2_;
+    private HashSet<NID.WithName> lonersG2_;
+    private UniqueLabeller idGen_;
+    
+    public NetworkAlignmentRunner(Set<FabricLink> finalLinks, Set<NID.WithName> finalLoners,
+                                  Map<NID.WithName, NID.WithName> mapG1toG2,
+                                  ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
+                                  ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
+                                  UniqueLabeller idGen) {
+      super(new Boolean(false));
+      
+      this.finalLinks_ = finalLinks;
+      this.finalLoners_ = finalLoners;
+      this.mapG1toG2_ = mapG1toG2;
+      this.linksG1_ = linksG1;
+      this.lonersG1_ = lonersG1;
+      this.linksG2_ = linksG2;
+      this.lonersG2_ = lonersG2;
+      this.idGen_ = idGen;
+    }
+    
+    public Object runCore() throws AsynchExitRequestException {
+      
+      NetworkAlignment netAlign = new NetworkAlignment(finalLinks_, finalLoners_, mapG1toG2_,
+              linksG1_, lonersG1_, linksG2_, lonersG2_, idGen_);
+      
+      netAlign.mergeNetworks();
+      
+      return (new Boolean(true));
+    }
+    
+    public Object postRunCore() {
+      return null;
+    }
+  }
    
   /***************************************************************************
   **
@@ -4528,6 +4942,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     	return;
     }
     
+    void setBuildDataForNetAlign(UniqueLabeller idGen, Set<FabricLink> links, Set<NID.WithName> loneNodeIDs,
+                                 BioFabricNetwork.BuildMode bMode) {
+      setBuildDataForSIF(idGen, links, loneNodeIDs, bMode);
+    }
+    
     void setBuildDataForOptionChange(BioFabricNetwork bfn, BioFabricNetwork.BuildMode bMode) {
       bfn_ = bfn;
       linkCount_ = bfn.getLinkCount(true);
@@ -4547,6 +4966,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
 	    	case BUILD_FROM_SIF:
 	    		HashMap<NID.WithName, String> emptyMap = new HashMap<NID.WithName, String>();
 	        return (new BioFabricNetwork.RelayoutBuildData(idGen_, links_, loneNodeIDs_, emptyMap, colGen_, bMode_));
+            case BUILD_NETWORK_ALIGNMENT:
+              HashMap<NID.WithName, String> emptyClustMap = new HashMap<NID.WithName, String>();
+              return (new BioFabricNetwork.NetAlignBuildData(idGen_, links_, loneNodeIDs_, emptyClustMap, colGen_, bMode_));
 	    	case SHADOW_LINK_CHANGE:
 	    	case BUILD_FROM_XML:
 	    		return (new BioFabricNetwork.PreBuiltBuildData(bfn_, bMode_));		
@@ -4743,7 +5165,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     public Object postRunCore() {
       return (null);
     } 
-  } 
+  }
   
   /***************************************************************************
   **
@@ -4865,7 +5287,64 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     public Object postRunCore() {
       return (null);
     } 
-  } 
+  }
+  
+  /***************************************************************************
+   **
+   ** This reads in GW files on the background thread, but does not build a network. That
+   ** occurs in subsequent steps.
+   */
+  
+  private class GWReaderRunner extends BackgroundWorker {
+  
+    private File myFile_;
+    private List<FabricLink> links_;
+    private Set<NID.WithName> loneNodeIDs_;
+    private UniqueLabeller idGen_;
+    private Map<String, String> nameMap_;
+    private FabricImportLoader.FileImportStats sss_;
+    private Integer magBins_;
+    private SortedMap<FabricLink.AugRelation, Boolean> relaMap_;
+    private File restoreCacheFile_;
+    
+    public GWReaderRunner(File file, UniqueLabeller idGen, List<FabricLink> links,
+                          Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap,
+                          FabricImportLoader.FileImportStats gws,
+                          Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
+                          File restoreCacheFile) {
+      super(new Boolean(false));
+      myFile_ = file;
+      links_ = links;
+      loneNodeIDs_ = loneNodeIDs;
+      idGen_ = idGen;
+      nameMap_ = nameMap;
+      sss_ = gws;
+      magBins_ = magBins;
+      relaMap_ = relaMap;
+      restoreCacheFile_ = restoreCacheFile;
+    }
+  
+    public Object runCore() throws AsynchExitRequestException {
+      try {
+        if (restoreCacheFile_.length() == 0) {
+          buildRestoreCache(restoreCacheFile_, this);
+        }
+        preLoadOperations();
+        FabricImportLoader.FileImportStats sss = (new GWImportLoader()).importFabric(myFile_, idGen_, links_,
+                        loneNodeIDs_, nameMap_, magBins_, this);
+        sss_.copyInto(sss);
+        BioFabricNetwork.extractRelations(links_, relaMap_, this);
+        return (new Boolean(true));
+      } catch (IOException ioe) {
+        stashException(ioe);
+        return (null);
+      }
+    }
+  
+    public Object postRunCore() {
+      return null;
+    }
+  }
 
   /***************************************************************************
   **
@@ -4880,14 +5359,14 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private Set<NID.WithName> loneNodeIDs_;
     private UniqueLabeller idGen_; 
     private Map<String, String> nameMap_;
-    private FabricImportLoader.SIFStats sss_;
+    private FabricImportLoader.FileImportStats sss_;
     private Integer magBins_;
     private SortedMap<FabricLink.AugRelation, Boolean> relaMap_;
     private File restoreCacheFile_;
     
     public SIFReaderRunner(File file, UniqueLabeller idGen, List<FabricLink> links, 
     		                   Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, 
-    		                   FabricImportLoader.SIFStats sss, 
+    		                   FabricImportLoader.FileImportStats sss,
     		                   Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
     		                   File restoreCacheFile) {
       super(new Boolean(false));
@@ -4908,7 +5387,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           buildRestoreCache(restoreCacheFile_, this);
       	}
         preLoadOperations();
-        FabricImportLoader.SIFStats sss = (new SIFImportLoader()).importFabric(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, this);
+        FabricImportLoader.FileImportStats sss = (new SIFImportLoader()).importFabric(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, this);
         sss_.copyInto(sss);
         BioFabricNetwork.extractRelations(links_, relaMap_, this);     
         return (new Boolean(true));
@@ -5024,3 +5503,322 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     return;
   }
 }
+
+
+//  /***************************************************************************
+//   **
+//   ** First step for loading from GW :: Background thread initializations
+//   */
+//
+//  private boolean loadFromGWSourceStepOne(File file, ArrayList<FabricLink> links,
+//                                          HashSet<NID.WithName> loneNodes, Integer magBins,
+//                                          UniqueLabeller idGen) {
+//
+//
+////    ArrayList<FabricLink> links = new ArrayList<FabricLink>();
+////    HashSet<NID.WithName> loneNodes = new HashSet<NID.WithName>();
+//    HashMap<String, String> nodeNames = null;
+//
+//    File holdIt;
+//    try {
+//      holdIt = File.createTempFile("BioFabricHold", ".zip");
+//      holdIt.deleteOnExit();
+//    } catch (IOException ioex) {
+//      holdIt = null;
+//    }
+//
+//    HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
+//    TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
+//    FabricImportLoader.FileImportStats sss = new FabricImportLoader.FileImportStats();
+//
+//    BackgroundFileReader br = new BackgroundFileReader();
+//    // This gets file file in:
+//
+//    boolean finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
+//
+//    //
+//    // This looks for dups to toss and prep work:
+//    //
+//
+//    if (finished) {
+//      finished = loadFromGWSourceStepTwo(file, idGen, sss, links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt);
+//    }
+//    if (finished) {
+//      loadFromGWSourceStepThree(file, idGen, loneNodes, reducedLinks, holdIt);
+//    }
+//    return (true);
+//  }
+//
+//  /***************************************************************************
+//   **
+//   ** Second step for loading from GW :: Error Checking, Alignment Reading
+//   */
+//
+//  private boolean loadFromGWSourceStepTwo(File file, UniqueLabeller idGen, FabricImportLoader.FileImportStats sss,
+//                                          List<FabricLink> links, Set<NID.WithName> loneNodeIDs,
+//                                          boolean binMag, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
+//                                          Set<FabricLink> reducedLinks, File holdIt) {
+//
+//    ResourceManager rMan = ResourceManager.getManager();
+//    try {
+//      if (!sss.badLines.isEmpty()) {
+//        String badLineFormat = rMan.getString("fabricRead.badLineFormat");
+//        String badLineMsg = MessageFormat.format(badLineFormat, new Object[] {Integer.valueOf(sss.badLines.size())});
+//        JOptionPane.showMessageDialog(topWindow_, badLineMsg,
+//                rMan.getString("fabricRead.badLineTitle"),
+//                JOptionPane.WARNING_MESSAGE);
+//      }
+//
+////      RelationDirectionDialog rdd = new RelationDirectionDialog(topWindow_, relaMap);
+////      rdd.setVisible(true);
+////      if (!rdd.haveResult()) {
+////        return (false);
+////      }
+////      if (rdd.getFromFile()) {
+////        File fileEda = getTheFile(".rda", ".txt", "AttribDirectory", "filterName.rda");
+////        if (fileEda == null) {
+////          return (true);
+////        }
+////        Map<AttributeLoader.AttributeKey, String> relAttributes = loadTheFile(fileEda, null, true);  // Use the simple a = b format of node attributes
+////        if (relAttributes == null) {
+////          return (true);
+////        }
+//
+////        HashSet<FabricLink.AugRelation> needed = new HashSet<FabricLink.AugRelation>(relaMap.keySet());
+//
+////        boolean tooMany = false;
+////        Iterator<AttributeLoader.AttributeKey> rit = relAttributes.keySet().iterator();
+////        while (rit.hasNext()) {
+////          AttributeLoader.StringKey sKey = (AttributeLoader.StringKey)rit.next();
+////          String key = sKey.key;
+////          String val = relAttributes.get(sKey);
+////          Boolean dirVal = Boolean.valueOf(val);
+////          FabricLink.AugRelation forNorm = new FabricLink.AugRelation(key, false);
+////          FabricLink.AugRelation forShad = new FabricLink.AugRelation(key, true);
+////          boolean matched = false;
+////          if (needed.contains(forNorm)) {
+////            matched = true;
+////            relaMap.put(forNorm, dirVal);
+////            needed.remove(forNorm);
+////          }
+////          if (needed.contains(forShad)) {
+////            matched = true;
+////            relaMap.put(forShad, dirVal);
+////            needed.remove(forShad);
+////          }
+////          if (!matched) {
+////            tooMany = true;
+////            break;
+////          }
+////        }
+////        if (!needed.isEmpty() || tooMany) {
+////          JOptionPane.showMessageDialog(topWindow_, rMan.getString("fabricRead.directionMapLoadFailure"),
+////                  rMan.getString("fabricRead.directionMapLoadFailureTitle"),
+////                  JOptionPane.ERROR_MESSAGE);
+////          return (false);
+////        }
+////      } else {
+////        relaMap = rdd.getRelationMap();
+////      }
+//
+//      HashSet<FabricLink> culledLinks = new HashSet<FabricLink>();
+//      PreprocessNetwork pn = new PreprocessNetwork();
+//      boolean didFinish = pn.doNetworkPreprocess(links, relaMap, reducedLinks, culledLinks, holdIt);
+//      if (!didFinish) {
+//        return (false);
+//      }
+//
+//      if (!culledLinks.isEmpty()) {
+//        String dupLinkFormat = rMan.getString("fabricRead.dupLinkFormat");
+//        // Ignore shadow link culls: / 2
+//        String dupLinkMsg = MessageFormat.format(dupLinkFormat, new Object[] {Integer.valueOf(culledLinks.size() / 2)});
+//        JOptionPane.showMessageDialog(topWindow_, dupLinkMsg,
+//                rMan.getString("fabricRead.dupLinkTitle"),
+//                JOptionPane.WARNING_MESSAGE);
+//      }
+//
+//      //
+//      // For big files, user may want to specify layout options before the default layout with no
+//      // shadows. Let them set this here:
+//      //
+//
+//      if (reducedLinks.size() > SIZE_TO_ASK_ABOUT_SHADOWS_) {
+//        String shadowMessage = rMan.getString("fabricRead.askAboutShadows");
+//        int doShadow =
+//                JOptionPane.showConfirmDialog(topWindow_, shadowMessage,
+//                        rMan.getString("fabricRead.askAboutShadowsTitle"),
+//                        JOptionPane.YES_NO_CANCEL_OPTION);
+//        if (doShadow == JOptionPane.CANCEL_OPTION) {
+//          return (false);
+//        }
+//        FabricDisplayOptions dops = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
+//        dops.setDisplayShadows((doShadow == JOptionPane.YES_OPTION));
+//      }
+//
+//      //
+//      // Handle magnitude bins:
+//      //
+//
+//      if (binMag) {
+//        HashSet<FabricLink> binnedLinks = new HashSet<FabricLink>();
+//        Pattern p = Pattern.compile("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?");
+//
+//        Iterator<FabricLink> alit = reducedLinks.iterator();
+//        while (alit.hasNext()) {
+//          FabricLink nextLink = alit.next();
+//          FabricLink.AugRelation rel = nextLink.getAugRelation();
+//          Matcher m = p.matcher(rel.relation);
+//          int magCount = 0;
+//          if (m.find()) {
+//            double d = Double.parseDouble(m.group(0));
+//            magCount = (int)Math.floor((Math.abs(d) * 10.0) - 5.0);
+//          }
+//        }
+//      }
+//    } catch (OutOfMemoryError oom) {
+//      ExceptionHandler.getHandler().displayOutOfMemory(oom);
+//      return (false);
+//    }
+//    return (true);
+//
+//  }
+//
+//  /***************************************************************************
+//   **
+//   ** Third step for loading from GW :: Laying out
+//   */
+//
+//  private boolean loadFromGWSourceStepThree(File file, UniqueLabeller idGen,
+//                                            Set<NID.WithName> loneNodeIDs,
+//                                            Set<FabricLink> reducedLinks, File holdIt) {
+//    try {
+//      NetworkBuilder nb = new NetworkBuilder(true, holdIt);
+//      nb.setForNetAlignBuild(idGen, reducedLinks, new HashSet<NID.WithName>(),
+//              BioFabricNetwork.BuildMode.BUILD_NETWORK_ALIGNMENT);
+//      nb.doNetworkBuild();
+//    } catch (OutOfMemoryError oom) {
+//      ExceptionHandler.getHandler().displayOutOfMemory(oom);
+//      return (false);
+//    }
+//    currentFile_ = null;
+//    FabricCommands.setPreference("LoadDirectory", file.getAbsoluteFile().getParent());
+//    manageWindowTitle(file.getName()); // MAKE SURE TITLE NAME IS ALIGN FILE NAME
+//    return (true);
+//  }
+//
+//  private boolean createNetAlignFromGWSources(File graph1, File graph2, UniqueLabeller idGen) {
+//
+//
+//
+//  }
+
+//private class LayoutNetworkAlignment extends ChecksForEnabled
+////          implements BackgroundWorkerOwner
+//{
+//
+//  private static final long serialVersionUID = 1L;
+//
+//  LayoutNetworkAlignment(boolean doIcon) {
+//    ResourceManager rMan = ResourceManager.getManager();
+//    putValue(Action.NAME, rMan.getString("command.LayoutNetworkAlignment"));
+//    if (doIcon) {
+//      putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.LayoutNetworkAlignment"));
+//      URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/FIXME24.gif");
+//      putValue(Action.SMALL_ICON, new ImageIcon(ugif));
+//    } else {
+//      char mnem = rMan.getChar("command.LayoutNetworkAlignmentMnem");
+//      putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
+//    }
+//  }
+//
+//  public void actionPerformed(ActionEvent e) {
+//    try {
+//      performOperation(null);
+//    } catch (Exception ex) {
+//      ExceptionHandler.getHandler().displayException(ex);
+//    }
+//    return;
+//  }
+//
+//  private boolean performOperation(Object[] args) {
+////      try {
+//
+//    NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topWindow_);
+//    nad.setVisible(true);
+//
+//    NetworkAlignment netAlign = new NetworkAlignment(nad.getNAInfo());
+//
+////      System.out.println(na.getSmall().getSize());
+////      System.out.println(na.getLarge().getSize());
+//
+//
+//    System.out.println(bfp_.getNetwork());
+//    BioFabricNetwork.NetAlignBuildData bfnd = new BioFabricNetwork.NetAlignBuildData(netAlign, colGen_);
+//
+////        NetworkRelayout nb = new NetworkRelayout();
+////        nb.doNetworkRelayout(new BioFabricNetwork(bfnd,null), BioFabricNetwork.BuildMode.BUILD_NETWORK_ALIGNMENT);
+////        nb.
+//////      NetworkRelayout nb = new NetworkRelayout();
+//
+////        NewNetworkRunner nnr = new NewNetworkRunner(true, null);
+//
+//    File holdIt;
+//    try {
+//      holdIt = File.createTempFile("BioFabricHold", ".zip");
+//      holdIt.deleteOnExit();
+//    } catch (IOException ioex) {
+//      holdIt = null;
+//    }
+//
+//    try {
+//      NetworkBuilder nb = new NetworkBuilder(true, holdIt);
+////          nb.setForSifBuild(netAlign.getIdGen(), bfnd.allLinks, new HashSet<NID.WithName>(),
+////                  BioFabricNetwork.BuildMode.BUILD_FROM_SIF);
+//      nb.setForNetAlignBuild(netAlign.getIdGen(), bfnd.allLinks, new HashSet<NID.WithName>(),
+//              BioFabricNetwork.BuildMode.BUILD_NETWORK_ALIGNMENT);
+//      nb.doNetworkBuild();
+//    } catch (OutOfMemoryError oom) {
+//      ExceptionHandler.getHandler().displayOutOfMemory(oom);
+//      return (false);
+//    } // CHANGE THE WINDOW NAME GO BACK TO WEHRE I GOT THIS -RISHI 5-30-17
+//
+////        NetworkBuilder nb = new NetworkBuilder(isForMain_, null);
+////        try {
+////          nnr.runCore();
+////        } catch (AsynchExitRequestException exception) {
+////          ExceptionHandler.getHandler().displayException(exception);
+////        }
+////      nb.doNetworkRelayout(bfnd, null);
+////        NewNetworkRunner runner = new NewNetworkRunner(isForMain_, null);
+////        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_,
+////                "netBuild.waitTitle", "netBuild.wait", null, false);
+////
+////        runner.setClient(bwc);
+////        bwc.launchWorker();
+////      } catch (Exception ex) {
+////        ExceptionHandler.getHandler().displayException(ex);
+////      }
+//    return (true);
+//  }
+//
+////    @Override
+////    public boolean handleRemoteException(Exception remoteEx) {
+////      return false;
+////    }
+////
+////    @Override
+////    public void handleCancellation() {
+////
+////    }
+////
+////    @Override
+////    public void cleanUpPreEnable(Object result) {
+////
+////    }
+////
+////    @Override
+////    public void cleanUpPostRepaint(Object result) {
+////
+////    }
+//}
+

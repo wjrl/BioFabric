@@ -215,7 +215,6 @@ public class BioFabricNetwork {
         relayoutNetwork(rbd, monitor);
         break;
       case BUILD_NETWORK_ALIGNMENT:
-        System.out.println("BUILDING NETWORK ALIGNMENT!!!!!");
         NetAlignBuildData nad = (NetAlignBuildData) bd;
         normalCols_ = new ColumnAssign();
         shadowCols_ = new ColumnAssign();
@@ -226,6 +225,7 @@ public class BioFabricNetwork {
         linkGrouping_ = new ArrayList<String>(nad.linkGroups);
         colGen_ = nad.colGen;
         layoutMode_ = nad.layoutMode;
+        processLinks(nad, monitor);
         break;
       case BUILD_FOR_SUBMODEL:
         SelectBuildData sbd = (SelectBuildData)bd;
@@ -2373,18 +2373,26 @@ public class BioFabricNetwork {
   
   public static class NetAlignBuildData extends RelayoutBuildData {
   
-    private NetworkAlignment netAlign;
-  
-    public NetAlignBuildData(NetworkAlignment netAlign,
-                             FabricColorGenerator colGen) {
-      super(netAlign.getIdGen(), netAlign.getAllLinks(), new HashSet<NID.WithName>(),
-              new HashMap<NID.WithName, String>(), colGen, BuildMode.BUILD_NETWORK_ALIGNMENT);
-      this.netAlign = netAlign;
-      this.layoutMode = LayoutMode.PER_NETWORK_MODE;
+//    private NetworkAlignment netAlign;
+//
+//    public NetAlignBuildData(NetworkAlignment netAlign,
+//                             FabricColorGenerator colGen) {
+//      super(netAlign.getIdGen(), netAlign.getAllLinks(), new HashSet<NID.WithName>(),
+//              new HashMap<NID.WithName, String>(), colGen, BuildMode.BUILD_NETWORK_ALIGNMENT);
+//      this.netAlign = netAlign;
+//      this.layoutMode = LayoutMode.PER_NETWORK_MODE;
 //      linkGroups.add("G2");
 //      linkGroups.add("CC");
 //      linkGroups.add("G1"); // SHOULD I BE DOING THIS
+//    }
+    public NetAlignBuildData(UniqueLabeller idGen,
+                             Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
+                             Map<NID.WithName, String> clustAssign,
+                             FabricColorGenerator colGen, BuildMode mode) {
+      super(idGen, allLinks, loneNodeIDs, clustAssign, colGen, mode);
+      this.layoutMode = LayoutMode.PER_NETWORK_MODE;
     }
+    
   }
  
   /***************************************************************************
@@ -2507,7 +2515,7 @@ public class BioFabricNetwork {
       retval.put(nextName, forName.iterator().next());
     }
     return (retval);
-  }  
+  }
   
   
   /***************************************************************************

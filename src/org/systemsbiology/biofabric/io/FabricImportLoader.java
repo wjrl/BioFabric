@@ -89,7 +89,7 @@ public abstract class FabricImportLoader {
    ** Parse a line to tokens
    */
   
-  protected abstract String[] lineToToks(String line, SIFStats stats) throws IOException;
+  protected abstract String[] lineToToks(String line, FileImportStats stats) throws IOException;
   
   /***************************************************************************
    **
@@ -98,18 +98,18 @@ public abstract class FabricImportLoader {
   
   protected abstract void consumeTokens(String[] tokens, UniqueLabeller idGen, List<FabricLink> links,
                                         Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins,
-                                        HashMap<String, NID.WithName> nameToID, SIFStats stats) throws IOException;
+                                        HashMap<String, NID.WithName> nameToID, FileImportStats stats) throws IOException;
   
   /***************************************************************************
    **
    ** Process a SIF input
    */
   
-  public SIFStats importFabric(File infile, UniqueLabeller idGen, List<FabricLink> links,
-                               Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins,
-                               BTProgressMonitor monitor) throws AsynchExitRequestException, IOException {
+  public FileImportStats importFabric(File infile, UniqueLabeller idGen, List<FabricLink> links,
+                                      Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins,
+                                      BTProgressMonitor monitor) throws AsynchExitRequestException, IOException {
     
-    SIFStats retval = new SIFStats();
+    FileImportStats retval = new FileImportStats();
     long fileLen = infile.length();
     HashMap<String, NID.WithName> nameToID = new HashMap<String, NID.WithName>();
     BufferedReader in = null;
@@ -162,6 +162,20 @@ public abstract class FabricImportLoader {
     String procString = inString.trim();
     if ((procString.indexOf("\"") == 0) && (procString.lastIndexOf("\"") == (procString.length() - 1))) {
       procString = procString.replaceAll("\"", "");
+    }
+    return (procString);
+  }
+  
+  /***************************************************************************
+   **
+   ** Strip Brackets |{ }| from String
+   */
+  
+  protected String stripBrackets(String inString) { // AM I DOING THIS RIGHT
+    String procString = inString.trim();
+    if ((procString.indexOf("|{") == 0) && (procString.lastIndexOf("}|") == (procString.length() - 2))) {
+      procString = procString.replaceAll("\\|\\{", "");
+      procString = procString.replaceAll("\\}\\|", "");
     }
     return (procString);
   }
@@ -226,14 +240,14 @@ public abstract class FabricImportLoader {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  public static class SIFStats {
+  public static class FileImportStats {
     public ArrayList<String> badLines;
     
-    public SIFStats() {
+    public FileImportStats() {
       badLines = new ArrayList<String>();
     }
     
-    public void copyInto(SIFStats other) {
+    public void copyInto(FileImportStats other) {
       this.badLines = new ArrayList<String>(other.badLines);
       return;
     }

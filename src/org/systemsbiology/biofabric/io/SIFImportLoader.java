@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
 
@@ -80,7 +79,7 @@ public class SIFImportLoader extends FabricImportLoader {
   ** Parse a line to tokens
   */
 
-  protected String[] lineToToks(String line, SIFStats stats) throws IOException {
+  protected String[] lineToToks(String line, FileImportStats stats) throws IOException {
   	if (line.trim().equals("")) {
   		return (null);
   	}
@@ -106,7 +105,7 @@ public class SIFImportLoader extends FabricImportLoader {
 
   protected void consumeTokens(String[] tokens, UniqueLabeller idGen, List<FabricLink> links, 
   		                         Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins, 
-  		                         HashMap<String, NID.WithName> nameToID, SIFStats stats) throws IOException {
+  		                         HashMap<String, NID.WithName> nameToID, FileImportStats stats) throws IOException {
     if (tokens.length == 3) {
       String source = tokens[0].trim();
       source = stripQuotes(source);
