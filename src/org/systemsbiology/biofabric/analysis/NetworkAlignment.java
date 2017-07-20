@@ -54,12 +54,12 @@ public class NetworkAlignment {
   private Map<NID.WithName, NID.WithName> smallToNA_;
   private Map<NID.WithName, NID.WithName> largeToNA_;
   
-  private Set<FabricLink> reducedLinks_;
-  private Set<NID.WithName> reducedLoners_;
+  private ArrayList<FabricLink> mergedLinks_;
+  private Set<NID.WithName> mergedLoners_;
   
   private enum Graph {SMALL, LARGE}
   
-  public NetworkAlignment(Set<FabricLink> reducedLinks, Set<NID.WithName> reducedLoners,
+  public NetworkAlignment(ArrayList<FabricLink> mergedLinks, Set<NID.WithName> mergedLoneNodeIDs,
                           Map<NID.WithName, NID.WithName> mapG1toG2,
                           ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
                           ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
@@ -72,8 +72,8 @@ public class NetworkAlignment {
     this.lonersG2_ = lonersG2;
     this.idGen_ = idGen;
   
-    this.reducedLinks_ = reducedLinks;
-    this.reducedLoners_ = reducedLoners;
+    this.mergedLinks_ = mergedLinks;
+    this.mergedLoners_ = mergedLoneNodeIDs;
   }
   
   /****************************************************************************
@@ -90,29 +90,36 @@ public class NetworkAlignment {
     createMergedNodes();
     
     //
-    // Create individual link sets
+    // Create individual link sets; "old" refers to pre-merged networks, "new" is merged network
     //
     
     List<FabricLink> newLinksG1 = new ArrayList<FabricLink>();
     Set<NID.WithName> newLonersG1 = new HashSet<NID.WithName>();
     
-    createNewLinkSet(newLinksG1, newLonersG1, Graph.SMALL);
+    createNewLinkList(newLinksG1, newLonersG1, Graph.SMALL);
   
     List<FabricLink> newLinksG2 = new ArrayList<FabricLink>();
     Set<NID.WithName> newLonersG2 = new HashSet<NID.WithName>();
     
-    createNewLinkSet(newLinksG2, newLonersG2, Graph.LARGE);
+    createNewLinkList(newLinksG2, newLonersG2, Graph.LARGE);
     
     //
-    // Split individual sets into G1 only, CC only, G2 only
+    // Split individual link-lists into G1 only, CC only, G2 only -> combine into one list
     //
     
-    splitLinkSets(newLinksG1, newLinksG2);
+    createMergedLinkList(newLinksG1, newLinksG2);
     
-    finalizeLoners(newLonersG1, newLonersG2);
+    finalizeLoneNodeIDs(newLonersG1, newLonersG2);
+    
+    createShadowLinks();
     
     return;
   }
+  
+  /****************************************************************************
+   **
+   ** Create merged nodes, install into maps
+   */
   
   private void createMergedNodes() {
   
@@ -135,7 +142,12 @@ public class NetworkAlignment {
     return;
   }
   
-  private void createNewLinkSet(List<FabricLink> newLinks, Set<NID.WithName> newLoners, Graph graph) {
+  /****************************************************************************
+   **
+   ** Create new link lists based on merged nodes for both networks
+   */
+  
+  private void createNewLinkList(List<FabricLink> newLinks, Set<NID.WithName> newLoners, Graph graph) {
     
     List<FabricLink> oldLinks;
     Set<NID.WithName> oldLoners;
@@ -169,6 +181,7 @@ public class NetworkAlignment {
       NID.WithName newB = (oldToNewID.containsKey(oldB)) ? oldToNewID.get(oldB) : oldB;
 
       FabricLink newLink = new FabricLink(newA, newB, TEMP_TAG, false, false);
+      // 'directed' must be false
       
       newLinks.add(newLink);
     }
@@ -182,7 +195,12 @@ public class NetworkAlignment {
     return;
   }
   
-  private void splitLinkSets(List<FabricLink> newLinksG1, List<FabricLink> newLinksG2) {
+  /****************************************************************************
+   **
+   ** Combine the two link lists into one, with G2,CC,G1 tags accordingly
+   */
+  
+  private void createMergedLinkList(List<FabricLink> newLinksG1, List<FabricLink> newLinksG2) {
   
     Collections.sort(newLinksG1, new NetAlignFabricLinkLocator());
   
@@ -192,12 +210,12 @@ public class NetworkAlignment {
       
       FabricLink newFinalLink;
       if (index >= 0) {
-        newFinalLink = new FabricLink(linkG2.getSrcID(), linkG2.getTrgID(), TAG_CC, false, false);
+        newFinalLink = new FabricLink(linkG2.getSrcID(), linkG2.getTrgID(), TAG_CC, false, null);
         // Ideally, I would remove this link from newLinksG1, but that would make this O(e*n), right now it's O(eloge)
       } else {
-        newFinalLink = new FabricLink(linkG2.getSrcID(), linkG2.getTrgID(), TAG_G2, false, false);
+        newFinalLink = new FabricLink(linkG2.getSrcID(), linkG2.getTrgID(), TAG_G2, false, null);
       }
-      reducedLinks_.add(newFinalLink);
+      mergedLinks_.add(newFinalLink);
     }
   
     Collections.sort(newLinksG2, new NetAlignFabricLinkLocator());
@@ -207,18 +225,39 @@ public class NetworkAlignment {
       int index = Collections.binarySearch(newLinksG2, linkG1, new NetAlignFabricLinkLocator());
     
       if (index < 0) {
-        FabricLink newFinalLink = new FabricLink(linkG1.getSrcID(), linkG1.getTrgID(), TAG_G1, false, false);
-        reducedLinks_.add(newFinalLink);
+        FabricLink newFinalLink = new FabricLink(linkG1.getSrcID(), linkG1.getTrgID(), TAG_G1, false, null);
+        mergedLinks_.add(newFinalLink);
       }
     }
     return; // This method is not ideal. . .
   }
   
-  private void finalizeLoners(Set<NID.WithName> newLonersG1, Set<NID.WithName> newLonersG2) {
+  /****************************************************************************
+   **
+   ** Create an equivalent shadow link for each link in the merged link list
+   */
+  
+  private void createShadowLinks() {
     
-    reducedLoners_.addAll(newLonersG1);
-    reducedLoners_.addAll(newLonersG2);
-    // any merged nodes in both sets - only one copy will stay (it's a set)
+    ArrayList<FabricLink> shadows = new ArrayList<FabricLink>();
+    for (FabricLink link : mergedLinks_) {
+      
+      FabricLink shadow = new FabricLink(link.getSrcID(), link.getTrgID(), link.getRelation(), true, null);
+      shadows.add(shadow);
+    }
+    mergedLinks_.addAll(shadows);
+    return;
+  }
+  
+  /****************************************************************************
+   **
+   ** Combine loneNodeIDs lists into one
+   */
+  
+  private void finalizeLoneNodeIDs(Set<NID.WithName> newLonersG1, Set<NID.WithName> newLonersG2) {
+    
+    mergedLoners_.addAll(newLonersG1);
+    mergedLoners_.addAll(newLonersG2);
   }
   
   /***************************************************************************
@@ -240,14 +279,20 @@ public class NetworkAlignment {
         return (0);
       }
       
+      //
+      // Must sort the node names because A-B must be equivalent to B-A
+      //
+      
       String[] arr1 = {link1.getSrcID().getName(), link1.getTrgID().getName()};
       Arrays.sort(arr1);
       
       String[] arr2 = {link2.getSrcID().getName(), link2.getTrgID().getName()};
       Arrays.sort(arr2);
   
-      String concat1 = arr1[0] + "xxx" + arr1[1];
-      String concat2 = arr2[0] + "xxx" + arr2[1];
+//      String concat1 = arr1[0] + "xxx" + arr1[1];
+//      String concat2 = arr2[0] + "xxx" + arr2[1];
+      String concat1 = String.format("%s___%s",arr1[0], arr1[1]);
+      String concat2 = String.format("%s___%s",arr2[0], arr2[1]);
 
       // THIS IS COMPLETELY TEMPORARY - RISHI DESAI 7/16/17
       

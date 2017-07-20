@@ -42,7 +42,7 @@ public class GWImportLoader extends FabricImportLoader {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  private final String DEFAULT_RELATION = "pp";
+  private final String DEFAULT_RELATION = "default";
   private final int HEADER_LINES = 4; // # of header/parameter/version-info lines at the beginning of file
   
   ////////////////////////////////////////////////////////////////////////////
@@ -181,7 +181,7 @@ public class GWImportLoader extends FabricImportLoader {
     
     consTokIndex_++;
     
-    if (consTokIndex_ == HEADER_LINES + numNodes_ + 1 + numEdges_ + 1) {
+    if (consTokIndex_ == HEADER_LINES + numNodes_ + 1 + numEdges_ + 1) { // reached end of file
       addLoneNodes(idGen, loneNodeIDs, nameToID);
     }
     
