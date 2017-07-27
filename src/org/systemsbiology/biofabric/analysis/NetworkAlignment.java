@@ -131,7 +131,7 @@ public class NetworkAlignment {
       NID.WithName smallNode = entry.getKey(), largeNode = entry.getValue();
       String smallName = smallNode.getName(), largeName = largeNode.getName();
     
-      String merged_name = String.format("%s-%s", smallName, largeName);
+      String merged_name = String.format("%s-%s", largeName, smallName);
     
       NID nid = idGen_.getNextOID();
       NID.WithName merged_node = new NID.WithName(nid, merged_name);

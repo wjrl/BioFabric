@@ -32,7 +32,6 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import com.sun.org.apache.regexp.internal.RE;
 import org.systemsbiology.biofabric.analysis.NetworkAlignment;
 import org.xml.sax.Attributes;
 
