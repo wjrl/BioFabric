@@ -102,8 +102,7 @@ public class NetworkAlignmentDialog extends JDialog {
     funcButtonBox.add(Box.createVerticalStrut(10));
     funcButtonBox.add(alignmentButton);
     
-    final JCheckBox clique = new JCheckBox("Clique analysis mode", false);
-    // NEED TO ADD RESOURCE MANAGER STRING TO PROPS
+    final JCheckBox clique = new JCheckBox(rMan.getString("networkAlignment.cliqueAnalysis"), false);
     funcButtonBox.add(clique);
     clique.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {

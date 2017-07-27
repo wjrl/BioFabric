@@ -114,7 +114,6 @@ public class NetworkAlignment {
     
     finalizeLoneNodeIDs(newLonersG1, newLonersG2);
     
-//    createShadowLinks();
     if (forClique_) {
       processForCliqueMisalignment();
     }
@@ -214,16 +213,11 @@ public class NetworkAlignment {
     
       int index = Collections.binarySearch(newLinksG1, linkG2, new NetAlignFabricLinkLocator());
       
-//      FabricLink newFinalLink;
       if (index >= 0) {
         addMergedLink(linkG2.getSrcID(), linkG2.getTrgID(), TAG_CC);
-//        newFinalLink = new FabricLink(linkG2.getSrcID(), linkG2.getTrgID(), TAG_CC, false, null);
-        // Ideally, I would remove this link from newLinksG1, but that would make this O(e*n), right now it's O(eloge)
       } else {
         addMergedLink(linkG2.getSrcID(), linkG2.getTrgID(), TAG_G2);
-//        newFinalLink = new FabricLink(linkG2.getSrcID(), linkG2.getTrgID(), TAG_G2, false, null);
       }
-//      mergedLinks_.add(newFinalLink);
     }
   
     Collections.sort(newLinksG2, new NetAlignFabricLinkLocator());
@@ -234,30 +228,10 @@ public class NetworkAlignment {
     
       if (index < 0) {
         addMergedLink(linkG1.getSrcID(), linkG1.getTrgID(), TAG_G1);
-//        FabricLink newFinalLink = new FabricLink(linkG1.getSrcID(), linkG1.getTrgID(), TAG_G1, false, null);
-//        mergedLinks_.add(newFinalLink);
       }
     }
     return; // This method is not ideal. . .
   }
-  
-//  /****************************************************************************
-//   **
-//   ** Create an equivalent shadow link for each link in the merged link list
-//   */
-//
-//  private void createShadowLinks() {
-//
-//    ArrayList<FabricLink> shadows = new ArrayList<FabricLink>();
-//    for (FabricLink link : mergedLinks_) {
-//
-//      FabricLink shadow = new FabricLink(link.getSrcID(), link.getTrgID(), link.getRelation(), true, null);
-//      shadows.add(shadow);
-//    }
-//    mergedLinks_.addAll(shadows);
-//    return;
-//  }
-  
   
   /****************************************************************************
    **
@@ -297,45 +271,33 @@ public class NetworkAlignment {
       }
     }
     
-//    System.out.println("MADE IT TO BEGINNING OF CLIQUE \n\n\n\n\n\n\n");
-//    List<FabricLink> unalignedEdgesG1 = new ArrayList<FabricLink>();
     Set<NID.WithName> unalignedNodesG1 = new TreeSet<NID.WithName>();
     
-    for (FabricLink link : nonShdwMergedLinks) {
+    for (FabricLink link : nonShdwMergedLinks) { // find the nodes of interest
       if (link.getRelation().equals(TAG_G1)) {
-//        unalignedEdgesG1.add(link);
         unalignedNodesG1.add(link.getSrcID());
         unalignedNodesG1.add(link.getTrgID());
       }
     }
     
-    List<FabricLink> finalUnalignedEdgesG1 = new ArrayList<FabricLink>();
+    List<FabricLink> unalignedEdgesG1 = new ArrayList<FabricLink>();
     
-    for (FabricLink link : nonShdwMergedLinks) {
+    for (FabricLink link : nonShdwMergedLinks) { // add the edges connecting to the nodes of interest (one hop away)
       
       NID.WithName src = link.getSrcID(), trg = link.getTrgID();
       
       if (unalignedNodesG1.contains(src) || unalignedNodesG1.contains(trg)) {
-        finalUnalignedEdgesG1.add(link);
-//        System.out.println("FOUND AN UNALIGNED");
-//        try {
-//          link.isDirected();
-//        } catch (Exception ex) {
-//          System.out.println(link.getRelation());
-//        }
+        unalignedEdgesG1.add(link);
       }
     }
     
     //
-    // Change the final lists
+    // Change the final link-lists
     //
     
     mergedLinks_.clear();
-//    mergedLinks_.addAll(unalignedEdgesG1);
-    mergedLinks_.addAll(finalUnalignedEdgesG1);
+    mergedLinks_.addAll(unalignedEdgesG1);
     mergedLoners_.clear();
-  
-//    System.out.println("MADE IT TO End OF CLIQUE \n\n\n\n\n\n\n");
   
     return;
   }

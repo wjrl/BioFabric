@@ -3192,9 +3192,6 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
       NetworkAlignmentDialog.NetworkAlignInfo nai = nad.getNAInfo();
       
-//      File graph_1 = nai.graph1, graph_2 = nai.graph2, align = nai.align;
-//      boolean forCliques = nai.forClique;
-
       // DO I NEED TO ADD STANDARD FILE CHECKING?
   
       return netAlignFromGWSources(nai);
