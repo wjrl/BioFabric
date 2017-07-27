@@ -27,6 +27,7 @@ import org.systemsbiology.biofabric.util.UiUtil;
 
 import javax.swing.Box;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
@@ -46,8 +47,9 @@ public class NetworkAlignmentDialog extends JDialog {
   
   private JFrame parent_;
   private File graph1_, graph2_, alignment_;
+  private boolean forClique_;
   
-  public NetworkAlignmentDialog(final JFrame parent) {
+  public NetworkAlignmentDialog(JFrame parent) {
     super(parent, ResourceManager.getManager().getString("networkAlignment.title"), true);
     this.parent_ = parent;
     
@@ -99,6 +101,19 @@ public class NetworkAlignmentDialog extends JDialog {
     funcButtonBox.add(graph2Button);
     funcButtonBox.add(Box.createVerticalStrut(10));
     funcButtonBox.add(alignmentButton);
+    
+    final JCheckBox clique = new JCheckBox("Clique analysis mode", false);
+    // NEED TO ADD RESOURCE MANAGER STRING TO PROPS
+    funcButtonBox.add(clique);
+    clique.addActionListener(new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+        try {
+          forClique_ = clique.isSelected();
+        } catch (Exception ex) {
+          ExceptionHandler.getHandler().displayException(ex);
+        }
+      }
+    });
     
     UiUtil.gbcSet(gbc, 0, 0, 5, 1, UiUtil.HOR, 0, 0,
             5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
@@ -158,9 +173,9 @@ public class NetworkAlignmentDialog extends JDialog {
   
   public NetworkAlignInfo getNAInfo() {
     if (graph1_ == null || graph2_ == null || alignment_ == null) {
-      throw new IllegalArgumentException();
+      throw new IllegalArgumentException("One or more files missing");
     }
-    return new NetworkAlignInfo(graph1_, graph2_, alignment_);
+    return new NetworkAlignInfo(graph1_, graph2_, alignment_, forClique_);
   }
   
   /**
@@ -214,11 +229,13 @@ public class NetworkAlignmentDialog extends JDialog {
   public static class NetworkAlignInfo {
     
     public final File graph1, graph2, align;
+    public final boolean forClique;
     
-    public NetworkAlignInfo(File graph1, File graph2, File align) {
+    public NetworkAlignInfo(File graph1, File graph2, File align, boolean forClique) {
       this.graph1 = graph1;
       this.graph2 = graph2;
       this.align = align;
+      this.forClique = forClique;
     }
     
   }

@@ -858,7 +858,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
    ** Create network alignment from two .gw files and one .align file
    */
   
-  private boolean netAlignFromGWSources(File graph1, File graph2, File align) {
+  private boolean netAlignFromGWSources(NetworkAlignmentDialog.NetworkAlignInfo nai) {
     
     UniqueLabeller idGen = new UniqueLabeller();
     
@@ -869,19 +869,19 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     ArrayList<FabricLink> linksGraph1 = new ArrayList<FabricLink>();
     HashSet<NID.WithName> lonersGraph1 = new HashSet<NID.WithName>();
     
-    loadFromGWSource(graph1, linksGraph1, lonersGraph1, null, idGen, true);
+    loadFromGWSource(nai.graph1, linksGraph1, lonersGraph1, null, idGen, true);
   
     ArrayList<FabricLink> linksGraph2 = new ArrayList<FabricLink>();
     HashSet<NID.WithName> lonersGraph2 = new HashSet<NID.WithName>();
     
-    loadFromGWSource(graph2, linksGraph2, lonersGraph2, null, idGen, true);
+    loadFromGWSource(nai.graph2, linksGraph2, lonersGraph2, null, idGen, true);
     
     //
     // alignment, processing
     //
     
     Map<NID.WithName, NID.WithName> mapG1toG2 =
-            loadTheAlignmentFile(align, linksGraph1, lonersGraph1, linksGraph2, lonersGraph2);
+            loadTheAlignmentFile(nai.align, linksGraph1, lonersGraph1, linksGraph2, lonersGraph2);
   
     File holdIt;
     try {
@@ -899,14 +899,14 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     Set<FabricLink> reducedLinks = new HashSet<FabricLink>();
   
     boolean finished = nab.processNetAlign(mergedLinks, mergedLoneNodeIDs, mapG1toG2,
-            linksGraph1, lonersGraph1, linksGraph2, lonersGraph2, relMap, idGen, holdIt);
+            linksGraph1, lonersGraph1, linksGraph2, lonersGraph2, relMap, nai.forClique, idGen, holdIt);
     
     if (finished) {
-      finished = netAlignStepTwo(mergedLinks, reducedLinks, mergedLoneNodeIDs, relMap, idGen, align, holdIt);
+      finished = networkAlignmentStepTwo(mergedLinks, reducedLinks, mergedLoneNodeIDs, relMap, idGen, nai.align, holdIt);
     }
     
     if (finished) {
-      netAlignStepThree(reducedLinks, mergedLoneNodeIDs, idGen, align, holdIt);
+      networkAlignmentStepThree(reducedLinks, mergedLoneNodeIDs, idGen, nai.align, holdIt);
     }
     return (true);
   }
@@ -916,10 +916,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
    **
    */
   
-  private boolean netAlignStepTwo(List<FabricLink> links, Set<FabricLink> reducedLinks,
-                                  Set<NID.WithName> loneNodeIDs,
-                                  SortedMap<FabricLink.AugRelation, Boolean> relMap,
-                                  UniqueLabeller idGen, File align, File holdIt) {
+  private boolean networkAlignmentStepTwo(List<FabricLink> links, Set<FabricLink> reducedLinks,
+                                          Set<NID.WithName> loneNodeIDs,
+                                          SortedMap<FabricLink.AugRelation, Boolean> relMap,
+                                          UniqueLabeller idGen, File align, File holdIt) {
   
     try {
       ResourceManager rMan = ResourceManager.getManager();
@@ -1022,8 +1022,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
    ** Build the network alignment
    */
   
-  private boolean netAlignStepThree(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
-                                    UniqueLabeller idGen, File align, File holdIt) {
+  private boolean networkAlignmentStepThree(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
+                                            UniqueLabeller idGen, File align, File holdIt) {
     try {
       NetworkBuilder nb = new NetworkBuilder(true, holdIt);
       nb.setForNetAlignBuild(idGen, reducedLinks, loneNodeIDs,
@@ -3192,11 +3192,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
       NetworkAlignmentDialog.NetworkAlignInfo nai = nad.getNAInfo();
       
-      File graph_1 = nai.graph1, graph_2 = nai.graph2, align = nai.align;
+//      File graph_1 = nai.graph1, graph_2 = nai.graph2, align = nai.align;
+//      boolean forCliques = nai.forClique;
 
       // DO I NEED TO ADD STANDARD FILE CHECKING?
   
-      return netAlignFromGWSources(graph_1, graph_2, align);
+      return netAlignFromGWSources(nai);
     }
   
   }
@@ -4458,12 +4459,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                                    ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
                                    ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
                                    SortedMap<FabricLink.AugRelation, Boolean> relMap,
-                                   UniqueLabeller idGen, File holdIt) {
+                                   boolean forClique, UniqueLabeller idGen, File holdIt) {
       finished_= true;
       holdIt_ = holdIt;
       try {
         NetworkAlignmentRunner runner = new NetworkAlignmentRunner(mergedLinks, mergedLoneNodeIDs, mapG1toG2,
-                linksG1, lonersG1, linksG2, lonersG2, relMap, idGen);
+                linksG1, lonersG1, linksG2, lonersG2, relMap, forClique, idGen);
         
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_,
                 "fileLoad.waitTitle", "fileLoad.wait", null, true);
@@ -4812,13 +4813,15 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private ArrayList<FabricLink> linksG2_;
     private HashSet<NID.WithName> lonersG2_;
     private SortedMap<FabricLink.AugRelation, Boolean> relMap_;
+    private boolean forClique_;
     private UniqueLabeller idGen_;
     
     public NetworkAlignmentRunner(ArrayList<FabricLink> mergedLinks, Set<NID.WithName> mergedLoners,
                                   Map<NID.WithName, NID.WithName> mapG1toG2,
                                   ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
                                   ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
-                                  SortedMap<FabricLink.AugRelation, Boolean> relMap, UniqueLabeller idGen) {
+                                  SortedMap<FabricLink.AugRelation, Boolean> relMap,
+                                  boolean forClique, UniqueLabeller idGen) {
       super(new Boolean(false));
       
       this.mergedLinks_ = mergedLinks;
@@ -4829,13 +4832,14 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       this.linksG2_ = linksG2;
       this.lonersG2_ = lonersG2;
       this.relMap_ = relMap;
+      this.forClique_ = forClique;
       this.idGen_ = idGen;
     }
     
     public Object runCore() throws AsynchExitRequestException {
       
       NetworkAlignment netAlign = new NetworkAlignment(mergedLinks_, mergedLoneNodeIDs_, mapG1toG2_,
-              linksG1_, lonersG1_, linksG2_, lonersG2_, idGen_);
+              linksG1_, lonersG1_, linksG2_, lonersG2_, forClique_, idGen_);
       
       netAlign.mergeNetworks();
       BioFabricNetwork.extractRelations(mergedLinks_, relMap_, this);
