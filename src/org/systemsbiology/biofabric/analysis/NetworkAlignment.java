@@ -20,6 +20,7 @@
 package org.systemsbiology.biofabric.analysis;
 
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
 
@@ -31,6 +32,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
@@ -42,8 +44,9 @@ import java.util.TreeSet;
 
 public class NetworkAlignment {
   
-  private final String TAG_G1 = "G1", TAG_CC = "CC", TAG_G2 = "G2";
-  private final String TEMP_TAG = "TEMP";
+  private final String COVERED_EDGE = "G12", GRAPH1 = "G1A",
+          INDUCED_GRAPH2 = "G2A", HALF_UNALIGNED_GRAPH2 = "G2B", FULL_UNALIGNED_GRAPH2 = "G2C";
+  private final String TEMPORARY = "TEMP";
   
   private Map<NID.WithName, NID.WithName> mapG1toG2_;
   private ArrayList<FabricLink> linksG1_;
@@ -52,9 +55,14 @@ public class NetworkAlignment {
   private HashSet<NID.WithName> lonersG2_;
   private boolean forClique_;
   private UniqueLabeller idGen_;
+  private BTProgressMonitor monitor_;
   
-  private Map<NID.WithName, NID.WithName> smallToNA_;
-  private Map<NID.WithName, NID.WithName> largeToNA_;
+  //
+  // largeToMergedID only contains aligned nodes
+  //
+  
+  private Map<NID.WithName, NID.WithName> smallToMergedID_;
+  private Map<NID.WithName, NID.WithName> largeToMergedID_;
   
   private ArrayList<FabricLink> mergedLinks_;
   private Set<NID.WithName> mergedLoners_;
@@ -65,7 +73,7 @@ public class NetworkAlignment {
                           Map<NID.WithName, NID.WithName> mapG1toG2,
                           ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
                           ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
-                          boolean forCliques, UniqueLabeller idGen) {
+                          boolean forCliques, UniqueLabeller idGen, BTProgressMonitor monitor) {
     
     this.mapG1toG2_ = mapG1toG2;
     this.linksG1_ = linksG1;
@@ -74,6 +82,7 @@ public class NetworkAlignment {
     this.lonersG2_ = lonersG2;
     this.forClique_ =forCliques;
     this.idGen_ = idGen;
+    this.monitor_ = monitor;
   
     this.mergedLinks_ = mergedLinks;
     this.mergedLoners_ = mergedLoneNodeIDs;
@@ -127,22 +136,26 @@ public class NetworkAlignment {
    */
   
   private void createMergedNodes() {
-  
-    smallToNA_ = new TreeMap<NID.WithName, NID.WithName>();
-    largeToNA_ = new TreeMap<NID.WithName, NID.WithName>();
+    
+    smallToMergedID_ = new TreeMap<NID.WithName, NID.WithName>();
+    largeToMergedID_ = new TreeMap<NID.WithName, NID.WithName>();
   
     for (Map.Entry<NID.WithName, NID.WithName> entry : mapG1toG2_.entrySet()) {
-    
+      
       NID.WithName smallNode = entry.getKey(), largeNode = entry.getValue();
       String smallName = smallNode.getName(), largeName = largeNode.getName();
     
-      String merged_name = String.format("%s-%s", largeName, smallName);
+      //
+      // Aligned nodes merge name in the form large-small
+      //
+      
+      String mergedName = String.format("%s-%s", largeName, smallName);
     
       NID nid = idGen_.getNextOID();
-      NID.WithName merged_node = new NID.WithName(nid, merged_name);
+      NID.WithName merged_node = new NID.WithName(nid, mergedName);
     
-      smallToNA_.put(smallNode, merged_node);
-      largeToNA_.put(largeNode, merged_node);
+      smallToMergedID_.put(smallNode, merged_node);
+      largeToMergedID_.put(largeNode, merged_node);
     }
     return;
   }
@@ -162,12 +175,12 @@ public class NetworkAlignment {
       case SMALL:
         oldLinks = linksG1_;
         oldLoners = lonersG1_;
-        oldToNewID = smallToNA_;
+        oldToNewID = smallToMergedID_;
         break;
       case LARGE:
         oldLinks = linksG2_;
         oldLoners = lonersG2_;
-        oldToNewID = largeToNA_;
+        oldToNewID = largeToMergedID_;
         break;
       default:
         throw new IllegalArgumentException();
@@ -184,8 +197,8 @@ public class NetworkAlignment {
       
       NID.WithName newA = (oldToNewID.containsKey(oldA)) ? oldToNewID.get(oldA) : oldA;
       NID.WithName newB = (oldToNewID.containsKey(oldB)) ? oldToNewID.get(oldB) : oldB;
-
-      FabricLink newLink = new FabricLink(newA, newB, TEMP_TAG, false, false);
+  
+      FabricLink newLink = new FabricLink(newA, newB, TEMPORARY, false, false);
       // 'directed' must be false
       
       newLinks.add(newLink);
@@ -206,28 +219,41 @@ public class NetworkAlignment {
    */
   
   private void createMergedLinkList(List<FabricLink> newLinksG1, List<FabricLink> newLinksG2) {
+    
+    NetAlignFabricLinkLocator comp = new NetAlignFabricLinkLocator();
   
-    Collections.sort(newLinksG1, new NetAlignFabricLinkLocator());
+    Collections.sort(newLinksG1, comp);
   
     for (FabricLink linkG2 : newLinksG2) {
     
-      int index = Collections.binarySearch(newLinksG1, linkG2, new NetAlignFabricLinkLocator());
+      int index = Collections.binarySearch(newLinksG1, linkG2, comp);
+      
+      NID.WithName src = linkG2.getSrcID(), trg = linkG2.getTrgID();
       
       if (index >= 0) {
-        addMergedLink(linkG2.getSrcID(), linkG2.getTrgID(), TAG_CC);
+        addMergedLink(src, trg, COVERED_EDGE);
       } else {
-        addMergedLink(linkG2.getSrcID(), linkG2.getTrgID(), TAG_G2);
+        // contains all alinged nodes; contains() works in O(log(n))
+        SortedSet<NID.WithName> alignedNodesG2 = new TreeSet<NID.WithName>(largeToMergedID_.values());
+        
+        if (alignedNodesG2.contains(src) && alignedNodesG2.contains(trg)) {
+          addMergedLink(src, trg, INDUCED_GRAPH2);
+        } else if (alignedNodesG2.contains(src) || alignedNodesG2.contains(trg)) {
+          addMergedLink(src, trg, HALF_UNALIGNED_GRAPH2);
+        } else {
+          addMergedLink(src, trg, FULL_UNALIGNED_GRAPH2);
+        }
       }
     }
   
-    Collections.sort(newLinksG2, new NetAlignFabricLinkLocator());
+    Collections.sort(newLinksG2, comp);
   
     for (FabricLink linkG1 : newLinksG1) {
 
-      int index = Collections.binarySearch(newLinksG2, linkG1, new NetAlignFabricLinkLocator());
+      int index = Collections.binarySearch(newLinksG2, linkG1, comp);
     
       if (index < 0) {
-        addMergedLink(linkG1.getSrcID(), linkG1.getTrgID(), TAG_G1);
+        addMergedLink(linkG1.getSrcID(), linkG1.getTrgID(), GRAPH1);
       }
     }
     return; // This method is not ideal. . .
@@ -274,7 +300,7 @@ public class NetworkAlignment {
     Set<NID.WithName> unalignedNodesG1 = new TreeSet<NID.WithName>();
     
     for (FabricLink link : nonShdwMergedLinks) { // find the nodes of interest
-      if (link.getRelation().equals(TAG_G1)) {
+      if (link.getRelation().equals(GRAPH1)) {
         unalignedNodesG1.add(link.getSrcID());
         unalignedNodesG1.add(link.getTrgID());
       }
@@ -331,8 +357,6 @@ public class NetworkAlignment {
       String[] arr2 = {link2.getSrcID().getName(), link2.getTrgID().getName()};
       Arrays.sort(arr2);
   
-//      String concat1 = arr1[0] + "xxx" + arr1[1];
-//      String concat2 = arr2[0] + "xxx" + arr2[1];
       String concat1 = String.format("%s___%s",arr1[0], arr1[1]);
       String concat2 = String.format("%s___%s",arr2[0], arr2[1]);
 
@@ -343,3 +367,400 @@ public class NetworkAlignment {
   }
   
 }
+
+//  private void createNewLinkList(List<FabricLink> newLinks, Set<NID.WithName> newLoners, Graph graph) {
+//
+//    List<FabricLink> oldLinks;
+//    Set<NID.WithName> oldLoners;
+//    Map<NID.WithName, NID.WithName> oldToNewID;
+//
+//    switch (graph) {
+//      case SMALL:
+//        oldLinks = linksG1_;
+//        oldLoners = lonersG1_;
+//        oldToNewID = smallToNA_;
+//        break;
+//      case LARGE:
+//        oldLinks = linksG2_;
+//        oldLoners = lonersG2_;
+//        oldToNewID = largeToNA_;
+//        break;
+//      default:
+//        throw new IllegalArgumentException();
+//    }
+//
+//    boolean wantNonInduced = true;
+//
+//    for (FabricLink oldLink : oldLinks) {
+//
+//      NID.WithName oldA = oldLink.getSrcID();
+//      NID.WithName oldB = oldLink.getTrgID();
+//
+//      //
+//      // Not all nodes are mapped in the large graph
+//      //
+//
+//      NID.WithName newA;
+//      if (oldToNewID.containsKey(oldA)) {
+//        newA = oldToNewID.get(oldA);
+//      } else {
+//        if (wantNonInduced) {
+//          newA = oldA;
+//        } else {
+//          continue;
+//        }
+//      }
+//
+//      NID.WithName newB;
+//      if (oldToNewID.containsKey(oldB)) {
+//        newB = oldToNewID.get(oldB);
+//      } else {
+//        if (wantNonInduced) {
+//          newB = oldB;
+//        } else {
+//          continue;
+//        }
+//      }
+//
+//      FabricLink newLink = new FabricLink(newA, newB, TEMPORARY, false, false);
+//      // 'directed' must be false
+//
+//      newLinks.add(newLink);
+//    }
+//
+//    for (NID.WithName oldLoner : oldLoners) {
+//
+//      NID.WithName newLoner = (oldToNewID.containsKey(oldLoner)) ? oldToNewID.get(oldLoner) : oldLoner;
+//
+//      newLoners.add(newLoner);
+//    }
+//    return;
+//  }
+
+
+///*
+//import org.systemsbiology.biofabric.model.FabricLink;
+//import org.systemsbiology.biofabric.util.NID;
+//import org.systemsbiology.biofabric.util.UniqueLabeller;
+//
+//import java.util.ArrayList;
+//import java.util.Arrays;
+//import java.util.Collections;
+//import java.util.Comparator;
+//import java.util.HashSet;
+//import java.util.List;
+//import java.util.Map;
+//import java.util.Set;
+//import java.util.TreeMap;
+//import java.util.TreeSet;
+//
+///****************************************************************************
+// **
+// ** This merges two individual graphs and an alignment to form the
+// ** network alignment
+// */
+//
+//public class NetworkAlignment {
+//
+//  private final String TAG_G1 = "G1", TAG_CC = "CC", TAG_G2 = "G2";
+//  private final String TEMP_TAG = "TEMP";
+//
+//  private Map<NID.WithName, NID.WithName> mapG1toG2_;
+//  private ArrayList<FabricLink> linksG1_;
+//  private HashSet<NID.WithName> lonersG1_;
+//  private ArrayList<FabricLink> linksG2_;
+//  private HashSet<NID.WithName> lonersG2_;
+//  private boolean forClique_;
+//  private UniqueLabeller idGen_;
+//
+//  private Map<NID.WithName, NID.WithName> smallToNA_;
+//  private Map<NID.WithName, NID.WithName> largeToNA_;
+//
+//  private ArrayList<FabricLink> mergedLinks_;
+//  private Set<NID.WithName> mergedLoners_;
+//
+//  private enum Graph {SMALL, LARGE}
+//
+//  public NetworkAlignment(ArrayList<FabricLink> mergedLinks, Set<NID.WithName> mergedLoneNodeIDs,
+//                          Map<NID.WithName, NID.WithName> mapG1toG2,
+//                          ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
+//                          ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
+//                          boolean forCliques, UniqueLabeller idGen) {
+//
+//    this.mapG1toG2_ = mapG1toG2;
+//    this.linksG1_ = linksG1;
+//    this.lonersG1_ = lonersG1;
+//    this.linksG2_ = linksG2;
+//    this.lonersG2_ = lonersG2;
+//    this.forClique_ =forCliques;
+//    this.idGen_ = idGen;
+//
+//    this.mergedLinks_ = mergedLinks;
+//    this.mergedLoners_ = mergedLoneNodeIDs;
+//  }
+//
+//  /****************************************************************************
+//   **
+//   ** Merge the Network!
+//   */
+//
+//  public void mergeNetworks() {
+//
+//    //
+//    // Create merged nodes
+//    //
+//
+//    createMergedNodes();
+//
+//    //
+//    // Create individual link sets; "old" refers to pre-merged networks, "new" is merged network
+//    //
+//
+//    List<FabricLink> newLinksG1 = new ArrayList<FabricLink>();
+//    Set<NID.WithName> newLonersG1 = new HashSet<NID.WithName>();
+//
+//    createNewLinkList(newLinksG1, newLonersG1, Graph.SMALL);
+//
+//    List<FabricLink> newLinksG2 = new ArrayList<FabricLink>();
+//    Set<NID.WithName> newLonersG2 = new HashSet<NID.WithName>();
+//
+//    createNewLinkList(newLinksG2, newLonersG2, Graph.LARGE);
+//
+//    //
+//    // Split individual link-lists into G1 only, CC only, G2 only -> combine into one list
+//    //
+//
+//    createMergedLinkList(newLinksG1, newLinksG2);
+//
+//    finalizeLoneNodeIDs(newLonersG1, newLonersG2);
+//
+//    if (forClique_) {
+//      processForCliqueMisalignment();
+//    }
+//
+//    return;
+//  }
+//
+//  /****************************************************************************
+//   **
+//   ** Create merged nodes, install into maps
+//   */
+//
+//  private void createMergedNodes() {
+//
+//    smallToNA_ = new TreeMap<NID.WithName, NID.WithName>();
+//    largeToNA_ = new TreeMap<NID.WithName, NID.WithName>();
+//
+//    for (Map.Entry<NID.WithName, NID.WithName> entry : mapG1toG2_.entrySet()) {
+//
+//      NID.WithName smallNode = entry.getKey(), largeNode = entry.getValue();
+//      String smallName = smallNode.getName(), largeName = largeNode.getName();
+//
+//      String merged_name = String.format("%s-%s", largeName, smallName);
+//
+//      NID nid = idGen_.getNextOID();
+//      NID.WithName merged_node = new NID.WithName(nid, merged_name);
+//
+//      smallToNA_.put(smallNode, merged_node);
+//      largeToNA_.put(largeNode, merged_node);
+//    }
+//    return;
+//  }
+//
+//  /****************************************************************************
+//   **
+//   ** Create new link lists based on merged nodes for both networks
+//   */
+//
+//  private void createNewLinkList(List<FabricLink> newLinks, Set<NID.WithName> newLoners, Graph graph) {
+//
+//    List<FabricLink> oldLinks;
+//    Set<NID.WithName> oldLoners;
+//    Map<NID.WithName, NID.WithName> oldToNewID;
+//
+//    switch (graph) {
+//      case SMALL:
+//        oldLinks = linksG1_;
+//        oldLoners = lonersG1_;
+//        oldToNewID = smallToNA_;
+//        break;
+//      case LARGE:
+//        oldLinks = linksG2_;
+//        oldLoners = lonersG2_;
+//        oldToNewID = largeToNA_;
+//        break;
+//      default:
+//        throw new IllegalArgumentException();
+//    }
+//
+//    for (FabricLink oldLink : oldLinks) {
+//
+//      NID.WithName oldA = oldLink.getSrcID();
+//      NID.WithName oldB = oldLink.getTrgID();
+//
+//      //
+//      // Not all nodes are mapped in the large graph
+//      //
+//
+//      NID.WithName newA = (oldToNewID.containsKey(oldA)) ? oldToNewID.get(oldA) : oldA;
+//      NID.WithName newB = (oldToNewID.containsKey(oldB)) ? oldToNewID.get(oldB) : oldB;
+//
+//      FabricLink newLink = new FabricLink(newA, newB, TEMP_TAG, false, false);
+//      // 'directed' must be false
+//
+//      newLinks.add(newLink);
+//    }
+//
+//    for (NID.WithName oldLoner : oldLoners) {
+//
+//      NID.WithName newLoner = (oldToNewID.containsKey(oldLoner)) ? oldToNewID.get(oldLoner) : oldLoner;
+//
+//      newLoners.add(newLoner);
+//    }
+//    return;
+//  }
+//
+//  /****************************************************************************
+//   **
+//   ** Combine the two link lists into one, with G2,CC,G1 tags accordingly
+//   */
+//
+//  private void createMergedLinkList(List<FabricLink> newLinksG1, List<FabricLink> newLinksG2) {
+//
+//    Collections.sort(newLinksG1, new NetAlignFabricLinkLocator());
+//
+//    for (FabricLink linkG2 : newLinksG2) {
+//
+//      int index = Collections.binarySearch(newLinksG1, linkG2, new NetAlignFabricLinkLocator());
+//
+//      if (index >= 0) {
+//        addMergedLink(linkG2.getSrcID(), linkG2.getTrgID(), TAG_CC);
+//      } else {
+//        addMergedLink(linkG2.getSrcID(), linkG2.getTrgID(), TAG_G2);
+//      }
+//    }
+//
+//    Collections.sort(newLinksG2, new NetAlignFabricLinkLocator());
+//
+//    for (FabricLink linkG1 : newLinksG1) {
+//
+//      int index = Collections.binarySearch(newLinksG2, linkG1, new NetAlignFabricLinkLocator());
+//
+//      if (index < 0) {
+//        addMergedLink(linkG1.getSrcID(), linkG1.getTrgID(), TAG_G1);
+//      }
+//    }
+//    return; // This method is not ideal. . .
+//  }
+//
+//  /****************************************************************************
+//   **
+//   ** Add both non-shadow and shadow links to merged link-list
+//   */
+//
+//  private void addMergedLink(NID.WithName src, NID.WithName trg, String tag) {
+//    FabricLink newMergedLink = new FabricLink(src, trg, tag, false, null);
+//    FabricLink newMergedLinkShadow = new FabricLink(src, trg, tag, true, null);
+//
+//    mergedLinks_.add(newMergedLink);
+//    mergedLinks_.add(newMergedLinkShadow);
+//  }
+//
+//  /****************************************************************************
+// **
+// ** Combine loneNodeIDs lists into one
+// */
+//
+//private void finalizeLoneNodeIDs(Set<NID.WithName> newLonersG1, Set<NID.WithName> newLonersG2) {
+//  mergedLoners_.addAll(newLonersG1);
+//  mergedLoners_.addAll(newLonersG2);
+//  return;
+//}
+//
+//  /****************************************************************************
+//   **
+//   ** All unaligned edges plus all of their endpoint nodes' edges
+//   */
+//
+//  private void processForCliqueMisalignment() {
+//
+//    List<FabricLink> nonShdwMergedLinks = new ArrayList<FabricLink>();
+//    for (FabricLink link : mergedLinks_) {
+//      if (!link.isShadow()) {
+//        nonShdwMergedLinks.add(link);
+//      }
+//    }
+//
+//    Set<NID.WithName> unalignedNodesG1 = new TreeSet<NID.WithName>();
+//
+//    for (FabricLink link : nonShdwMergedLinks) { // find the nodes of interest
+//      if (link.getRelation().equals(TAG_G1)) {
+//        unalignedNodesG1.add(link.getSrcID());
+//        unalignedNodesG1.add(link.getTrgID());
+//      }
+//    }
+//
+//    List<FabricLink> unalignedEdgesG1 = new ArrayList<FabricLink>();
+//
+//    for (FabricLink link : nonShdwMergedLinks) { // add the edges connecting to the nodes of interest (one hop away)
+//
+//      NID.WithName src = link.getSrcID(), trg = link.getTrgID();
+//
+//      if (unalignedNodesG1.contains(src) || unalignedNodesG1.contains(trg)) {
+//        unalignedEdgesG1.add(link);
+//      }
+//    }
+//
+//    //
+//    // Change the final link-lists
+//    //
+//
+//    mergedLinks_.clear();
+//    mergedLinks_.addAll(unalignedEdgesG1);
+//    mergedLoners_.clear();
+//
+//    return;
+//  }
+//
+///***************************************************************************
+// **
+// ** Used ONLY to order links for creating the merged link set in Network Alignments
+// */
+//
+//private static class NetAlignFabricLinkLocator implements Comparator<FabricLink> {
+//
+//  /***************************************************************************
+//   **
+//   ** For any different links in the two separate network link sets, this
+//   ** says which comes first
+//   */
+//
+//  public int compare(FabricLink link1, FabricLink link2) {
+//
+//    if (link1.synonymous(link2)) {
+//      return (0);
+//    }
+//
+//    //
+//    // Must sort the node names because A-B must be equivalent to B-A
+//    //
+//
+//    String[] arr1 = {link1.getSrcID().getName(), link1.getTrgID().getName()};
+//    Arrays.sort(arr1);
+//
+//    String[] arr2 = {link2.getSrcID().getName(), link2.getTrgID().getName()};
+//    Arrays.sort(arr2);
+//
+////      String concat1 = arr1[0] + "xxx" + arr1[1];
+////      String concat2 = arr2[0] + "xxx" + arr2[1];
+//    String concat1 = String.format("%s___%s",arr1[0], arr1[1]);
+//    String concat2 = String.format("%s___%s",arr2[0], arr2[1]);
+//
+//    // THIS IS COMPLETELY TEMPORARY - RISHI DESAI 7/16/17
+//
+//    return concat1.compareTo(concat2);
+//  }
+//}
+//
+//}
+// */

@@ -97,7 +97,7 @@ public class AlignmentLoader {
       String strNameG1 = st.nextToken(), strNameG2 = st.nextToken();
      
       if (!(G1nameToNID.containsKey(strNameG1) && G2nameToNID.containsKey(strNameG2))) {
-        throw new IOException("Incorrect node names");
+        throw new IOException("Incorrect node(s) or node names");
       }
       
       NID.WithName nodeG1 = G1nameToNID.get(strNameG1), nodeG2 = G2nameToNID.get(strNameG2);
@@ -115,7 +115,7 @@ public class AlignmentLoader {
     }
     
     if (mapG1ToG2.size() != G1nameToNID.size()) {
-      throw new IOException("Not every node is mapped");
+      throw new IOException("Incomplete node mapping");
     }
   
     in.close();

@@ -32,7 +32,6 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import org.systemsbiology.biofabric.analysis.NetworkAlignment;
 import org.xml.sax.Attributes;
 
 import org.systemsbiology.biofabric.analysis.Link;
@@ -214,7 +213,7 @@ public class BioFabricNetwork {
         relayoutNetwork(rbd, monitor);
         break;
       case BUILD_NETWORK_ALIGNMENT:
-        NetAlignBuildData nad = (NetAlignBuildData) bd;
+        NetworkAlignmentBuildData nad = (NetworkAlignmentBuildData) bd;
         normalCols_ = new ColumnAssign();
         shadowCols_ = new ColumnAssign();
         rowToTargID_ = new HashMap<Integer, NID.WithName>();
@@ -2370,24 +2369,12 @@ public class BioFabricNetwork {
    ** For passing around Network Alignment data
    */
   
-  public static class NetAlignBuildData extends RelayoutBuildData {
+  public static class NetworkAlignmentBuildData extends RelayoutBuildData {
   
-//    private NetworkAlignment netAlign;
-//
-//    public NetAlignBuildData(NetworkAlignment netAlign,
-//                             FabricColorGenerator colGen) {
-//      super(netAlign.getIdGen(), netAlign.getAllLinks(), new HashSet<NID.WithName>(),
-//              new HashMap<NID.WithName, String>(), colGen, BuildMode.BUILD_NETWORK_ALIGNMENT);
-//      this.netAlign = netAlign;
-//      this.layoutMode = LayoutMode.PER_NETWORK_MODE;
-//      linkGroups.add("G2");
-//      linkGroups.add("CC");
-//      linkGroups.add("G1"); // SHOULD I BE DOING THIS
-//    }
-    public NetAlignBuildData(UniqueLabeller idGen,
-                             Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
-                             Map<NID.WithName, String> clustAssign,
-                             FabricColorGenerator colGen, BuildMode mode) {
+    public NetworkAlignmentBuildData(UniqueLabeller idGen,
+                                     Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
+                                     Map<NID.WithName, String> clustAssign,
+                                     FabricColorGenerator colGen, BuildMode mode) {
       super(idGen, allLinks, loneNodeIDs, clustAssign, colGen, mode);
       this.layoutMode = LayoutMode.PER_NETWORK_MODE;
     }
@@ -2451,6 +2438,26 @@ public class BioFabricNetwork {
   // PUBLIC STATIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
+  
+  /***************************************************************************
+   **
+   ** Extract nodes
+   */
+  
+  public static Set<NID.WithName> extractNodes(List<FabricLink> allLinks, HashSet<NID.WithName> loneNodeIDs,
+                                               BTProgressMonitor monitor) throws AsynchExitRequestException {
+    
+    Set<NID.WithName> retval = new HashSet<NID.WithName>(loneNodeIDs);
+    LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor, 0.0, 1.0, "progress.analyzingNodes");
+    
+    for (FabricLink link : allLinks) {
+      retval.add(link.getSrcID());
+      retval.add(link.getTrgID());
+      lr.report();
+    }
+    lr.finish();  // DO I NEED THIS lr.finish() HERE? THE OTHER STATIC METHODS DON'T HAVE IT
+    return (retval);
+  }
  
   /***************************************************************************
   ** 

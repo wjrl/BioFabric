@@ -633,6 +633,52 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   }
   
   /***************************************************************************
+   **
+   ** Load from sif file and directly receive link set
+   */
+  
+  private boolean loadFromSifSource(File file, ArrayList<FabricLink> links,
+                                    HashSet<NID.WithName> loneNodes, Integer magBins,
+                                    UniqueLabeller idGen, boolean forNetworkAlignment) {
+    
+    HashMap<String, String> nodeNames = null;
+  
+    File holdIt;
+    try {
+      holdIt = File.createTempFile("BioFabricHold", ".zip");
+      holdIt.deleteOnExit();
+    } catch (IOException ioex) {
+      holdIt = null;
+    }
+    
+    HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
+    TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
+    FabricImportLoader.FileImportStats sss = new FabricImportLoader.FileImportStats();
+    
+    BackgroundFileReader br = new BackgroundFileReader();
+    //
+    // This gets file file in:
+    //
+    boolean finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
+    //
+    // This looks for dups to toss and prep work:
+    //
+    if (finished) {
+      finished = loadFromSIFSourceStepTwo(file, idGen, sss, links, loneNodes, (magBins != null),
+              relMap, reducedLinks, holdIt, forNetworkAlignment);
+    }
+    
+    if (forNetworkAlignment) { // no need to continue when processing network alignments
+      return (true);
+    }
+    
+    if (finished) {
+      loadFromSIFSourceStepThree(file, idGen, loneNodes, reducedLinks, holdIt);
+    }
+    return (true);
+  }
+  
+  /***************************************************************************
   **
   ** Third step for loading from SIF
   */
@@ -855,10 +901,36 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
   /***************************************************************************
    **
-   ** Create network alignment from two .gw files and one .align file
+   ** Create individual networks from two .sif files and one .align file
    */
   
-  private boolean netAlignFromGWSources(NetworkAlignmentDialog.NetworkAlignInfo nai) {
+  private boolean networkAlignmentFromSIFSources(NetworkAlignmentDialog.NetworkAlignmentDialogInfo nadi) {
+  
+    UniqueLabeller idGen = new UniqueLabeller();
+  
+    //
+    // create the individual networks (links + lone nodes)
+    //
+  
+    ArrayList<FabricLink> linksGraphA = new ArrayList<FabricLink>();
+    HashSet<NID.WithName> lonersGraphA = new HashSet<NID.WithName>();
+    
+    loadFromSifSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
+  
+    ArrayList<FabricLink> linksGraphB = new ArrayList<FabricLink>();
+    HashSet<NID.WithName> lonersGraphB = new HashSet<NID.WithName>();
+  
+    loadFromSifSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
+  
+    return (networkAlignmentStepTwo(nadi, linksGraphA, lonersGraphA, linksGraphB, lonersGraphB, idGen));
+  }
+  
+  /***************************************************************************
+   **
+   ** Create individual networks from two .gw files and one .align file
+   */
+  
+  private boolean networkAlignmentFromGWSources(NetworkAlignmentDialog.NetworkAlignmentDialogInfo nadi) {
     
     UniqueLabeller idGen = new UniqueLabeller();
     
@@ -866,22 +938,85 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     // create the individual networks (links + lone nodes)
     //
   
-    ArrayList<FabricLink> linksGraph1 = new ArrayList<FabricLink>();
-    HashSet<NID.WithName> lonersGraph1 = new HashSet<NID.WithName>();
+    ArrayList<FabricLink> linksGraphA = new ArrayList<FabricLink>();
+    HashSet<NID.WithName> lonersGraphA = new HashSet<NID.WithName>();
     
-    loadFromGWSource(nai.graph1, linksGraph1, lonersGraph1, null, idGen, true);
+    loadFromGWSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
   
-    ArrayList<FabricLink> linksGraph2 = new ArrayList<FabricLink>();
-    HashSet<NID.WithName> lonersGraph2 = new HashSet<NID.WithName>();
+    ArrayList<FabricLink> linksGraphB = new ArrayList<FabricLink>();
+    HashSet<NID.WithName> lonersGraphB = new HashSet<NID.WithName>();
     
-    loadFromGWSource(nai.graph2, linksGraph2, lonersGraph2, null, idGen, true);
-    
+    loadFromGWSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
+
+    return (networkAlignmentStepTwo(nadi, linksGraphA, lonersGraphA, linksGraphB, lonersGraphB, idGen));
+  }
+  
+  /***************************************************************************
+   **
+   ** Merges individual networks using alignment
+   */
+  
+  private boolean networkAlignmentStepTwo(NetworkAlignmentDialog.NetworkAlignmentDialogInfo nadi,
+                                          ArrayList<FabricLink> linksGraphA, HashSet<NID.WithName> loneNodeIDsGraphA,
+                                          ArrayList<FabricLink> linksGraphB, HashSet<NID.WithName> loneNodeIDsGraphB,
+                                          UniqueLabeller idGen) {
     //
-    // alignment, processing
+    // Decide which graph has more nodes - graph 1 is smaller (#nodes) than graph 2 from here on
     //
-    
+  
+    ArrayList<FabricLink> linksSmall = new ArrayList<FabricLink>();
+    HashSet<NID.WithName> lonersSmall = new HashSet<NID.WithName>();
+  
+    ArrayList<FabricLink> linksLarge = new ArrayList<FabricLink>();
+    HashSet<NID.WithName> lonersLarge = new HashSet<NID.WithName>();
+  
+    try {
+      
+      int numNodesA = BioFabricNetwork.extractNodes(linksGraphA, loneNodeIDsGraphA, null).size(); // CAN I PUT NULL AS THE MONITOR??
+      int numNodesB = BioFabricNetwork.extractNodes(linksGraphB, loneNodeIDsGraphB, null).size();
+      
+      if (numNodesA > numNodesB) { // We compare #nodes
+        linksLarge = linksGraphA;
+        lonersLarge = loneNodeIDsGraphA;
+        linksSmall = linksGraphB;
+        lonersSmall = loneNodeIDsGraphB;
+      } else if (numNodesA < numNodesB) {
+        linksLarge = linksGraphB;
+        lonersLarge = loneNodeIDsGraphB;
+        linksSmall = linksGraphA;
+        lonersSmall = loneNodeIDsGraphA;
+      } else { // now we compare #links
+        
+        int numLinksA = linksGraphA.size();
+        int numLinksB = linksGraphB.size();
+        
+        if (numLinksA >= numLinksB) { // if #links are still equal, we do choose graphA as larger
+          linksLarge = linksGraphA;
+          lonersLarge = loneNodeIDsGraphA;
+          linksSmall = linksGraphB;
+          lonersSmall = loneNodeIDsGraphB;
+        } else {
+          linksLarge = linksGraphB;
+          lonersLarge = loneNodeIDsGraphB;
+          linksSmall = linksGraphA;
+          lonersSmall = loneNodeIDsGraphA;
+        }
+      }
+    } catch (AsynchExitRequestException aere) {
+      // should never happen
+      return (false);
+    }
+  
+    //
+    // read alignment and process
+    //
+  
     Map<NID.WithName, NID.WithName> mapG1toG2 =
-            loadTheAlignmentFile(nai.align, linksGraph1, lonersGraph1, linksGraph2, lonersGraph2);
+            loadTheAlignmentFile(nadi.align, linksSmall, lonersSmall, linksLarge, lonersLarge);
+  
+    if (mapG1toG2 == null) {
+      return (true);
+    }
   
     File holdIt;
     try {
@@ -899,27 +1034,27 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     Set<FabricLink> reducedLinks = new HashSet<FabricLink>();
   
     boolean finished = nab.processNetAlign(mergedLinks, mergedLoneNodeIDs, mapG1toG2,
-            linksGraph1, lonersGraph1, linksGraph2, lonersGraph2, relMap, nai.forClique, idGen, holdIt);
-    
+            linksSmall, lonersSmall, linksLarge, lonersLarge, relMap, nadi.forClique, idGen, holdIt);
+  
     if (finished) {
-      finished = networkAlignmentStepTwo(mergedLinks, reducedLinks, mergedLoneNodeIDs, relMap, idGen, nai.align, holdIt);
+      finished = networkAlignmentStepThree(mergedLinks, reducedLinks, mergedLoneNodeIDs, relMap, idGen, nadi.align, holdIt);
     }
-    
+  
     if (finished) {
-      networkAlignmentStepThree(reducedLinks, mergedLoneNodeIDs, idGen, nai.align, holdIt);
+      networkAlignmentStepFour(reducedLinks, mergedLoneNodeIDs, idGen, nadi.align, holdIt);
     }
     return (true);
   }
   
   /***************************************************************************
    **
-   **
+   ** Directivity and Relations
    */
   
-  private boolean networkAlignmentStepTwo(List<FabricLink> links, Set<FabricLink> reducedLinks,
-                                          Set<NID.WithName> loneNodeIDs,
-                                          SortedMap<FabricLink.AugRelation, Boolean> relMap,
-                                          UniqueLabeller idGen, File align, File holdIt) {
+  private boolean networkAlignmentStepThree(List<FabricLink> links, Set<FabricLink> reducedLinks,
+                                            Set<NID.WithName> loneNodeIDs,
+                                            SortedMap<FabricLink.AugRelation, Boolean> relMap,
+                                            UniqueLabeller idGen, File align, File holdIt) {
   
     try {
       ResourceManager rMan = ResourceManager.getManager();
@@ -1022,8 +1157,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
    ** Build the network alignment
    */
   
-  private boolean networkAlignmentStepThree(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
-                                            UniqueLabeller idGen, File align, File holdIt) {
+  private boolean networkAlignmentStepFour(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
+                                           UniqueLabeller idGen, File align, File holdIt) {
     try {
       NetworkBuilder nb = new NetworkBuilder(true, holdIt);
       nb.setForNetAlignBuild(idGen, reducedLinks, loneNodeIDs,
@@ -1341,8 +1476,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       }
     } catch (IOException ioe) {
       displayFileInputError(ioe);
+      return (null);
     }
-    
+    FabricCommands.setPreference("AttribDirectory", file.getAbsoluteFile().getParent());
     return (mapG1toG2);
   }
   
@@ -3189,12 +3325,33 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
       NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topWindow_);
       nad.setVisible(true);
-  
-      NetworkAlignmentDialog.NetworkAlignInfo nai = nad.getNAInfo();
       
-      // DO I NEED TO ADD STANDARD FILE CHECKING?
+      if(!nad.hasFiles()) {
+        return (false);
+      }
   
-      return netAlignFromGWSources(nai);
+      NetworkAlignmentDialog.NetworkAlignmentDialogInfo nai = nad.getNAInfo();
+      
+      boolean filesNotOkay =
+              
+              !standardFileChecks(nai.graphA, FILE_MUST_EXIST, FILE_CAN_CREATE_DONT_CARE,
+                      FILE_DONT_CHECK_OVERWRITE, FILE_MUST_BE_FILE,
+                      FILE_CAN_WRITE_DONT_CARE, FILE_CAN_READ)
+                      ||
+              !standardFileChecks(nai.graphB, FILE_MUST_EXIST, FILE_CAN_CREATE_DONT_CARE,
+                      FILE_DONT_CHECK_OVERWRITE, FILE_MUST_BE_FILE,
+                      FILE_CAN_WRITE_DONT_CARE, FILE_CAN_READ)
+                      ||
+              !standardFileChecks(nai.align, FILE_MUST_EXIST, FILE_CAN_CREATE_DONT_CARE,
+                      FILE_DONT_CHECK_OVERWRITE, FILE_MUST_BE_FILE,
+                      FILE_CAN_WRITE_DONT_CARE, FILE_CAN_READ);
+      
+      if (filesNotOkay) {
+        return (false);
+      }
+  
+      // STILL HAVE TO DECIDE WHETHER IT'S GW OR SIF
+      return (networkAlignmentFromGWSources(nai));
     }
   
   }
@@ -4836,7 +4993,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     public Object runCore() throws AsynchExitRequestException {
       
       NetworkAlignment netAlign = new NetworkAlignment(mergedLinks_, mergedLoneNodeIDs_, mapG1toG2_,
-              linksG1_, lonersG1_, linksG2_, lonersG2_, forClique_, idGen_);
+              linksG1_, lonersG1_, linksG2_, lonersG2_, forClique_, idGen_, this);
       
       netAlign.mergeNetworks();
       BioFabricNetwork.extractRelations(mergedLinks_, relMap_, this);
@@ -4906,7 +5063,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
 	        return (new BioFabricNetwork.RelayoutBuildData(idGen_, links_, loneNodeIDs_, emptyMap, colGen_, bMode_));
             case BUILD_NETWORK_ALIGNMENT:
               HashMap<NID.WithName, String> emptyClustMap = new HashMap<NID.WithName, String>();
-              return (new BioFabricNetwork.NetAlignBuildData(idGen_, links_, loneNodeIDs_, emptyClustMap, colGen_, bMode_));
+              return (new BioFabricNetwork.NetworkAlignmentBuildData(idGen_, links_, loneNodeIDs_, emptyClustMap, colGen_, bMode_));
 	    	case SHADOW_LINK_CHANGE:
 	    	case BUILD_FROM_XML:
 	    		return (new BioFabricNetwork.PreBuiltBuildData(bfn_, bMode_));		
@@ -5272,6 +5429,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                         loneNodeIDs_, nameMap_, magBins_, this);
         sss_.copyInto(sss);
         BioFabricNetwork.extractRelations(links_, relaMap_, this);
+        
         return (new Boolean(true));
       } catch (IOException ioe) {
         stashException(ioe);
