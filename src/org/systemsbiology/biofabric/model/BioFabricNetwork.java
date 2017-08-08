@@ -93,6 +93,7 @@ public class BioFabricNetwork {
                          WORLD_BANK_LAYOUT,
                          SET_LAYOUT,
                          GROUP_PER_NETWORK_CHANGE,
+                         BUILD_NETWORK_ALIGNMENT
                         };
                                                 
   public enum LayoutMode {
@@ -210,6 +211,19 @@ public class BioFabricNetwork {
         colGen_ = rbd.colGen;
         layoutMode_ = rbd.layoutMode;
         relayoutNetwork(rbd, monitor);
+        break;
+      case BUILD_NETWORK_ALIGNMENT:
+        NetworkAlignmentBuildData nad = (NetworkAlignmentBuildData) bd;
+        normalCols_ = new ColumnAssign();
+        shadowCols_ = new ColumnAssign();
+        rowToTargID_ = new HashMap<Integer, NID.WithName>();
+        fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
+        nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
+        nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
+        linkGrouping_ = new ArrayList<String>(nad.linkGroups);
+        colGen_ = nad.colGen;
+        layoutMode_ = nad.layoutMode;
+        processLinks(nad, monitor);
         break;
       case BUILD_FOR_SUBMODEL:
         SelectBuildData sbd = (SelectBuildData)bd;
@@ -722,6 +736,9 @@ public class BioFabricNetwork {
 
     Map<NID.WithName, List<DrainZone>> nodeToZones = new TreeMap<NID.WithName, List<DrainZone>>();
 
+    if (links.size() == 0) {
+      return;
+    }
     LinkInfo current = links.get(0);  // these keep track of start of zone and zone's node
     int startIdx = 0;
     
@@ -2287,7 +2304,7 @@ public class BioFabricNetwork {
       this.clustAssign = clustAssign;
       this.loneNodeIDs = loneNodeIDs;
       this.allNodeIDs = null;
-      this.layoutMode = LayoutMode.PER_NODE_MODE;   
+      this.layoutMode = LayoutMode.PER_NODE_MODE;
       this.idGen = idGen;
     } 
 
@@ -2344,6 +2361,24 @@ public class BioFabricNetwork {
       this.layoutMode = mode;
       return;
     }
+    
+  }
+  
+  /***************************************************************************
+   **
+   ** For passing around Network Alignment data
+   */
+  
+  public static class NetworkAlignmentBuildData extends RelayoutBuildData {
+  
+    public NetworkAlignmentBuildData(UniqueLabeller idGen,
+                                     Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
+                                     Map<NID.WithName, String> clustAssign,
+                                     FabricColorGenerator colGen, BuildMode mode) {
+      super(idGen, allLinks, loneNodeIDs, clustAssign, colGen, mode);
+      this.layoutMode = LayoutMode.PER_NETWORK_MODE;
+    }
+    
   }
  
   /***************************************************************************
@@ -2403,6 +2438,26 @@ public class BioFabricNetwork {
   // PUBLIC STATIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
+  
+  /***************************************************************************
+   **
+   ** Extract nodes
+   */
+  
+  public static Set<NID.WithName> extractNodes(List<FabricLink> allLinks, HashSet<NID.WithName> loneNodeIDs,
+                                               BTProgressMonitor monitor) throws AsynchExitRequestException {
+    
+    Set<NID.WithName> retval = new HashSet<NID.WithName>(loneNodeIDs);
+    LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor, 0.0, 1.0, "progress.analyzingNodes");
+    
+    for (FabricLink link : allLinks) {
+      retval.add(link.getSrcID());
+      retval.add(link.getTrgID());
+      lr.report();
+    }
+    lr.finish();  // DO I NEED THIS lr.finish() HERE? THE OTHER STATIC METHODS DON'T HAVE IT
+    return (retval);
+  }
  
   /***************************************************************************
   ** 
@@ -2466,7 +2521,7 @@ public class BioFabricNetwork {
       retval.put(nextName, forName.iterator().next());
     }
     return (retval);
-  }  
+  }
   
   
   /***************************************************************************

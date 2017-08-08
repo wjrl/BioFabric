@@ -24,52 +24,63 @@ import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
+import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 import javax.swing.Box;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
+import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Label;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 
-import static org.systemsbiology.biofabric.analysis.NetworkAlignment.*;
-
 public class NetworkAlignmentDialog extends JDialog {
   
-  private final int GRAPH_ONE_FILE = 1;
-  private final int GRAPH_TWO_FILE = 2;
-  private final int ALIGNMENT_FILE = 3;
+  private enum FileIndex {
+    GRAPH_ONE_FILE, GRAPH_TWO_FILE, ALIGNMENT_FILE
+  }
   
   private JFrame parent_;
-
-  private GraphNA graph1_, graph2_;
-  private AlignmentNA alignment_;
+  private JLabel graph1FileName_, graph2FileName_, alignFileName_;
+  private File graph1File_, graph2File_, alignmentFile_;
+  private boolean forClique_;
   
-  public NetworkAlignmentDialog(final JFrame parent) {
+  public NetworkAlignmentDialog(JFrame parent) {
     super(parent, ResourceManager.getManager().getString("networkAlignment.title"), true);
     this.parent_ = parent;
     
-    ResourceManager rMan = ResourceManager.getManager();
+    final ResourceManager rMan = ResourceManager.getManager();
     setSize(450, 400);
     JPanel cp = (JPanel) getContentPane();
     cp.setBorder(new EmptyBorder(20, 20, 20, 20));
     cp.setLayout(new GridBagLayout());
     GridBagConstraints gbc = new GridBagConstraints();
     
+    //
+    // File Buttons and File Labels
+    //
+    
     JButton graph1Button = new JButton(rMan.getString("networkAlignment.graph1"));
     JButton graph2Button = new JButton(rMan.getString("networkAlignment.graph2"));
     JButton alignmentButton = new JButton(rMan.getString("networkAlignment.alignment"));
     
+    graph1FileName_ = new JLabel();
+    graph2FileName_ = new JLabel();
+    alignFileName_ = new JLabel();
+    
     graph1Button.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
         try {
-          loadFromFile(GRAPH_ONE_FILE);
+          loadFromFile(FileIndex.GRAPH_ONE_FILE);
         } catch (Exception ex) {
           ExceptionHandler.getHandler().displayException(ex);
         }
@@ -79,7 +90,7 @@ public class NetworkAlignmentDialog extends JDialog {
     graph2Button.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
         try {
-          loadFromFile(GRAPH_TWO_FILE);
+          loadFromFile(FileIndex.GRAPH_TWO_FILE);
         } catch (Exception ex) {
           ExceptionHandler.getHandler().displayException(ex);
         }
@@ -89,7 +100,7 @@ public class NetworkAlignmentDialog extends JDialog {
     alignmentButton.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
         try {
-          loadFromFile(ALIGNMENT_FILE);
+          loadFromFile(FileIndex.ALIGNMENT_FILE);
         } catch (Exception ex) {
           ExceptionHandler.getHandler().displayException(ex);
         }
@@ -98,14 +109,54 @@ public class NetworkAlignmentDialog extends JDialog {
     
     Box funcButtonBox = Box.createVerticalBox();
     funcButtonBox.add(Box.createVerticalGlue());
-    funcButtonBox.add(graph1Button);
-    funcButtonBox.add(Box.createVerticalStrut(10));
-    funcButtonBox.add(graph2Button);
-    funcButtonBox.add(Box.createVerticalStrut(10));
-    funcButtonBox.add(alignmentButton);
     
-    UiUtil.gbcSet(gbc, 0, 0, 5, 1, UiUtil.HOR, 0, 0, 5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
+    JPanel panGraphInfo = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    panGraphInfo.add(new Label(rMan.getString("networkAlignment.graphsEitherOrder"))); // ADD TO PROPS
+    
+    JPanel panG1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    panG1.add(graph1Button);
+    panG1.add(graph1FileName_);
+  
+    JPanel panG2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    panG2.add(graph2Button);
+    panG2.add(graph2FileName_);
+  
+    JPanel panAlign = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    panAlign.add(alignmentButton);
+    panAlign.add(alignFileName_);
+    
+    funcButtonBox.add(panGraphInfo);
+    funcButtonBox.add(panG1);
+    funcButtonBox.add(panG2);
+    funcButtonBox.add(panAlign);
+    
+    //
+    // Special layout buttons :: Cliques
+    //
+    
+    final JCheckBox clique = new JCheckBox(rMan.getString("networkAlignment.cliqueAnalysis"), false);
+    clique.addActionListener(new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+        try {
+          forClique_ = clique.isSelected();
+        } catch (Exception ex) {
+          ExceptionHandler.getHandler().displayException(ex);
+        }
+      }
+    });
+  
+    JPanel panClique = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    panClique.add(clique);
+    
+    funcButtonBox.add(panClique);
+    
+    UiUtil.gbcSet(gbc, 0, 0, 5, 1, UiUtil.HOR, 0, 0,
+            5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
     cp.add(funcButtonBox, gbc);
+    
+    //
+    // OK and Cancel buttons
+    //
     
     FixedJButton buttonO = new FixedJButton(rMan.getString("networkAlignment.ok"));
     buttonO.addActionListener(new ActionListener() {
@@ -115,7 +166,9 @@ public class NetworkAlignmentDialog extends JDialog {
             NetworkAlignmentDialog.this.setVisible(false);
             NetworkAlignmentDialog.this.dispose();
           } else {
-            JOptionPane.showMessageDialog(parent_, "Invalid");
+            JOptionPane.showMessageDialog(parent_, rMan.getString("networkAlignment.missingFiles"),
+                    rMan.getString("networkAlignment.missingFilesTitle"),
+                    JOptionPane.WARNING_MESSAGE);
           }
         } catch (Exception ex) {
           ExceptionHandler.getHandler().displayException(ex);
@@ -127,6 +180,7 @@ public class NetworkAlignmentDialog extends JDialog {
     buttonC.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent ev) {
         try {
+          nullifyFiles();
           NetworkAlignmentDialog.this.setVisible(false);
           NetworkAlignmentDialog.this.dispose();
         } catch (Exception ex) {
@@ -134,13 +188,18 @@ public class NetworkAlignmentDialog extends JDialog {
         }
       }
     });
+  
+    JPanel panOptions = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    
+    panOptions.add(buttonO);
+    panOptions.add(Box.createHorizontalStrut(10));
+    panOptions.add(buttonC);
     
     Box optButtonBox = Box.createHorizontalBox();
-    optButtonBox.add(buttonO);
-    optButtonBox.add(Box.createHorizontalStrut(10));
-    optButtonBox.add(buttonC);
+    optButtonBox.add(panOptions);
     
-    UiUtil.gbcSet(gbc, 0, 1, 5, 1, UiUtil.HOR, 0, 0, 5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
+    UiUtil.gbcSet(gbc, 0, 1, 5, 1, UiUtil.HOR, 0, 0,
+            5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
     cp.add(optButtonBox, gbc);
     
     setLocationRelativeTo(parent);
@@ -150,26 +209,45 @@ public class NetworkAlignmentDialog extends JDialog {
    *
    */
   
-  private boolean filesAreExtracted() {
-    return (graph1_ != null) && (graph2_ != null) && (alignment_ != null);
+  private void nullifyFiles() {
+    graph1File_ = null;
+    graph2File_ = null;
+    alignmentFile_ = null;
+    return;
   }
   
   /**
    *
    */
   
-  public NetworkAlignInfo getNAInfo() {
-    if (graph1_ == null || graph2_ == null || alignment_ == null) {
-      throw new IllegalArgumentException();
+  private boolean filesAreExtracted() {
+    return (graph1File_ != null) && (graph2File_ != null) && (alignmentFile_ != null);
+  }
+  
+  /**
+   *
+   */
+  
+  public boolean hasFiles() {
+    return (filesAreExtracted());
+  }
+  
+  /**
+   *
+   */
+  
+  public NetworkAlignmentDialogInfo getNAInfo() {
+    if (graph1File_ == null || graph2File_ == null || alignmentFile_ == null) {
+      throw new IllegalArgumentException("One or more files missing");
     }
-    return new NetworkAlignInfo(graph1_, graph2_, alignment_);
+    return new NetworkAlignmentDialogInfo(graph1File_, graph2File_, alignmentFile_, forClique_);
   }
   
   /**
    * * Loads the file
    */
   
-  private void loadFromFile(int mode) {
+  private void loadFromFile(FileIndex mode) {
     CommandSet cmd = CommandSet.getCmds("mainWindow");
     
     File file;
@@ -192,19 +270,20 @@ public class NetworkAlignmentDialog extends JDialog {
       return;
     }
     
-    if (! check(file)) {
-      
-    }
+    FabricCommands.setPreference("LoadDirectory", file.getAbsoluteFile().getParent());
     
-    switch (mode) {
+    switch (mode) { // CAN I COMBINE THIS WITH THE TOP SWITCH CLAUSE???
       case GRAPH_ONE_FILE:
-        graph1_ = GraphNA.readGraphGWFile(file);
+        graph1FileName_.setText(file.getName());
+        graph1File_ = file;
         break;
       case GRAPH_TWO_FILE:
-        graph2_ = GraphNA.readGraphGWFile(file);
+        graph2FileName_.setText(file.getName());
+        graph2File_ = file;
         break;
       case ALIGNMENT_FILE:
-        alignment_ = AlignmentNA.readAlignFile(file);
+        alignFileName_.setText(file.getName());
+        alignmentFile_ = file;
         break;
       default:
         throw new IllegalArgumentException();
@@ -213,86 +292,44 @@ public class NetworkAlignmentDialog extends JDialog {
     return;
   }
   
-  private boolean check(File file) { //  TO CHECK FILE
-    return true;
+  /**
+   * The unread files for G1, G2, and the Alignment
+   */
+  
+  public static class NetworkAlignmentDialogInfo {
+    
+    public File graphA, graphB, align; // graph1 and graph2 can be out of order (size), hence graphA and graphB
+    public final boolean forClique;
+    
+    public NetworkAlignmentDialogInfo(File graph1, File graph2, File align, boolean forClique) {
+      this.graphA = graph1;
+      this.graphB = graph2;
+      this.align = align;
+      this.forClique = forClique;
+    }
+    
   }
   
 }
-
-
-///*
-//**    Copyright (C) 2003-2014 Institute for Systems Biology
-//**                            Seattle, Washington, USA.
-//**
-//**    This library is free software; you can redistribute it and/or
-//**    modify it under the terms of the GNU Lesser General Public
-//**    License as published by the Free Software Foundation; either
-//**    version 2.1 of the License, or (at your option) any later version.
-//**
-//**    This library is distributed in the hope that it will be useful,
-//**    but WITHOUT ANY WARRANTY; without even the implied warranty of
-//**    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-//**    Lesser General Public License for more details.
-//**
-//**    You should have received a copy of the GNU Lesser General Public
-//**    License along with this library; if not, write to the Free Software
-//**    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-//*/
-//
-//package org.systemsbiology.biofabric.ui.dialogs;
-//
-//        import org.systemsbiology.biofabric.analysis.NetworkAlignment;
-//        import org.systemsbiology.biofabric.cmd.CommandSet;
-//        import org.systemsbiology.biofabric.util.ExceptionHandler;
-//        import org.systemsbiology.biofabric.util.FixedJButton;
-//        import org.systemsbiology.biofabric.util.ResourceManager;
-//        import org.systemsbiology.biofabric.util.UiUtil;
-//
-//        import javax.swing.*;
-//        import javax.swing.border.EmptyBorder;
-//        import java.awt.*;
-//        import java.awt.event.ActionEvent;
-//        import java.awt.event.ActionListener;
-//        import java.io.File;
-//
-//        import static org.systemsbiology.biofabric.analysis.NetworkAlignment.GraphNA;
-//        import static org.systemsbiology.biofabric.analysis.NetworkAlignment.AlignmentNA;
-//        import static org.systemsbiology.biofabric.analysis.NetworkAlignment.NetworkAlignInfo;
-//
-//public class NetworkAlignmentDialog extends JDialog {
-//
-//  private final int GRAPH_ONE_FILE = 1;
-//  private final int GRAPH_TWO_FILE = 2;
-//  private final int ALIGNMENT_FILE = 3;
-//
-//  private JFrame parent_;
-//
-//  private GraphNA graph1_, graph2_;
-//  private AlignmentNA alignment_;
-//
-//  public NetworkAlignmentDialog(final JFrame parent) {
+//  public NetworkAlignmentDialog(JFrame parent) {
 //    super(parent, ResourceManager.getManager().getString("networkAlignment.title"), true);
 //    this.parent_ = parent;
 //
-//    ResourceManager rMan = ResourceManager.getManager();
+//    final ResourceManager rMan = ResourceManager.getManager();
 //    setSize(450, 400);
 //    JPanel cp = (JPanel) getContentPane();
 //    cp.setBorder(new EmptyBorder(20, 20, 20, 20));
 //    cp.setLayout(new GridBagLayout());
 //    GridBagConstraints gbc = new GridBagConstraints();
 //
-////    JLabel graph_1 = new JLabel(rMan.getString("networkAlignment.graph1"));
-////    JLabel graph_2 = new JLabel(rMan.getString("networkAlignment.graph2"));
-////    JLabel alignment = new JLabel(rMan.getString("networkAlignment.alignment"));
-//
-//    JButton graph1Button = new JButton(rMan.getString("networkAlignment.graph1"));
-//    JButton graph2Button = new JButton(rMan.getString("networkAlignment.graph2"));
+//    JButton graph1Button = new JButton(rMan.getString("networkAlignment.Graph1"));
+//    JButton graph2Button = new JButton(rMan.getString("networkAlignment.Graph2"));
 //    JButton alignmentButton = new JButton(rMan.getString("networkAlignment.alignment"));
 //
 //    graph1Button.addActionListener(new ActionListener() {
 //      public void actionPerformed(ActionEvent e) {
 //        try {
-//          loadFromFile(GRAPH_ONE_FILE);
+//          loadFromFile(FileIndex.GRAPH_ONE_FILE);
 //        } catch (Exception ex) {
 //          ExceptionHandler.getHandler().displayException(ex);
 //        }
@@ -302,7 +339,7 @@ public class NetworkAlignmentDialog extends JDialog {
 //    graph2Button.addActionListener(new ActionListener() {
 //      public void actionPerformed(ActionEvent e) {
 //        try {
-//          loadFromFile(GRAPH_TWO_FILE);
+//          loadFromFile(FileIndex.GRAPH_TWO_FILE);
 //        } catch (Exception ex) {
 //          ExceptionHandler.getHandler().displayException(ex);
 //        }
@@ -312,7 +349,7 @@ public class NetworkAlignmentDialog extends JDialog {
 //    alignmentButton.addActionListener(new ActionListener() {
 //      public void actionPerformed(ActionEvent e) {
 //        try {
-//          loadFromFile(ALIGNMENT_FILE);
+//          loadFromFile(FileIndex.ALIGNMENT_FILE);
 //        } catch (Exception ex) {
 //          ExceptionHandler.getHandler().displayException(ex);
 //        }
@@ -327,7 +364,20 @@ public class NetworkAlignmentDialog extends JDialog {
 //    funcButtonBox.add(Box.createVerticalStrut(10));
 //    funcButtonBox.add(alignmentButton);
 //
-//    UiUtil.gbcSet(gbc, 0, 0, 5, 1, UiUtil.HOR, 0, 0, 5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
+//    final JCheckBox clique = new JCheckBox(rMan.getString("networkAlignment.cliqueAnalysis"), false);
+//    funcButtonBox.add(clique);
+//    clique.addActionListener(new ActionListener() {
+//      public void actionPerformed(ActionEvent e) {
+//        try {
+//          forClique_ = clique.isSelected();
+//        } catch (Exception ex) {
+//          ExceptionHandler.getHandler().displayException(ex);
+//        }
+//      }
+//    });
+//
+//    UiUtil.gbcSet(gbc, 0, 0, 5, 1, UiUtil.HOR, 0, 0,
+//            5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
 //    cp.add(funcButtonBox, gbc);
 //
 //    FixedJButton buttonO = new FixedJButton(rMan.getString("networkAlignment.ok"));
@@ -338,7 +388,9 @@ public class NetworkAlignmentDialog extends JDialog {
 //            NetworkAlignmentDialog.this.setVisible(false);
 //            NetworkAlignmentDialog.this.dispose();
 //          } else {
-//            JOptionPane.showMessageDialog(parent_, "Invalid");
+//            JOptionPane.showMessageDialog(parent_, rMan.getString("networkAlignment.missingFiles"),
+//                    rMan.getString("networkAlignment.missingFilesTitle"),
+//                    JOptionPane.WARNING_MESSAGE);
 //          }
 //        } catch (Exception ex) {
 //          ExceptionHandler.getHandler().displayException(ex);
@@ -363,122 +415,11 @@ public class NetworkAlignmentDialog extends JDialog {
 //    optButtonBox.add(Box.createHorizontalStrut(10));
 //    optButtonBox.add(buttonC);
 //
-//    UiUtil.gbcSet(gbc, 0, 1, 5, 1, UiUtil.HOR, 0, 0, 5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
+//    UiUtil.gbcSet(gbc, 0, 1, 5, 1, UiUtil.HOR, 0, 0,
+//            5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
 //    cp.add(optButtonBox, gbc);
-//
 //
 //    setLocationRelativeTo(parent);
 //  }
-//
-//  /**
-//   *
-//   */
-//
-//  private boolean filesAreExtracted() {
-//    return (graph1_ != null) && (graph2_ != null) && (alignment_ != null);
-//  }
-//
-//  /**
-//   *
-//   */
-//
-//  public NetworkAlignInfo getNAInfo() {
-//    return new NetworkAlignInfo(graph1_, graph2_, alignment_);
-//  }
-//
-////  /**
-////   *
-////   */
-////
-////  public File getGraph1() {
-////    return graph1_;
-////  }
-////
-////  public File getGraph2() {
-////    return graph2_;
-////  }
-////
-////  public File getAlignment() {
-////    return alignment_;
-////  }
-//
-//  /**
-//   * * Loads the file
-//   */
-//
-//  private void loadFromFile(int mode) {
-//    CommandSet cmd = CommandSet.getCmds("mainWindow");
-//
-//    File file;
-//
-//    switch (mode) {
-//      case GRAPH_ONE_FILE:
-//        file = cmd.getTheFile(".gw", null, "AttribDirectory", "filterName.gw");
-//        break;
-//      case GRAPH_TWO_FILE:
-//        file = cmd.getTheFile(".gw", null, "AttribDirectory", "filterName.gw");
-//      case ALIGNMENT_FILE:
-//        file = cmd.getTheFile(".align", null, "AttribDirectory", "filterName.align");
-//        break;
-//      default:
-//        throw new IllegalArgumentException();
-//    }
-//
-//    if (file == null) {
-//      return;
-//    }
-//
-//    if (!check(file)) {
-//
-//    }
-//
-//    switch (mode) {
-//      case GRAPH_ONE_FILE:
-//        graph1_ = new GraphNA(file);
-//        break;
-//      case GRAPH_TWO_FILE:
-//        graph2_ = new GraphNA(file);
-//      case ALIGNMENT_FILE:
-//        alignment_ = new AlignmentNA(file);
-//        break;
-//      default:
-//        throw new IllegalArgumentException();
-//    }
-//
-//    return;
-//  }
-//
-//  private boolean check(File file) { //  TO CHECK FILE
-//    return true;
-//  }
-//
-////  /**
-////   * Loads the .gw graph (2) file
-////   */
-////
-////  private void loadGraphTwoFile() {
-////    CommandSet cmd = CommandSet.getCmds("mainWindow");
-////    File fileEda = cmd.getTheFile(".gw", null, "AttribDirectory", "filterName.gw");
-//////    if (fileEda == null) { // NEED TO FIX THIS
-//////      return;
-//////    }
-////
-////    graph2_ = fileEda;
-////  }
-////
-////  /**
-////   * Loads the .align alignment file
-////   */
-////
-////  private void loadAlignmentFile() {
-////    CommandSet cmd = CommandSet.getCmds("mainWindow");
-////    File fileEda = cmd.getTheFile(".align", null, "AttribDirectory", "filterName.align");
-//////    if (fileEda == null) { // NEED TO FIX THIS
-//////      return;
-//////    }
-////
-////    alignment_ = fileEda;
-////  }
-//
-//}
+
 
