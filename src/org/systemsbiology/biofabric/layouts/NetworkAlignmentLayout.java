@@ -19,6 +19,7 @@
 
 package org.systemsbiology.biofabric.layouts;
 
+import org.systemsbiology.biofabric.layouts.DefaultLayout.DefaultParams;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
@@ -43,7 +44,7 @@ import java.util.TreeSet;
  ** This is the default layout algorithm
  */
 
-public class NetworkAlignmentLayout {
+public class NetworkAlignmentLayout extends NodeLayout {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -69,23 +70,19 @@ public class NetworkAlignmentLayout {
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-  
-  public void doLayout(BioFabricNetwork.NetworkAlignmentBuildData rbd, NodeSimilarityLayout.CRParams params,
-                       BTProgressMonitor monitor) throws AsynchExitRequestException {
-    doNodeLayout(rbd, ((DefaultLayout.Params)params).startNodes, monitor);
-    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
-    return;
-  }
-  
+
   /***************************************************************************
-   **
-   ** Relayout the network!
-   */
+  **
+  ** Relayout the network!
+  */
   
-  public List<NID.WithName> doNodeLayout(BioFabricNetwork.NetworkAlignmentBuildData rbd,
-                                         List<NID.WithName> startNodeIDs,
+  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd,
+                                         Params params,
                                          BTProgressMonitor monitor) throws AsynchExitRequestException {
     
+  	
+  	List<NID.WithName> startNodeIDs = ((DefaultParams)params).startNodes;
+  	
     List<NID.WithName> targetIDs = defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs, startNodeIDs, monitor);
     
 //    Set<FabricLink> alignedLinks = new HashSet<FabricLink>();
@@ -372,19 +369,4 @@ public class NetworkAlignmentLayout {
     lr.finish();
     return;
   }
-  
-  /***************************************************************************
-   **
-   ** For passing around layout params
-   */
-  
-  public static class Params implements NodeSimilarityLayout.CRParams {
-    
-    public List<NID.WithName> startNodes;
-    
-    public Params(List<NID.WithName> startNodes) {
-      this.startNodes = startNodes;
-    }
-  }
-  
 }

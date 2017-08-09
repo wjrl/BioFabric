@@ -98,9 +98,11 @@ import org.systemsbiology.biofabric.io.FabricImportLoader;
 import org.systemsbiology.biofabric.io.GWImportLoader;
 import org.systemsbiology.biofabric.io.SIFImportLoader;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
+import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.layouts.SetLayout;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
+import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.HierDAGLayout;
 import org.systemsbiology.biofabric.layouts.LayoutCriterionFailureException;
@@ -4507,7 +4509,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   	  return;
     }  
     
-    public void setParams(NodeSimilarityLayout.CRParams params) {
+    public void setParams(NodeLayout.Params params) {
   	  runner_.setParams(params);
   	  return;
     }  
@@ -5104,7 +5106,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
  
     private BioFabricNetwork.RelayoutBuildData rbd_;
     private BioFabricNetwork.BuildMode mode_;
-    private NodeSimilarityLayout.CRParams params_;
+    private NodeLayout.Params params_;
     private BioFabricNetwork bfn_;
     private Map<AttributeLoader.AttributeKey, String> nodeAttrib_;
     private File holdIt_;
@@ -5138,7 +5140,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     	return;  	  
     }  
 
-    void setParams(NodeSimilarityLayout.CRParams params) {
+    void setParams(NodeLayout.Params params) {
     	params_ = params;
     	return;
     }
@@ -5178,12 +5180,14 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       try {            
         switch (mode_) {
           case DEFAULT_LAYOUT:
-            DefaultLayout dl = new DefaultLayout();
+          case WORLD_BANK_LAYOUT:
+            NodeLayout dl = rbd_.getNodeLayout();
             boolean dlok = dl.criteriaMet(rbd_, this);
             if (!dlok) {
               throw new IllegalStateException(); // Should not happen, failure throws exception
             }
-            dl.doLayout(rbd_, params_, this);
+            dl.doNodeLayout(rbd_, params_, this);
+            rbd_.getEdgeLayout().layoutEdges(rbd_, this);
             break;
           case CONTROL_TOP_LAYOUT:
             Map<String, Set<NID.WithName>> normNameToIDs = (fixedList_ == null) ? null : bfp_.getNetwork().getNormNameToIDs();
@@ -5192,7 +5196,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
             if (!ctok) {
               throw new IllegalStateException(); // Should not happen, failure throws exception
             }
-            ctl.doLayout(rbd_, this);
+            ctl.doNodeLayout(rbd_, params_, this);
+            rbd_.getEdgeLayout().layoutEdges(rbd_, this);
             break;
           case HIER_DAG_LAYOUT:
             HierDAGLayout hdl = new HierDAGLayout(pointUp_.booleanValue());
@@ -5200,7 +5205,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
             if (!ok) {
               throw new IllegalStateException(); // Should not happen, failure throws exception
             }
-            hdl.doLayout(rbd_, this);
+            hdl.doNodeLayout(rbd_, params_, this);
+            rbd_.getEdgeLayout().layoutEdges(rbd_, this);
             break;
           case SET_LAYOUT:
             UiUtil.fixMePrintout("Get customized set dialog");
@@ -5211,16 +5217,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
             if (!sok) {
               throw new IllegalStateException(); // Should not happen, failure throws exception
             }
-            sel.doLayout(rbd_, this);
+            sel.doNodeLayout(rbd_, params_, this);
+            rbd_.getEdgeLayout().layoutEdges(rbd_, this);
             break; 
-          case WORLD_BANK_LAYOUT:
-            WorldBankLayout wbl = new WorldBankLayout();
-            boolean wbok = wbl.criteriaMet(rbd_, this);
-            if (!wbok) {
-              throw new IllegalStateException(); // Should not happen, failure throws exception
-            }
-            wbl.doLayout(rbd_, this);
-            break;
           case NODE_ATTRIB_LAYOUT:
           case LINK_ATTRIB_LAYOUT:
           case GROUP_PER_NODE_CHANGE:
@@ -5228,13 +5227,16 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
             // previously installed....
             break;
           case REORDER_LAYOUT:
-            (new NodeSimilarityLayout()).doReorderLayout(rbd_, params_, this);
-            break;            
           case CLUSTERED_LAYOUT:
-            (new NodeSimilarityLayout()).doClusteredLayout(rbd_, params_, this);
+          	// The params_ disambiguates the call type for the layout:
+          	NodeLayout nsl = rbd_.getNodeLayout();
+            nsl.doNodeLayout(rbd_, params_, this);
+            UiUtil.fixMePrintout("NOT CLEAR WHERE EDGE LAYOUT HAPPENS");
             break;
           case NODE_CLUSTER_LAYOUT:
-            (new NodeClusterLayout()).orderByClusterAssignment(rbd_, params_, this);
+          	NodeLayout ncl = rbd_.getNodeLayout();
+            ncl.doNodeLayout(rbd_, params_, this);
+            // The above operation does link order install as well...
             break;                        
           case SHADOW_LINK_CHANGE:
           case BUILD_FOR_SUBMODEL:

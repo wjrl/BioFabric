@@ -43,7 +43,7 @@ import org.systemsbiology.biofabric.util.NID;
 ** This handles creating a layout for the network presentation of set membership
 */
 
-public class SetLayout {
+public class SetLayout extends NodeLayout {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -95,6 +95,7 @@ public class SetLayout {
   ** Find out if the necessary conditions for this layout are met. 
   */
   
+  @Override
   public boolean criteriaMet(BioFabricNetwork.RelayoutBuildData rbd,
                              BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                                LayoutCriterionFailureException {
@@ -130,26 +131,15 @@ public class SetLayout {
  
     return (true);  
   }
-
-  /***************************************************************************
-  **
-  ** Relayout the network.
-  */
-  
-  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd,
-                       BTProgressMonitor monitor) throws AsynchExitRequestException {   
-    doNodeLayout(rbd, monitor);
-    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
-    return;
-  }
   
   /***************************************************************************
   **
   ** Order the nodes
   */
   
-  private List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd,
-                                          BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd,
+  		                                   Params params,
+                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
         
     //
     // We order the sets by cardinality, largest first. Ties broken by lexicographic order:

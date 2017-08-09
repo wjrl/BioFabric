@@ -53,7 +53,7 @@ import org.systemsbiology.biofabric.util.UiUtil;
 ** This does the node similarity layout
 */
 
-public class NodeSimilarityLayout {
+public class NodeSimilarityLayout extends NodeLayout {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -95,19 +95,34 @@ public class NodeSimilarityLayout {
 
   /***************************************************************************
   ** 
+  ** Node layout
+  */
+
+  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, 
+							                           NodeLayout.Params params,
+							                           BTProgressMonitor monitor) throws AsynchExitRequestException { 
+  	if (params instanceof NodeSimilarityLayout.ResortParams) {
+  		return (doReorderLayout(rbd, (NodeSimilarityLayout.ResortParams)params, monitor));		
+  	} else if (params instanceof NodeSimilarityLayout.ClusterParams) {
+  		return (doClusteredLayout(rbd, (NodeSimilarityLayout.ClusterParams)params, monitor));	
+  	} else {
+  		throw new IllegalArgumentException();
+  	}
+  }
+
+  /***************************************************************************
+  ** 
   ** Move nodes to match shapes
   */
 
-  public void doReorderLayout(BioFabricNetwork.RelayoutBuildData rbd, 
-                              NodeSimilarityLayout.CRParams params,
-                              BTProgressMonitor monitor) throws AsynchExitRequestException { 
+  private List<NID.WithName> doReorderLayout(BioFabricNetwork.RelayoutBuildData rbd, 
+                                             NodeSimilarityLayout.ResortParams rp,
+                                             BTProgressMonitor monitor) throws AsynchExitRequestException { 
 
   	BioFabricNetwork bfn = rbd.bfn;
   	HashMap<NID.WithName, Integer> targToRow = new HashMap<NID.WithName, Integer>();
-    SortedMap<Integer, SortedSet<Integer>>  connVecs = getConnectionVectors(rbd, targToRow, monitor);
-   
-    NodeSimilarityLayout.ResortParams rp = (NodeSimilarityLayout.ResortParams)params;
-    
+    SortedMap<Integer, SortedSet<Integer>> connVecs = getConnectionVectors(rbd, targToRow, monitor);
+     
     List<Integer> ordered = new ArrayList<Integer>();
     int numRows = bfn.getRowCount();
     for (int i = 0; i < numRows; i++) {
@@ -141,10 +156,8 @@ public class NodeSimilarityLayout {
     }
     
     monitor.updateRankings(rankings);
-    Map<NID.WithName, Integer> orderedNames = convertOrderToMap(bfn, ordered);
-    rbd.setNodeOrder(orderedNames);
-   
-    return;
+    List<NID.WithName> retval = convertOrderToMap(bfn, rbd, ordered);  
+    return (retval);
   }
   
   /***************************************************************************
@@ -152,14 +165,13 @@ public class NodeSimilarityLayout {
   ** Clustered Layout guts
   */   
 
-  public void doClusteredLayout(BioFabricNetwork.RelayoutBuildData rbd, 
-                                NodeSimilarityLayout.CRParams params,
-                                BTProgressMonitor monitor) throws AsynchExitRequestException {   
+  private List<NID.WithName> doClusteredLayout(BioFabricNetwork.RelayoutBuildData rbd, 
+                                               NodeSimilarityLayout.ClusterParams params,
+                                               BTProgressMonitor monitor) throws AsynchExitRequestException {   
  
     List<Integer> ordered = doClusteredLayoutOrder(rbd, params, monitor);
-    Map<NID.WithName, Integer> orderedNames = convertOrderToMap(rbd.bfn, ordered);
-    rbd.setNodeOrder(orderedNames);
-    return;
+    List<NID.WithName> retval = convertOrderToMap(rbd.bfn, rbd, ordered);
+    return (retval);
   }
   
   /***************************************************************************
@@ -167,11 +179,10 @@ public class NodeSimilarityLayout {
   ** Clustered Layout Ordering only
   */   
 
-  public List<Integer> doClusteredLayoutOrder(BioFabricNetwork.RelayoutBuildData rbd, 
-							                                NodeSimilarityLayout.CRParams params,
-							                                BTProgressMonitor monitor) throws AsynchExitRequestException {   
+  private List<Integer> doClusteredLayoutOrder(BioFabricNetwork.RelayoutBuildData rbd, 
+							                                 NodeSimilarityLayout.ClusterParams cp,
+							                                 BTProgressMonitor monitor) throws AsynchExitRequestException {   
  
-    NodeSimilarityLayout.ClusterParams cp = (NodeSimilarityLayout.ClusterParams)params;
     HashMap<NID.WithName, Integer> targToRow = new HashMap<NID.WithName, Integer>();
     SortedMap<Integer, SortedSet<Integer>> connVecs = getConnectionVectors(rbd, targToRow, monitor);
 
@@ -693,42 +704,7 @@ public class NodeSimilarityLayout {
   ** Utility conversion
   */
 
-  public List<NID.WithName> convertOrder(BioFabricNetwork bfn, List<String> orderedStringRows) { 
-    ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
-    int numOsr = orderedStringRows.size();
-    for (int i = 0; i < numOsr; i++) {
-      String sval = orderedStringRows.get(i);
-      try {
-        Integer intval = Integer.valueOf(sval);
-        retval.add(bfn.getNodeIDForRow(intval));
-      } catch (NumberFormatException nfex) {
-        throw new IllegalStateException();
-      }
-    }
-    return (retval);
-  }
-  
-  /***************************************************************************
-  ** 
-  ** Utility conversion
-  */
-
-  public Map<NID.WithName, Integer> convertOrderToMap(BioFabricNetwork bfn, List<Integer> orderedStringRows) { 
-    HashMap<NID.WithName, Integer> retval = new HashMap<NID.WithName, Integer>();
-    int numOsr = orderedStringRows.size();
-    for (int i = 0; i < numOsr; i++) {
-      Integer intval = orderedStringRows.get(i);
-      retval.put(bfn.getNodeIDForRow(intval), Integer.valueOf(i));
-    }
-    return (retval);
-  }
-
-  /***************************************************************************
-  ** 
-  ** Utility conversion
-  */
-
-  public void orderToMaps(List<Integer> orderedStringRows, Map<Integer, Integer> forward, Map<Integer, Integer> backward) { 
+  private void orderToMaps(List<Integer> orderedStringRows, Map<Integer, Integer> forward, Map<Integer, Integer> backward) { 
     int numOsr = orderedStringRows.size();
     for (int i = 0; i < numOsr; i++) {
       Integer sval = orderedStringRows.get(i);
@@ -849,8 +825,8 @@ public class NodeSimilarityLayout {
   ** Just report current goodness:
   */
 
-  public ClusterPrep setupForResort(BioFabricNetwork bfn, SortedMap<Integer, SortedSet<Integer>> connVec, 
-                                    List<Integer> orderedStringRows, SortedMap<Integer, Double> rankings) {
+  private ClusterPrep setupForResort(BioFabricNetwork bfn, SortedMap<Integer, SortedSet<Integer>> connVec, 
+                                     List<Integer> orderedStringRows, SortedMap<Integer, Double> rankings) {
 
     ClusterPrep retval = new ClusterPrep(orderedStringRows.size()); 
  
@@ -1229,22 +1205,13 @@ public class NodeSimilarityLayout {
   // PUBLIC INNER CLASSES
   //
   ////////////////////////////////////////////////////////////////////////////
-  
-  /***************************************************************************
-  **
-  ** Marker interface
-  */  
-  
-  public interface CRParams  {
 
-  }
-  
   /***************************************************************************
   **
   ** For passing around layout params
   */  
   
-  public static class ClusterParams implements CRParams {
+  public static class ClusterParams implements Params {
     
     // NOTE:
     //
@@ -1286,7 +1253,7 @@ public class NodeSimilarityLayout {
   ** For passing around resort params
   */  
   
-  public static class ResortParams implements CRParams {        
+  public static class ResortParams implements Params {        
     public int passCount; 
     public boolean terminateAtIncrease; 
 

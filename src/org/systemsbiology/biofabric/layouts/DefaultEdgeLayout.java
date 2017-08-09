@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -42,7 +43,7 @@ import org.systemsbiology.biofabric.util.NID;
 ** with a wide variety of different node layout algorithms, not just the default
 */
 
-public class DefaultEdgeLayout {
+public class DefaultEdgeLayout implements EdgeLayout {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -72,14 +73,24 @@ public class DefaultEdgeLayout {
   
   /***************************************************************************
   **
-  ** Relayout the network!
+  ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
   */
   
-  public void layoutEdges(BioFabricNetwork.RelayoutBuildData rbd, 
-  		                    BTProgressMonitor monitor) throws AsynchExitRequestException {
-    
-    Map<NID.WithName, Integer> nodeOrder = rbd.nodeOrder;
+  public void preProcessEdges(BioFabricNetwork.RelayoutBuildData rbd, 
+  		                        BTProgressMonitor monitor) throws AsynchExitRequestException {
+  	return;
+  }
 
+  /***************************************************************************
+  **
+  ** Relayout the network, but can accept a subset of network links and nodes.
+  */
+  
+  public SortedMap<Integer, FabricLink> layoutEdges(Map<NID.WithName, Integer> nodeOrder,
+  		                                              Set<FabricLink> allLinks,
+  		                                              List<String> linkGroups,
+  		                                              BioFabricNetwork.LayoutMode layoutMode,
+  		                                              BTProgressMonitor monitor) throws AsynchExitRequestException {
     //
     // Build target->row map:
     //
@@ -98,12 +109,12 @@ public class DefaultEdgeLayout {
     //
     
     Map<String, String> augToRel = new HashMap<String, String>();  
-    for (FabricLink link : rbd.allLinks) {	
+    for (FabricLink link : allLinks) {	
     	FabricLink.AugRelation augRel = link.getAugRelation();
     	String match = augToRel.get(augRel.relation);
     	if (match == null) {
-    		for (String rel : rbd.linkGroups) {
-    			if (bestSuffixMatch(augRel.relation, rel, rbd.linkGroups)) {
+    		for (String rel : linkGroups) {
+    			if (bestSuffixMatch(augRel.relation, rel, linkGroups)) {
     				augToRel.put(augRel.relation, rel);   				
     			}
     		}	
@@ -115,15 +126,15 @@ public class DefaultEdgeLayout {
     // between any two link to set the order. Since this is a TreeSet, this operation is roughly O(e * log e).
     //
     
-    DefaultFabricLinkLocater dfll = new DefaultFabricLinkLocater(targToRow, rbd.linkGroups, augToRel, rbd.layoutMode);
+    DefaultFabricLinkLocater dfll = new DefaultFabricLinkLocater(targToRow, linkGroups, augToRel, layoutMode);
     TreeSet<FabricLink> order = new TreeSet<FabricLink>(dfll);
    
     //
     // Do this discretely to allow progress bar:
     //
     
-    LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.linkLayout");
-    for (FabricLink link : rbd.allLinks) {
+    LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor, 0.0, 1.0, "progress.linkLayout");
+    for (FabricLink link : allLinks) {
     	lr.report();
       order.add(link);
     }
@@ -134,9 +145,21 @@ public class DefaultEdgeLayout {
     	retval.put(Integer.valueOf(count++), link);
     	lr.report();
     }    
-    rbd.setLinkOrder(retval);
     lr.finish();
 
+    return (retval);
+  }
+
+  /***************************************************************************
+  **
+  ** Relayout the whole network!
+  */
+  
+  public void layoutEdges(BioFabricNetwork.RelayoutBuildData rbd, 
+  		                    BTProgressMonitor monitor) throws AsynchExitRequestException {
+   
+    SortedMap<Integer, FabricLink> retval = layoutEdges(rbd.nodeOrder, rbd.allLinks, rbd.linkGroups, rbd.layoutMode, monitor);
+    rbd.setLinkOrder(retval);
     return;
   }
 
