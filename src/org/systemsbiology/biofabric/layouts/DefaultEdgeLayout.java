@@ -141,7 +141,7 @@ public class DefaultEdgeLayout {
   }
 
   /***************************************************************************
-  ** 
+  **
   ** Answer if the given relation has the best suffix match with the given match,
   ** given all the options. Thus, "430" should match "30" instead of "0" if both
   ** are present.

@@ -28,6 +28,7 @@ import org.systemsbiology.biofabric.util.NID;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -38,10 +39,53 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+
+import static org.systemsbiology.biofabric.analysis.NetworkAlignment.*;
+
 /****************************************************************************
  **
  ** This is the default layout algorithm
  */
+
+///***************************************************************************
+// **
+// ** Install Link groups for network alignments in this order:
+// *  1) All Covered Edges  2) uncovered G1  3) induced G2  4) half aligned half unaligned G2  5) full unaligned G2
+// *  Note: some link groups may not be present.
+// */
+//
+//private void installLinkGroupsForNetworkAlignment(BioFabricNetwork.RelayoutBuildData rbd,
+//        BTProgressMonitor monitor) throws AsynchExitRequestException {
+//
+//        LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.orderingLinkGroups");
+//        Set<String> relations = new HashSet<String>();
+//        for (FabricLink link : rbd.allLinks) {
+//        relations.add(link.getRelation());
+//        lr.report();
+//        }
+//        lr.finish();
+//
+//        List<String> groupOrder = new ArrayList<String>(relations);
+//
+//        // trivial operation (group order is at most length 5)
+//        Collections.sort(groupOrder, new NetworkAlignment.NetAlignLinkGroupLocator());
+//
+//        rbd.setGroupOrderAndMode(groupOrder, BioFabricNetwork.LayoutMode.PER_NETWORK_MODE);
+//
+//        return;
+//        }
+
+
+//if (rbd instanceof BioFabricNetwork.NetworkAlignmentBuildData) { // fill the link groups (in order)
+//        installLinkGroupsForNetworkAlignment(rbd, monitor);
+//        }
+
+//if (rbd instanceof BioFabricNetwork.NetworkAlignmentBuildData) {
+//        BioFabricNetwork.NetworkAlignmentBuildData nabd = (BioFabricNetwork.NetworkAlignmentBuildData) rbd;
+//        targetIDs = (new NetworkAlignmentLayout()).doNodeLayout(nabd, startNodeIDs, monitor);
+//        } else {
+//        targetIDs = defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs, startNodeIDs, monitor);
+//        }
 
 public class NetworkAlignmentLayout {
   
@@ -50,6 +94,9 @@ public class NetworkAlignmentLayout {
   // PRIVATE INSTANCE MEMBERS
   //
   ////////////////////////////////////////////////////////////////////////////
+  
+  Map<NID.WithName, List<FabricLink>> nodeToLinks;
+  Map<NID.WithName, List<NID.WithName>> nodeToNeigh;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -70,10 +117,10 @@ public class NetworkAlignmentLayout {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  public void doLayout(BioFabricNetwork.NetworkAlignmentBuildData rbd, NodeSimilarityLayout.CRParams params,
+  public void doLayout(BioFabricNetwork.NetworkAlignmentBuildData nabd, NodeSimilarityLayout.CRParams params,
                        BTProgressMonitor monitor) throws AsynchExitRequestException {
-    doNodeLayout(rbd, ((DefaultLayout.Params)params).startNodes, monitor);
-    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
+    doNodeLayout(nabd, ((DefaultLayout.Params)params).startNodes, monitor);
+    (new DefaultEdgeLayout()).layoutEdges(nabd, monitor);
     return;
   }
   
@@ -82,59 +129,509 @@ public class NetworkAlignmentLayout {
    ** Relayout the network!
    */
   
-  public List<NID.WithName> doNodeLayout(BioFabricNetwork.NetworkAlignmentBuildData rbd,
+  public List<NID.WithName> doNodeLayout(BioFabricNetwork.NetworkAlignmentBuildData nabd,
                                          List<NID.WithName> startNodeIDs,
                                          BTProgressMonitor monitor) throws AsynchExitRequestException {
     
-    List<NID.WithName> targetIDs = defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs, startNodeIDs, monitor);
+    preprocessNA(nabd);
     
-//    Set<FabricLink> alignedLinks = new HashSet<FabricLink>();
-//    Set<FabricLink> unalignedLinks = new HashSet<FabricLink>();
-//    Set<NID.WithName> alignedLoners = new HashSet<NID.WithName>();
-//    Set<NID.WithName> unalignedLoners = new HashSet<NID.WithName>();
-//
-//    for (FabricLink link : rbd.allLinks) {
-//      if (link.getRelation().equals("CCS") || link.getRelation().equals("G1A") || link.getRelation().equals("G2A")) {
-//        alignedLinks.add(link);
-//      } else{
-//        unalignedLinks.add(link);
-//      }
-//    }
-//
-//    for (NID.WithName loner : rbd.loneNodeIDs) {
-//      if (loner.getName().contains("-")) {
-//        alignedLoners.add(loner);
-//      } else {
-//        unalignedLoners.add(loner);
-//      }
-//    }
-//
-//    List<NID.WithName> aligned = defaultNodeOrder(alignedLinks, alignedLoners, null, monitor);
-//    List<NID.WithName> unaligned = defaultNodeOrder(unalignedLinks,unalignedLoners,null,monitor);
-//    List<NID.WithName> testTargetIDs = new ArrayList<NID.WithName>();
-//
-//    for (NID.WithName node : aligned) testTargetIDs.add(node); // SET DOES NOT PRESERVE ORDER
-//
-//    for (NID.WithName node : unaligned){
-//      if (!node.getName().contains("-"))
-//      testTargetIDs.add(node);
-//    }
-//
-//
-//    System.out.println(targetIDs.size() + "   " + testTargetIDs.size() +"  \n\n\n\n\n\n\n\n\n\n");
-//    System.out.println(alignedLinks.size() + "  " + unalignedLinks.size()+ " "+rbd.allLinks.size() +"  "+"\n\n\n");
+    List<NID.WithName> targetIDs = new ArrayList<NID.WithName>();
+    classToGroup = new ArrayList[21];
+    classToGroup[0] = null;
+    for (int i = 1;i <= 20;i++) {
+      classToGroup[i] = new ArrayList<NID.WithName>();
+    }
+    
+    Set<NID.WithName> allNodes = BioFabricNetwork.extractNodes(new ArrayList<FabricLink>(nabd.allLinks), nabd.loneNodeIDs, monitor);
+    for (NID.WithName node : allNodes) {
+      
+      int nodeClass = new NetAlignLayoutGrouper().getNodeClass(node);
+      
+      classToGroup[nodeClass].add(node);
+    }
     
     
-    //
-    // Now have the ordered list of targets we are going to display.
-    // Build target->row maps and the inverse:
-    //
+    for (int i = 1; i < classToGroup.length; i++) {
+      
+      Set<NID.WithName> setForm = new TreeSet<NID.WithName>(classToGroup[i]);
+      if (setForm.size() != classToGroup[i].size()) {
+        throw new IllegalStateException("different sizes classes");
+      }
+      
+      Collections.sort(classToGroup[i], new Comparator<NID.WithName>() {
+        public int compare(NID.WithName o1, NID.WithName o2) {
+          return nodeToNeigh.get(o1).size() - nodeToNeigh.get(o2).size();
+        }
+      });
+      
+      for (NID.WithName node : classToGroup[i]) {
+        if (targetIDs.contains(node)) {
+          throw new IllegalStateException("seeing contains");
+        }
+        targetIDs.add(node);
+      }
+    }
     
-//    installNodeOrder(new ArrayList<NID.WithName>(testTargetIDs), rbd, monitor);
-//    return (new ArrayList<NID.WithName>(testTargetIDs));
-    installNodeOrder(targetIDs, rbd, monitor);
+    installNodeOrder(targetIDs, nabd, monitor);
     return (new ArrayList<NID.WithName>(targetIDs));
   }
+  
+  
+  private void preprocessNA(BioFabricNetwork.NetworkAlignmentBuildData nabd) {
+    
+    nodeToLinks = new HashMap<NID.WithName, List<FabricLink>>();
+    nodeToNeigh = new HashMap<NID.WithName, List<NID.WithName>>();
+    
+    for (FabricLink link : nabd.allLinks) {
+      NID.WithName src = link.getSrcID(), trg = link.getTrgID();
+      
+      if (nodeToLinks.get(src) == null) {
+        nodeToLinks.put(src, new ArrayList<FabricLink>());
+      }
+      if (nodeToLinks.get(trg) == null) {
+        nodeToLinks.put(trg, new ArrayList<FabricLink>());
+      }
+      if (nodeToNeigh.get(src) == null) {
+        nodeToNeigh.put(src,new ArrayList<NID.WithName>());
+      }
+      if (nodeToNeigh.get(trg) == null) {
+        nodeToNeigh.put(trg,new ArrayList<NID.WithName>());
+      }
+      
+      nodeToLinks.get(src).add(link);
+      nodeToLinks.get(trg).add(link);
+      nodeToNeigh.get(src).add(trg);
+      nodeToNeigh.get(trg).add(src);
+    }
+    
+    for (NID.WithName node : nabd.loneNodeIDs) {
+      nodeToLinks.put(node, new ArrayList<FabricLink>());
+      nodeToNeigh.put(node, new ArrayList<NID.WithName>());
+    }
+    return;
+  }
+  
+  
+  private ArrayList<NID.WithName>[] classToGroup; // list should be set, but error checking for now. . .
+  
+  /*
+  FIRST LG = PURPLE EDGES
+  SECOND LG = BLUE EDGES
+  THIRD LG = RED EDGES
+  FOURTH LG = ORANGE EDGES (TECHNICALLY A RED EDGE)
+  FIFTH LG = YELLOW EDGES  (TECHNICALLY A RED EDGE)
+   */
+  
+  
+  private final int
+          PURPLE_WITH_ONLY_PURPLE = 1,             // FIRST THREE LINK GROUPS
+          PURPLE_WITH_ONLY_BLUE = 2,
+          PURPLE_WITH_ONLY_RED = 3,
+          PURPLE_WITH_PURPLE_BLUE = 4,
+          PURPLE_WITH_PURPLE_RED = 5,
+          PURPLE_WITH_BLUE_RED = 6,
+          PURPLE_WITH_PURPLE_BLUE_RED = 7,
+         
+          PURPLE_WITH_ONLY_ORANGE = 8,              // PURPLE NODES IN LINK GROUP 3
+          PURPLE_WITH_PURPLE_ORANGE = 9,
+          PURPLE_WITH_BLUE_ORANGE = 10,
+          PURPLE_WITH_RED_ORANGE = 11,
+          PURPLE_WITH_PURPLE_BLUE_ORANGE = 12,
+          PURPLE_WITH_PURPLE_RED_ORANGE = 13,
+          PURPLE_WITH_BLUE_RED_ORANGE = 14,
+          PURPLE_WITH_PURPLE_BLUE_RED_ORANGE = 15,
+          PURPLE_SINGLETON = 16,
+  
+          RED_WITH_ORANGE = 17,                    // RED NODES IN LINK GROUP 5
+          RED_WITH_ONLY_YELLOW = 18,
+          RED_WITH_ORANGE_YELLOW = 19,
+          RED_SINGLETON = 20;
+  
+  
+  class NetAlignLayoutGrouper {
+  
+    // LINK GROUPS 1, 2, 3
+    boolean PURPLE_WITH_ONLY_PURPLE(NID.WithName node) {
+      if (! isPurple(node)) {
+        return false;
+      }
+    
+      String[] rels = {COVERED_EDGE};
+  
+  
+      boolean isOK = onlyPurpleNodes(node) && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+    }
+  
+    boolean PURPLE_WITH_ONLY_BLUE(NID.WithName node) {
+      if (! isPurple(node)) {
+        return false;
+      }
+  
+      String[] rels = {GRAPH1};
+  
+  
+      boolean isOK = onlyPurpleNodes(node) && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+  
+    }
+  
+    boolean PURPLE_WITH_ONLY_RED(NID.WithName node) {
+      if (! isPurple(node)) {
+        return false;
+      }
+  
+      String[] rels = {INDUCED_GRAPH2};
+  
+  
+      boolean isOK = onlyPurpleNodes(node) && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+    }
+  
+    boolean PURPLE_WITH_PURPLE_BLUE(NID.WithName node) {
+      if (! isPurple(node)) {
+        return false;
+      }
+  
+      String[] rels = {COVERED_EDGE, GRAPH1};
+  
+  
+      boolean isOK = onlyPurpleNodes(node) && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+    }
+  
+    boolean PURPLE_WITH_PURPLE_RED(NID.WithName node) {
+      if (! isPurple(node)) {
+        return false;
+      }
+  
+      String[] rels = {COVERED_EDGE, INDUCED_GRAPH2};
+  
+  
+      boolean isOK = onlyPurpleNodes(node) && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+  
+    }
+  
+    boolean PURPLE_WITH_BLUE_RED(NID.WithName node) {
+      if (! isPurple(node)) {
+        return false;
+      }
+  
+      String[] rels = {GRAPH1, INDUCED_GRAPH2};
+  
+  
+      boolean isOK = onlyPurpleNodes(node) && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+    }
+  
+    boolean PURPLE_WITH_PURPLE_BLUE_RED(NID.WithName node) {
+      if (! isPurple(node)) {
+        return false;
+      }
+  
+      String[] rels = {COVERED_EDGE, GRAPH1, INDUCED_GRAPH2};
+  
+  
+      boolean isOK = onlyPurpleNodes(node) && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+  
+    }
+  
+    // LINK GROUP 4
+    boolean PURPLE_WITH_ONLY_ORANGE(NID.WithName node) {
+      if (! isPurple(node)) {
+        return false;
+      }
+      String[] rels = {HALF_UNALIGNED_GRAPH2};
+  
+  
+      boolean isOK = onlyRedNodes(node) && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+    }
+  
+    boolean PURPLE_WITH_PURPLE_ORANGE(NID.WithName node) {
+      if (! isPurple(node)) {
+        return false;
+      }
+  
+      String[] rels = {COVERED_EDGE, HALF_UNALIGNED_GRAPH2};
+  
+  
+      boolean isOK = true && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+    }
+  
+    boolean PURPLE_WITH_BLUE_ORANGE(NID.WithName node) {
+      if (! isPurple(node)) {
+        return false;
+      }
+  
+      String[] rels = {GRAPH1, HALF_UNALIGNED_GRAPH2};
+  
+  
+      boolean isOK = true && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+  
+    }
+  
+    boolean PURPLE_WITH_RED_ORANGE(NID.WithName node) {
+      if (! isPurple(node)) {
+        return false;
+      }
+  
+      String[] rels = {INDUCED_GRAPH2, HALF_UNALIGNED_GRAPH2};
+  
+  
+      boolean isOK = true && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+    }
+  
+    boolean PURPLE_WITH_PURPLE_BLUE_ORANGE(NID.WithName node) {
+      if (! isPurple(node)) {
+        return false;
+      }
+  
+      String[] rels = {COVERED_EDGE, GRAPH1, HALF_UNALIGNED_GRAPH2};
+  
+  
+      boolean isOK = true && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+    }
+  
+    boolean PURPLE_WITH_PURPLE_RED_ORANGE(NID.WithName node) {
+      if (! isPurple(node)) {
+        return false;
+      }
+  
+      String[] rels = {COVERED_EDGE, INDUCED_GRAPH2, HALF_UNALIGNED_GRAPH2};
+  
+  
+      boolean isOK = true && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+  
+    }
+  
+    boolean PURPLE_WITH_BLUE_RED_ORANGE(NID.WithName node) {
+      if (! isPurple(node)) {
+        return false;
+      }
+  
+      String[] rels = {GRAPH1, INDUCED_GRAPH2, HALF_UNALIGNED_GRAPH2};
+  
+  
+      boolean isOK = true && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+  
+    }
+  
+    boolean PURPLE_WITH_PURPLE_BLUE_RED_ORANGE(NID.WithName node) {
+      if (! isPurple(node)) {
+        return false;
+      }
+  
+      String[] rels = {COVERED_EDGE, GRAPH1, INDUCED_GRAPH2, HALF_UNALIGNED_GRAPH2};
+  
+  
+      boolean isOK = true && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+    }
+  
+    boolean PURPLE_SINGLETON(NID.WithName node) {
+    
+      if (!isPurple(node))  {
+        return false;
+      }
+      return nodeToLinks.get(node).isEmpty() && nodeToNeigh.get(node).isEmpty();
+    }
+  
+    boolean RED_WITH_ORANGE(NID.WithName node) {
+      if (! isRed(node)) {
+        return false;
+      }
+  
+      String[] rels = {HALF_UNALIGNED_GRAPH2};
+  
+  
+      boolean isOK = true && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+    }
+  
+    // LINK GROUP 5
+    boolean RED_WITH_ONLY_YELLOW(NID.WithName node) {
+      if (! isRed(node)) {
+        return false;
+      }
+  
+      String[] rels = {FULL_UNALIGNED_GRAPH2};
+  
+  
+      boolean isOK = onlyRedNodes(node) && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+    }
+  
+    boolean RED_WITH_ORANGE_YELLOW(NID.WithName node) {
+      if (! isRed(node)) {
+        return false;
+      }
+  
+      String[] rels = {HALF_UNALIGNED_GRAPH2, FULL_UNALIGNED_GRAPH2};
+  
+  
+      boolean isOK = true && onlyEdgesOfRels(node, rels);
+  
+      return isOK;
+    }
+    
+    boolean RED_SINGLETON(NID.WithName node) {
+    
+      if (!isRed(node))  {
+        return false;
+      }
+      return nodeToLinks.get(node).isEmpty() && nodeToNeigh.get(node).isEmpty();
+    }
+  
+  
+    int getNodeClass(NID.WithName node) {
+    
+      // LINK GROUP 1, 2 , 3
+      if (PURPLE_WITH_ONLY_PURPLE(node)) {
+        return PURPLE_WITH_ONLY_PURPLE;
+        
+      } else if (PURPLE_WITH_ONLY_BLUE(node)){
+        return PURPLE_WITH_ONLY_BLUE;
+        
+      } else if (PURPLE_WITH_ONLY_RED(node)) {
+        return PURPLE_WITH_ONLY_RED;
+        
+      } else if (PURPLE_WITH_PURPLE_BLUE(node)) {
+        return PURPLE_WITH_PURPLE_BLUE;
+        
+      } else if (PURPLE_WITH_PURPLE_RED(node)) {
+        return PURPLE_WITH_PURPLE_RED;
+  
+      } else if (PURPLE_WITH_BLUE_RED(node)) {
+        return PURPLE_WITH_BLUE_RED;
+  
+      } else if (PURPLE_WITH_PURPLE_BLUE_RED(node)) {
+        return PURPLE_WITH_PURPLE_BLUE_RED;
+  
+        // LINK GROUP 4
+      } else if (PURPLE_WITH_ONLY_ORANGE(node)) {
+        return PURPLE_WITH_ONLY_ORANGE;
+  
+      } else if (PURPLE_WITH_BLUE_ORANGE(node)) {
+        return PURPLE_WITH_BLUE_ORANGE;
+  
+      } else if (PURPLE_WITH_RED_ORANGE(node)) {
+        return PURPLE_WITH_RED_ORANGE;
+  
+      } else if (PURPLE_WITH_PURPLE_BLUE_ORANGE(node)) {
+        return PURPLE_WITH_PURPLE_BLUE_ORANGE;
+  
+      } else if (PURPLE_WITH_PURPLE_RED_ORANGE(node)) {
+        return PURPLE_WITH_PURPLE_RED_ORANGE;
+  
+      } else if (PURPLE_WITH_BLUE_RED_ORANGE(node)) {
+        return PURPLE_WITH_BLUE_RED_ORANGE;
+  
+      } else if (PURPLE_WITH_PURPLE_BLUE_RED_ORANGE(node)) {
+        return PURPLE_WITH_PURPLE_BLUE_RED_ORANGE;
+  
+      } else if (PURPLE_WITH_BLUE_RED_ORANGE(node)) {
+        return PURPLE_WITH_BLUE_RED_ORANGE;
+  
+      } else if (RED_WITH_ORANGE(node)) {
+        return RED_WITH_ORANGE;
+  
+        // LINK GROUP 5
+      } else if (RED_WITH_ONLY_YELLOW(node)) {
+        return RED_WITH_ONLY_YELLOW;
+  
+      } else if (RED_WITH_ORANGE_YELLOW(node)) {
+        return RED_WITH_ORANGE_YELLOW;
+        
+      } else if (PURPLE_SINGLETON(node)) {
+        return PURPLE_SINGLETON;
+        
+      } else if (RED_SINGLETON(node)) {
+        return RED_SINGLETON;
+        
+      } else {
+        System.out.println(node.getName());
+        throw new IllegalArgumentException();
+      }
+      
+    }
+  }
+  
+  boolean onlyRedNodes(NID.WithName node) {
+    for (NID.WithName neigh : nodeToNeigh.get(node)) {
+      if (! isRed(neigh)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  
+  boolean onlyPurpleNodes(NID.WithName node) {
+    
+    for (NID.WithName neigh : nodeToNeigh.get(node)) {
+      if (! isPurple(neigh)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  
+  boolean onlyEdgesOfRels(NID.WithName node, String[] relsAllowed) {
+    
+    for (FabricLink link : nodeToLinks.get(node)) {
+      
+      boolean linkAllowed = false;
+      
+      for (String rel : relsAllowed) {
+        if (link.getRelation().equals(rel)) {
+          linkAllowed = true;
+        }
+      }
+      
+      if (!linkAllowed) {
+        return false;
+      }
+//      if (! link.getRelation().equals(rel)) {
+//        return false;
+//      }
+    }
+    return true;
+  }
+  
+  boolean isPurple(NID.WithName node) {
+    return node.getName().contains("-");
+  }
+  
+  boolean isRed(NID.WithName node) {
+    return !isPurple(node);
+  }
+  
+  
   
   /***************************************************************************
    **
@@ -373,18 +870,76 @@ public class NetworkAlignmentLayout {
     return;
   }
   
-  /***************************************************************************
-   **
-   ** For passing around layout params
-   */
-  
-  public static class Params implements NodeSimilarityLayout.CRParams {
-    
-    public List<NID.WithName> startNodes;
-    
-    public Params(List<NID.WithName> startNodes) {
-      this.startNodes = startNodes;
-    }
-  }
-  
 }
+
+//      List<NID.WithName> groupOrder = defaultNodeOrder(setForm, new HashSet<NID.WithName>(), null, null);
+
+//      Set<FabricLink> groupLinks = new HashSet<FabricLink>();
+//      for (NID.WithName node : setForm) {
+//
+//        groupLinks.addAll(nodeToLinks.get(node));
+//      }
+//
+//      List<NID.WithName> groupOrder;
+//      if (i != PURPLE_SINGLETON && i != RED_SINGLETON) {
+//        groupOrder = defaultNodeOrder(groupLinks, new HashSet<NID.WithName>(),null,null);
+//      } else {
+//        groupOrder = defaultNodeOrder(new HashSet<FabricLink>(), setForm, null,null);
+//      }
+//
+//      if (groupOrder.size() != setForm.size()) {
+//        throw new IllegalStateException("different sizes group-set");
+//      }
+//
+//      for (NID.WithName node : groupOrder) {
+//        if (targetIDs.contains(node)) {
+//          throw new IllegalStateException("seeing contains");
+//        }
+//        targetIDs.add(node);
+//      }
+
+
+//    Set<FabricLink> alignedLinks = new HashSet<FabricLink>();
+//    Set<FabricLink> unalignedLinks = new HashSet<FabricLink>();
+//    Set<NID.WithName> alignedLoners = new HashSet<NID.WithName>();
+//    Set<NID.WithName> unalignedLoners = new HashSet<NID.WithName>();
+//
+//    for (FabricLink link : rbd.allLinks) {
+//      if (link.getRelation().equals("CCS") || link.getRelation().equals("G1A") || link.getRelation().equals("G2A")) {
+//        alignedLinks.add(link);
+//      } else{
+//        unalignedLinks.add(link);
+//      }
+//    }
+//
+//    for (NID.WithName loner : rbd.loneNodeIDs) {
+//      if (loner.getName().contains("-")) {
+//        alignedLoners.add(loner);
+//      } else {
+//        unalignedLoners.add(loner);
+//      }
+//    }
+//
+//    List<NID.WithName> aligned = defaultNodeOrder(alignedLinks, alignedLoners, null, monitor);
+//    List<NID.WithName> unaligned = defaultNodeOrder(unalignedLinks,unalignedLoners,null,monitor);
+//    List<NID.WithName> testTargetIDs = new ArrayList<NID.WithName>();
+//
+//    for (NID.WithName node : aligned) testTargetIDs.add(node); // SET DOES NOT PRESERVE ORDER
+//
+//    for (NID.WithName node : unaligned){
+//      if (!node.getName().contains("-"))
+//      testTargetIDs.add(node);
+//    }
+//
+//
+//    System.out.println(targetIDs.size() + "   " + testTargetIDs.size() +"  \n\n\n\n\n\n\n\n\n\n");
+//    System.out.println(alignedLinks.size() + "  " + unalignedLinks.size()+ " "+rbd.allLinks.size() +"  "+"\n\n\n");
+
+
+//
+// Now have the ordered list of targets we are going to display.
+// Build target->row maps and the inverse:
+//
+
+//    installNodeOrder(new ArrayList<NID.WithName>(testTargetIDs), rbd, monitor);
+//    return (new ArrayList<NID.WithName>(testTargetIDs));r

@@ -105,14 +105,7 @@ public class DefaultLayout {
   		                                   List<NID.WithName> startNodeIDs,
   		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
   
-    List<NID.WithName> targetIDs;
-    
-    if (rbd instanceof BioFabricNetwork.NetworkAlignmentBuildData) {
-      BioFabricNetwork.NetworkAlignmentBuildData nabd = (BioFabricNetwork.NetworkAlignmentBuildData) rbd;
-      targetIDs = (new NetworkAlignmentLayout()).doNodeLayout(nabd, startNodeIDs, monitor);
-    } else {
-      targetIDs = defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs, startNodeIDs, monitor);
-    }
+    List<NID.WithName> targetIDs = defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs, startNodeIDs, monitor);
 
     //
     // Now have the ordered list of targets we are going to display.

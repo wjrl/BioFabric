@@ -2444,7 +2444,7 @@ public class BioFabricNetwork {
    ** Extract nodes
    */
   
-  public static Set<NID.WithName> extractNodes(List<FabricLink> allLinks, HashSet<NID.WithName> loneNodeIDs,
+  public static Set<NID.WithName> extractNodes(List<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
                                                BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     Set<NID.WithName> retval = new HashSet<NID.WithName>(loneNodeIDs);

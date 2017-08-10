@@ -184,7 +184,7 @@ public class GWImportLoader extends FabricImportLoader {
     if (consTokIndex_ == HEADER_LINES + numNodes_ + 1 + numEdges_ + 1) { // reached end of file
       addLoneNodes(idGen, loneNodeIDs, nameToID);
     }
-    
+    // We don't check if there may be more lines or edges after the specified number of edges
     return;
   }
   

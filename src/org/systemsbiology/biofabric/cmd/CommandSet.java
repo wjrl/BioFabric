@@ -964,9 +964,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     // Decide which graph has more nodes - graph 1 is smaller (#nodes) than graph 2 from here on
     //
   
+    // small graph
     ArrayList<FabricLink> linksSmall = new ArrayList<FabricLink>();
     HashSet<NID.WithName> lonersSmall = new HashSet<NID.WithName>();
   
+    // large graph
     ArrayList<FabricLink> linksLarge = new ArrayList<FabricLink>();
     HashSet<NID.WithName> lonersLarge = new HashSet<NID.WithName>();
   
@@ -991,7 +993,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         int numLinksB = linksGraphB.size();
         
         if (numLinksA >= numLinksB) { // if #links are still equal, we do choose graphA as larger
-          linksLarge = linksGraphA;
+          linksLarge = linksGraphA;   // We don't take the alignment file into consideration. . .
           lonersLarge = loneNodeIDsGraphA;
           linksSmall = linksGraphB;
           lonersSmall = loneNodeIDsGraphB;
