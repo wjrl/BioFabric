@@ -31,6 +31,7 @@ import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.analysis.CycleFinder;
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
+import org.systemsbiology.biofabric.layouts.NodeLayout.Params;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
@@ -43,7 +44,7 @@ import org.systemsbiology.biofabric.util.NID;
 ** This is a hierarchical layout for a directed acyclic graph
 */
 
-public class HierDAGLayout {
+public class HierDAGLayout extends NodeLayout {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -89,8 +90,9 @@ public class HierDAGLayout {
   ** Find out if the necessary conditions for this layout are met. 
   */
   
+  @Override
   public boolean criteriaMet(BioFabricNetwork.RelayoutBuildData rbd,
-  		                     BTProgressMonitor monitor) throws AsynchExitRequestException, 
+  		                       BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                              LayoutCriterionFailureException {
   	//
   	// 1) All the relations in the network are directed
@@ -116,23 +118,12 @@ public class HierDAGLayout {
 
   /***************************************************************************
   **
-  ** Layout the network
-  */
-  
-  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd,
-  		                 BTProgressMonitor monitor) throws AsynchExitRequestException {
-    doNodeLayout(rbd, monitor);
-    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
-    return;
-  }
-  
-  /***************************************************************************
-  **
   ** Generate the Node ordering
   */
   
-  private List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, 
-  		   																  BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd,
+  		                                   Params params,
+  		   																 BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     List<NID.WithName> targets = orderByNodeDegree(rbd, monitor);       
 
@@ -141,7 +132,7 @@ public class HierDAGLayout {
     // Build target->row maps and the inverse:
     //
     
-    (new DefaultLayout()).installNodeOrder(targets, rbd, monitor);
+    installNodeOrder(targets, rbd, monitor);
     return (targets);
   }
   
@@ -236,7 +227,7 @@ public class HierDAGLayout {
   ** Add to list to place
   */
 
-  public void addToPlaceList(List<NID.WithName> nextBatch) {
+  private void addToPlaceList(List<NID.WithName> nextBatch) {
     int nextRow = placeList_.size();
     for (NID.WithName nextNode : nextBatch) {
       placeList_.add(nextNode);
@@ -250,7 +241,7 @@ public class HierDAGLayout {
   ** Extract the root nodes in order from highest degree to low
   */
 
-  public List<NID.WithName> extractRoots(BTProgressMonitor monitor) throws AsynchExitRequestException {
+  private List<NID.WithName> extractRoots(BTProgressMonitor monitor) throws AsynchExitRequestException {
  
     LoopReporter lr = new LoopReporter(l2s_.size(), 20, monitor, 0.0, 1.0, "progress.rootExtractPass1");
     
@@ -311,7 +302,7 @@ public class HierDAGLayout {
   ** Find the next guys to go:
   */
 
-  public List<NID.WithName> findNextCandidates() {
+  private List<NID.WithName> findNextCandidates() {
  
     HashSet<NID.WithName> quickie = new HashSet<NID.WithName>(placeList_);
      

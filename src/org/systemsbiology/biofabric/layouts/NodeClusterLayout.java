@@ -52,7 +52,7 @@ import org.systemsbiology.biofabric.util.UniqueLabeller;
 ** This does node clustering layout
 */
 
-public class NodeClusterLayout {
+public class NodeClusterLayout extends NodeLayout {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -78,9 +78,9 @@ public class NodeClusterLayout {
   **
   */
   
-   public void orderByClusterAssignment(BioFabricNetwork.RelayoutBuildData rbd, 
-                                        NodeSimilarityLayout.CRParams crParams,
-                                        BTProgressMonitor monitor) throws AsynchExitRequestException { 
+   public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, 
+							                            Params crParams,
+							                            BTProgressMonitor monitor) throws AsynchExitRequestException { 
      
     //
     // Go through all the links. If a link source and target are both in the same cluster, we add the link to the cluster
@@ -198,7 +198,7 @@ public class NodeClusterLayout {
       }
       List<NID.WithName> targets;
       if (intraLay == BioFabricNetwork.BuildMode.CLUSTERED_LAYOUT) {
-        NodeSimilarityLayout.CRParams crp = new NodeSimilarityLayout.ClusterParams();
+        NodeSimilarityLayout.ClusterParams crp = new NodeSimilarityLayout.ClusterParams();
     	  NodeSimilarityLayout nslLayout = new NodeSimilarityLayout();
     	  pcrbd.existingIDOrder = new ArrayList<NID.WithName>(pcrbd.allNodeIDs);
     	 // FAIL
@@ -215,7 +215,7 @@ public class NodeClusterLayout {
     interNodesOnly.removeAll(allTargets);
     allTargets.addAll(interNodesOnly);
     
-    (new DefaultLayout()).installNodeOrder(allTargets, rbd, monitor);
+    installNodeOrder(allTargets, rbd, monitor);
     
     (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
     
@@ -283,7 +283,7 @@ public class NodeClusterLayout {
     if (params.saveAssign) {
     	rbd.clustAssign = params.getClusterAssign(); 
     }
-    return;
+    return (allTargets);
   }
    
   /***************************************************************************
@@ -375,7 +375,6 @@ public class NodeClusterLayout {
     }
   	return (retval);
   }
-
   
   /***************************************************************************
   **
@@ -460,7 +459,7 @@ public class NodeClusterLayout {
   ** For passing around layout params
   */  
   
-  public static class ClusterParams implements NodeSimilarityLayout.CRParams {
+  public static class ClusterParams implements NodeLayout.Params {
         
     public enum Source {STORED, FILE, PLUGIN};
     

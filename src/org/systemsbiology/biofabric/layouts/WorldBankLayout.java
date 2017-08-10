@@ -45,7 +45,7 @@ import org.systemsbiology.biofabric.util.UiUtil;
 ** This does the "world bank" layout
 */
 
-public class WorldBankLayout {
+public class WorldBankLayout extends NodeLayout {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -90,6 +90,7 @@ public class WorldBankLayout {
   ** Find out if the necessary conditions for this layout are met. 
   */
   
+  @Override
   public boolean criteriaMet(BioFabricNetwork.RelayoutBuildData rbd,
                            BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                              LayoutCriterionFailureException {
@@ -119,27 +120,15 @@ public class WorldBankLayout {
    // }
     return (true);  
   }
-   
-  /***************************************************************************
-  **
-  ** Relayout the network!
-  */
-  
-  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd,                            
-  		                 BTProgressMonitor monitor) throws AsynchExitRequestException { 
-
-    doNodeLayout(rbd, monitor); 
-    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
-    return;
-  }
   
   /***************************************************************************
   **
   ** Relayout the network!
   */
   
-  private List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd,
-  		                                    BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd,
+  																			 Params params,
+  		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     List<NID.WithName> targets = calcNodeOrder(rbd.allLinks, rbd.loneNodeIDs, monitor);       
 
@@ -148,7 +137,7 @@ public class WorldBankLayout {
     // Build target->row maps and the inverse:
     //
     
-    (new DefaultLayout()).installNodeOrder(targets, rbd, monitor);
+    installNodeOrder(targets, rbd, monitor);
     return (targets);
   }
   

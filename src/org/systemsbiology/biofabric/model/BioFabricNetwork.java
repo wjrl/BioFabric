@@ -39,6 +39,12 @@ import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
+import org.systemsbiology.biofabric.layouts.EdgeLayout;
+import org.systemsbiology.biofabric.layouts.NetworkAlignmentLayout;
+import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
+import org.systemsbiology.biofabric.layouts.NodeLayout;
+import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
+import org.systemsbiology.biofabric.layouts.WorldBankLayout;
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -525,7 +531,8 @@ public class BioFabricNetwork {
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
     //
 
-    List<NID.WithName> targetIDs =  (new DefaultLayout()).doNodeLayout(rbd, null, monitor);
+  	NodeLayout layout = rbd.getNodeLayout();
+    List<NID.WithName> targetIDs = layout.doNodeLayout(rbd, null, monitor);
     
     //
     // Now have the ordered list of targets we are going to display.
@@ -534,11 +541,17 @@ public class BioFabricNetwork {
     fillNodesFromOrder(targetIDs, rbd.colGen, rbd.clustAssign, monitor);
 
     //
-    // This now assigns the link to its column.  Note that we order them
-    // so that the shortest vertical link is drawn first!
+    // This now assigns the link to its column. The RelayoutBuildData gives us
+    // the algorithm to use; typically we order them so that the shortest vertical 
+    // link is drawn first.
+    // Before we do layout, we give the algorithm a chance to e.g. install link groups
+    // that will be used in the link layout.
     //
     
-    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
+    EdgeLayout edgeLayout = rbd.getEdgeLayout();
+    edgeLayout.preProcessEdges(rbd, monitor);
+    
+    edgeLayout.layoutEdges(rbd, monitor);
     specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, false, monitor);
 
     //
@@ -2362,6 +2375,28 @@ public class BioFabricNetwork {
       return;
     }
     
+    public NodeLayout getNodeLayout() {
+    	switch (mode) {
+    	  case DEFAULT_LAYOUT:
+    	  case BUILD_FROM_SIF:
+    	  	return (new DefaultLayout());
+    	  case WORLD_BANK_LAYOUT:
+    	  	return (new WorldBankLayout());
+    	  case REORDER_LAYOUT:
+        case CLUSTERED_LAYOUT:
+          return (new NodeSimilarityLayout()); 	
+        case NODE_CLUSTER_LAYOUT:
+          return (new NodeClusterLayout());
+    	  default:
+    	  	System.err.println("Mode = " + mode);
+    	  	return (new DefaultLayout());
+    	} 	
+    }
+ 
+    public EdgeLayout getEdgeLayout() {
+    	return (new DefaultEdgeLayout());	
+    }
+
   }
   
   /***************************************************************************
@@ -2379,6 +2414,16 @@ public class BioFabricNetwork {
       this.layoutMode = LayoutMode.PER_NETWORK_MODE;
     }
     
+    @Override
+    public NodeLayout getNodeLayout() {
+    	return (new NetworkAlignmentLayout());	
+    }
+    
+    @Override
+    public EdgeLayout getEdgeLayout() {
+    	return (new DefaultEdgeLayout());	// Replace with NetworkAlignmentEdgeLayout, which can be derived from DefaultEdgeLayout
+    }
+
   }
  
   /***************************************************************************

@@ -43,7 +43,7 @@ import org.systemsbiology.biofabric.util.NID;
 ** This is the default layout algorithm
 */
 
-public class DefaultLayout {
+public class DefaultLayout extends NodeLayout {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -71,40 +71,20 @@ public class DefaultLayout {
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-  
-  /***************************************************************************
-  **
-  ** Find out if the necessary conditions for this layout are met. This layout handles
-  ** anything.
-  */
-   
-  public boolean criteriaMet(BioFabricNetwork.RelayoutBuildData rbd,
-                             BTProgressMonitor monitor) throws AsynchExitRequestException, 
-                                                               LayoutCriterionFailureException {
-    return (true);
-  }
 
   /***************************************************************************
   **
   ** Relayout the network!
   */
   
-  public void doLayout(BioFabricNetwork.RelayoutBuildData rbd, NodeSimilarityLayout.CRParams params,
-  		  		           BTProgressMonitor monitor) throws AsynchExitRequestException {
-    doNodeLayout(rbd, ((Params)params).startNodes, monitor);
-    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
-    return;
-  }
-  
-  /***************************************************************************
-  **
-  ** Relayout the network!
-  */
-  
   public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, 
-  		                                   List<NID.WithName> startNodeIDs,
+  		                                   Params params,
   		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
   
+<<<<<<< HEAD
+=======
+    List<NID.WithName> startNodeIDs = (params == null) ? null : ((DefaultParams)params).startNodes;   
+>>>>>>> wjrl/Sprint5
     List<NID.WithName> targetIDs = defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs, startNodeIDs, monitor);
 
     //
@@ -115,33 +95,10 @@ public class DefaultLayout {
     installNodeOrder(targetIDs, rbd, monitor);
     return (targetIDs);
   }
-  
-  /***************************************************************************
-  **
-  ** Install node orders
-  */
-  
-  public void installNodeOrder(List<NID.WithName> targetIDs, BioFabricNetwork.RelayoutBuildData rbd, 
-  		                         BTProgressMonitor monitor) throws AsynchExitRequestException {
-    int currRow = 0;
-    LoopReporter lr = new LoopReporter(targetIDs.size(), 20, monitor, 0.0, 1.0, "progress.installOrdering");
-    
-    HashMap<NID.WithName, Integer> nodeOrder = new HashMap<NID.WithName, Integer>();
-    Iterator<NID.WithName> trit = targetIDs.iterator();
-    while (trit.hasNext()) {
-      NID.WithName target = trit.next();
-      lr.report();
-      Integer rowTag = Integer.valueOf(currRow++);
-      nodeOrder.put(target, rowTag);
-    }  
-    rbd.setNodeOrder(nodeOrder);
-    lr.finish();
-    return;
-  }
 
   /***************************************************************************
   ** 
-  ** Calculate default node order
+  ** Calculate default node order. Used by several other layout classes
   */
 
   public List<NID.WithName> defaultNodeOrder(Set<FabricLink> allLinks,
@@ -352,18 +309,19 @@ public class DefaultLayout {
     lr.finish();
     return;
   }
-
+  
   /***************************************************************************
   **
   ** For passing around layout params
   */  
   
-  public static class Params implements NodeSimilarityLayout.CRParams {
+  public static class DefaultParams implements Params {
         
     public List<NID.WithName> startNodes;
 
-    public Params(List<NID.WithName> startNodes) {
+    public DefaultParams(List<NID.WithName> startNodes) {
       this.startNodes = startNodes;
     } 
   }
+
 }

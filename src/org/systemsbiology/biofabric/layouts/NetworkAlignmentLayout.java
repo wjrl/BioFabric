@@ -19,6 +19,7 @@
 
 package org.systemsbiology.biofabric.layouts;
 
+import org.systemsbiology.biofabric.layouts.DefaultLayout.DefaultParams;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
@@ -47,6 +48,7 @@ import static org.systemsbiology.biofabric.analysis.NetworkAlignment.*;
  ** This is the default layout algorithm
  */
 
+<<<<<<< HEAD
 ///***************************************************************************
 // **
 // ** Install Link groups for network alignments in this order:
@@ -88,6 +90,9 @@ import static org.systemsbiology.biofabric.analysis.NetworkAlignment.*;
 //        }
 
 public class NetworkAlignmentLayout {
+=======
+public class NetworkAlignmentLayout extends NodeLayout {
+>>>>>>> wjrl/Sprint5
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -116,6 +121,7 @@ public class NetworkAlignmentLayout {
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
+<<<<<<< HEAD
   
   public void doLayout(BioFabricNetwork.NetworkAlignmentBuildData nabd, NodeSimilarityLayout.CRParams params,
                        BTProgressMonitor monitor) throws AsynchExitRequestException {
@@ -124,16 +130,30 @@ public class NetworkAlignmentLayout {
     return;
   }
   
+=======
+
+>>>>>>> wjrl/Sprint5
   /***************************************************************************
-   **
-   ** Relayout the network!
-   */
+  **
+  ** Relayout the network!
+  */
   
+<<<<<<< HEAD
   public List<NID.WithName> doNodeLayout(BioFabricNetwork.NetworkAlignmentBuildData nabd,
                                          List<NID.WithName> startNodeIDs,
                                          BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     preprocessNA(nabd);
+=======
+  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd,
+                                         Params params,
+                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
+    
+  	
+  	List<NID.WithName> startNodeIDs = ((DefaultParams)params).startNodes;
+  	
+    List<NID.WithName> targetIDs = defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs, startNodeIDs, monitor);
+>>>>>>> wjrl/Sprint5
     
     List<NID.WithName> targetIDs = new ArrayList<NID.WithName>();
     classToGroup = new ArrayList[21];
@@ -869,7 +889,10 @@ public class NetworkAlignmentLayout {
     lr.finish();
     return;
   }
+<<<<<<< HEAD
   
+=======
+>>>>>>> wjrl/Sprint5
 }
 
 //      List<NID.WithName> groupOrder = defaultNodeOrder(setForm, new HashSet<NID.WithName>(), null, null);
