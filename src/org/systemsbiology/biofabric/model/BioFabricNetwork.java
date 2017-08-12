@@ -32,19 +32,20 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import org.xml.sax.Attributes;
-
-import org.systemsbiology.biofabric.analysis.Link;
-import org.systemsbiology.biofabric.io.AttributeLoader;
-import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.EdgeLayout;
+import org.systemsbiology.biofabric.layouts.NetworkAlignmentEdgeLayout;
 import org.systemsbiology.biofabric.layouts.NetworkAlignmentLayout;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.layouts.WorldBankLayout;
+import org.xml.sax.Attributes;
+
+import org.systemsbiology.biofabric.analysis.Link;
+import org.systemsbiology.biofabric.io.AttributeLoader;
+import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -2414,14 +2415,12 @@ public class BioFabricNetwork {
       this.layoutMode = LayoutMode.PER_NETWORK_MODE;
     }
     
-    @Override
     public NodeLayout getNodeLayout() {
     	return (new NetworkAlignmentLayout());	
     }
     
-    @Override
     public EdgeLayout getEdgeLayout() {
-    	return (new DefaultEdgeLayout());	// Replace with NetworkAlignmentEdgeLayout, which can be derived from DefaultEdgeLayout
+    	return (new NetworkAlignmentEdgeLayout());
     }
 
   }

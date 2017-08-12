@@ -298,7 +298,7 @@ public class NetworkAlignmentDialog extends JDialog {
   
   public static class NetworkAlignmentDialogInfo {
     
-    public File graphA, graphB, align; // graph1 and graph2 can be out of order (size), hence graphA and graphB
+    public final File graphA, graphB, align; // graph1 and graph2 can be out of order (size), hence graphA and graphB
     public final boolean forClique;
     
     public NetworkAlignmentDialogInfo(File graph1, File graph2, File align, boolean forClique) {

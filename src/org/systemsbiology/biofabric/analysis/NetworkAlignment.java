@@ -331,7 +331,7 @@ public class NetworkAlignment {
    ** All unaligned edges plus all of their endpoint nodes' edges
    */
   
-  private void processForCliqueMisalignment() {
+  private void processForCliqueMisalignment() { // NEED TO RE-ADD SHADOW LINKS
   
     List<FabricLink> nonShdwMergedLinks = new ArrayList<FabricLink>();
     for (FabricLink link : mergedLinks_) {
@@ -367,6 +367,8 @@ public class NetworkAlignment {
     mergedLinks_.clear();
     mergedLinks_.addAll(unalignedEdgesG1);
     mergedLoners_.clear();
+    
+    //  GO BACK TO OLD NAMES
   
     return;
   }
@@ -407,53 +409,6 @@ public class NetworkAlignment {
       
       return concat1.compareTo(concat2);
     }
-  }
-  
-  ////////////////////////////////////////////////////////////////////////////
-  //
-  // PUBLIC INNER CLASSES
-  //
-  ////////////////////////////////////////////////////////////////////////////
-  
-  /***************************************************************************
-   **
-   ** Link groups for network alignments in this order:
-   ** 1) All Covered Edges  2) uncovered G1  3) induced G2  4) half aligned half unaligned G2  5) full unaligned G2
-   */
-  
-  public static class NetAlignLinkGroupLocator implements Comparator<String> {
-  
-    /***************************************************************************
-     **
-     ** Use fabricated indexes to enforce default link group order
-     */
-    
-    public int compare(String rel1, String rel2) {
-      return (getIndex(rel1) - getIndex(rel2));
-    }
-    
-    /***************************************************************************
-     **
-     ** Create an integer index to enforce the default link group order
-     */
-    
-    private int getIndex(String rel) {
-      
-      if(rel.equals(COVERED_EDGE)) {
-        return 1;
-      } else if (rel.equals(GRAPH1)) {
-        return 2;
-      } else if (rel.equals(INDUCED_GRAPH2)) {
-        return 3;
-      } else if (rel.equals(HALF_UNALIGNED_GRAPH2)) {
-        return 4;
-      } else if (rel.equals(FULL_UNALIGNED_GRAPH2)) {
-        return 5;
-      } else {
-        throw new IllegalArgumentException();
-      }
-    }
-    
   }
   
 }

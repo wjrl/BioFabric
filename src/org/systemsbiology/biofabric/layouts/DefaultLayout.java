@@ -81,10 +81,7 @@ public class DefaultLayout extends NodeLayout {
   		                                   Params params,
   		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
   
-<<<<<<< HEAD
-=======
-    List<NID.WithName> startNodeIDs = (params == null) ? null : ((DefaultParams)params).startNodes;   
->>>>>>> wjrl/Sprint5
+    List<NID.WithName> startNodeIDs = (params == null) ? null : ((DefaultParams)params).startNodes;
     List<NID.WithName> targetIDs = defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs, startNodeIDs, monitor);
 
     //
