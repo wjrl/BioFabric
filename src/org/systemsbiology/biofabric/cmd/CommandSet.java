@@ -104,6 +104,7 @@ import org.systemsbiology.biofabric.layouts.SetLayout;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
+import org.systemsbiology.biofabric.layouts.EdgeLayout;
 import org.systemsbiology.biofabric.layouts.HierDAGLayout;
 import org.systemsbiology.biofabric.layouts.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.layouts.WorldBankLayout;
@@ -4524,13 +4525,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       runner_.setControlTopModes(cMode, tMode, fixedList);
       return;      
     }
-    
-    
-    
-    
-    
-    
-     
+
     public void setLinkOrder(SortedMap<Integer, FabricLink> linkOrder) {
       runner_.setLinkOrder( linkOrder);
       return;
@@ -5174,82 +5169,29 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       } else if (linkOrder_ != null) {
       	rbd_.setLinkOrder(linkOrder_);
       }
+      rbd_.setCTL(cMode_, tMode_, fixedList_, bfn_);
+      rbd_.setPointUp(pointUp_);
+      
       bfn_ = null; // Let go so we get GC!
       preLoadOperations();
- 
-      try {            
-        switch (mode_) {
-          case DEFAULT_LAYOUT:
-          case WORLD_BANK_LAYOUT:
-            NodeLayout dl = rbd_.getNodeLayout();
-            boolean dlok = dl.criteriaMet(rbd_, this);
-            if (!dlok) {
-              throw new IllegalStateException(); // Should not happen, failure throws exception
-            }
-            dl.doNodeLayout(rbd_, params_, this);
-            rbd_.getEdgeLayout().layoutEdges(rbd_, this);
-            break;
-          case CONTROL_TOP_LAYOUT:
-            Map<String, Set<NID.WithName>> normNameToIDs = (fixedList_ == null) ? null : bfp_.getNetwork().getNormNameToIDs();
-            ControlTopLayout ctl = new ControlTopLayout(cMode_, tMode_, fixedList_, normNameToIDs);
-            boolean ctok = ctl.criteriaMet(rbd_, this);
-            if (!ctok) {
-              throw new IllegalStateException(); // Should not happen, failure throws exception
-            }
-            ctl.doNodeLayout(rbd_, params_, this);
-            rbd_.getEdgeLayout().layoutEdges(rbd_, this);
-            break;
-          case HIER_DAG_LAYOUT:
-            HierDAGLayout hdl = new HierDAGLayout(pointUp_.booleanValue());
-            boolean ok = hdl.criteriaMet(rbd_, this);
-            if (!ok) {
-              throw new IllegalStateException(); // Should not happen, failure throws exception
-            }
-            hdl.doNodeLayout(rbd_, params_, this);
-            rbd_.getEdgeLayout().layoutEdges(rbd_, this);
-            break;
-          case SET_LAYOUT:
-            UiUtil.fixMePrintout("Get customized set dialog");
-            FabricLink link = rbd_.allLinks.iterator().next();
-            System.out.print(link + " means what?");            
-            SetLayout sel = new SetLayout(pointUp_.booleanValue() ? SetLayout.LinkMeans.BELONGS_TO : SetLayout.LinkMeans.CONTAINS);
-            boolean sok = sel.criteriaMet(rbd_, this);
-            if (!sok) {
-              throw new IllegalStateException(); // Should not happen, failure throws exception
-            }
-            sel.doNodeLayout(rbd_, params_, this);
-            rbd_.getEdgeLayout().layoutEdges(rbd_, this);
-            break; 
-          case NODE_ATTRIB_LAYOUT:
-          case LINK_ATTRIB_LAYOUT:
-          case GROUP_PER_NODE_CHANGE:
-          case GROUP_PER_NETWORK_CHANGE:
-            // previously installed....
-            break;
-          case REORDER_LAYOUT:
-          case CLUSTERED_LAYOUT:
-          	// The params_ disambiguates the call type for the layout:
-          	NodeLayout nsl = rbd_.getNodeLayout();
-            nsl.doNodeLayout(rbd_, params_, this);
-            UiUtil.fixMePrintout("NOT CLEAR WHERE EDGE LAYOUT HAPPENS");
-            break;
-          case NODE_CLUSTER_LAYOUT:
-          	NodeLayout ncl = rbd_.getNodeLayout();
-            ncl.doNodeLayout(rbd_, params_, this);
-            // The above operation does link order install as well...
-            break;                        
-          case SHADOW_LINK_CHANGE:
-          case BUILD_FOR_SUBMODEL:
-          case BUILD_FROM_XML:
-          case BUILD_FROM_SIF:
-          case BUILD_FROM_GAGGLE:
-          case BUILD_NETWORK_ALIGNMENT:
-          default:
-            throw new IllegalArgumentException();
+      
+      try {
+       if (rbd_.needsLayoutForRelayout()) {
+	        NodeLayout nl = rbd_.getNodeLayout();
+	        boolean nlok = nl.criteriaMet(rbd_, this);
+	        if (!nlok) {
+	          throw new IllegalStateException(); // Should not happen, failure throws exception
+	        }
+	        nl.doNodeLayout(rbd_, params_, this);
+	        // Some "Node" layouts do the whole ball of wax, don't need this step:
+	        EdgeLayout el = rbd_.getEdgeLayout();
+	        if (el != null) {
+	        	el.layoutEdges(rbd_, this);
+	        }
         }
-        BufferedImage bi = expensiveModelOperations(rbd_, true, this);
-        (new GarbageRequester()).askForGC(this);
-        return (bi);
+	      BufferedImage bi = expensiveModelOperations(rbd_, true, this);
+	      (new GarbageRequester()).askForGC(this);
+	      return (bi);
       } catch (IOException ex) {
         stashException(ex);
         return (null);

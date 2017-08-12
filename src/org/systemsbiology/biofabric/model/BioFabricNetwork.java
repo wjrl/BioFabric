@@ -19,6 +19,7 @@
 
 package org.systemsbiology.biofabric.model;
 
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -37,14 +38,20 @@ import org.xml.sax.Attributes;
 import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FabricFactory;
+import org.systemsbiology.biofabric.layouts.ControlTopLayout;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.EdgeLayout;
+import org.systemsbiology.biofabric.layouts.HierDAGLayout;
+import org.systemsbiology.biofabric.layouts.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.layouts.NetworkAlignmentLayout;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
+import org.systemsbiology.biofabric.layouts.SetLayout;
 import org.systemsbiology.biofabric.layouts.WorldBankLayout;
+import org.systemsbiology.biofabric.layouts.ControlTopLayout.CtrlMode;
+import org.systemsbiology.biofabric.layouts.ControlTopLayout.TargMode;
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -55,6 +62,7 @@ import org.systemsbiology.biofabric.util.AttributeExtractor;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.CharacterEntityMapper;
 import org.systemsbiology.biofabric.util.DataUtil;
+import org.systemsbiology.biofabric.util.GarbageRequester;
 import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.MinMax;
@@ -87,10 +95,9 @@ public class BioFabricNetwork {
                          SHADOW_LINK_CHANGE,
                          GROUP_PER_NODE_CHANGE,
                          BUILD_FOR_SUBMODEL,
-                         BUILD_FROM_XML ,
-                         BUILD_FROM_SIF  ,
-                         BUILD_FROM_GAGGLE ,
-                         NODE_ATTRIB_LAYOUT ,
+                         BUILD_FROM_XML,
+                         BUILD_FROM_SIF,
+                         NODE_ATTRIB_LAYOUT,
                          LINK_ATTRIB_LAYOUT,
                          NODE_CLUSTER_LAYOUT,
                          CONTROL_TOP_LAYOUT,
@@ -253,7 +260,6 @@ public class BioFabricNetwork {
         this.layoutMode_ = built.layoutMode_;
         break;
       case BUILD_FROM_SIF:
-      case BUILD_FROM_GAGGLE:
         RelayoutBuildData obd = (RelayoutBuildData)bd;    
         normalCols_ = new ColumnAssign();
         shadowCols_ = new ColumnAssign();
@@ -2286,6 +2292,12 @@ public class BioFabricNetwork {
     public LayoutMode layoutMode;
     public UniqueLabeller idGen;
     
+    public CtrlMode cMode; 
+    public TargMode tMode;
+    public List<String> fixedOrder; 
+    public Map<String, Set<NID.WithName>> normNameToIDs;
+    public Boolean pointUp;
+
     public RelayoutBuildData(BioFabricNetwork fullNet, BuildMode mode, BTProgressMonitor monitor) throws AsynchExitRequestException {
       super(mode);
       this.bfn = fullNet;
@@ -2375,6 +2387,47 @@ public class BioFabricNetwork {
       return;
     }
     
+    public void setCTL(CtrlMode cMode, TargMode tMode, List<String> fixedOrder, BioFabricNetwork bfn) {
+      this.normNameToIDs = (fixedOrder == null) ? null : bfn.getNormNameToIDs();
+      this.cMode = cMode;
+      this.tMode = tMode;
+      this.fixedOrder = fixedOrder;
+      return;
+    }
+    
+    public void setPointUp(Boolean pointUp) {
+      this.pointUp = pointUp;
+      return;
+    }
+
+    public boolean needsLayoutForRelayout() {
+      switch (mode) {
+        case DEFAULT_LAYOUT:
+        case WORLD_BANK_LAYOUT:
+        case CONTROL_TOP_LAYOUT:
+        case HIER_DAG_LAYOUT:
+        case SET_LAYOUT:      
+        case REORDER_LAYOUT:
+        case CLUSTERED_LAYOUT:      
+        case NODE_CLUSTER_LAYOUT:
+        	return (true);
+        case NODE_ATTRIB_LAYOUT:
+        case LINK_ATTRIB_LAYOUT:
+        case GROUP_PER_NODE_CHANGE:
+        case GROUP_PER_NETWORK_CHANGE:
+        	// Already installed!
+          return (false);
+        case SHADOW_LINK_CHANGE:
+        case BUILD_FOR_SUBMODEL:
+        case BUILD_FROM_XML:
+        case BUILD_FROM_SIF:
+        case BUILD_NETWORK_ALIGNMENT:
+        default:
+        	// Not legal!
+          throw new IllegalStateException();
+      }
+    }
+
     public NodeLayout getNodeLayout() {
     	switch (mode) {
     	  case DEFAULT_LAYOUT:
@@ -2387,14 +2440,32 @@ public class BioFabricNetwork {
           return (new NodeSimilarityLayout()); 	
         case NODE_CLUSTER_LAYOUT:
           return (new NodeClusterLayout());
+        case CONTROL_TOP_LAYOUT:
+          return (new ControlTopLayout(cMode, tMode, fixedOrder, normNameToIDs));
+        case HIER_DAG_LAYOUT:  
+          return (new HierDAGLayout(pointUp.booleanValue())); 
+        case SET_LAYOUT:   
+          UiUtil.fixMePrintout("Get customized set dialog");
+          FabricLink link = allLinks.iterator().next();
+          System.out.print(link + " means what?");            
+          return (new SetLayout(pointUp.booleanValue() ? SetLayout.LinkMeans.BELONGS_TO : SetLayout.LinkMeans.CONTAINS)); 
     	  default:
     	  	System.err.println("Mode = " + mode);
+    	  	UiUtil.fixMePrintout("Should throw exception");
     	  	return (new DefaultLayout());
     	} 	
     }
- 
+
     public EdgeLayout getEdgeLayout() {
-    	return (new DefaultEdgeLayout());	
+    	switch (mode) {
+    	  case REORDER_LAYOUT:
+        case CLUSTERED_LAYOUT:  
+        case NODE_CLUSTER_LAYOUT:
+           // The above layouts do edge layout as part of node layout:
+          return (null);	
+    	  default:
+    	  	return (new DefaultEdgeLayout());	
+    	}
     }
 
   }
