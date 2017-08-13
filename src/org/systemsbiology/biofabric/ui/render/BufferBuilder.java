@@ -24,6 +24,8 @@ import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
+import java.awt.image.DataBufferInt;
+import java.awt.image.DirectColorModel;
 import java.awt.image.WritableRaster;
 import java.io.IOException;
 import java.text.MessageFormat;
@@ -106,7 +108,9 @@ public class BufferBuilder {
 
   public BufferBuilder(String cachePref, int maxMeg, BufBuildDrawer drawRender, 
   		                 BufBuildDrawer binRender, ImgAndBufPool bis) {
-    cache_ = new RasterCache(cachePref, maxMeg);
+  	BufferedImage forModel = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+  	DirectColorModel dcm = (DirectColorModel)forModel.getColorModel();
+    cache_ = new RasterCache(cachePref, maxMeg, dcm);
     allWorldsToImageName_ = new HashMap<Rectangle2D, WorldPieceOffering>();
     findWorldsQT_ = null;
     drawRender_ = drawRender;
@@ -171,7 +175,7 @@ public class BufferBuilder {
     if (bis_ == null) {
     	System.out.println(bis_ + " " + screenDim_);
     }
-    BufferedImage bi = bis_.fetchImage(screenDim_.width, screenDim_.height, BufferedImage.TYPE_3BYTE_BGR);
+    BufferedImage bi = bis_.fetchImage(screenDim_.width, screenDim_.height, BufferedImage.TYPE_INT_RGB);
     double lpp = linksPerPix(screenDim_, worldPiece);
     BufBuildDrawer useDrawer = (lpp < TRANSITION_LPP_) ? drawRender_ : binRender_;
     useDrawer.drawForBuffer(bi, worldPiece, screenDim_, worldPiece, 0, lpp);  
@@ -258,8 +262,6 @@ public class BufferBuilder {
     	return (null);
     }
     BufferedImage retval = null;
-    System.err.println("wpo is " + wpo);
-    System.err.println("cache is " + cache_);
     
     //
     // It is true there are two locks floating around, one on this object, and one of the
@@ -364,8 +366,9 @@ public class BufferBuilder {
   */
   
   private String buildLoResSlice(Rectangle2D worldRect, WorldPieceOffering wpo) throws IOException {
-    long preRend = Runtime.getRuntime().freeMemory();  
-    System.out.println("preRend " + preRend);
+  	// Useful to track memory usage:
+    //long preRend = Runtime.getRuntime().freeMemory();  
+    //System.out.println("preRend " + preRend);
     ArrayList<QuadTree.QuadTreeNode> path = new  ArrayList<QuadTree.QuadTreeNode>() ;  
     BufferedImage bi1 = null;
 
@@ -419,17 +422,28 @@ public class BufferBuilder {
     // First, pull the smaller byte chunk out of the image we are going to enlarge:
     WritableRaster wr = bi1.getRaster();
     int pixNum = subW * subH;
+
+    
+    //
+    // OK, should do scaling with int array, but stick with old code for the moment:
+    //
+    RasterCache.ShiftData sd = new RasterCache.ShiftData((DirectColorModel)bi1.getColorModel());
+    UiUtil.fixMePrintout("OK, should do scaling with original int array, but stick with old code for the moment");
+    int[] bbcI = bis_.fetchBuf(pixNum);
+    wr.getDataElements(subxLoc, subyLoc, subW, subH, bbcI); 
     int smallLen = pixNum * 3;
     byte[] bbc = bis_.fetchByteBuf(smallLen);
-    wr.getDataElements(subxLoc, subyLoc, subW, subH, bbc);
-    
+    RasterCache.oneIntToThreeBytes(bbcI, bbc, sd);
+    bis_.returnBuf(bbcI);
+     
     //
     // Get the image we are going to produce:
     //
     
-    BufferedImage scaled = bis_.fetchImage(screenDim_.width, screenDim_.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_3BYTE_BGR);
-    byte[] bbs = bis_.fetchByteBuf(scaled.getRaster().getDataBuffer().getSize());
- 
+    BufferedImage scaled = bis_.fetchImage(screenDim_.width, screenDim_.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_INT_RGB);
+    int scaledIntBufSize = scaled.getRaster().getDataBuffer().getSize();
+    byte[] bbs = bis_.fetchByteBuf(scaledIntBufSize * 3);    
+    
     for (int i = 0; i < bbs.length; i++) {
     	bbs[i] = (byte)255;
     }
@@ -494,7 +508,14 @@ public class BufferBuilder {
     //
     
     WritableRaster bisRast = scaled.getRaster();
-  	bisRast.setDataElements(0, 0, screenDim_.width, screenDim_.height + SLICE_HEIGHT_HACK_, bbs);
+    
+    //
+    // We need an array of ints to set here:
+    //
+    int[] bbsI = bis_.fetchBuf(scaledIntBufSize);
+    RasterCache.threeBytesToOneInt(bbs, bbsI, sd);
+ 
+  	bisRast.setDataElements(0, 0, screenDim_.width, screenDim_.height + SLICE_HEIGHT_HACK_, bbsI);
  
     String handle = null;
     synchronized (this) {
@@ -512,10 +533,13 @@ public class BufferBuilder {
     bis_.returnImage(bi1);
     bis_.returnByteBuf(bbc);
     bis_.returnByteBuf(bbs);
-    long po = Runtime.getRuntime().freeMemory();
-    long used = preRend - po;
-    System.out.println("Post getSub " + po);
-    System.out.println("rendering new scaled image used: " + used);
+    bis_.returnBuf(bbsI);
+    
+    // Useful to track memory usage:
+    //long po = Runtime.getRuntime().freeMemory();
+    //long used = preRend - po;
+    //System.out.println("Post getSub " + po);
+    //System.out.println("rendering new scaled image used: " + used);
     return (handle);
   }
   
@@ -585,7 +609,7 @@ public class BufferBuilder {
   */
   
   private void buildHiResSlice(Dimension imageDim, int depth, Rectangle2D worldPiece) throws IOException {
-    BufferedImage bi = bis_.fetchImage(imageDim.width, imageDim.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_3BYTE_BGR);
+    BufferedImage bi = bis_.fetchImage(imageDim.width, imageDim.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_INT_RGB);
 
     double lpp = linksPerPix(imageDim, worldPiece);
     BufBuildDrawer useDrawer = (lpp < TRANSITION_LPP_) ? drawRender_ : binRender_;
@@ -635,15 +659,15 @@ public class BufferBuilder {
   	
   	//
   	// First version of this created vast amount of garbage. Now, we just pull the
-  	// bytes out of the Image and make sure they are all full-on:
+  	// ints out of the Image and make sure they are all full-on:
   	//
     int width = bi.getWidth();
     int height = bi.getHeight();
-    int len = width * height * 3;
-    byte[] bbs = ((DataBufferByte)bi.getRaster().getDataBuffer()).getData();
+    int len = width * height;
+    int[] bbs = ((DataBufferInt)bi.getRaster().getDataBuffer()).getData();
+    DirectColorModel dcm = (DirectColorModel)bi.getColorModel();
     for (int i = 0; i < len; i++) {
-    	if (bbs[i] != (byte)255) {
-    		System.out.println("Not blank " + i + " is " + bbs[i]);
+    	if ((dcm.getRed(bbs[i]) != 255) || (dcm.getGreen(bbs[i]) != 255) || (dcm.getBlue(bbs[i]) != 255)) {
     		return (false);
     	}
     }

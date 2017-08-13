@@ -298,7 +298,6 @@ public class PaintCacheSmall implements PaintCache {
           }
 	    	}
 	    }
-	    System.out.println("Drew links "+ count + " s " + startCol + " e " + endCol);
     }
 
     
@@ -403,9 +402,6 @@ public class PaintCacheSmall implements PaintCache {
     while (trit.hasNext()) {
       BioFabricNetwork.NodeInfo target = trit.next();
       lr.report();
-      if (target.getNodeName().equals("itV(UAC)B")) {
-        System.out.println("HELLO");
-      }
       buildALineHorz(target, frc, colGen_, linkExtents, shadeNodes, 
       		           showShadows, nameMap, drainMap);
     }
@@ -418,10 +414,6 @@ public class PaintCacheSmall implements PaintCache {
     for (int i = 0; i < numLinks; i++) {
       BioFabricNetwork.LinkInfo link = links.get(i);
       lr2.report();
-      if (i == (numLinks - 1)) {
-        System.out.println("HELLO");
-      }
-      
       linkIndex_[link.getUseColumn(showShadows) - indexOffset_] = i;
     }
 

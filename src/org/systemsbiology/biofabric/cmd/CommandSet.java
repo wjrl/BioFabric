@@ -2408,9 +2408,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     public void actionPerformed(ActionEvent e) {
       try {
-      	System.out.println("ZOOM in: " + Runtime.getRuntime().freeMemory());
         bfp_.getZoomController().bumpZoomWrapper(sign_);
-        System.out.println("ZOOM out: " + Runtime.getRuntime().freeMemory());
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -5019,7 +5017,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private long linkCount_;
 
     public NewNetworkRunner(boolean forMain, File holdIt) {
-      super(new BufferedImage(1, 1, BufferedImage.TYPE_3BYTE_BGR));      
+      super(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB));      
       forMain_ = forMain;
       holdIt_ = holdIt;
     }
@@ -5114,7 +5112,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private List<String> fixedList_;
   
     NetworkRelayoutRunner() {
-      super(new BufferedImage(1, 1, BufferedImage.TYPE_3BYTE_BGR)); 
+      super(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)); 
     }
     
     void setNetworkAndMode(File holdIt, BioFabricNetwork bfn, BioFabricNetwork.BuildMode bMode) {
@@ -5165,7 +5163,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       if (nodeAttrib_ != null) {
       	rbd_.setNodeOrderFromAttrib(nodeAttrib_);  	
       } else if ((groupOrder_ != null) && (layMode_ != null)) {
-  		  rbd_.setGroupOrderAndMode(groupOrder_, layMode_);
+      	rbd_.setGroupOrderAndMode(groupOrder_, layMode_);
       } else if (linkOrder_ != null) {
       	rbd_.setLinkOrder(linkOrder_);
       }
@@ -5217,7 +5215,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private File holdIt_;
     
     public RecolorNetworkRunner(boolean forMain, File holdIt) {
-      super(new BufferedImage(1, 1, BufferedImage.TYPE_3BYTE_BGR)); 
+      super(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)); 
       holdIt_ = holdIt;
       forMain_ = forMain;
     }

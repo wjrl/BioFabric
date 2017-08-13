@@ -751,7 +751,8 @@ public class BioFabricNetwork {
     
     int size = links.size() + nodeDefs_.size();
     
-    LoopReporter lr = new LoopReporter(size, 20, monitor, startFrac, endFrac, "progress.findingDrainZones");
+    String progressTag = (forShadow) ? "progress.findingDrainZonesWithShadow" : "progress.findingDrainZones";
+    LoopReporter lr = new LoopReporter(size, 20, monitor, startFrac, endFrac, progressTag);
 
     Map<NID.WithName, List<DrainZone>> nodeToZones = new TreeMap<NID.WithName, List<DrainZone>>();
 

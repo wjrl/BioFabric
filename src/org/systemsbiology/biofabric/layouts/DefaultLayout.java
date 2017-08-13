@@ -210,7 +210,8 @@ public class DefaultLayout extends NodeLayout {
     //
     
     HashSet<NID.WithName> remains = new HashSet<NID.WithName>(loneNodes);
-    // GOES AWAY IF remains 190804 targets 281832
+    // If we have a huge number of lone nodes, the removeAll() set operation is
+    // taking FOREVER, e.g. remains 190804 targets 281832. Use different approach?
     System.err.println("remains " + remains.size() + " targets " + targets.size());
     remains.removeAll(targets);
     System.err.println("remains now " + remains.size());

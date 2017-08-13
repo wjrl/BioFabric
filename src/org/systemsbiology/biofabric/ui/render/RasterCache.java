@@ -21,6 +21,8 @@ package org.systemsbiology.biofabric.ui.render;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
+import java.awt.image.DataBufferInt;
+import java.awt.image.DirectColorModel;
 import java.awt.image.Raster;
 import java.awt.image.WritableRaster;
 import java.io.BufferedInputStream;
@@ -60,8 +62,8 @@ public class RasterCache {
   private int nextHandle_;
   private int maxMeg_;
   private int currSize_;
+  private ShiftData shiftData_;
 
- 
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTRUCTORS
@@ -73,7 +75,7 @@ public class RasterCache {
   ** Constructor
   */
 
-  public RasterCache(String cachePref, int maxMeg) {
+  public RasterCache(String cachePref, int maxMeg, DirectColorModel cMod) {
     cachePref_ = cachePref;
     bufferCache_ = new HashMap<String, BytesWithMeta>();
     handleToFile_ = new HashMap<String, String>();
@@ -85,6 +87,8 @@ public class RasterCache {
     }
     maxMeg_ = maxMeg * 1000000;
     currSize_ = 0;
+    shiftData_ = new ShiftData(cMod);
+
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -140,8 +144,52 @@ public class RasterCache {
   	UiUtil.fixMePrintout("DO THIS IN A THREAD_SAFE FASHION!!");
   	return;
   }
+ 
+  /***************************************************************************
+  **
+  ** Write bytes into ints.
+  */
   
+  public static void threeBytesToOneInt(byte[] input, int[] output, ShiftData sd) {
+    int byteIndex = 0;
+    for (int intIndex = 0; intIndex < output.length; intIndex++) {
+      output[intIndex] = 0;
+      output[intIndex] |= (input[byteIndex++] & 0xFF) << sd.redShift_;
+      output[intIndex] |= (input[byteIndex++] & 0xFF) << sd.greenShift_;
+      output[intIndex] |= (input[byteIndex++] & 0xFF) << sd.blueShift_;
+    }
+    return;
+  }
   
+  /***************************************************************************
+  **
+  ** Determine shift needed to get contiguous mask to lowest bits
+  */
+  
+  public static int shiftForMask(int mask) {
+  	for (int i = 0; i < 32; i++) {
+  		if (((mask >> i) & 0x01) == 0x01) {
+  			return (i);
+  		}
+  	}
+    throw new IllegalArgumentException();
+  }
+  
+  /***************************************************************************
+  **
+  ** Get the ints for a TYPE_INT_RGB into bytes
+  */
+  
+  public static void oneIntToThreeBytes(int[] input, byte[] output, ShiftData sd) {
+    for (int intIndex = 0; intIndex < input.length; intIndex++) {
+    	int byteBase = 3 * intIndex;
+    	output[byteBase] = (byte)((input[intIndex] & sd.redMask_) >> sd.redShift_);
+    	output[byteBase + 1] = (byte)((input[intIndex] & sd.greenMask_) >> sd.greenShift_);
+    	output[byteBase + 2] = (byte)((input[intIndex] & sd.blueMask_) >> sd.blueShift_);
+    }
+    return;
+  }
+
   /***************************************************************************
   **
   ** Drop the data associated with the handle. 
@@ -222,7 +270,7 @@ public class RasterCache {
       BytesWithMeta bwm = bufferCache_.remove(goodBye);
       String fileName = handleToFile_.get(goodBye);
       if (fileName == null) {
-      	System.out.println("Flushing to file cache to maintain size");
+      	//System.out.println("Flushing to file cache to maintain size");
         File holdFile = getAFile();
         currSize_ -= bwm.buf.length;
         if (currSize_ < 0) {
@@ -234,7 +282,7 @@ public class RasterCache {
         fileCacheReport();
       }
     }
-    System.out.println("Curr mem cache: " + currSize_);
+    // System.out.println("Curr mem cache: " + currSize_);
     return;
   }
   
@@ -410,18 +458,22 @@ public class RasterCache {
 
   private BytesWithMeta imageToBuf(BufferedImage bi, ImgAndBufPool bis, InfoForImage ifi)  { 
   	Raster rast = bi.getRaster();
-  	DataBufferByte dbb = (DataBufferByte)rast.getDataBuffer();
-  	byte[] data = dbb.getData();
+  	DataBufferInt dbb = (DataBufferInt)rast.getDataBuffer();
+  	int[] data = dbb.getData();
+  	byte[] byteData = bis.fetchByteBuf(data.length * 3);
+  	oneIntToThreeBytes(data, byteData, shiftData_);
+  	
   	// We do not know how big the result will be. So we use a buffer the same size as the
   	// data. IS THAT A PROBLEM???? What about METADATA?
-  	byte[] output = bis.fetchByteBuf(data.length);
+  	byte[] output = bis.fetchByteBuf(byteData.length);
     Deflater deflate = new Deflater();
-    deflate.setInput(dbb.getData());
+    deflate.setInput(byteData);
     deflate.finish();
     int compressedDataLength = deflate.deflate(output);
     byte[] result = bis.fetchByteBuf(compressedDataLength);
     System.arraycopy(output, 0, result, 0, compressedDataLength);
     bis.returnByteBuf(output);
+    bis.returnByteBuf(byteData);
     ifi.setCompressedSize(compressedDataLength);
     return (new BytesWithMeta(result, compressedDataLength));
   }
@@ -442,14 +494,17 @@ public class RasterCache {
     	throw new IOException();
     }
     inflate.end();
+    
+    int[] intData = bis.fetchBuf(decomp.length / 3);
+    threeBytesToOneInt(decomp, intData, shiftData_);
  
     BufferedImage bi = bis.fetchImage(ifi.width, ifi.height, ifi.type);
   	WritableRaster biRast = bi.getRaster();
-  	biRast.setDataElements(0, 0, ifi.width, ifi.height, decomp);
+  	biRast.setDataElements(0, 0, ifi.width, ifi.height, intData);
     bis.returnByteBuf(decomp);
+    bis.returnBuf(intData);
     return (bi);
   }
-  
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -491,9 +546,9 @@ public class RasterCache {
     
     InfoForImage(BufferedImage bi) {
       Raster rast = bi.getRaster();
-      DataBufferByte dbb = (DataBufferByte)rast.getDataBuffer();
-      byte[] dest = dbb.getData();
-      this.uncompressedNumBytes = dest.length;	
+      DataBufferInt dbb = (DataBufferInt)rast.getDataBuffer();
+      int[] dest = dbb.getData();
+      this.uncompressedNumBytes = dest.length * 3;	
     	this.compressedNumBytes = 0; // Don't know yet
     	this.width = bi.getWidth();
       this.height = bi.getHeight();
@@ -504,6 +559,29 @@ public class RasterCache {
     	this.compressedNumBytes = size;
 	  } 
   }
-
+  
+   /***************************************************************************
+  ** 
+  ** Precalc shift information
+  */ 
+ 
+  public static class ShiftData {
+  
+    int redMask_;
+    int greenMask_;
+    int blueMask_;
+    int redShift_;
+    int greenShift_;
+    int blueShift_;	
+    
+    public ShiftData(DirectColorModel cMod) {
+      redMask_ = cMod.getRedMask();
+      greenMask_ = cMod.getGreenMask();
+      blueMask_ = cMod.getBlueMask();
+      redShift_ = shiftForMask(redMask_);
+      greenShift_ = shiftForMask(greenMask_);
+      blueShift_ = shiftForMask(blueMask_);	
+	  }
+  }
 }
 

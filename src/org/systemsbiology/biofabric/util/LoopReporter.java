@@ -47,8 +47,9 @@ public class LoopReporter {
     count_ += progress;
 	  if (skipProg_ <= 0) {
 	    double currFrac = startFrac_ + ((endFrac_ - startFrac_) * (count_ / (double)max_));
-	    System.out.println("CP: " + message_ + ": " + currFrac + " [" + startFrac_ + " - " + endFrac_ + "]");
-	    System.out.println("CPMEM " + Runtime.getRuntime().freeMemory() + " " + System.currentTimeMillis());
+	    // If you want detailed progress output for debug, here you go:
+	    // System.out.println("CP: " + message_ + ": " + currFrac + " [" + startFrac_ + " - " + endFrac_ + "]");
+	    // System.out.println("CPMEM " + Runtime.getRuntime().freeMemory() + " " + System.currentTimeMillis());
     	if (monitor_ != null) {
         if (!monitor_.updateProgressAndPhase((int)(currFrac * 100.0), message_)) {
           throw new AsynchExitRequestException();
