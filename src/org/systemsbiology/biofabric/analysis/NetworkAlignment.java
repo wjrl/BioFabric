@@ -148,7 +148,8 @@ public class NetworkAlignment {
     finalizeLoneNodeIDs(newLonersG1, newLonersG2);
     
     if (forClique_) { // FOR NOW THIS IS JUST A POST-PROCESSING STEP
-      processForCliqueMisalignment();
+//      processForCliqueMisalignment();
+      (new CliqueMisalignment()).process(mergedLinks_, mergedLoners_);
     }
     
     return;
@@ -331,46 +332,53 @@ public class NetworkAlignment {
    ** All unaligned edges plus all of their endpoint nodes' edges
    */
   
-  private void processForCliqueMisalignment() { // NEED TO RE-ADD SHADOW LINKS
-  
-    List<FabricLink> nonShdwMergedLinks = new ArrayList<FabricLink>();
-    for (FabricLink link : mergedLinks_) {
-      if (!link.isShadow()) {
-        nonShdwMergedLinks.add(link);
-      }
-    }
+  private static class CliqueMisalignment {
     
-    Set<NID.WithName> unalignedNodesG1 = new TreeSet<NID.WithName>();
+    private CliqueMisalignment() {}
     
-    for (FabricLink link : nonShdwMergedLinks) { // find the nodes of interest
-      if (link.getRelation().equals(GRAPH1)) {
-        unalignedNodesG1.add(link.getSrcID());
-        unalignedNodesG1.add(link.getTrgID());
-      }
-    }
-    
-    List<FabricLink> unalignedEdgesG1 = new ArrayList<FabricLink>();
-    
-    for (FabricLink link : nonShdwMergedLinks) { // add the edges connecting to the nodes of interest (one hop away)
+    private void process(List<FabricLink> mergedLinks, Set<NID.WithName> mergedLoneNodeIDs)
+            throws AsynchExitRequestException {
       
-      NID.WithName src = link.getSrcID(), trg = link.getTrgID();
-      
-      if (unalignedNodesG1.contains(src) || unalignedNodesG1.contains(trg)) {
-        unalignedEdgesG1.add(link);
+      List<FabricLink> nonShdwMergedLinks = new ArrayList<FabricLink>();
+      for (FabricLink link : mergedLinks) {
+        if (!link.isShadow()) {
+          nonShdwMergedLinks.add(link);
+        }
       }
+  
+      Set<NID.WithName> unalignedNodesG1 = new TreeSet<NID.WithName>();
+  
+      for (FabricLink link : nonShdwMergedLinks) { // find the nodes of interest
+        if (link.getRelation().equals(GRAPH1)) {
+          unalignedNodesG1.add(link.getSrcID());
+          unalignedNodesG1.add(link.getTrgID());
+        }
+      }
+  
+      List<FabricLink> unalignedEdgesG1 = new ArrayList<FabricLink>();
+  
+      for (FabricLink link : nonShdwMergedLinks) { // add the edges connecting to the nodes of interest (one hop away)
+    
+        NID.WithName src = link.getSrcID(), trg = link.getTrgID();
+    
+        if (unalignedNodesG1.contains(src) || unalignedNodesG1.contains(trg)) {
+          unalignedEdgesG1.add(link);
+        }
+      }
+  
+      //
+      // Change the final link-lists
+      //
+  
+      mergedLinks.clear();
+      mergedLinks.addAll(unalignedEdgesG1);
+      mergedLoneNodeIDs.clear();
+  
+      //  GO BACK TO OLD NAMES and ADD SHADOWS BACK
+  
+      return;
     }
     
-    //
-    // Change the final link-lists
-    //
-    
-    mergedLinks_.clear();
-    mergedLinks_.addAll(unalignedEdgesG1);
-    mergedLoners_.clear();
-    
-    //  GO BACK TO OLD NAMES
-  
-    return;
   }
   
   /***************************************************************************
