@@ -73,11 +73,11 @@ public class GarbageRequester {
   public void askForGC(BTProgressMonitor monitor) throws AsynchExitRequestException {
   	
     long totMem = Runtime.getRuntime().totalMemory();
-    System.out.println("Tot " + Runtime.getRuntime().totalMemory());
+    //System.out.println("Tot " + Runtime.getRuntime().totalMemory());
     long freeMem = Runtime.getRuntime().freeMemory();
-    System.out.println("Free " + freeMem);
-    System.out.println("Max " + Runtime.getRuntime().maxMemory());
-    System.out.flush();
+    //System.out.println("Free " + freeMem);
+    //System.out.println("Max " + Runtime.getRuntime().maxMemory());
+    //System.out.flush();
     
     //
     // This whole reclaiming bit is super-obnoxious, so only do it if we are getting low on memory:

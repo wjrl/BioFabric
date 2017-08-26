@@ -19,6 +19,7 @@
 
 package org.systemsbiology.biofabric.layouts;
 
+import org.systemsbiology.biofabric.layouts.DefaultLayout.DefaultParams;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;

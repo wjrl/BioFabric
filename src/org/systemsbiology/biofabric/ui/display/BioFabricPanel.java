@@ -407,7 +407,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     if (bfn_ == null) {
       return;
     }
-    System.out.println("OIR " + size + " " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
+    //System.out.println("OIR " + size + " " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
     Double zoomVal = new Double(zoomer_.getZoomFactor());
     Integer numObj = zoomMap_.get(zoomVal);
     if ((numObj != null) && (size == numObj.intValue())) {
@@ -1546,7 +1546,6 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   		                         Rectangle2D worldRec, int heightPad, double linksPerPixel) { 
   	Graphics2D g2 = bi.createGraphics();
     g2.setColor(Color.WHITE);
-    g2.setColor(new Color(255, 220, 220)); //Debug sizing problems
     g2.fillRect(0, 0, screenDim.width, screenDim.height + heightPad);
     double zoomH = screenDim.getWidth() / worldRec.getWidth();
     double zoomV = screenDim.getHeight() / worldRec.getHeight();
@@ -1564,13 +1563,13 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     g2.setTransform(transform); 
     boolean retval = painter_.paintIt(g2, UiUtil.rectFromRect2D(clip), false, null);
     
-    // Debug sizing problems:
-    AffineTransform transformx = new AffineTransform();
-    g2.setTransform(transformx);
-    BasicStroke selectedStrokex = new BasicStroke(1, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
-    g2.setStroke(selectedStrokex);  
-    g2.setColor(Color.GREEN);
-    g2.drawRect(0, 0, screenDim.width - 1, screenDim.height - 1);
+    // To debug sizing problems, this draws a green bounding rectangle:
+    //AffineTransform transformx = new AffineTransform();
+    //g2.setTransform(transformx);
+    //BasicStroke selectedStrokex = new BasicStroke(1, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
+    //g2.setStroke(selectedStrokex);  
+    //g2.setColor(Color.GREEN);
+    //g2.drawRect(0, 0, screenDim.width - 1, screenDim.height - 1);
 
     g2.dispose();
     return (retval);
