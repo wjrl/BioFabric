@@ -26,14 +26,12 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
-import java.awt.geom.GeneralPath;
 import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -46,7 +44,6 @@ import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.QuadTree;
-import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -75,34 +72,29 @@ public class PaintCacheSmall implements PaintCache {
   // PUBLIC CONSTANTS
   //
   //////////////////////////////////////////////////////////////////////////// 
-  
-  public final static int STROKE_SIZE = 3;
-  
-  public final static int TINY = 0;
-  public final static int HUGE = 1;
-  public final static int MED = 2;
-  public final static int MED_SMALL = 3;
-  public final static int SMALL = 4;
-  private final static int NUM_FONTS_ = 5;
-  
-  
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE INSTANCE MEMBERS
   //
   ////////////////////////////////////////////////////////////////////////////
    
-  private Font[] fonts_; 
+  private HashMap<TextPath.FontSizes, Font> fonts_; 
+  private ArrayList<TextPath.FontSizes> bigToLittle_; 
  
-  private LinePath[] nodes_;
+  private List<BioFabricNetwork.NodeInfo> nodeRefs_;
   private List<BioFabricNetwork.LinkInfo> linkRefs_;
   private int[] linkIndex_;
   private int indexOffset_;
+  private int[] nodeIndex_;
+  private int nodeIndexOffset_;
+  private boolean nodesForShadow_;
   private QuadTree names_;
-  private HashMap<String, PaintedPath> nameKeyToPaintFirst_;
-  private HashMap<String, PaintedPath> nameKeyToPaintSecond_;
-  private HashMap<String, PaintedPath> nameKeyToPaintThird_;
+  private HashMap<String, BoxPath> nameKeyToPaintFirst_;
+  private HashMap<String, TextPath> nameKeyToPaintSecond_;
+  private HashMap<String, TextPath> nameKeyToPaintThird_;
   private int nameKeyCount_;
+  private HashMap<String, NID> nameKeyToNodeID_;
   
   private FabricColorGenerator colGen_;
   private Color superLightPink_;
@@ -120,16 +112,24 @@ public class PaintCacheSmall implements PaintCache {
   */
 
   public PaintCacheSmall(FabricColorGenerator colGen) {
-  	fonts_ = new Font[NUM_FONTS_];
-    fonts_[TINY] = new Font("SansSerif", Font.PLAIN, 10);
-    fonts_[HUGE] = new Font("SansSerif", Font.PLAIN, 200);
-    fonts_[MED] = new Font("SansSerif", Font.PLAIN, 100);
-    fonts_[MED_SMALL] = new Font("SansSerif", Font.PLAIN, 70);
-    fonts_[SMALL] = new Font("SansSerif", Font.PLAIN, 30);
-    
-    nameKeyToPaintFirst_ = new HashMap<String, PaintedPath>();
-    nameKeyToPaintSecond_ = new HashMap<String, PaintedPath>();
-    nameKeyToPaintThird_ = new HashMap<String, PaintedPath>();
+  	fonts_ = new HashMap<TextPath.FontSizes, Font>();
+  	bigToLittle_ = new ArrayList<TextPath.FontSizes>();
+  	
+  	bigToLittle_.add(TextPath.FontSizes.HUGE);
+  	fonts_.put(TextPath.FontSizes.HUGE, new Font("SansSerif", Font.PLAIN, 200));
+  	bigToLittle_.add(TextPath.FontSizes.MED);
+  	fonts_.put(TextPath.FontSizes.MED, new Font("SansSerif", Font.PLAIN, 100));
+  	bigToLittle_.add(TextPath.FontSizes.MED_SMALL);
+  	fonts_.put(TextPath.FontSizes.MED_SMALL, new Font("SansSerif", Font.PLAIN, 70));
+  	bigToLittle_.add(TextPath.FontSizes.SMALL);
+  	fonts_.put(TextPath.FontSizes.SMALL, new Font("SansSerif", Font.PLAIN, 30));
+  	bigToLittle_.add(TextPath.FontSizes.TINY);
+    fonts_.put(TextPath.FontSizes.TINY, new Font("SansSerif", Font.PLAIN, 10));
+  
+    nameKeyToPaintFirst_ = new HashMap<String, BoxPath>();
+    nameKeyToPaintSecond_ = new HashMap<String, TextPath>();
+    nameKeyToPaintThird_ = new HashMap<String, TextPath>();
+    nameKeyToNodeID_ = new HashMap<String, NID>();
 
     colGen_ = colGen;
     superLightPink_ = new Color(255, 244, 244);
@@ -151,8 +151,12 @@ public class PaintCacheSmall implements PaintCache {
   	nameKeyToPaintFirst_.clear();
     nameKeyToPaintSecond_.clear();
     nameKeyToPaintThird_.clear();
-    nodes_ = null;
+    nameKeyToNodeID_.clear();
+    nodeRefs_ = null;
     linkRefs_ = null;
+    nodeIndex_ = null;
+    nodeIndexOffset_ = 0;
+    nodesForShadow_ = false;
     linkIndex_ = null;
     indexOffset_ = 0;
     if (names_ != null) {
@@ -161,25 +165,13 @@ public class PaintCacheSmall implements PaintCache {
   	return;
   }
  
-  /***************************************************************************
-  **
-  **  Answer if we have something to do...
-  */
-  
-  public boolean needToPaint() {
-  	UiUtil.fixMePrintout("NO! Need to check array lengths");
-  	return (true);
- //   return (!(paintPathsFirstPass_.isEmpty() && paintPathsSecondPass_.isEmpty() && paintPathsThirdPass_.isEmpty()
-    //		non-null arrays!
-   // 		));
-  }
-  
+
   /***************************************************************************
   **
   **  paint it
   */
   
-  public boolean paintIt(Graphics2D g2, Rectangle clip, boolean forSelection, Reduction reduce) {
+  public boolean paintIt(Graphics2D g2, Rectangle clip, Reduction reduce) {
     boolean retval = false;
     HashSet<String> pKeys = new HashSet<String>();
     if (names_ != null) {
@@ -189,33 +181,33 @@ public class PaintCacheSmall implements PaintCache {
     //
     // First pass is background rectangles, which are not drawn for selections:
     //
+    
     if (reduce == null) {
-	    Iterator<String> pkit = pKeys.iterator();
-	    while (pkit.hasNext()) {
-	    	String pkey = pkit.next();
-	      PaintedPath pp = nameKeyToPaintFirst_.get(pkey);
+	    for (String pkey : pKeys) {
+	      BoxPath pp = nameKeyToPaintFirst_.get(pkey);
 	    	if (pp != null) {
-	        int result = pp.paint(g2, clip, forSelection, fonts_);
+	        int result = pp.paint(g2);
 	        retval = retval || (result > 0);
 	    	}
 	    }
     }
     //
-    // These have to be done differently:
+    // Draw strings for nodes, if in bounds and for selections, if selected:
     //
-    if (reduce == null) {
-	    Iterator<String> pkit = pKeys.iterator();
-	    while (pkit.hasNext()) {
-	    	String pkey = pkit.next();
-	      PaintedPath pp = nameKeyToPaintSecond_.get(pkey);
-	    	if (pp != null) {
-	        int result = pp.paint(g2, clip, forSelection, fonts_);
-	        retval = retval || (result > 0);
-	    	}
-	    }
+    
+    for (String pkey : pKeys) {
+    	NID forKey = nameKeyToNodeID_.get(pkey); 			
+      if ((reduce == null) || reduce.paintNames.contains(forKey)) {
+        TextPath pp = nameKeyToPaintSecond_.get(pkey);
+    	  if (pp != null) {
+          int result = pp.paint(g2, clip, fonts_);
+          retval = retval || (result > 0);
+    	  }
+      }
     }
+	    
 
-    if (nodes_ != null) {  	
+    if (nodeRefs_ != null) {  	
     	double minY = clip.getMinY() / BioFabricPanel.GRID_SIZE;
     	double maxY = clip.getMaxY() / BioFabricPanel.GRID_SIZE;  
     	//
@@ -228,18 +220,35 @@ public class PaintCacheSmall implements PaintCache {
     	}
 	    int startRow = (int)Math.floor(minY) - extraRows;
 	    int endRow = (int)Math.floor(maxY) + extraRows;
+	       
+	    startRow = (startRow < nodeIndexOffset_) ? nodeIndexOffset_ : startRow;
+	    endRow = (endRow >= (nodeIndex_.length + nodeIndexOffset_)) ? nodeIndex_.length - 1 + nodeIndexOffset_: endRow;
 	    
-	    startRow = (startRow < 0) ? 0 : startRow;
-	    endRow = (endRow >= nodes_.length) ? nodes_.length - 1 : endRow;
-	    
+	    Line2D line = new Line2D.Double();
+      LinePath lp = new LinePath();
+      MinMax mm = new MinMax();
+
 	    for (int i = startRow; i <= endRow; i++) {
+	    	// If we are not drawing contiguous nodes (subviews with gaps) we will hit non-node rows to skip:
+	      if (nodeIndex_[i - nodeIndexOffset_] == -1) {
+	      	continue;
+	      }
 	    	if ((reduce == null) || reduce.paintRows.contains(Integer.valueOf(i))) {
-	       	if (nodes_[i] != null) {
-		        int result = nodes_[i].paint(g2, clip, forSelection);
-		        retval = retval || (result > 0);
-	    	  }
+	    		BioFabricNetwork.NodeInfo ni = nodeRefs_.get(nodeIndex_[i - nodeIndexOffset_]);
+	    		MinMax nmm = ni.getColRange(nodesForShadow_);
+          int sCol = nmm.min;
+          int eCol = nmm.max;
+          Color paintCol = getColorForNode(ni, colGen_);
+     
+          int xStrt = sCol * BioFabricPanel.GRID_SIZE;
+          int xEnd = eCol * BioFabricPanel.GRID_SIZE;
+          int y = i * BioFabricPanel.GRID_SIZE;
+  
+          line.setLine(xStrt, y, xEnd, y);
+          int result = lp.reset(paintCol, line, Integer.MIN_VALUE, y, mm.reset(xStrt, xEnd)).paint(g2, clip);
+		      retval = retval || (result > 0);
 	    	}
-	    } 
+	    }
     }
 
     if (linkRefs_ != null) {  	
@@ -283,34 +292,36 @@ public class PaintCacheSmall implements PaintCache {
           int x = i * BioFabricPanel.GRID_SIZE;
   
           line.setLine(x, yStrt, x, yEnd);
-          int result = lp.reset(paintCol, line, x, Integer.MIN_VALUE, mm.reset(yStrt, yEnd)).paint(g2, clip, forSelection);
+          int result = lp.reset(paintCol, line, x, Integer.MIN_VALUE, mm.reset(yStrt, yEnd)).paint(g2, clip);
 		      retval = retval || (result > 0);
 		      count += (result > 0) ? 1 : 0;
          
           if (!li.isDirected()) {
-          	result = gp.reuse(paintCol, x, yStrt, yEnd, BB_HALF_WIDTH_, false).paint(g2, clip, forSelection);
+          	result = gp.reuse(paintCol, x, yStrt, yEnd, BB_HALF_WIDTH_, false).paint(g2, clip);
           	retval = retval || (result > 0);
           } else {
             int ySrc = li.getStartRow() * BioFabricPanel.GRID_SIZE;
             int yTrg = li.getEndRow() * BioFabricPanel.GRID_SIZE;
-            result = gp.reuse(paintCol, x, ySrc, yTrg, BB_HALF_WIDTH_, true).paint(g2, clip, forSelection);
+            result = gp.reuse(paintCol, x, ySrc, yTrg, BB_HALF_WIDTH_, true).paint(g2, clip);
             retval = retval || (result > 0);
           }
 	    	}
 	    }
     }
 
+    //
+    // Draw strings that appear on top of everything:
+    //
     
-    if (reduce == null) {
-	    Iterator<String> pkit = pKeys.iterator();
-	    while (pkit.hasNext()) {
-	    	String pkey = pkit.next();
-	      PaintedPath pp = nameKeyToPaintThird_.get(pkey);
-	    	if (pp != null) {
-	        int result = pp.paint(g2, clip, forSelection, fonts_);
-	        retval = retval || (result > 0);
-	    	}
-	    }
+    for (String pkey : pKeys) {
+    	NID forKey = nameKeyToNodeID_.get(pkey); 			
+      if ((reduce == null) || reduce.paintNames.contains(forKey)) {
+        TextPath pp = nameKeyToPaintThird_.get(pkey);
+    	  if (pp != null) {
+          int result = pp.paint(g2, clip, fonts_);
+          retval = retval || (result > 0);
+    	  }
+      }
     }
 
     return (retval);
@@ -390,22 +401,40 @@ public class PaintCacheSmall implements PaintCache {
       }
     }
     
-    nodes_ = new LinePath[targets.size()];
     linkIndex_ = new int[(numLinks == 0) ? 0 : maxCol + 1 - minCol];
     indexOffset_ = minCol;  // In subviews, links do NOT start at column 0!
     // And in subviews with non-contiguous links, we need to skip non-link columns, so init with -1:
     Arrays.fill(linkIndex_, -1);
     linkRefs_ = links;
-     
+    
+    int numNodes = targets.size();
+    int maxRow = 0;
+    int minRow = Integer.MAX_VALUE;
+    
     LoopReporter lr = new LoopReporter(targets.size(), 20, monitor, 0.0, 1.0, "progress.buildNodeGraphics");
-    Iterator<BioFabricNetwork.NodeInfo> trit = targets.iterator();
-    while (trit.hasNext()) {
-      BioFabricNetwork.NodeInfo target = trit.next();
+    HashMap<Integer, MinMax> nodeExtents = new HashMap<Integer, MinMax>();
+    for (int i = 0; i < numNodes; i++) {
+      BioFabricNetwork.NodeInfo node = targets.get(i);
+      int num = node.nodeRow;
       lr.report();
-      buildALineHorz(target, frc, colGen_, linkExtents, shadeNodes, 
-      		           showShadows, nameMap, drainMap);
+      MinMax cols = node.getColRange(showShadows);
+      nodeExtents.put(Integer.valueOf(num), cols);
+      if (num > maxRow) {
+      	maxRow = num;
+      }
+      if (num < minRow) {
+      	minRow = num;
+      }
+      buildNodeTextAndRect(node, frc, colGen_, linkExtents, shadeNodes, showShadows, nameMap, drainMap);
     }
-     
+    
+    nodeIndex_ = new int[(numNodes == 0) ? 0 : maxRow + 1 - minRow];
+    nodeIndexOffset_ = minRow;  // In subviews, links do NOT start at column 0!
+    // And in subviews with non-contiguous links, we need to skip non-link columns, so init with -1:
+    Arrays.fill(nodeIndex_, -1);
+    nodeRefs_ = targets;
+    nodesForShadow_ = showShadows;
+      
     //
     // We do not build e.g. 10^6 link paths, but stock the drawing primitives while painting:
     //
@@ -416,6 +445,17 @@ public class PaintCacheSmall implements PaintCache {
       lr2.report();
       linkIndex_[link.getUseColumn(showShadows) - indexOffset_] = i;
     }
+    
+    //
+    // Fill the node index
+    //
+    
+    LoopReporter lr3 = new LoopReporter(numLinks, 20, monitor, 0.0, 1.0, "progress.buildNodeGraphicsToo");
+    for (int i = 0; i < numNodes; i++) {
+      BioFabricNetwork.NodeInfo node = targets.get(i);
+      lr3.report();
+      nodeIndex_[node.nodeRow - nodeIndexOffset_] = i;
+    }  
 
     return;
   }
@@ -440,167 +480,121 @@ public class PaintCacheSmall implements PaintCache {
 
   /***************************************************************************
   **
-  ** Build a line
+  ** Build the text objects associated with a node
   */
   
-  private void buildALineHorz(BioFabricNetwork.NodeInfo target,
-                              FontRenderContext frc, 
-                              FabricColorGenerator colGen, Map<Integer, MinMax> linkExtents, 
-                              boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
-                              Map<NID.WithName, List<Rectangle2D>> drainMap) {
-        
+  private void buildNodeTextAndRect(BioFabricNetwork.NodeInfo target,
+                                    FontRenderContext frc, 
+                                    FabricColorGenerator colGen, Map<Integer, MinMax> linkExtents, 
+                                    boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
+                                    Map<NID.WithName, List<Rectangle2D>> drainMap) {
+ 
     //
-    // Drain zone sizing / rotation:
+    // Left end node label sizing and Y:
     //
-    
-    List<BioFabricNetwork.DrainZone> zones = target.getDrainZones(showShadows);
-    
-    DrainZoneInfo[] dzis = new DrainZoneInfo[zones.size()];
-    for (int i = 0; i < dzis.length; i++) {    // initialize each entry in array
-      dzis[i] = new DrainZoneInfo(zones.get(i));
-    }
-    
-    for (int i = 0; i < zones.size(); i++) {
-      
-      DrainZoneInfo curr = dzis[i];
-      curr.doRotateName = false;
-      
-      if (curr.dzmm == null) {
-        continue;
-      }
-      
-      curr.diff = curr.dzmm.max - curr.dzmm.min;
-      
-      Rectangle2D bounds = fonts_[HUGE].getStringBounds(target.getNodeName(), frc);
-      if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * curr.diff)) {
-        curr.font = 0;
-        curr.dumpRect = bounds;
-      } else {
-        bounds = fonts_[MED].getStringBounds(target.getNodeName(), frc);
-        if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * curr.diff)) {
-          curr.font = 1;
-          curr.dumpRect = bounds;
-        } else {
-          bounds = fonts_[MED_SMALL].getStringBounds(target.getNodeName(), frc);
-          if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * curr.diff)) {
-            curr.font = 2;
-            curr.dumpRect = bounds;
-          } else {
-            bounds = fonts_[SMALL].getStringBounds(target.getNodeName(), frc);
-            if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * curr.diff)) {
-              curr.font = 3;
-              curr.dumpRect = bounds;
-            } else {
-              bounds = fonts_[TINY].getStringBounds(target.getNodeName(), frc);
-              if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * curr.diff)) {
-                curr.font = 4;
-                curr.dumpRect = bounds;
-              } else {
-                curr.font = 4;
-                curr.dumpRect = bounds;
-                curr.doRotateName = true;
-              }
-            }
-          }
-        }
-      }
-    }
-    
-    // Drain zone Y: Lifted slightly above node line and link boxes:
-    
-    double tnamey = (target.nodeRow - DRAIN_ZONE_ROW_OFFSET_) * BioFabricPanel.GRID_SIZE;
     
     MinMax colmm = target.getColRange(showShadows);
-    
-    //
-    // Node label sizing and Y:
-    //
-    
-    Rectangle2D labelBounds = fonts_[TINY].getStringBounds(target.getNodeName(), frc);
+    Rectangle2D labelBounds = fonts_.get(TextPath.FontSizes.TINY).getStringBounds(target.getNodeName(), frc);
     // Easiest font height hack is to scale it by ~.67: 
     double scaleHeight = labelBounds.getHeight() * LABEL_FONT_HEIGHT_SCALE_;
     double namey = (target.nodeRow * BioFabricPanel.GRID_SIZE) + (scaleHeight / 2.0);
     double namex = (colmm.min * BioFabricPanel.GRID_SIZE) - labelBounds.getWidth() - BB_HALF_WIDTH_ - NODE_LABEL_X_SHIM_;      
     labelBounds.setRect(namex, namey - scaleHeight, labelBounds.getWidth(), scaleHeight);
-
-    //
-    // Bogus non-link safety:
-    //
-    
-    if ((colmm.max == Integer.MIN_VALUE) || (colmm.min == Integer.MAX_VALUE)) {
-    	UiUtil.fixMePrintout("Does this still need to exist??");
-   //   objCache.add(new PaintedPath(Color.BLACK, target.getNodeName(), 100.0F, namey, 100.0F, tnamey, 
-    //                               doRotateName, useFont, labelBounds, dumpRect));
-   //   nameMap.put(target.getNodeIDWithName(), (Rectangle2D)labelBounds.clone());
-      return;
-    }
     
     //
-    // Create the node line and process it
+    // Get the name bounds into the map and the extents into the QuadTree:
     //
     
-    int yval = (target.nodeRow * BioFabricPanel.GRID_SIZE);
-    int xStrt = (colmm.min * BioFabricPanel.GRID_SIZE);
-    int xEnd = (colmm.max * BioFabricPanel.GRID_SIZE);
-    Line2D line = new Line2D.Double(xStrt, yval, xEnd, yval);
-    Color paintCol = getColorForNode(target, colGen);
-    nodes_[target.nodeRow] = new LinePath(paintCol, line, Integer.MIN_VALUE, yval, new MinMax(xStrt, xEnd));
     nameMap.put(target.getNodeIDWithName(), (Rectangle2D) labelBounds.clone());
-	
-    PaintedPath npp = new PaintedPath(Color.BLACK, target.getNodeName(), namex, namey, labelBounds);
+    TextPath npp = new TextPath(Color.BLACK, target.getNodeName(), namex, namey, labelBounds, false, TextPath.FontSizes.TINY);
     String nkk = Integer.toString(nameKeyCount_++);
     QuadTree.Payload pay = new QuadTree.Payload(labelBounds, nkk);
     names_.insertPayload(pay);
-    nameKeyToPaintSecond_.put(nkk, npp);    
+    nameKeyToPaintSecond_.put(nkk, npp);
+    nameKeyToNodeID_.put(nkk, target.getNodeID());
+    
+    //
+    // Now process drain zones:
+    //
+
+    //
+    // All the drain zone text rectangles associated with this node:
+    //
     
     List<Rectangle2D> rectList = new ArrayList<Rectangle2D>();
-     
-    for (int i = 0; i < zones.size(); i++) {
       
-      DrainZoneInfo curr = dzis[i];
-      
+    // Drain zone Y: Lifted slightly above node line and link boxes:
+    
+    double tnamey = (target.nodeRow - DRAIN_ZONE_ROW_OFFSET_) * BioFabricPanel.GRID_SIZE;
+    
+    //
+    // Drain zone info for each zone:
+    //
+    
+    List<BioFabricNetwork.DrainZone> zones = target.getDrainZones(showShadows);  
+    DrainZoneInfo[] dzis = new DrainZoneInfo[zones.size()];
+ 
+    //
+    // Process each zone:
+    //
+    
+    for (int i = 0; i < zones.size(); i++) {      
+      DrainZoneInfo curr = new DrainZoneInfo(zones.get(i));
+      dzis[i] = curr;
       if (curr.dzmm == null) {
         continue;  
       }
-
+      
+      // Drain zone sizing / rotation:
+      
+      curr.setTextSize(target, fonts_, bigToLittle_, frc);
+      
 	    //
-	    // Print out drain zone text _if_ there is a drain zone:
+	    // Create drain zone text if there is some:
 	    //
 	
 	    float tnamex = 0;
-	      if (curr.dumpRect != null) {
+	    if (curr.dumpRect != null) {
 	      // Easiest font height hack is to scale it by ~.67:
-	        double dumpScaleHeight = curr.dumpRect.getHeight() * LABEL_FONT_HEIGHT_SCALE_;
-	        if (curr.doRotateName) {
-	          tnamex = (curr.dzmm.min * BioFabricPanel.GRID_SIZE) +
-	                  ((curr.diff * BioFabricPanel.GRID_SIZE) / 2.0F) +
-	                 (float)(dumpScaleHeight / 2.0);
-	          curr.dumpRect.setRect(tnamex - dumpScaleHeight, tnamey - curr.dumpRect.getWidth(),
-	                  dumpScaleHeight, curr.dumpRect.getWidth());
+	      double dumpScaleHeight = curr.dumpRect.getHeight() * LABEL_FONT_HEIGHT_SCALE_;
+	      if (curr.doRotateName) {
+          tnamex = (curr.dzmm.min * BioFabricPanel.GRID_SIZE) +
+                   ((curr.diff * BioFabricPanel.GRID_SIZE) / 2.0F) +
+                   (float)(dumpScaleHeight / 2.0);
+          curr.dumpRect.setRect(tnamex - dumpScaleHeight, tnamey - curr.dumpRect.getWidth(),
+                                dumpScaleHeight, curr.dumpRect.getWidth());
 	      } else {  
-	          tnamex = (curr.dzmm.min * BioFabricPanel.GRID_SIZE) +
-	                  ((curr.diff * BioFabricPanel.GRID_SIZE) / 2.0F) - ((int) curr.dumpRect.getWidth() / 2);
-	          curr.dumpRect.setRect(tnamex, tnamey - dumpScaleHeight, curr.dumpRect.getWidth(), dumpScaleHeight);
+          tnamex = (curr.dzmm.min * BioFabricPanel.GRID_SIZE) +
+                  ((curr.diff * BioFabricPanel.GRID_SIZE) / 2.0F) - ((int) curr.dumpRect.getWidth() / 2);
+          curr.dumpRect.setRect(tnamex, tnamey - dumpScaleHeight, curr.dumpRect.getWidth(), dumpScaleHeight);
 	      }
+	      
+	      //
+	      // Build the node zone shade rectangle if one is requested:
+	      //
+	      
 	      if (shadeNodes) {
 	      	Color col = ((target.nodeRow % 2) == 0) ? superLightBlue_ : superLightPink_;
 	        buildANodeShadeRect(curr.dzmm, linkExtents, curr.dumpRect, col);
 	      }
+	      
 	    }
     
 	    //
 	    // Output the node label and (optional) drain zone label.  If we are using a tiny font for the drain
 	    // zone, it goes out last to get drawn above the links.
 	    //
-	    PaintedPath drain = new PaintedPath(Color.BLACK, target.getNodeName(), namex, namey, tnamex, tnamey, 
-	                                        curr.doRotateName, curr.font, labelBounds, curr.dumpRect);
+	    TextPath drain = new TextPath(Color.BLACK, target.getNodeName(), tnamex, tnamey, 
+	                                  curr.dumpRect, curr.doRotateName, curr.font);
 	    nkk = Integer.toString(nameKeyCount_++);
 	    pay = new QuadTree.Payload(curr.dumpRect, nkk);
 	    names_.insertPayload(pay);
-	    if (curr.font == 4) {  
+	    if (curr.font == TextPath.FontSizes.TINY) {  
 	    	nameKeyToPaintThird_.put(nkk, drain);
+	    	nameKeyToNodeID_.put(nkk, target.getNodeID());
 	    } else {
 	    	nameKeyToPaintSecond_.put(nkk, drain);
+	    	nameKeyToNodeID_.put(nkk, target.getNodeID());
 	    }
       
       if (curr.dumpRect != null) {
@@ -618,7 +612,8 @@ public class PaintCacheSmall implements PaintCache {
   
   private static class DrainZoneInfo {
     
-    private int diff, font;
+    private int diff;
+    private TextPath.FontSizes font;
     private boolean doRotateName;
     private Rectangle2D dumpRect;
     private MinMax dzmm;
@@ -627,6 +622,35 @@ public class PaintCacheSmall implements PaintCache {
     DrainZoneInfo(BioFabricNetwork.DrainZone dz) {
       this.dzmm = dz.getMinMax().clone();
     }
+    
+    /***************************************************************************
+	  **
+	  ** Set the drain zone text size
+	  */
+	  
+	  private void setTextSize(BioFabricNetwork.NodeInfo target, Map<TextPath.FontSizes, Font> fonts, 
+	  		                     List<TextPath.FontSizes> bigToSmall, FontRenderContext frc) { 
+	  	this.doRotateName = false;      
+	    this.diff = this.dzmm.max - this.dzmm.min;
+	    
+	    Rectangle2D bounds = null;
+	    for (TextPath.FontSizes size : bigToSmall) {  
+	      bounds = fonts.get(size).getStringBounds(target.getNodeName(), frc);
+	      if (bounds.getWidth() <= (BioFabricPanel.GRID_SIZE * this.diff)) {
+	        this.font = size;
+	        this.dumpRect = bounds;
+          bounds = null;
+	        break;
+	      }
+	    }
+	    
+	    if (bounds != null) {
+	      this.font = TextPath.FontSizes.TINY;
+	      this.dumpRect = bounds;
+	      this.doRotateName = true;
+	    }
+	    return;
+	  }
   }
   
   /***************************************************************************
@@ -649,15 +673,15 @@ public class PaintCacheSmall implements PaintCache {
         }
       }
     }
-    int rectLeft = (int)Math.floor((double)(dzmm.min * BioFabricPanel.GRID_SIZE) - BB_HALF_WIDTH_ - (STROKE_SIZE / 2.0));
-    int topRow = (int)Math.floor((double)(minRow * BioFabricPanel.GRID_SIZE) - BB_HALF_WIDTH_ - (STROKE_SIZE / 2.0));
+    int rectLeft = (int)Math.floor((dzmm.min * BioFabricPanel.GRID_SIZE) - BB_HALF_WIDTH_ - (STROKE_SIZE / 2.0));
+    int topRow = (int)Math.floor((minRow * BioFabricPanel.GRID_SIZE) - BB_HALF_WIDTH_ - (STROKE_SIZE / 2.0));
     int rectTop = (dumpRect == null) ? topRow : Math.min((int)dumpRect.getMinY(), topRow);
-    int rectRight = (int)Math.ceil((double)(dzmm.max * BioFabricPanel.GRID_SIZE) + BB_HALF_WIDTH_ + (STROKE_SIZE / 2.0));
+    int rectRight = (int)Math.ceil((dzmm.max * BioFabricPanel.GRID_SIZE) + BB_HALF_WIDTH_ + (STROKE_SIZE / 2.0));
     int rectWidth = rectRight - rectLeft;
-    int rectBot = (int)Math.floor((double)(maxRow * BioFabricPanel.GRID_SIZE) + BB_HALF_WIDTH_ + (STROKE_SIZE / 2.0));
+    int rectBot = (int)Math.floor((maxRow * BioFabricPanel.GRID_SIZE) + BB_HALF_WIDTH_ + (STROKE_SIZE / 2.0));
     int rectHeight = rectBot - rectTop;
     Rectangle rect = new Rectangle(rectLeft, rectTop, rectWidth, rectHeight);
-    PaintedPath npp = new PaintedPath(col, rect);
+    BoxPath npp = new BoxPath(col, rect);
     String nkk = Integer.toString(nameKeyCount_++);
     QuadTree.Payload pay = new QuadTree.Payload(rect, nkk);
     names_.insertPayload(pay);

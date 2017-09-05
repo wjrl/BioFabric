@@ -172,9 +172,9 @@ public class GlyphPath {
   ** Draw it:
   */ 
 
-  int paint(Graphics2D g2, Rectangle bounds, boolean forSelection) {
+  int paint(Graphics2D g2, Rectangle bounds) {
     int didPaint = 0;
-    g2.setPaint(forSelection ? Color.black : col_);
+    g2.setPaint(col_);
  
     //
     // Second section: Link glyph drawing:
@@ -198,7 +198,7 @@ public class GlyphPath {
             (rect2_.getMinX() < bounds.getMaxX()) && 
             (rect2_.getMaxY() > bounds.getMinY()) && 
             (rect2_.getMinY() < bounds.getMaxY()))) {         
-          g2.setPaint(forSelection ? Color.black : col_);
+          g2.setPaint(col_);
           g2.fill(rect2_);     
           g2.setPaint(Color.BLACK);
           g2.draw(rect2_);
@@ -212,7 +212,7 @@ public class GlyphPath {
              (gpBounds_.getMinX() < bounds.getMaxX()) && 
              (gpBounds_.getMaxY() > bounds.getMinY()) && 
              (gpBounds_.getMinY() < bounds.getMaxY()))) {         
-          g2.setPaint(forSelection ? Color.black : col_);
+          g2.setPaint(col_);
           g2.fill(gp_);     
           g2.setPaint(Color.BLACK);
           g2.draw(gp_);

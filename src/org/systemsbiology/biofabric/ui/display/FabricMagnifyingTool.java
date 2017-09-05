@@ -181,7 +181,17 @@ public class FabricMagnifyingTool extends JPanel {
 
   /***************************************************************************
   **
-  ** Are we ingnoring the mouse?
+  ** Set selections
+  */
+
+  public void setSelections(PaintCache.Reduction selections) {
+  	myMag_.setSelections(selections);
+    return;
+  }    
+
+  /***************************************************************************
+  **
+  ** Are we ignoring the mouse?
   */
 
   public boolean isIgnoring() {
@@ -642,18 +652,23 @@ public class FabricMagnifyingTool extends JPanel {
     LinkLabels() {
       setBackground(new Color(245, 245, 245));
     }
+    
     @Override
     public Dimension getPreferredSize() {
       return (new Dimension(450, (int)((currSize_ + 1) * TOP_LINK_SPACING_)));   
     }
+    
     @Override
     public Dimension getMinimumSize() {
       return (new Dimension(450, (int)((currSize_ + 1) * TOP_LINK_SPACING_)));
     }
-
+    
+    @Override
     public Dimension getMaximumSize() {
       return (new Dimension(4000, (int)((currSize_ + 1) * TOP_LINK_SPACING_)));    
     }
+    
+    @Override
     public void paintComponent(Graphics g) {
       super.paintComponent(g);
       if (model_ == null) {
@@ -685,9 +700,10 @@ public class FabricMagnifyingTool extends JPanel {
       if (startCen >= numCol) {
         return;
       }
+    
       int endCen = myCen.x + (currSize_ / 2);
-      if (endCen >= numCol) {
-        endCen = numCol - 1;
+      if (endCen > numCol) {
+        endCen = numCol;
       }
       int count = -1;
      
@@ -708,17 +724,11 @@ public class FabricMagnifyingTool extends JPanel {
         int minRow = li.topRow();
         int maxRow = li.bottomRow();
         
-        UiUtil.fixMePrintout("Mother Plutarch Mabeuf (rightmost) link not appearing in clustered LesMiz");
         if ((minRow <= (myCen.y + (currSize_ / 2))) && (maxRow >= (myCen.y - (currSize_ / 2)))) {
           String linkDisp = li.getLink().toDisplayString();
           Rectangle2D bounds = tiny_.getStringBounds(linkDisp, frc);
           atPoint.setLocation((i * BioFabricPanel.GRID_SIZE), 0.0);
           ac.transform(atPoint, drawPoint);
-          //float baseptX = nodeLabels_.getWidth() + (float)drawPoint.getX();
-         // if ((baseptX < nodeLabels_.getWidth()) || (baseptX > nodeLabels_.getWidth() + 200)) {
-          //  continue;
-         // }
-          
           float baseptX = (float)drawPoint.getX();
           if ((baseptX < 0) || (baseptX > (currSize_ * FabricMagnifier.MAG_GRID))) {
             continue;

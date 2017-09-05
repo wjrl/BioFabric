@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -20,9 +20,8 @@
 package org.systemsbiology.biofabric.ui.display;
 
 import java.awt.Color;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import javax.swing.JLabel;
+import java.awt.GridLayout;
+
 import javax.swing.JPanel;
 
 import org.systemsbiology.biofabric.util.UiUtil;
@@ -54,10 +53,10 @@ public class FabricLocation extends JPanel {
   //
   ////////////////////////////////////////////////////////////////////////////
 
-  private JLabel nodeName_;
-  private JLabel linkName_;
-  private JLabel linkZone_;
-
+  private InfoPanel nodePanel_;
+  private InfoPanel linkPanel_;
+  private InfoPanel linkZonePanel_;
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTRUCTORS
@@ -71,21 +70,21 @@ public class FabricLocation extends JPanel {
 
   public FabricLocation() {
     setBackground(Color.WHITE);
-    setLayout(new GridBagLayout());
-    GridBagConstraints gbc = new GridBagConstraints();
+  	setLayout(new GridLayout(1, 3));
+    nodePanel_ = new InfoPanel(false, 15, 150, false);  
+    linkPanel_ = new InfoPanel(false, 15, 150, false);
+    UiUtil.fixMePrintout("Create some separation! This doesn't do it!");
+   // linkPanel_.setBorder(BorderFactory.createEmptyBorder(0, 100, 0, 100));
+    linkPanel_.setBackground(Color.BLUE);
+    linkZonePanel_ = new InfoPanel(false, 15, 150, false);
     
-    nodeName_ = new JLabel("Mouse Over Node Row: <none>");
-    linkName_ = new JLabel("Mouse Over Link: <none>");
-    linkZone_ = new JLabel("Mouse Over Node Link Zone: <none>");
-
-    UiUtil.gbcSet(gbc, 0, 0, 10, 1, UiUtil.HOR, 0, 0, 5, 5, 5, 5, UiUtil.CEN, 0.5, 0.0);
-    add(nodeName_, gbc);
-       
-    UiUtil.gbcSet(gbc, 11, 0, 45, 1, UiUtil.HOR, 0, 0, 5, 5, 5, 5, UiUtil.CEN, 0.5, 0.0);
-    add(linkName_, gbc);
-    
-    UiUtil.gbcSet(gbc, 56, 0, 10, 1, UiUtil.HOR, 0, 0, 5, 5, 5, 5, UiUtil.CEN, 0.5, 0.0);
-    add(linkZone_, gbc);   
+    nodePanel_.installName("Mouse Over Node Row: <none>");
+    linkPanel_.installName("Mouse Over Link: <none>");
+    linkZonePanel_.installName("Mouse Over Node Link Zone: <none>");
+   
+    add(nodePanel_);
+    add(linkPanel_);
+    add(linkZonePanel_);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -100,14 +99,10 @@ public class FabricLocation extends JPanel {
   */
 
   public void setNodeAndLink(BioFabricPanel.MouseLocInfo mlo) {
-    UiUtil.fixMePrintout("This baby is causing e.g. *magnifier* validation on EVERY mouse move!");
-    nodeName_.setText("Mouse Over Node Row: " + mlo.nodeDesc);
-    linkName_.setText("Mouse Over Link: " + mlo.linkDesc);
-    linkZone_.setText("Mouse Over Node Link Zone: " + mlo.zoneDesc);
-    nodeName_.invalidate();
-    linkName_.invalidate();
-    linkZone_.invalidate();
-    revalidate();
+     nodePanel_.installName("Mouse Over Node Row: " + mlo.nodeDesc);
+	   linkPanel_.installName("Mouse Over Link: " + mlo.linkDesc);
+	   linkZonePanel_.installName("Mouse Over Node Link Zone: " + mlo.zoneDesc);
+     repaint();   
     return;
   }   
 }

@@ -369,6 +369,7 @@ public class BasicZoomTargetSupport implements ZoomTarget {
     // If the viewport is larger than the preferred size, we center using that:
     //
     zoom_ = zoom;
+    System.out.println("SWZF " + zoom + " " + viewportDim);
     transform_ = getTransformForWideZoomFactor(zoom, viewportDim);
     myGenomePre_.setPresentationZoomFactor(zoom); 
     return;
@@ -387,6 +388,7 @@ public class BasicZoomTargetSupport implements ZoomTarget {
     AffineTransform transform = new AffineTransform();
     Workspace ws = workspaceSource_.getWorkspace();
     Rectangle rect = ws.getWorkspace();
+    System.out.println("workspace " + rect);
    
     int rectWidth = (int)(rect.getWidth() * zoom); 
     int rectHeight = (int)(rect.getHeight() * zoom);

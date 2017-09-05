@@ -114,6 +114,7 @@ public class QuadTree {
 	  
   public boolean getAllNodesToDepth(int minDepth, int maxDepth, List<QuadTreeNode> nodes) {
     if (maxDepth > maxDepth_) {
+    	System.err.println(maxDepth + " versus " + maxDepth_);
     	throw new IllegalArgumentException();
     }
   	return (root_.getAllNodesToDepth(minDepth, maxDepth, nodes));

@@ -1509,8 +1509,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     // Possibly expensive display object creation:
     bfp_.installModel(bfn, monitor); 
     // Very expensive display buffer creation:
-    int[] preZooms = BufferBuilder.calcImageZooms(bfn);
-    bfp_.zoomForBuf(preZooms, screenSize);
+    int[] preZooms = bfp_.zoomForBuf(screenSize);
     BufferedImage topImage = null;
     if (forMain) {
       BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
@@ -1535,9 +1534,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     screenSize.setSize((int)(screenSize.getWidth() * 0.8), (int)(screenSize.getHeight() * 0.4));
     colGen_.newColorModel();
     bfp_.changePaint(monitor);
-    BioFabricNetwork bfn = bfp_.getNetwork();
-    int[] preZooms = BufferBuilder.calcImageZooms(bfn);
-    bfp_.zoomForBuf(preZooms, screenSize);
+    int[] preZooms = bfp_.zoomForBuf(screenSize);
     BufferedImage topImage = null;
     if (forMain) {
       BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
@@ -1569,7 +1566,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public void postLoadOperations(BufferedImage topImage) {
     topWindow_.getOverview().installImage(topImage, bfp_.getWorldScreen());
     bfp_.installModelPost();
-    bfp_.installZooms();
+ //   bfp_.installZooms();
     bfp_.initZoom();
     checkForChanges();
     bfp_.repaint();

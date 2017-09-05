@@ -30,7 +30,6 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
 import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -52,20 +51,15 @@ public class ZoomCommandSupport {
 
   private ZoomTarget sup_;
   private JScrollPane jsp_;
-  private double[] zoomVals_ = new double[] {0.06, 0.12, 0.20, 0.25, 0.33, 0.38, 
-                                             0.44, 0.50, 0.62, 0.67, 0.75, 0.85, 1.0, 
-                                             1.25, 1.5, 2.0};
-  private int currZoomIndex_ = 5; //0.38
+  private double[] zoomVals_;
+  private int currZoomIndex_ = 5;
   private static final double SMALL_MODEL_CUSTOM_ZOOM_ = 0.03;
   private double customZoom_ = SMALL_MODEL_CUSTOM_ZOOM_;
   
-  private static final int NEW_MODEL_INDEX_ = 8;  // 0.62
-  private int newModelIndex_ = NEW_MODEL_INDEX_;
   private Dimension currViewSize_;
   private double currViewXFrac_;
   private double currViewYFrac_;
   private ZoomChangeTracker tracker_;
-  private Rectangle2D currClipRect_;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -90,22 +84,12 @@ public class ZoomCommandSupport {
 
   /***************************************************************************
   **
-  ** Return the current clip rect
-  */
-
-  public Rectangle2D getCurrClipRect() {
-    return (currClipRect_);
-  }
-
-  /***************************************************************************
-  **
   ** Set Custom zoom vals (do only at the start)
   */
 
-  public void setCustomZoomPoints(double[] customZoomVals, int startIndex, int newModelIndex) {
+  public void setCustomZoomPoints(double[] customZoomVals, int startIndex) {
     zoomVals_ = customZoomVals;
     currZoomIndex_ = startIndex;
-    newModelIndex_ = newModelIndex;
     return;
   }
   
@@ -210,10 +194,13 @@ public class ZoomCommandSupport {
     if (retval == -1) {
       double vZoom = (double)allDim.height / (double)dim.height;
       double hZoom = (double)allDim.width / (double)dim.width;
-      return (new ZoomResult((vZoom > hZoom) ? hZoom : vZoom));
+      double useZoom = (vZoom > hZoom) ? hZoom : vZoom;
+      System.out.println("PRESSING ALL MODEL ON WORLD BANK GENERATES A CUSTOM ZOOM " + useZoom);
+      return (new ZoomResult(useZoom));
     }
    
     retval = (retval > zoomVals_.length - 1) ? zoomVals_.length - 1 : retval;
+    System.out.println("STD ZOOM " + retval);
     return (new ZoomResult(retval));
   }  
 
@@ -226,14 +213,15 @@ public class ZoomCommandSupport {
   private void doZoom(double newZoomVal, double oldZoomVal) { 
      
     Dimension vDim = scrollDims();
-
+    System.out.println("doZoom " + newZoomVal);
     JViewport view = jsp_.getViewport();
     Point viewPos = view.getViewPosition();
     Dimension viewDim = view.getExtentSize();
 
     int vCenter = viewPos.y + (viewDim.height / 2);
     int hCenter = viewPos.x + (viewDim.width / 2);    
-    Point2D worldCenter = sup_.viewToWorld(new Point(hCenter, vCenter));    
+    Point2D worldCenter = sup_.viewToWorld(new Point(hCenter, vCenter)); 
+    System.out.println("worldCenter " + worldCenter);
     sup_.setWideZoomFactor(newZoomVal, vDim);    
     Point newCenter = sup_.pointToViewport(new Point((int)Math.round(worldCenter.getX()), 
                                                      (int)Math.round(worldCenter.getY()))); 
@@ -323,17 +311,6 @@ public class ZoomCommandSupport {
     jsp_.validate();
     return;
   }  
-
-  /***************************************************************************
-  **
-  ** Get zoom value needed to bound model
-  */
-  
-  public double getZoomToModel() {
-    Rectangle bounds = sup_.getCurrentBasicBounds();
-    ZoomResult zres = calcOptimalZoom(bounds);
-    return (zoomVals_[zres.index]);
-  }
    
   /***************************************************************************
   **
@@ -364,13 +341,16 @@ public class ZoomCommandSupport {
   
   /***************************************************************************
   **
-  ** Get current zoom value
+  ** Set current zoom value
   */ 
     
-  public void setZoomIndex(int index) {  
+  public void setZoomIndex(int index) {
+  	System.out.println("SZI " + index);
     double oldZoomVal = getCurrentZoom();
+    System.out.println("OZV " + oldZoomVal);
     setCurrentZoom(new ZoomResult(index));
     double newZoomVal = getCurrentZoom();
+     System.out.println("NZV " + newZoomVal);
 
     //
     // Enable/disable zoom actions based on zoom limits:
@@ -450,18 +430,6 @@ public class ZoomCommandSupport {
     return (currZoomIndex_ == (zoomVals_.length - 1));
   }    
 
-  /***************************************************************************
-  **
-  ** Set current zoom value for new model
-  */ 
-    
-  public void setCurrentZoomForNewModel() {
-    setCurrentZoom(new ZoomResult(newModelIndex_));
-    sup_.fixCenterPoint(true, null, false);
-    viewportToCenter(getCurrentZoom());
-    if (tracker_ != null) tracker_.zoomStateChanged(false);
-    return;
-  }  
  
   /***************************************************************************
   **
@@ -469,15 +437,6 @@ public class ZoomCommandSupport {
   */ 
     
   private void setCurrentZoom(ZoomResult zres) {
-    /*
-    int delay = 100;
-    Timer zoomTimer = new Timer(delay, new ActionListener() {
-      public void actionPerformed(ActionEvent evt) {
-      }
-    });
-    zoomTimer.start();
-    */
-     
     if (zres.doCustom) {
       customZoom_ = zres.customZoom;
       currZoomIndex_ = -1;
@@ -485,36 +444,6 @@ public class ZoomCommandSupport {
       currZoomIndex_ = zres.index;
       customZoom_ = SMALL_MODEL_CUSTOM_ZOOM_;  // Doesn't really matter...
     }
-    return;
-  }  
-  
-  /***************************************************************************
-  **
-  ** Zoom to the center of the worksheet
-  */ 
-    
-  public void zoomToWorksheetCenter() {
-    ZoomResult zres = calcOptimalZoom(null);    
-    setCurrentZoom(zres);    
-    viewportToCenter(getCurrentZoom());
-    sup_.repaint();
-    if (tracker_ != null) tracker_.zoomStateChanged(false);
-    return;
-  }
- 
-  
-  /***************************************************************************
-  **
-  ** Zoom to the center of the worksheet, showing full worksheet
-  */ 
-    
-  public void zoomToFullWorksheet() {
-    Rectangle wsBounds = sup_.getWorkspaceBounds();
-    ZoomResult zres = calcOptimalZoom(wsBounds);    
-    setCurrentZoom(zres);    
-    viewportToCenter(getCurrentZoom());
-    sup_.repaint();
-    if (tracker_ != null) tracker_.zoomStateChanged(false);
     return;
   }  
   
@@ -610,10 +539,6 @@ public class ZoomCommandSupport {
     }
       
     Dimension vDim = scrollDims();
-    //ZoomResult zres = calcOptimalZoom(selected);    
-    //setCurrentZoom(zres);
-    //sup_.setWideZoomFactor(getCurrentZoom(), vDim);
- 
     int x = selected.x + (selected.width / 2);
     int y = selected.y + (selected.height / 2);    
     Point pt = new Point(x, y);
@@ -621,18 +546,6 @@ public class ZoomCommandSupport {
     viewportUpdate(pt, vDim);
     sup_.repaint();
     if (tracker_ != null) tracker_.zoomStateChanged(true);
-    return;
-  } 
-  
-  /***************************************************************************
-  **
-  ** Zoom to selected operations
-  */ 
-    
-  public void zoomToNextSelected() {
-    sup_.incrementToNextSelection();
-    Rectangle selected = sup_.getCurrentSelectedBounds();
-    zoomToSelectedGuts(selected);
     return;
   } 
   
@@ -646,20 +559,7 @@ public class ZoomCommandSupport {
     Rectangle selected = sup_.getCurrentSelectedBounds();
     centerOnSelectedGuts(selected);
     return;
-  } 
- 
-  /***************************************************************************
-  **
-  ** Zoom to selected operations
-  */ 
-    
-  public void zoomToPreviousSelected() {
-    sup_.decrementToPreviousSelection();
-    Rectangle selected = sup_.getCurrentSelectedBounds();
-    zoomToSelectedGuts(selected);
-    return;
-  } 
-  
+} 
   /***************************************************************************
   **
   ** Center to selected operations
@@ -682,18 +582,7 @@ public class ZoomCommandSupport {
     zoomToSelectedGuts(selected);
     return;
   } 
-  
-  /***************************************************************************
-  **
-  ** Center to selected operations
-  */ 
-    
-  public void centerToCurrentSelected() {
-    Rectangle selected = sup_.getCurrentSelectedBounds();
-    centerOnSelectedGuts(selected);
-    return;
-  } 
-  
+
   /***************************************************************************
   **
   ** Zoom to a rectangle operations
@@ -758,6 +647,7 @@ public class ZoomCommandSupport {
     }
     ZoomResult zres = calcOptimalZoom(bounds); 
     Dimension vDim = scrollDims();
+    System.out.println("ZoomToModel viewport " + vDim);
     setCurrentZoom(zres);    
     sup_.setWideZoomFactor(getCurrentZoom(), vDim);
     
@@ -765,41 +655,12 @@ public class ZoomCommandSupport {
     int y = bounds.y + (bounds.height / 2);    
     Point pt = new Point(x, y);
     pt = sup_.pointToViewport(pt);
+    System.out.println("pt2v " + pt);
     viewportUpdate(pt, vDim);
     sup_.repaint();
     if (tracker_ != null) tracker_.zoomStateChanged(false);
     return;
   }
-  
-  /***************************************************************************
-  **
-  ** Zoom to show all models.  If they are off to one corner of the worksheet, we will scroll
-  ** as needed.
-  */ 
-    
-  public void zoomToAllModels() {
-    Rectangle bounds = sup_.getAllModelBounds();
-    Rectangle wsBounds = sup_.getWorkspaceBounds();
-    Rectangle union = wsBounds.union(bounds);
-    if (!union.equals(wsBounds)) { // i.e. part of all model outside of workspace: we will center on workspace
-      Point2D cent = sup_.getRawCenterPoint();
-      bounds = centeredUnion(union, cent);
-    }
-    ZoomResult zres = calcOptimalZoom(bounds); 
-    Dimension vDim = scrollDims();
-    setCurrentZoom(zres);    
-    sup_.setWideZoomFactor(getCurrentZoom(), vDim);
- 
-    int x = bounds.x + (bounds.width / 2);
-    int y = bounds.y + (bounds.height / 2);    
-    Point pt = new Point(x, y);
-    pt = sup_.pointToViewport(pt);
-    
-    viewportUpdate(pt, vDim);
-    sup_.repaint();
-    if (tracker_ != null) tracker_.zoomStateChanged(false);
-    return;
-  }  
 
   /***************************************************************************
   **
@@ -822,7 +683,6 @@ public class ZoomCommandSupport {
     // 
     sup_.adjustWideZoomForSize(scrollDims());
     currViewSize_ = viewExtent;
-    currClipRect_ = view.getViewRect();
     if (tracker_ != null) tracker_.zoomStateChanged(true);
     return;
   }
@@ -849,7 +709,6 @@ public class ZoomCommandSupport {
       Dimension viewSize = view.getViewSize(); 
       currViewXFrac_ = (double)currX / (double)viewSize.width; 
       currViewYFrac_ = (double)currY / (double)viewSize.height;
-      currClipRect_ = view.getViewRect();
     }
     if (tracker_ != null) tracker_.zoomStateChanged(true);
     return;

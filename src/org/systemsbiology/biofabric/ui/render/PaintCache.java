@@ -48,12 +48,6 @@ public interface PaintCache {
   
   public final static int STROKE_SIZE = 3;
   
-  public final static int TINY = 0;
-  public final static int HUGE = 1;
-  public final static int MED = 2;
-  public final static int MED_SMALL = 3;
-  public final static int SMALL = 4;	
-	
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
@@ -69,21 +63,14 @@ public interface PaintCache {
   
   /***************************************************************************
   **
-  **  Answer if we have something to do...
-  */
-  
-  public boolean needToPaint();
-  
-  /***************************************************************************
-  **
   **  paint it
   */
   
-  public boolean paintIt(Graphics2D g2, Rectangle clip, boolean forSelection, Reduction reduce);
+  public boolean paintIt(Graphics2D g2, Rectangle clip, Reduction reduce);
   
   /***************************************************************************
   **
-  ** Drawing core
+  ** Draw the selection rubber band
   */
   
   public void drawFloater(Graphics2D g2, FloaterSet floaters);
@@ -157,12 +144,17 @@ public interface PaintCache {
   public static class Reduction {
     Set<Integer> paintRows;
     Set<Integer> paintCols;
-    Set<String> paintNames;
+    Set<NID> paintNames;
     
-    public Reduction(Set<Integer> rows, Set<Integer> cols, Set<String> names) {
+    public Reduction(Set<Integer> rows, Set<Integer> cols, Set<NID> names) {
       this.paintRows = rows;
       this.paintCols = cols;
       this.paintNames = names;    
     }
+    
+    public boolean somethingToPaint() {
+    	return (!paintRows.isEmpty() || !paintCols.isEmpty() || !paintNames.isEmpty());	
+    }
+    
   } 
 }

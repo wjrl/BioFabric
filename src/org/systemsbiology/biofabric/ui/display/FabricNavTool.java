@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -24,15 +24,9 @@ import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.GridLayout;
-import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.font.FontRenderContext;
-import java.awt.geom.AffineTransform;
-import java.awt.geom.Rectangle2D;
 import java.text.MessageFormat;
 
 import javax.swing.Box;
@@ -323,12 +317,15 @@ public class FabricNavTool extends JPanel {
       disableControls();
       return;
     }
+    ResourceManager rMan = ResourceManager.getManager();
     for (int i = 0; i < NUM_PAN_; i++) {
       buttonZoom_[i].setEnabled(true);
       buttonLinkZone_[i].setEnabled(true);
       buttonClear_[i].setEnabled(true);
       infoPanel_[i].setEnabled(true);
-      infoPanel_[i].installNames(currTstat_);
+      String nodeName = MessageFormat.format(rMan.getString("navTool.currNode"), new Object[] {currTstat_.nodeName}); 
+      String linkName = MessageFormat.format(rMan.getString("navTool.currLink"), new Object[] {currTstat_.linkName});
+      infoPanel_[i].installNames(nodeName, linkName);
       buttonUp_[i].setEnabled(currTstat_.upEnabled);   
       buttonRight_[i].setEnabled(currTstat_.rightEnabled);    
       buttonFarRight_[i].setEnabled(currTstat_.farRightEnabled);   
@@ -465,7 +462,7 @@ public class FabricNavTool extends JPanel {
        
     Box infoPanel = Box.createHorizontalBox();
     infoPanel.add(Box.createHorizontalStrut(5));
-    infoPanel_[i] = new InfoPanel();
+    infoPanel_[i] = new InfoPanel(true, 50, 100, true);
     infoPanel.add(infoPanel_[i]);
     infoPanel.add(Box.createHorizontalStrut(5));
 
@@ -746,86 +743,7 @@ public class FabricNavTool extends JPanel {
         ExceptionHandler.getHandler().displayException(ex);
       }
     }
-  }
-  
-  /***************************************************************************
-  **
-  ** Labels the nodes
-  */  
-  
-  private class InfoPanel extends JPanel {
-    private static final long serialVersionUID = 1L;
-    
-    private Font myFont_;
-    private String nodeName_;
-    private String linkName_;
-    
-    InfoPanel() {
-      setBackground(new Color(255, 255, 255));
-      myFont_ = new Font("SansSerif", Font.BOLD, 12);
-    }
-         
-    public void clear() {
-      nodeName_ = ""; 
-      linkName_ = "";
-      return;
-    }
-    
-    public void installNames(BioFabricPanel.TourStatus tstat) {
-      ResourceManager rMan = ResourceManager.getManager();
-      nodeName_ = MessageFormat.format(rMan.getString("navTool.currNode"), new Object[] {currTstat_.nodeName}); 
-      linkName_ = MessageFormat.format(rMan.getString("navTool.currLink"), new Object[] {currTstat_.linkName});
-      return;
-    }
-    
-    @Override
-    public Dimension getPreferredSize() {
-      return (new Dimension(200, 50));    
-    }
-  
-    @Override
-    public Dimension getMinimumSize() {
-      return (new Dimension(100, 50));    
-    }
-    
-    @Override
-    public Dimension getMaximumSize() {
-      return (new Dimension(4000, 200));    
-    }
-  
-    public void paintComponent(Graphics g) {
-      super.paintComponent(g);
-      Graphics2D g2 = (Graphics2D)g;
-      g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-      g2.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-      AffineTransform saveTrans = g2.getTransform();
-      g2.setFont(myFont_);
-      g2.setPaint(Color.BLACK);
-      FontRenderContext frc = g2.getFontRenderContext();
-      Rectangle2D boundsN = myFont_.getStringBounds(nodeName_, frc);
-      Rectangle2D boundsL = myFont_.getStringBounds(linkName_, frc);
-      
-      double reduceN = boundsN.getWidth() / this.getWidth();
-      double reduceL = boundsL.getWidth() / this.getWidth();
-      double maxFactor = Math.max(reduceN, reduceL);
-      float useFactor = 1.0F;
-      
-      if (maxFactor > 1.0) {
-        double rmf = 1.0 / maxFactor;
-        useFactor = (float)maxFactor;
-        g2.translate(this.getWidth() / 2.0, this.getHeight() / 2.0);
-        g2.scale(rmf, rmf);
-        g2.translate(-this.getWidth() / 2.0, -this.getHeight() / 2.0);
-      }
-  
-      g2.drawString(nodeName_, (getWidth() / 2.0F) - ((float)boundsN.getWidth() / 2.0F), 
-                               (getHeight() / 2.0F) - (useFactor * getHeight() / 6.0F) + ((float)(boundsN.getHeight()) / 3.0F)); 
-      g2.drawString(linkName_, (getWidth() / 2.0F) - ((float)boundsL.getWidth() / 2.0F), 
-                               (getHeight() / 2.0F) + (useFactor * getHeight() / 6.0F) + ((float)(boundsL.getHeight()) / 3.0F));
-      g2.setTransform(saveTrans);
-      return;
-    }    
-  }   
+  } 
 
   /***************************************************************************
   **
