@@ -87,8 +87,13 @@ public class GWImportLoader extends FabricImportLoader {
     //
     // length == 1: Node Name or parameters(lines 0-3); Length == 4: Edge
     //
+  
+    String[] tokens = line.split("\\t");
+    if ((tokens.length == 1) && (line.indexOf("\\t") == -1)) {
+      tokens = line.split(" ");
+    }
     
-    String[] tokens = line.split(" ");
+//    String[] tokens = line.split(" ");
     if (tokens.length == 0 || tokens.length == 2 || tokens.length == 3 || tokens.length > 4) {
       stats.badLines.add(line);
       return (null);
