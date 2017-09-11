@@ -93,7 +93,6 @@ public class GWImportLoader extends FabricImportLoader {
       tokens = line.split(" ");
     }
     
-//    String[] tokens = line.split(" ");
     if (tokens.length == 0 || tokens.length == 2 || tokens.length == 3 || tokens.length > 4) {
       stats.badLines.add(line);
       return (null);

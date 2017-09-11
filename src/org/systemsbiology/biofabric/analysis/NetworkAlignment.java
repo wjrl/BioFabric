@@ -53,6 +53,22 @@ public class NetworkAlignment {
           HALF_UNALIGNED_GRAPH2 = "G2B",    // G2 Edges w/ one aligned node and one unaligned node
           FULL_UNALIGNED_GRAPH2 = "G2C";    // G2 Edges w/ two unaligned nodes
   
+  public enum LinkGroup {
+    
+    COVERED_EDGE("G12"),
+    GRAPH1("G1A"),
+    INDUCED_GRAPH2("G2A"),
+    HALF_UNALIGNED_GRAPH2("G2B"),
+    FULL_UNALIGNED_GRAPH2("G2C");
+    
+    public final String rel;
+    
+    LinkGroup(String rel) {
+      this.rel = rel;
+    }
+    
+  }
+  
   private final String TEMPORARY = "TEMP";
   
   ////////////////////////////////////////////////////////////////////////////
