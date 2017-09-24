@@ -32,10 +32,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
@@ -90,7 +88,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
           throws AsynchExitRequestException {
     
     BioFabricNetwork.NetworkAlignmentBuildData nabd = (BioFabricNetwork.NetworkAlignmentBuildData) rbd;
-
+    
     List<NID.WithName> targetIDs = BFSNodeGroupByClass(nabd, monitor);
     
     installNodeOrder(targetIDs, nabd, monitor);
@@ -167,10 +165,10 @@ public class NetworkAlignmentLayout extends NodeLayout {
     HashMap<NID.WithName, Set<NID.WithName>> targsPerSource = new HashMap<NID.WithName, Set<NID.WithName>>();
     
     HashSet<NID.WithName> targsToGo = new HashSet<NID.WithName>();
-
+    
     int numLink = nabd.allLinks.size();
     LoopReporter lr = new LoopReporter(numLink, 20, monitor, 0.0, 0.25, "progress.calculateNodeDegree");
-
+    
     Iterator<FabricLink> alit = nabd.allLinks.iterator();
     while (alit.hasNext()) {
       FabricLink nextLink = alit.next();
@@ -201,7 +199,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
     //
     // Initialize data stuctures for layout
     //
-
+    
     NetAlignNodeGrouper grouper = new NetworkAlignmentLayout.NetAlignNodeGrouper(nabd.allLinks, nabd.loneNodeIDs);
     
     SortedMap<Integer, List<NID.WithName>> classToGroup = new TreeMap<Integer, List<NID.WithName>>(); // master list of nodes in each group
@@ -253,7 +251,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
         NID.WithName head = targsLeftToGoGroup.get(currGroup).remove(0);
         queueGroup.get(currGroup).add(head);
       }
-
+      
       flushQueue(targetsGroup, targsPerSource, linkCounts, targsToGo, targsLeftToGoGroup, queueGroup,
               classToGroup, monitor, .25, .50, nabd.allLinks, nabd.loneNodeIDs, currGroup, grouper);
     }
@@ -271,7 +269,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       }
     }
     targets.addAll(classToGroup.get(RED_SINGLETON));
-
+    
     if (targets.size() != allNodes.size()) {
       throw new IllegalStateException("target size not equal to all-nodes size");
     }
@@ -324,7 +322,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
         }
         
         int kidGroup = grouper.getNodeGroup(kid);
-        
+
 //        if (kidGroup < currGroup) {
 //          throw new IllegalStateException("kid group less than current (parent) group");
 //        }
@@ -407,28 +405,53 @@ public class NetworkAlignmentLayout extends NodeLayout {
   private static final int NUMBER_NODE_GROUPS = 19;
   
   private static final int
+
+//          PURPLE_SINGLETON = 0,
+//          PURPLE_WITH_ONLY_PURPLE = 1,            // PURPLE NODES IN LINK GROUP 1, 2, 3
+//          PURPLE_WITH_PURPLE_BLUE = 2,
+//          PURPLE_WITH_PURPLE_BLUE_RED = 3,
+//          PURPLE_WITH_PURPLE_RED = 4,
+//          PURPLE_WITH_ONLY_RED = 5,
+//          PURPLE_WITH_BLUE_RED = 6,
+//          PURPLE_WITH_ONLY_BLUE = 7,
+//
+//          PURPLE_WITH_BLUE_ORANGE = 8,            // PURPLE NODES IN LINK GROUP 4
+//          PURPLE_WITH_ONLY_ORANGE = 9,
+//          PURPLE_WITH_PURPLE_ORANGE = 10,
+//          PURPLE_WITH_PURPLE_BLUE_ORANGE = 11,
+//          PURPLE_WITH_PURPLE_BLUE_RED_ORANGE = 12,
+//          PURPLE_WITH_PURPLE_RED_ORANGE = 13,
+//          PURPLE_WITH_RED_ORANGE = 14,
+//          PURPLE_WITH_BLUE_RED_ORANGE = 15,
+//
+//          RED_WITH_ORANGE = 16,                   // RED NODES IN LINK GROUP 4
+//          RED_WITH_ORANGE_YELLOW = 17,
+//          RED_WITH_ONLY_YELLOW = 18,              // RED NODES IN LINK GROUP 5
+//          RED_SINGLETON = 19;
           
+          
+          //original node ordering taken from previous push
           PURPLE_SINGLETON = 0,
-          PURPLE_WITH_ONLY_PURPLE = 1,            // PURPLE NODES IN LINK GROUP 1, 2, 3
-          PURPLE_WITH_PURPLE_BLUE = 2,
-          PURPLE_WITH_PURPLE_BLUE_RED = 3,
-          PURPLE_WITH_PURPLE_RED = 4,
-          PURPLE_WITH_ONLY_RED = 5,
+          PURPLE_WITH_ONLY_PURPLE = 1,             // FIRST THREE LINK GROUPS
+          PURPLE_WITH_ONLY_BLUE = 2,
+          PURPLE_WITH_ONLY_RED = 3,
+          PURPLE_WITH_PURPLE_BLUE = 4,
+          PURPLE_WITH_PURPLE_RED = 5,
           PURPLE_WITH_BLUE_RED = 6,
-          PURPLE_WITH_ONLY_BLUE = 7,
+          PURPLE_WITH_PURPLE_BLUE_RED = 7,
   
-          PURPLE_WITH_BLUE_ORANGE = 8,            // PURPLE NODES IN LINK GROUP 4
-          PURPLE_WITH_ONLY_ORANGE = 9,
-          PURPLE_WITH_PURPLE_ORANGE = 10,
-          PURPLE_WITH_PURPLE_BLUE_ORANGE = 11,
-          PURPLE_WITH_PURPLE_BLUE_RED_ORANGE = 12,
+          PURPLE_WITH_ONLY_ORANGE = 8,              // PURPLE NODES IN LINK GROUP 3
+          PURPLE_WITH_PURPLE_ORANGE = 9,
+          PURPLE_WITH_BLUE_ORANGE = 10,
+          PURPLE_WITH_RED_ORANGE = 11,
+          PURPLE_WITH_PURPLE_BLUE_ORANGE = 12,
           PURPLE_WITH_PURPLE_RED_ORANGE = 13,
-          PURPLE_WITH_RED_ORANGE = 14,
-          PURPLE_WITH_BLUE_RED_ORANGE = 15,
+          PURPLE_WITH_BLUE_RED_ORANGE = 14,
+          PURPLE_WITH_PURPLE_BLUE_RED_ORANGE = 15,
   
-          RED_WITH_ORANGE = 16,                   // RED NODES IN LINK GROUP 4
-          RED_WITH_ORANGE_YELLOW = 17,
-          RED_WITH_ONLY_YELLOW = 18,              // RED NODES IN LINK GROUP 5
+          RED_WITH_ORANGE = 16,                    // RED NODES IN LINK GROUP 5
+          RED_WITH_ONLY_YELLOW = 17,
+          RED_WITH_ORANGE_YELLOW = 18,
           RED_SINGLETON = 19;
   
   
@@ -477,64 +500,64 @@ public class NetworkAlignmentLayout extends NodeLayout {
     
     int getNodeGroup(NID.WithName node) {
       
-      if (PURPLE_SINGLETON(node)) {
+      if (purpleSingleton(node)) {
         return PURPLE_SINGLETON;
         
-      } else if (PURPLE_WITH_ONLY_PURPLE(node)) {
+      } else if (purpleWithOnlyPurple(node)) {
         return PURPLE_WITH_ONLY_PURPLE;
         
-      } else if (PURPLE_WITH_PURPLE_BLUE(node)) {
+      } else if (purpleWithPurpleBlue(node)) {
         return PURPLE_WITH_PURPLE_BLUE;
         
-      } else if (PURPLE_WITH_PURPLE_BLUE_RED(node)) {
+      } else if (purpleWithPurpleBlueRed(node)) {
         return PURPLE_WITH_PURPLE_BLUE_RED;
         
-      } else if (PURPLE_WITH_PURPLE_RED(node)) {
+      } else if (purpleWithPurpleRed(node)) {
         return PURPLE_WITH_PURPLE_RED;
         
-      } else if (PURPLE_WITH_ONLY_RED(node)) {
+      } else if (purpleWithOnlyRed(node)) {
         return PURPLE_WITH_ONLY_RED;
         
-      } else if (PURPLE_WITH_BLUE_RED(node)) {
+      } else if (purpleWithBlueRed(node)) {
         return PURPLE_WITH_BLUE_RED;
         
-      } else if (PURPLE_WITH_ONLY_BLUE(node)) {
+      } else if (purpleWithOnlyBlue(node)) {
         return PURPLE_WITH_ONLY_BLUE;
         
-      } else if (PURPLE_WITH_BLUE_ORANGE(node)) {
+      } else if (purpleWithBlueOrange(node)) {
         return PURPLE_WITH_BLUE_ORANGE;
         
-      } else if (PURPLE_WITH_ONLY_ORANGE(node)) {
+      } else if (purpleWithOnlyOrange(node)) {
         return PURPLE_WITH_ONLY_ORANGE;
         
-      } else if (PURPLE_WITH_PURPLE_ORANGE(node)) {
+      } else if (purpleWithPurpleOrange(node)) {
         return PURPLE_WITH_PURPLE_ORANGE;
         
-      } else if (PURPLE_WITH_PURPLE_BLUE_ORANGE(node)) {
+      } else if (purpleWithPurpleBlueOrange(node)) {
         return PURPLE_WITH_PURPLE_BLUE_ORANGE;
         
-      } else if (PURPLE_WITH_PURPLE_BLUE_RED_ORANGE(node)) {
+      } else if (purpleWithPurpleBlueRedOrange(node)) {
         return PURPLE_WITH_PURPLE_BLUE_RED_ORANGE;
         
-      } else if (PURPLE_WITH_PURPLE_RED_ORANGE(node)) {
+      } else if (purpleWithPurpleRedOrange(node)) {
         return PURPLE_WITH_PURPLE_RED_ORANGE;
         
-      } else if (PURPLE_WITH_RED_ORANGE(node)) {
+      } else if (purpleWithRedOrange(node)) {
         return PURPLE_WITH_RED_ORANGE;
         
-      } else if (PURPLE_WITH_BLUE_RED_ORANGE(node)) {
+      } else if (purpleWithBlueRedOrange(node)) {
         return PURPLE_WITH_BLUE_RED_ORANGE;
         
-      } else if (RED_WITH_ORANGE(node)) {
+      } else if (redWithOnlyOrange(node)) {
         return RED_WITH_ORANGE;
         
-      } else if (RED_WITH_ORANGE_YELLOW(node)) {
+      } else if (redWithOrangeYellow(node)) {
         return RED_WITH_ORANGE_YELLOW;
         
-      } else if (RED_WITH_ONLY_YELLOW(node)) {
+      } else if (redWithOnlyYellow(node)) {
         return RED_WITH_ONLY_YELLOW;
         
-      } else if (RED_SINGLETON(node)) {
+      } else if (redSingleton(node)) {
         return RED_SINGLETON;
         
       } else {
@@ -554,285 +577,203 @@ public class NetworkAlignmentLayout extends NodeLayout {
     }
     
     // LINK GROUPS 1, 2, 3
-    boolean PURPLE_WITH_ONLY_PURPLE(NID.WithName node) {
+    boolean purpleSingleton(NID.WithName node) {
       if (! isPurple(node)) {
-        return false;
+        return (false);
       }
-      
+      boolean isOK = nodeToLinks_.get(node).isEmpty();
+      return (isOK);
+    }
+    
+    boolean purpleWithOnlyPurple(NID.WithName node) {
+      if (! isPurple(node)) {
+        return (false);
+      }
       String[] rels = {COVERED_EDGE};
-      
-      
       boolean isOK = hasOnlyPurpleNeighbors(node) && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
+      return (isOK);
     }
     
-    boolean PURPLE_WITH_ONLY_BLUE(NID.WithName node) {
+    boolean purpleWithOnlyBlue(NID.WithName node) {
       if (! isPurple(node)) {
-        return false;
+        return (false);
       }
-      
       String[] rels = {GRAPH1};
-      
-      
       boolean isOK = hasOnlyPurpleNeighbors(node) && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
-      
+      return (isOK);
     }
     
-    boolean PURPLE_WITH_ONLY_RED(NID.WithName node) {
+    boolean purpleWithOnlyRed(NID.WithName node) {
       if (! isPurple(node)) {
-        return false;
+        return (false);
       }
-      
       String[] rels = {INDUCED_GRAPH2};
-      
-      
       boolean isOK = hasOnlyPurpleNeighbors(node) && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
+      return (isOK);
     }
     
-    boolean PURPLE_WITH_PURPLE_BLUE(NID.WithName node) {
+    boolean purpleWithPurpleBlue(NID.WithName node) {
       if (! isPurple(node)) {
-        return false;
+        return (false);
       }
-      
       String[] rels = {COVERED_EDGE, GRAPH1};
-      
-      
       boolean isOK = hasOnlyPurpleNeighbors(node) && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
+      return (isOK);
     }
     
-    boolean PURPLE_WITH_PURPLE_RED(NID.WithName node) {
+    boolean purpleWithPurpleRed(NID.WithName node) {
       if (! isPurple(node)) {
-        return false;
+        return (false);
       }
-      
       String[] rels = {COVERED_EDGE, INDUCED_GRAPH2};
-      
-      
       boolean isOK = hasOnlyPurpleNeighbors(node) && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
-      
+      return (isOK);
     }
     
-    boolean PURPLE_WITH_BLUE_RED(NID.WithName node) {
+    boolean purpleWithBlueRed(NID.WithName node) {
       if (! isPurple(node)) {
-        return false;
+        return (false);
       }
-      
       String[] rels = {GRAPH1, INDUCED_GRAPH2};
-      
-      
       boolean isOK = hasOnlyPurpleNeighbors(node) && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
+      return (isOK);
     }
     
-    boolean PURPLE_WITH_PURPLE_BLUE_RED(NID.WithName node) {
+    boolean purpleWithPurpleBlueRed(NID.WithName node) {
       if (! isPurple(node)) {
-        return false;
+        return (false);
       }
-      
       String[] rels = {COVERED_EDGE, GRAPH1, INDUCED_GRAPH2};
-      
-      
       boolean isOK = hasOnlyPurpleNeighbors(node) && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
-      
+      return (isOK);
     }
     
     // LINK GROUP 4
-    boolean PURPLE_WITH_ONLY_ORANGE(NID.WithName node) {
+    boolean purpleWithOnlyOrange(NID.WithName node) {
       if (! isPurple(node)) {
-        return false;
+        return (false);
       }
       String[] rels = {HALF_UNALIGNED_GRAPH2};
-      
-      
       boolean isOK = hasOnlyRedNeighbors(node) && hasOnlyEdgesOfRels(node, rels);
-      
-      if (isOK) {
-        System.out.println("purple w/ only orange");
-      }
-      return isOK;
+      return (isOK);
     }
     
-    boolean PURPLE_WITH_PURPLE_ORANGE(NID.WithName node) {
+    boolean purpleWithPurpleOrange(NID.WithName node) {
       if (! isPurple(node)) {
-        return false;
+        return (false);
       }
-      
       String[] rels = {COVERED_EDGE, HALF_UNALIGNED_GRAPH2};
-      
-      
-      boolean isOK = true && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
+      boolean isOK = hasOnlyEdgesOfRels(node, rels);
+      return (isOK);
     }
     
-    boolean PURPLE_WITH_BLUE_ORANGE(NID.WithName node) {
+    boolean purpleWithBlueOrange(NID.WithName node) {
       if (! isPurple(node)) {
-        return false;
+        return (false);
       }
-      
       String[] rels = {GRAPH1, HALF_UNALIGNED_GRAPH2};
-      
-      
-      boolean isOK = true && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
-      
+      boolean isOK = hasOnlyEdgesOfRels(node, rels);
+      return (isOK);
     }
     
-    boolean PURPLE_WITH_RED_ORANGE(NID.WithName node) {
+    boolean purpleWithRedOrange(NID.WithName node) {
       if (! isPurple(node)) {
-        return false;
+        return (false);
       }
-      
       String[] rels = {INDUCED_GRAPH2, HALF_UNALIGNED_GRAPH2};
-      
-      
-      boolean isOK = true && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
+      boolean isOK = hasOnlyEdgesOfRels(node, rels);
+      return (isOK);
     }
     
-    boolean PURPLE_WITH_PURPLE_BLUE_ORANGE(NID.WithName node) {
+    boolean purpleWithPurpleBlueOrange(NID.WithName node) {
       if (! isPurple(node)) {
-        return false;
+        return (false);
       }
-      
       String[] rels = {COVERED_EDGE, GRAPH1, HALF_UNALIGNED_GRAPH2};
-      
-      
-      boolean isOK = true && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
+      boolean isOK = hasOnlyEdgesOfRels(node, rels);
+      return (isOK);
     }
     
-    boolean PURPLE_WITH_PURPLE_RED_ORANGE(NID.WithName node) {
+    boolean purpleWithPurpleRedOrange(NID.WithName node) {
       if (! isPurple(node)) {
-        return false;
+        return (false);
       }
-      
       String[] rels = {COVERED_EDGE, INDUCED_GRAPH2, HALF_UNALIGNED_GRAPH2};
-      
-      
-      boolean isOK = true && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
-      
+      boolean isOK = hasOnlyEdgesOfRels(node, rels);
+      return (isOK);
     }
     
-    boolean PURPLE_WITH_BLUE_RED_ORANGE(NID.WithName node) {
+    boolean purpleWithBlueRedOrange(NID.WithName node) {
       if (! isPurple(node)) {
-        return false;
+        return (false);
       }
-      
       String[] rels = {GRAPH1, INDUCED_GRAPH2, HALF_UNALIGNED_GRAPH2};
-      
-      
-      boolean isOK = true && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
-      
+      boolean isOK = hasOnlyEdgesOfRels(node, rels);
+      return (isOK);
     }
     
-    boolean PURPLE_WITH_PURPLE_BLUE_RED_ORANGE(NID.WithName node) {
+    boolean purpleWithPurpleBlueRedOrange(NID.WithName node) {
       if (! isPurple(node)) {
-        return false;
+        return (false);
       }
-      
       String[] rels = {COVERED_EDGE, GRAPH1, INDUCED_GRAPH2, HALF_UNALIGNED_GRAPH2};
-      
-      
-      boolean isOK = true && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
+      boolean isOK = hasOnlyEdgesOfRels(node, rels);
+      return (isOK);
     }
     
-    boolean PURPLE_SINGLETON(NID.WithName node) {
-      
-      if (! isPurple(node)) {
-        return false;
-      }
-      return nodeToLinks_.get(node).isEmpty() && nodeToNeighbors_.get(node).isEmpty();
-    }
-    
-    boolean RED_WITH_ORANGE(NID.WithName node) {
+    boolean redWithOnlyOrange(NID.WithName node) {
       if (! isRed(node)) {
-        return false;
-      }
-      
+        return (false);
+      } // is it ONLY orange?
       String[] rels = {HALF_UNALIGNED_GRAPH2};
-      
-      
-      boolean isOK = true && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
+      boolean isOK = hasOnlyEdgesOfRels(node, rels);
+      return (isOK);
     }
     
     // LINK GROUP 5
-    boolean RED_WITH_ONLY_YELLOW(NID.WithName node) {
+    boolean redWithOnlyYellow(NID.WithName node) {
       if (! isRed(node)) {
-        return false;
+        return (false);
       }
-      
       String[] rels = {FULL_UNALIGNED_GRAPH2};
-      
-      
       boolean isOK = hasOnlyRedNeighbors(node) && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
+      return (isOK);
     }
     
-    boolean RED_WITH_ORANGE_YELLOW(NID.WithName node) {
+    boolean redWithOrangeYellow(NID.WithName node) {
       if (! isRed(node)) {
-        return false;
+        return (false);
       }
-      
       String[] rels = {HALF_UNALIGNED_GRAPH2, FULL_UNALIGNED_GRAPH2};
-      
-      
-      boolean isOK = true && hasOnlyEdgesOfRels(node, rels);
-      
-      return isOK;
+      boolean isOK = hasOnlyEdgesOfRels(node, rels);
+      return (isOK);
     }
     
-    boolean RED_SINGLETON(NID.WithName node) {
-      
+    boolean redSingleton(NID.WithName node) {
       if (! isRed(node)) {
-        return false;
+        return (false);
       }
-      return nodeToLinks_.get(node).isEmpty() && nodeToNeighbors_.get(node).isEmpty();
+      boolean isOK = nodeToLinks_.get(node).isEmpty();
+      return (isOK);
     }
-    
     
     // Helper functions
     boolean hasOnlyRedNeighbors(NID.WithName node) {
       for (NID.WithName neigh : nodeToNeighbors_.get(node)) {
         if (! isRed(neigh)) {
-          return false;
+          return (false);
         }
       }
-      return true;
+      return (true);
     }
     
     boolean hasOnlyPurpleNeighbors(NID.WithName node) {
-      
       for (NID.WithName neigh : nodeToNeighbors_.get(node)) {
         if (! isPurple(neigh)) {
-          return false;
+          return (false);
         }
       }
-      return true;
+      return (true);
     }
     
     boolean hasOnlyEdgesOfRels(NID.WithName node, String[] relsAllowed) {
@@ -842,29 +783,33 @@ public class NetworkAlignmentLayout extends NodeLayout {
       for (FabricLink link : nodeToLinks_.get(node)) {
         
         boolean linkAllowed = false;
-        
         for (int i = 0; i < relsAllowed.length; i++) {
           if (link.getRelation().equals(relsAllowed[i])) {
             linkAllowed = true;
             visitedEachRel[i] = true;
           }
         }
-        
         if (! linkAllowed) {
-          return false;
+          return (false);
         }
       }
-      
+      // check if each relation has been visited at least once
       for (boolean visit : visitedEachRel) {
         if (! visit) {
-          return false;
+          return (false);
         }
       }
-      
-      return true;
+      return (true);
     }
+  
+    /*******************************************************************
+     **
+     ** Identifies Aligned Nodes if they have a dash ('-') in name:
+     ** This must be changed.
+     */
     
     boolean isPurple(NID.WithName node) {
+      
       return node.getName().contains("-"); // THERE IS DEFINETLY A BETTER WAY TO DO THIS
     }
     
@@ -883,92 +828,92 @@ public class NetworkAlignmentLayout extends NodeLayout {
       List<Integer> err = new ArrayList<Integer>();
       
       // LINK GROUP 1, 2 , 3
-      if (PURPLE_WITH_ONLY_PURPLE(node)) {
+      if (purpleWithOnlyPurple(node)) {
         err.add(1);
         
       }
       
-      if (PURPLE_WITH_ONLY_BLUE(node)) {
+      if (purpleWithOnlyBlue(node)) {
         err.add(2);
         
         
       }
-      if (PURPLE_WITH_ONLY_RED(node)) {
+      if (purpleWithOnlyRed(node)) {
         err.add(3);
         
         
       }
-      if (PURPLE_WITH_PURPLE_BLUE(node)) {
+      if (purpleWithPurpleBlue(node)) {
         err.add(4);
         
       }
-      if (PURPLE_WITH_PURPLE_RED(node)) {
+      if (purpleWithPurpleRed(node)) {
         err.add(5);
         
         
       }
-      if (PURPLE_WITH_BLUE_RED(node)) {
+      if (purpleWithBlueRed(node)) {
         err.add(6);
         
         
       }
-      if (PURPLE_WITH_PURPLE_BLUE_RED(node)) {
+      if (purpleWithPurpleBlueRed(node)) {
         err.add(7);
       }
       // LINK GROUP 4
-      if (PURPLE_WITH_ONLY_ORANGE(node)) {
+      if (purpleWithOnlyOrange(node)) {
         err.add(8);
         
       }
-      if (PURPLE_WITH_PURPLE_ORANGE(node)) {
+      if (purpleWithPurpleOrange(node)) {
         err.add(9);
         
       }
-      if (PURPLE_WITH_BLUE_ORANGE(node)) {
+      if (purpleWithBlueOrange(node)) {
         err.add(10);
         
       }
-      if (PURPLE_WITH_RED_ORANGE(node)) {
+      if (purpleWithRedOrange(node)) {
         err.add(11);
         
       }
-      if (PURPLE_WITH_PURPLE_BLUE_ORANGE(node)) {
+      if (purpleWithPurpleBlueOrange(node)) {
         err.add(12);
         
         
       }
-      if (PURPLE_WITH_PURPLE_RED_ORANGE(node)) {
+      if (purpleWithPurpleRedOrange(node)) {
         err.add(13);
         
       }
-      if (PURPLE_WITH_BLUE_RED_ORANGE(node)) {
+      if (purpleWithBlueRedOrange(node)) {
         err.add(14);
         
       }
-      if (PURPLE_WITH_PURPLE_BLUE_RED_ORANGE(node)) {
+      if (purpleWithPurpleBlueRedOrange(node)) {
         err.add(15);
         
       }
-      if (RED_WITH_ORANGE(node)) {
+      if (redWithOnlyOrange(node)) {
         err.add(16);
         
       }
       // LINK GROUP 5
       
-      if (RED_WITH_ONLY_YELLOW(node)) {
+      if (redWithOnlyYellow(node)) {
         err.add(17);
         
       }
-      if (RED_WITH_ORANGE_YELLOW(node)) {
+      if (redWithOrangeYellow(node)) {
         err.add(18);
         
         
       }
-      if (PURPLE_SINGLETON(node)) {
+      if (purpleSingleton(node)) {
         err.add(19);
         
       }
-      if (RED_SINGLETON(node)) {
+      if (redSingleton(node)) {
         err.add(20);
       }
       
@@ -1052,7 +997,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
               err.add(17);
           
           
-              }  if (RED_WITH_ORANGE_YELLOW(node)) {
+              }  if (redWithOrangeYellow(node)) {
               err.add(18);
           
           
