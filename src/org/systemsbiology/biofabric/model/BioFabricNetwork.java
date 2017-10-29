@@ -260,6 +260,8 @@ public class BioFabricNetwork {
         this.rowCount_ = built.rowCount_;
         this.linkGrouping_ = built.linkGrouping_;
         this.layoutMode_ = built.layoutMode_;
+        this.nodeAnnot_ = built.nodeAnnot_;
+        this.linkAnnot_= built.linkAnnot_;
         break;
       case BUILD_FROM_SIF:
         RelayoutBuildData obd = (RelayoutBuildData)bd;    
@@ -2824,13 +2826,9 @@ public class BioFabricNetwork {
       FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard)optionalArgs;
       if (forNodes_) {
         System.out.println("SETTING NODE ANNOTS " + board.currAnnots);
-        if (board.currAnnots.size() > 0) {
-          board.bfn.setNodeAnnotations(board.currAnnots);
-        }
+        board.bfn.setNodeAnnotations(board.currAnnots);
       } else {
-        if (board.currAnnots.size() > 0) {
-          board.bfn.setLinkAnnotations(board.currAnnots);
-        }
+        board.bfn.setLinkAnnotations(board.currAnnots);
       }
       return (null);
     }

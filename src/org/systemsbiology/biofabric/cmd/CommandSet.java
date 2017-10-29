@@ -101,14 +101,10 @@ import org.systemsbiology.biofabric.io.SIFImportLoader;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
-import org.systemsbiology.biofabric.layouts.SetLayout;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
-import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.EdgeLayout;
-import org.systemsbiology.biofabric.layouts.HierDAGLayout;
 import org.systemsbiology.biofabric.layouts.LayoutCriterionFailureException;
-import org.systemsbiology.biofabric.layouts.WorldBankLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
@@ -2827,6 +2823,17 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         return (true);
       }
       bfp_.getNetwork().setNodeAnnotations(aSet);
+      File holdIt;  
+      try {
+        holdIt = File.createTempFile("BioFabricHold", ".zip");
+        holdIt.deleteOnExit();
+      } catch (IOException ioex) {
+        holdIt = null;
+      }
+
+      NetworkRecolor nb = new NetworkRecolor(); 
+      nb.doNetworkRecolor(isForMain_, holdIt);
+      
       return (true);
     }
     
