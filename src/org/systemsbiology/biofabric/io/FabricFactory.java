@@ -28,7 +28,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import org.xml.sax.Attributes;
-
+import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -193,15 +193,15 @@ public class FabricFactory implements ParserClient {
     public FabricDisplayOptions displayOpts;
     public Map<String, NID.WithName> legacyMap;
   	public Map<NID, NID.WithName> wnMap;
+  	public AnnotationSet.Annot annot;
+  	public AnnotationSet currAnnots;
     
     public FactoryWhiteboard() {
       colTarg = FabricColorGenerator.UNCHANGED;
       ulb = new UniqueLabeller();
       legacyMap = new HashMap<String, NID.WithName>();
       wnMap = new HashMap<NID, NID.WithName>();
-    }
-    
+    } 
   }
-
 }
 
