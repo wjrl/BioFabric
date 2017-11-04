@@ -17,28 +17,21 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.ui.display;
-
-import java.awt.Color;
-import java.awt.GridLayout;
-
-import javax.swing.JPanel;
-
-import org.systemsbiology.biofabric.util.UiUtil;
+package org.systemsbiology.biofabric.layouts;
 
 /****************************************************************************
 **
-** This is location announcement
+** A Class
 */
 
-public class FabricLocation extends JPanel {
-    
+public class LayoutCriterionFailureException extends Exception {
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE CONSTANTS
   //
-  //////////////////////////////////////////////////////////////////////////// 
-	
+  ////////////////////////////////////////////////////////////////////////////  
+ 
   private static final long serialVersionUID = 1L;
   
   ////////////////////////////////////////////////////////////////////////////
@@ -46,16 +39,12 @@ public class FabricLocation extends JPanel {
   // PUBLIC CONSTANTS
   //
   //////////////////////////////////////////////////////////////////////////// 
-  
+    
   ////////////////////////////////////////////////////////////////////////////
   //
-  // PRIVATE INSTANCE MEMBERS
+  // PRIVATE VARIABLES
   //
   ////////////////////////////////////////////////////////////////////////////
-
-  private InfoPanel nodePanel_;
-  private InfoPanel linkPanel_;
-  private InfoPanel linkZonePanel_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -68,41 +57,36 @@ public class FabricLocation extends JPanel {
   ** Constructor
   */
 
-  public FabricLocation() {
-    setBackground(Color.WHITE);
-  	setLayout(new GridLayout(1, 3));
-    nodePanel_ = new InfoPanel(false, 15, 150, false);  
-    linkPanel_ = new InfoPanel(false, 15, 150, false);
-    UiUtil.fixMePrintout("Create some separation! This doesn't do it!");
-   // linkPanel_.setBorder(BorderFactory.createEmptyBorder(0, 100, 0, 100));
-    linkPanel_.setBackground(Color.BLUE);
-    linkZonePanel_ = new InfoPanel(false, 15, 150, false);
-    
-    nodePanel_.installName("Mouse Over Node Row: <none>");
-    linkPanel_.installName("Mouse Over Link: <none>");
-    linkZonePanel_.installName("Mouse Over Node Link Zone: <none>");
-   
-    add(nodePanel_);
-    add(linkPanel_);
-    add(linkZonePanel_);
-  }
+  public LayoutCriterionFailureException() {
+  }  
 
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-  
-  /***************************************************************************
-  **
-  ** Drawing routine
-  */
 
-  public void setNodeAndLink(BioFabricPanel.MouseLocInfo mlo) {
-     nodePanel_.installName("Mouse Over Node Row: " + mlo.nodeDesc);
-	   linkPanel_.installName("Mouse Over Link: " + mlo.linkDesc);
-	   linkZonePanel_.installName("Mouse Over Node Link Zone: " + mlo.zoneDesc);
-     repaint();   
-    return;
-  }   
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC CLASS METHODS
+  //
+  //////////////////////////////////////////////////////////////////////////// 
+
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC INNER CLASSES
+  //
+  //////////////////////////////////////////////////////////////////////////// 
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PRIVATE INSTANCE METHODS
+  //
+  ////////////////////////////////////////////////////////////////////////////  
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PRIVATE INNER CLASSES
+  //
+  ////////////////////////////////////////////////////////////////////////////  
 }

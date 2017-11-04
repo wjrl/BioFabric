@@ -170,9 +170,9 @@ public class BreadthFirstLayoutDialog extends BTStashResultsDialog {
       }
       ArrayList<NID.WithName> starts = new ArrayList<NID.WithName>();
       starts.add(result.iterator().next());
-      params_ = new DefaultLayout.Params(starts);
+      params_ = new DefaultLayout.DefaultParams(starts);
     } else {
-      params_ = new DefaultLayout.Params(null);
+      params_ = new DefaultLayout.DefaultParams(null);
     }
    
     return (true);

@@ -17,71 +17,41 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.util;
+package org.systemsbiology.biofabric.layouts;
 
-import java.util.SortedMap;
+import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
 
 /****************************************************************************
 **
-** An interface for monitoring progress
+** This is the interface for edge layout algorithms
 */
 
-public interface BTProgressMonitor {
- 
-  ////////////////////////////////////////////////////////////////////////////
+public interface EdgeLayout {
+
+	////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-
+   
   /***************************************************************************
   **
-  ** set total
+  ** Relayout the whole network!
   */
   
-  public void setTotal(int total);  
+  public void layoutEdges(BioFabricNetwork.RelayoutBuildData rbd, 
+  		                    BTProgressMonitor monitor) throws AsynchExitRequestException;
+  
   
   /***************************************************************************
   **
-  ** Get total
+  ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
   */
   
-  public int getTotal();
-  
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean updateProgress(int done);
-  
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean updateProgressAndPhase(int done, String message);
-  
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean updateRankings(SortedMap<Integer, Double> chartVals);
-    
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean keepGoing();  
-  
-
-  /***************************************************************************
-  **
-  ** Get progress
-  */  
-  
-  public int getProgress();  
+  public void preProcessEdges(BioFabricNetwork.RelayoutBuildData rbd, 
+  		                        BTProgressMonitor monitor) throws AsynchExitRequestException;
+   
 
 }

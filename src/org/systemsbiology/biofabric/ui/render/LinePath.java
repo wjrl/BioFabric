@@ -44,6 +44,7 @@ public class LinePath {
   private int px;
   private int py;
   private MinMax range;
+  private boolean reusing;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -53,15 +54,21 @@ public class LinePath {
 
   /***************************************************************************
   **
+  ** For when we create one link path and reuse it:
+  */ 
+
+  LinePath() {
+  	reusing = true;
+  }
+
+  /***************************************************************************
+  **
   ** One constructor for both links and nodes.
   */ 
 
   LinePath(Color col, Line2D path, int x, int y, MinMax range) {
-    this.col = col;
-    this.path = path;
-    this.px = x;
-    this.py = y;
-    this.range = range;
+  	reset(col, path, x, y, range);
+    reusing = false;
   }
   
   ////////////////////////////////////////////////////////////////////////////
@@ -69,18 +76,32 @@ public class LinePath {
   // PACKAGE METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
+ 
+  /***************************************************************************
+  **
+  ** Reset the contents
+  */ 
+  
+  public LinePath reset(Color col, Line2D path, int x, int y, MinMax range) {
+    this.col = col;
+    this.path = path;
+    this.px = x;
+    this.py = y;
+    this.range = range;
+    return (this);
+  }  
   
   /***************************************************************************
   **
   ** Draw it
   */ 
   
-  int paint(Graphics2D g2, Rectangle bounds, boolean forSelection) {
+  int paint(Graphics2D g2, Rectangle bounds) {
     int didPaint = 0;
     if (px == Integer.MIN_VALUE) {  // Horizontal (node) drawing
-    	didPaint = paintAsNode(g2, bounds, forSelection);   
+    	didPaint = paintAsNode(g2, bounds);   
     } else if (py == Integer.MIN_VALUE) {  // Vertical (link) drawing
-    	didPaint = paintAsLink(g2, bounds, forSelection);
+    	didPaint = paintAsLink(g2, bounds);
     }
     return (didPaint);
   } 
@@ -90,9 +111,9 @@ public class LinePath {
   ** Draw it
   */ 
   
-  private int paintAsNode(Graphics2D g2, Rectangle bounds, boolean forSelection) {
+  private int paintAsNode(Graphics2D g2, Rectangle bounds) {
     int didPaint = 0;
-    g2.setPaint(forSelection ? Color.black : col);
+    g2.setPaint(col);
   	//
     // 4A: Horizontal (node) drawing:
     //   	      
@@ -121,7 +142,6 @@ public class LinePath {
       		  replace = true;
       	  }	
       	  path.setLine(useLowBound, y1, useHiBound, y2);
-      	  replace = true;
       	}
         g2.draw(path);
         if (replace) {
@@ -138,9 +158,9 @@ public class LinePath {
   ** Draw it
   */ 
   
-  private int paintAsLink(Graphics2D g2, Rectangle bounds, boolean forSelection) {
+  private int paintAsLink(Graphics2D g2, Rectangle bounds) {
     int didPaint = 0;
-    g2.setPaint(forSelection ? Color.black : col);
+    g2.setPaint(col);
     //
     // 4B: Vertical (link) drawing:
     //    
@@ -163,14 +183,13 @@ public class LinePath {
         	if ((y2 - y1) > 100000.0) {
         	  if (y1 < bounds.getMinY()) {
         		  useLowBound = bounds.getY() - 1000.0;
-        		  replace = true;
+        		  replace = reusing;
         	  }
         	  if (y2 > bounds.getMaxY()) {
         		  useHiBound = bounds.getMaxY() + 1000.0;
-        		  replace = true;
+        		  replace = reusing;
         	  }	
         	  path.setLine(x1, useLowBound, x2, useHiBound);
-        	  replace = true;
         	}
           g2.draw(path);
           if (replace) {

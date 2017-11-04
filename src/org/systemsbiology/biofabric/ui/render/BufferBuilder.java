@@ -24,6 +24,8 @@ import java.awt.Rectangle;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
+import java.awt.image.DataBufferInt;
+import java.awt.image.DirectColorModel;
 import java.awt.image.WritableRaster;
 import java.io.IOException;
 import java.text.MessageFormat;
@@ -37,6 +39,7 @@ import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.QuadTree;
 import org.systemsbiology.biofabric.util.UiUtil;
 
@@ -77,10 +80,6 @@ public class BufferBuilder {
   // PRIVATE INSTANCE MEMBERS
   //
   ////////////////////////////////////////////////////////////////////////////
-   
-  //
-  // For mapping of selections:
-  //
   
   private RasterCache cache_;
   private HashMap<Rectangle2D, WorldPieceOffering> allWorldsToImageName_;
@@ -93,7 +92,7 @@ public class BufferBuilder {
   private BufferBuilderClient bbc_;
   private boolean timeToExit_;
   private BuildImageWorker biw_;
-  private BufImgStack bis_;
+  private ImgAndBufPool bis_;
 
   
   ////////////////////////////////////////////////////////////////////////////
@@ -108,8 +107,10 @@ public class BufferBuilder {
   */
 
   public BufferBuilder(String cachePref, int maxMeg, BufBuildDrawer drawRender, 
-  		                 BufBuildDrawer binRender, BufImgStack bis) {
-    cache_ = new RasterCache(cachePref, maxMeg);
+  		                 BufBuildDrawer binRender, ImgAndBufPool bis) {
+  	BufferedImage forModel = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+  	DirectColorModel dcm = (DirectColorModel)forModel.getColorModel();
+    cache_ = new RasterCache(cachePref, maxMeg, dcm);
     allWorldsToImageName_ = new HashMap<Rectangle2D, WorldPieceOffering>();
     findWorldsQT_ = null;
     drawRender_ = drawRender;
@@ -124,13 +125,14 @@ public class BufferBuilder {
   ** Constructor
   */
 
-  public BufferBuilder(BufBuildDrawer drawRender, BufBuildDrawer binRender) {
+  public BufferBuilder(BufBuildDrawer drawRender, BufBuildDrawer binRender, ImgAndBufPool bis) {
     drawRender_ = drawRender;
     binRender_ = binRender;
     allWorldsToImageName_ = new HashMap<Rectangle2D, WorldPieceOffering>();
     findWorldsQT_ = null;
     bbc_ = null;
     timeToExit_ = false;
+    bis_ = bis;
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -150,6 +152,10 @@ public class BufferBuilder {
       bbc_ = null;
       this.notify();
     }
+    if (findWorldsQT_ != null) {
+    	findWorldsQT_.clear();
+    }
+    cache_.releaseResources();
     return;
   }
   
@@ -163,7 +169,13 @@ public class BufferBuilder {
     worldRect_ = new Rectangle2D.Double();
     binRender_.dimsForBuf(screenDim_, worldRect_); // Both will give same answer... 
     Rectangle worldPiece = UiUtil.rectFromRect2D(worldRect_);
-    BufferedImage bi = bis_.fetchImage(screenDim_.width, screenDim_.height, BufferedImage.TYPE_3BYTE_BGR);
+    UiUtil.fixMePrintout("Saw NPE here after recolor operation. Appears to be event-driven on non-main window");
+    UiUtil.fixMePrintout("Saw NPE here after non-main window was launched");
+    System.out.println(bis_ + " " + screenDim_);
+    if (bis_ == null) {
+    	System.out.println(bis_ + " " + screenDim_);
+    }
+    BufferedImage bi = bis_.fetchImage(screenDim_.width, screenDim_.height, BufferedImage.TYPE_INT_RGB);
     double lpp = linksPerPix(screenDim_, worldPiece);
     BufBuildDrawer useDrawer = (lpp < TRANSITION_LPP_) ? drawRender_ : binRender_;
     useDrawer.drawForBuffer(bi, worldPiece, screenDim_, worldPiece, 0, lpp);  
@@ -193,29 +205,25 @@ public class BufferBuilder {
   */
   
   public BufferedImage buildBufs(int[] zooms, BufferBuilderClient bbc, int maxSize, 
-  		                           BTProgressMonitor monitor, 
-                                 double startFrac, 
-                                 double endFrac) throws IOException, AsynchExitRequestException {
+  		                           BTProgressMonitor monitor) throws IOException, AsynchExitRequestException {
     timeToExit_ = false;
     bbZooms_ = new int[zooms.length];
     System.arraycopy(zooms, 0, bbZooms_, 0, zooms.length);
     screenDim_ = new Dimension();
     worldRect_ = new Rectangle2D.Double();
     drawRender_.dimsForBuf(screenDim_, worldRect_); // These values are now ours
-    Rectangle worldPiece = UiUtil.rectFromRect2D(worldRect_);
-     
-    double inc = (endFrac - startFrac) / ((zooms.length == 0) ? 1 : zooms.length);
-    double currProg = startFrac;
-    
+    Rectangle worldPiece = UiUtil.rectFromRect2D(worldRect_);   
     findWorldsQT_ = new QuadTree(worldPiece, zooms.length);
          
     //
     // Build the first two zoom levels before we even get started:
     //
     
-    List<QueueRequest> requestQueuePre = buildQueue(0, 1, 10);   
+    List<QueueRequest> requestQueuePre = buildQueue(0, 1, 10); 
+    LoopReporter lr = new LoopReporter(requestQueuePre.size(), 20, monitor, 0.0, 1.0, "progress.stockingImageBufferTop");
     while (!requestQueuePre.isEmpty()) {
       QueueRequest qr = requestQueuePre.remove(0);
+      lr.report();
       buildBuffer(new Dimension(qr.imageDim.width, qr.imageDim.height), qr);
     }
     
@@ -223,7 +231,8 @@ public class BufferBuilder {
     // Now build up the requests for the background thread:
     //   
     
-    List<QueueRequest> requestQueue = (zooms.length > 2) ? buildQueue(2, zooms.length - 1, maxSize) : new ArrayList<QueueRequest>();
+    int useMax = 1; //maxSize; 
+    List<QueueRequest> requestQueue = (zooms.length > 2) ? buildQueue(2, zooms.length - 1, useMax) : new ArrayList<QueueRequest>();
  
     bbc_ = bbc;
  
@@ -233,7 +242,7 @@ public class BufferBuilder {
       runThread.setPriority(runThread.getPriority() - 2);
       runThread.start();
     }
-    Runtime.getRuntime().gc();
+
     return (getTopImage()); 
   }
 
@@ -249,7 +258,11 @@ public class BufferBuilder {
   		throw new IOException();
   	}
     WorldPieceOffering wpo = allWorldsToImageName_.get(nodes.get(0).getWorldExtent());
+    if (wpo == null) { // After a new network is created....
+    	return (null);
+    }
     BufferedImage retval = null;
+    
     //
     // It is true there are two locks floating around, one on this object, and one of the
     // bis_ BufImgStack. But since bis_ does not acquire any locks during its methods, we
@@ -303,12 +316,17 @@ public class BufferBuilder {
     ArrayList<QueueRequest> retval = new ArrayList<QueueRequest>();
     ArrayList<QuadTree.QuadTreeNode> nodes = new ArrayList<QuadTree.QuadTreeNode>();
     findWorldsQT_.getAllNodesToDepth(startIndex, endIndex, nodes);
+    Rectangle2D emptyExtent = new Rectangle2D.Double(0.0, 0.0, 0.0, 0.0);
     int numWorlds = nodes.size();
     for (int i = 0; i < numWorlds; i++) {
     	QuadTree.QuadTreeNode node = nodes.get(i);
     	Rectangle2D worldExtent = node.getWorldExtent();
+    	if (worldExtent.equals(emptyExtent)) { // This is an empty model...
+    		continue;
+    	}
       WorldPieceOffering wpo = allWorldsToImageName_.get(worldExtent);
       if (wpo != null) {
+      	UiUtil.fixMePrintout("Cancel of relayout puts us here");
       	System.err.println("Dup " + worldExtent);
       	throw new IllegalStateException();
       }
@@ -348,8 +366,9 @@ public class BufferBuilder {
   */
   
   private String buildLoResSlice(Rectangle2D worldRect, WorldPieceOffering wpo) throws IOException {
-    long preRend = Runtime.getRuntime().freeMemory();  
-    System.out.println("preRend " + preRend);
+  	// Useful to track memory usage:
+    //long preRend = Runtime.getRuntime().freeMemory();  
+    //System.out.println("preRend " + preRend);
     ArrayList<QuadTree.QuadTreeNode> path = new  ArrayList<QuadTree.QuadTreeNode>() ;  
     BufferedImage bi1 = null;
 
@@ -403,17 +422,28 @@ public class BufferBuilder {
     // First, pull the smaller byte chunk out of the image we are going to enlarge:
     WritableRaster wr = bi1.getRaster();
     int pixNum = subW * subH;
+
+    
+    //
+    // OK, should do scaling with int array, but stick with old code for the moment:
+    //
+    RasterCache.ShiftData sd = new RasterCache.ShiftData((DirectColorModel)bi1.getColorModel());
+    UiUtil.fixMePrintout("OK, should do scaling with original int array, but stick with old code for the moment");
+    int[] bbcI = bis_.fetchBuf(pixNum);
+    wr.getDataElements(subxLoc, subyLoc, subW, subH, bbcI); 
     int smallLen = pixNum * 3;
     byte[] bbc = bis_.fetchByteBuf(smallLen);
-    wr.getDataElements(subxLoc, subyLoc, subW, subH, bbc);
-    
+    RasterCache.oneIntToThreeBytes(bbcI, bbc, sd);
+    bis_.returnBuf(bbcI);
+     
     //
     // Get the image we are going to produce:
     //
     
-    BufferedImage scaled = bis_.fetchImage(screenDim_.width, screenDim_.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_3BYTE_BGR);
-    byte[] bbs = bis_.fetchByteBuf(scaled.getRaster().getDataBuffer().getSize());
- 
+    BufferedImage scaled = bis_.fetchImage(screenDim_.width, screenDim_.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_INT_RGB);
+    int scaledIntBufSize = scaled.getRaster().getDataBuffer().getSize();
+    byte[] bbs = bis_.fetchByteBuf(scaledIntBufSize * 3);    
+    
     for (int i = 0; i < bbs.length; i++) {
     	bbs[i] = (byte)255;
     }
@@ -478,7 +508,14 @@ public class BufferBuilder {
     //
     
     WritableRaster bisRast = scaled.getRaster();
-  	bisRast.setDataElements(0, 0, screenDim_.width, screenDim_.height + SLICE_HEIGHT_HACK_, bbs);
+    
+    //
+    // We need an array of ints to set here:
+    //
+    int[] bbsI = bis_.fetchBuf(scaledIntBufSize);
+    RasterCache.threeBytesToOneInt(bbs, bbsI, sd);
+ 
+  	bisRast.setDataElements(0, 0, screenDim_.width, screenDim_.height + SLICE_HEIGHT_HACK_, bbsI);
  
     String handle = null;
     synchronized (this) {
@@ -496,10 +533,13 @@ public class BufferBuilder {
     bis_.returnImage(bi1);
     bis_.returnByteBuf(bbc);
     bis_.returnByteBuf(bbs);
-    long po = Runtime.getRuntime().freeMemory();
-    long used = preRend - po;
-    System.out.println("Post getSub " + po);
-    System.out.println("rendering new scaled image used: " + used);
+    bis_.returnBuf(bbsI);
+    
+    // Useful to track memory usage:
+    //long po = Runtime.getRuntime().freeMemory();
+    //long used = preRend - po;
+    //System.out.println("Post getSub " + po);
+    //System.out.println("rendering new scaled image used: " + used);
     return (handle);
   }
   
@@ -569,7 +609,7 @@ public class BufferBuilder {
   */
   
   private void buildHiResSlice(Dimension imageDim, int depth, Rectangle2D worldPiece) throws IOException {
-    BufferedImage bi = bis_.fetchImage(imageDim.width, imageDim.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_3BYTE_BGR);
+    BufferedImage bi = bis_.fetchImage(imageDim.width, imageDim.height + SLICE_HEIGHT_HACK_, BufferedImage.TYPE_INT_RGB);
 
     double lpp = linksPerPix(imageDim, worldPiece);
     BufBuildDrawer useDrawer = (lpp < TRANSITION_LPP_) ? drawRender_ : binRender_;
@@ -619,50 +659,20 @@ public class BufferBuilder {
   	
   	//
   	// First version of this created vast amount of garbage. Now, we just pull the
-  	// bytes out of the Image and make sure they are all full-on:
+  	// ints out of the Image and make sure they are all full-on:
   	//
     int width = bi.getWidth();
     int height = bi.getHeight();
-    int len = width * height * 3;
-    byte[] bbs = ((DataBufferByte)bi.getRaster().getDataBuffer()).getData();
+    int len = width * height;
+    int[] bbs = ((DataBufferInt)bi.getRaster().getDataBuffer()).getData();
+    DirectColorModel dcm = (DirectColorModel)bi.getColorModel();
     for (int i = 0; i < len; i++) {
-    	if (bbs[i] != (byte)255) {
-    		System.out.println("Not blank " + i + " is " + bbs[i]);
+    	if ((dcm.getRed(bbs[i]) != 255) || (dcm.getGreen(bbs[i]) != 255) || (dcm.getBlue(bbs[i]) != 255)) {
     		return (false);
     	}
     }
     return (true);
   }
-
-  /***************************************************************************
-  **
-  ** We only do image-based zooms if we need to, and switch over to actual drawing
-  ** when the link count in the frame gets small enough. Note that right now, that
-  ** cross-over is set to 10,000 links:
-  */ 
-
-  public static int[] calcImageZooms(BioFabricNetwork bfn) { 
-
-    boolean showShadows = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getDisplayShadows();
-    int lco = (bfn == null) ? 0 : bfn.getLinkCount(showShadows);
-    int[] preZooms;
-    if (lco != 0) {
-      int linkLog = (int)Math.ceil(Math.log(lco) / Math.log(2.0));
-      int firstDrawLog = (int)Math.ceil(Math.log(1.0E4) / Math.log(2.0));
-      // For tiny networks (1 link), previous 4 levels of zoom is too much.
-      int numPre = Math.max(linkLog - firstDrawLog, 2);
-      preZooms = new int[numPre];
-      preZooms[0] = 1;
-      for (int i = 1; i < numPre; i++) {
-        preZooms[i] = 2 * preZooms[i - 1];
-      }
-    } else {
-      preZooms = new int[1];
-      preZooms[0] = 1;   
-    } 
-    return (preZooms);
-  }
-  
   
   /***************************************************************************
   **

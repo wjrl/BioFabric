@@ -23,6 +23,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.geom.GeneralPath;
+import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 
 /****************************************************************************
@@ -38,11 +39,12 @@ public class GlyphPath {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  private Color col;
-  private GeneralPath gp;
-  private Rectangle2D rect;
-  private Rectangle2D rect2;
-  private Rectangle2D gpBounds;
+  private Color col_;
+  private Path2D gp_;
+  private Rectangle2D rect_;
+  private Rectangle2D rect2_;
+  private Rectangle2D gpBounds_;
+  private boolean isDirected_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -52,13 +54,83 @@ public class GlyphPath {
 
   /***************************************************************************
   **
+  ** Used for reuse of the object
+  */ 
+
+  GlyphPath() {
+  	col_ = null;
+    rect_ = new Rectangle2D.Double();
+    rect2_ = new Rectangle2D.Double();
+    gp_ = new Path2D.Double();
+    gpBounds_ = new Rectangle2D.Double();
+    isDirected_ = false;
+  }   
+  
+  /***************************************************************************
+  **
+  ** Used either directed or undirected links: two glyphs, one on each end. FIXME: Autolink drawn twice?
+  */ 
+
+  GlyphPath(Color col, int x, int yStrt, int yEnd, double halfWidth, boolean isDirected) {	
+    col_ = col;
+    isDirected_ = isDirected;
+    if (isDirected) {
+    	buildDirected(x, yStrt, yEnd, halfWidth);
+    } else {
+    	buildUndirected(x, yStrt, yEnd, halfWidth);
+    }
+  }   
+ 
+  /***************************************************************************
+  **
+  ** Used for undirected links
+  */ 
+
+  private void buildUndirected(int x, int yStrt, int yEnd, double halfWidth) {
+    rect_ = new Rectangle2D.Double();
+    rect2_ = new Rectangle2D.Double(); 
+    initUndir(x, yStrt, yEnd, halfWidth);
+    return;
+  }   
+ 
+  /***************************************************************************
+  **
+  ** Used for drawing link ends and arrows for directed links.
+  */ 
+
+  private void buildDirected(int x, int yStrt, int yEnd, double halfWidth) {
+  	rect_ = new Rectangle2D.Double();
+    gp_ = new GeneralPath.Double();
+    gpBounds_ = new Rectangle2D.Double();
+    initDir(x, yStrt, yEnd, halfWidth);
+    return;
+  }   
+  
+  /***************************************************************************
+  **
+  ** Reuse the same object
+  */ 
+
+  GlyphPath reuse(Color col, int x, int yStrt, int yEnd, double halfWidth, boolean isDirected) {
+    col_ = col;
+    isDirected_ = isDirected;
+    if (isDirected) {
+    	initDir(x, yStrt, yEnd, halfWidth);
+    } else {
+    	initUndir(x, yStrt, yEnd, halfWidth);
+    }
+    return (this);
+  }   
+  	
+  /***************************************************************************
+  **
   ** Used for undirected links: two glyphs, one on each end. FIXME: Autolink drawn twice?
   */ 
 
-  GlyphPath(Color col, Rectangle2D rect, Rectangle2D rect2) {
-    this.col = col;
-    this.rect = rect;
-    this.rect2 = rect2;
+  void initUndir(int x, int yStrt, int yEnd, double halfWidth) {
+    rect_.setRect(x - halfWidth, yStrt - halfWidth, 2.0 * halfWidth, 2.0 * halfWidth);
+    rect2_.setRect(x - halfWidth, yEnd - halfWidth, 2.0 * halfWidth, 2.0 * halfWidth);
+    return;
   }   
  
   /***************************************************************************
@@ -66,11 +138,33 @@ public class GlyphPath {
   ** Used for drawing link ends and arrows for directed links. FIXME: Autolink drawn twice?
   */ 
 
-  GlyphPath(Color col, Rectangle2D rect, GeneralPath gp, Rectangle2D glyphBounds) {
-    this.col = col;
-    this.rect = rect;
-    this.gp = gp;
-    this.gpBounds = glyphBounds;
+  void initDir(int x, int yStrt, int yEnd, double halfWidth) {
+    rect_.setRect(x - halfWidth, yStrt - halfWidth, 2.0 * halfWidth, 2.0 * halfWidth);
+    double yoff;
+    double yMin;
+    double yMax;
+    if (yStrt < yEnd) {
+    	yoff = -halfWidth;
+    	yMin = yEnd - (2.0 * halfWidth);
+      yMax = yEnd + halfWidth;
+    } else {	
+    	yoff = halfWidth;
+      yMin = yEnd - halfWidth;
+    	yMax = yEnd + (2.0 * halfWidth);
+    }   
+    gp_.reset();
+    gp_.moveTo(x - halfWidth, yEnd + (2.0 * yoff));
+    gp_.lineTo(x, (yEnd + yoff));
+    gp_.lineTo((x - halfWidth), (yEnd + yoff));
+    gp_.lineTo((x - halfWidth), (yEnd - yoff));
+    gp_.lineTo((x + halfWidth), (yEnd - yoff));
+    gp_.lineTo((x + halfWidth), (yEnd + yoff));
+    gp_.lineTo(x, (yEnd + yoff));
+    gp_.lineTo((x + halfWidth), (yEnd + (2.0 * yoff)));
+    gp_.closePath();
+    // Previously used gp_.getBounds2D(), but this creates a new Rectangle with each reuse.
+    gpBounds_.setRect(x - halfWidth, yMin, 2.0 * halfWidth, yMax - yMin);
+    return; 
   }   
   
   /***************************************************************************
@@ -78,50 +172,50 @@ public class GlyphPath {
   ** Draw it:
   */ 
 
-  int paint(Graphics2D g2, Rectangle bounds, boolean forSelection) {
+  int paint(Graphics2D g2, Rectangle bounds) {
     int didPaint = 0;
-    g2.setPaint(forSelection ? Color.black : col);
+    g2.setPaint(col_);
  
     //
     // Second section: Link glyph drawing:
     //  
-    if (rect != null) {
+    if (rect_ != null) {
       // 2A: First glyph
       if ((bounds == null) ||
-          ((rect.getMaxX() > bounds.getMinX()) && 
-           (rect.getMinX() < bounds.getMaxX()) && 
-           (rect.getMaxY() > bounds.getMinY()) && 
-           (rect.getMinY() < bounds.getMaxY()))) {          
-        g2.fill(rect);     
+          ((rect_.getMaxX() > bounds.getMinX()) && 
+           (rect_.getMinX() < bounds.getMaxX()) && 
+           (rect_.getMaxY() > bounds.getMinY()) && 
+           (rect_.getMinY() < bounds.getMaxY()))) {          
+        g2.fill(rect_);     
         g2.setPaint(Color.BLACK);
-        g2.draw(rect);
+        g2.draw(rect_);
         didPaint++;    
       }
       // 2B: Second glyph
-      if (rect2 != null) {
+      if (!isDirected_) {
         if ((bounds == null) ||
-            ((rect2.getMaxX() > bounds.getMinX()) && 
-            (rect2.getMinX() < bounds.getMaxX()) && 
-            (rect2.getMaxY() > bounds.getMinY()) && 
-            (rect2.getMinY() < bounds.getMaxY()))) {         
-          g2.setPaint(forSelection ? Color.black : col);
-          g2.fill(rect2);     
+            ((rect2_.getMaxX() > bounds.getMinX()) && 
+            (rect2_.getMinX() < bounds.getMaxX()) && 
+            (rect2_.getMaxY() > bounds.getMinY()) && 
+            (rect2_.getMinY() < bounds.getMaxY()))) {         
+          g2.setPaint(col_);
+          g2.fill(rect2_);     
           g2.setPaint(Color.BLACK);
-          g2.draw(rect2);
+          g2.draw(rect2_);
           didPaint++;
         }
       // 2C: Arrowhead glyph (uses path gp instead of rect2). Note we have saved the
       // bounding rect in rect:
       } else {
         if ((bounds == null) ||
-            ((gpBounds.getMaxX() > bounds.getMinX()) && 
-             (gpBounds.getMinX() < bounds.getMaxX()) && 
-             (gpBounds.getMaxY() > bounds.getMinY()) && 
-             (gpBounds.getMinY() < bounds.getMaxY()))) {         
-          g2.setPaint(forSelection ? Color.black : col);
-          g2.fill(gp);     
+            ((gpBounds_.getMaxX() > bounds.getMinX()) && 
+             (gpBounds_.getMinX() < bounds.getMaxX()) && 
+             (gpBounds_.getMaxY() > bounds.getMinY()) && 
+             (gpBounds_.getMinY() < bounds.getMaxY()))) {         
+          g2.setPaint(col_);
+          g2.fill(gp_);     
           g2.setPaint(Color.BLACK);
-          g2.draw(gp);
+          g2.draw(gp_);
           didPaint++;
         }
       }

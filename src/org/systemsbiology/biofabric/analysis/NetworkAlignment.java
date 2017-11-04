@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology
+**    Copyright (C) 2003-2017 Institute for Systems Biology
 **                            Seattle, Washington, USA.
 **
 **    This library is free software; you can redistribute it and/or
@@ -19,3345 +19,748 @@
 
 package org.systemsbiology.biofabric.analysis;
 
-import org.systemsbiology.biofabric.util.ExceptionHandler;
+import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.UniqueLabeller;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.StringTokenizer;
+import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+/****************************************************************************
+ **
+ ** This merges two individual graphs and an alignment to form the
+ ** network alignment
+ */
+
 public class NetworkAlignment {
   
-  private GraphNA small_, large_;
-  private AlignmentNA align_;
+  private final String COVERED_EDGE = "G12", GRAPH1 = "G1A",
+          INDUCED_GRAPH2 = "G2A", HALF_UNALIGNED_GRAPH2 = "G2B", FULL_UNALIGNED_GRAPH2 = "G2C";
+  private final String TEMPORARY = "TEMP";
   
-  public NetworkAlignment(NetworkAlignInfo nai) {
+  private Map<NID.WithName, NID.WithName> mapG1toG2_;
+  private ArrayList<FabricLink> linksG1_;
+  private HashSet<NID.WithName> lonersG1_;
+  private ArrayList<FabricLink> linksG2_;
+  private HashSet<NID.WithName> lonersG2_;
+  private boolean forClique_;
+  private UniqueLabeller idGen_;
+  private BTProgressMonitor monitor_;
+  
+  //
+  // largeToMergedID only contains aligned nodes
+  //
+  
+  private Map<NID.WithName, NID.WithName> smallToMergedID_;
+  private Map<NID.WithName, NID.WithName> largeToMergedID_;
+  
+  private ArrayList<FabricLink> mergedLinks_;
+  private Set<NID.WithName> mergedLoners_;
+  
+  private enum Graph {SMALL, LARGE}
+  
+  public NetworkAlignment(ArrayList<FabricLink> mergedLinks, Set<NID.WithName> mergedLoneNodeIDs,
+                          Map<NID.WithName, NID.WithName> mapG1toG2,
+                          ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
+                          ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
+                          boolean forCliques, UniqueLabeller idGen, BTProgressMonitor monitor) {
     
-    this.small_ = new GraphNA(nai.small);
-    this.large_ = new GraphNA(nai.large);
-    this.align_ = new AlignmentNA(nai.align);
-    
-    synthesize();
+    this.mapG1toG2_ = mapG1toG2;
+    this.linksG1_ = linksG1;
+    this.lonersG1_ = lonersG1;
+    this.linksG2_ = linksG2;
+    this.lonersG2_ = lonersG2;
+    this.forClique_ =forCliques;
+    this.idGen_ = idGen;
+    this.monitor_ = monitor;
+  
+    this.mergedLinks_ = mergedLinks;
+    this.mergedLoners_ = mergedLoneNodeIDs;
   }
   
-  private void synthesize() {
+  /****************************************************************************
+   **
+   ** Merge the Network!
+   */
+  
+  public void mergeNetworks() {
     
-    Map<String, String> smallNames = new TreeMap<String, String>();
-    Map<String, String> largeNames = new TreeMap<String, String>();
+    //
+    // Create merged nodes
+    //
     
-    for (Map.Entry<String, String> entry : align_.nodeToNode_.entrySet()) {
+    createMergedNodes();
+    
+    //
+    // Create individual link sets; "old" refers to pre-merged networks, "new" is merged network
+    //
+    
+    List<FabricLink> newLinksG1 = new ArrayList<FabricLink>();
+    Set<NID.WithName> newLonersG1 = new HashSet<NID.WithName>();
+    
+    createNewLinkList(newLinksG1, newLonersG1, Graph.SMALL);
+  
+    List<FabricLink> newLinksG2 = new ArrayList<FabricLink>();
+    Set<NID.WithName> newLonersG2 = new HashSet<NID.WithName>();
+    
+    createNewLinkList(newLinksG2, newLonersG2, Graph.LARGE);
+    
+    //
+    // Split individual link-lists into G1 only, CC only, G2 only -> combine into one list
+    //
+    
+    createMergedLinkList(newLinksG1, newLinksG2);
+    
+    finalizeLoneNodeIDs(newLonersG1, newLonersG2);
+    
+    if (forClique_) {
+      processForCliqueMisalignment();
+    }
+    
+    return;
+  }
+  
+  /****************************************************************************
+   **
+   ** Create merged nodes, install into maps
+   */
+  
+  private void createMergedNodes() {
+    
+    smallToMergedID_ = new TreeMap<NID.WithName, NID.WithName>();
+    largeToMergedID_ = new TreeMap<NID.WithName, NID.WithName>();
+  
+    for (Map.Entry<NID.WithName, NID.WithName> entry : mapG1toG2_.entrySet()) {
       
-      String x = entry.getKey(), y = entry.getValue(), xy = x + '-' + y;
+      NID.WithName smallNode = entry.getKey(), largeNode = entry.getValue();
+      String smallName = smallNode.getName(), largeName = largeNode.getName();
+    
+      //
+      // Aligned nodes merge name in the form large-small
+      //
       
-      smallNames.put(x, xy);
-      largeNames.put(y, xy);
+      String mergedName = String.format("%s-%s", largeName, smallName);
+    
+      NID nid = idGen_.getNextOID();
+      NID.WithName merged_node = new NID.WithName(nid, mergedName);
+    
+      smallToMergedID_.put(smallNode, merged_node);
+      largeToMergedID_.put(largeNode, merged_node);
+    }
+    return;
+  }
+  
+  /****************************************************************************
+   **
+   ** Create new link lists based on merged nodes for both networks
+   */
+  
+  private void createNewLinkList(List<FabricLink> newLinks, Set<NID.WithName> newLoners, Graph graph) {
+    
+    List<FabricLink> oldLinks;
+    Set<NID.WithName> oldLoners;
+    Map<NID.WithName, NID.WithName> oldToNewID;
+    
+    switch (graph) {
+      case SMALL:
+        oldLinks = linksG1_;
+        oldLoners = lonersG1_;
+        oldToNewID = smallToMergedID_;
+        break;
+      case LARGE:
+        oldLinks = linksG2_;
+        oldLoners = lonersG2_;
+        oldToNewID = largeToMergedID_;
+        break;
+      default:
+        throw new IllegalArgumentException();
+    }
+    
+    for (FabricLink oldLink : oldLinks) {
+      
+      NID.WithName oldA = oldLink.getSrcID();
+      NID.WithName oldB = oldLink.getTrgID();
+      
+      //
+      // Not all nodes are mapped in the large graph
+      //
+      
+      NID.WithName newA = (oldToNewID.containsKey(oldA)) ? oldToNewID.get(oldA) : oldA;
+      NID.WithName newB = (oldToNewID.containsKey(oldB)) ? oldToNewID.get(oldB) : oldB;
+  
+      FabricLink newLink = new FabricLink(newA, newB, TEMPORARY, false, false);
+      // 'directed' must be false
+      
+      newLinks.add(newLink);
+    }
+    
+    for (NID.WithName oldLoner : oldLoners) {
+      
+      NID.WithName newLoner = (oldToNewID.containsKey(oldLoner)) ? oldToNewID.get(oldLoner) : oldLoner;
+      
+      newLoners.add(newLoner);
+    }
+    return;
+  }
+  
+  /****************************************************************************
+   **
+   ** Combine the two link lists into one, with G2,CC,G1 tags accordingly
+   */
+  
+  private void createMergedLinkList(List<FabricLink> newLinksG1, List<FabricLink> newLinksG2) {
+    
+    NetAlignFabricLinkLocator comp = new NetAlignFabricLinkLocator();
+  
+    Collections.sort(newLinksG1, comp);
+  
+    for (FabricLink linkG2 : newLinksG2) {
+    
+      int index = Collections.binarySearch(newLinksG1, linkG2, comp);
+      
+      NID.WithName src = linkG2.getSrcID(), trg = linkG2.getTrgID();
+      
+      if (index >= 0) {
+        addMergedLink(src, trg, COVERED_EDGE);
+      } else {
+        // contains all alinged nodes; contains() works in O(log(n))
+        SortedSet<NID.WithName> alignedNodesG2 = new TreeSet<NID.WithName>(largeToMergedID_.values());
+        
+        if (alignedNodesG2.contains(src) && alignedNodesG2.contains(trg)) {
+          addMergedLink(src, trg, INDUCED_GRAPH2);
+        } else if (alignedNodesG2.contains(src) || alignedNodesG2.contains(trg)) {
+          addMergedLink(src, trg, HALF_UNALIGNED_GRAPH2);
+        } else {
+          addMergedLink(src, trg, FULL_UNALIGNED_GRAPH2);
+        }
+      }
+    }
+  
+    Collections.sort(newLinksG2, comp);
+  
+    for (FabricLink linkG1 : newLinksG1) {
 
-//        nodes.add(xy); // FIX ME: DOESN'T INCLUDE UNALIGNED NODES FROM LARGE GRAPH
-    }
+      int index = Collections.binarySearch(newLinksG2, linkG1, comp);
     
-    this.small_.updateNames(smallNames);
-    this.large_.updateNames(largeNames);
+      if (index < 0) {
+        addMergedLink(linkG1.getSrcID(), linkG1.getTrgID(), GRAPH1);
+      }
+    }
+    return; // This method is not ideal. . .
   }
   
-  @Override
-  public String toString() {
-    String ret;
-    ret = "G1: " + small_ + '\n' + "G2: " + large_;
+  /****************************************************************************
+   **
+   ** Add both non-shadow and shadow links to merged link-list
+   */
+  
+  private void addMergedLink(NID.WithName src, NID.WithName trg, String tag) {
+    FabricLink newMergedLink = new FabricLink(src, trg, tag, false, null);
+    FabricLink newMergedLinkShadow = new FabricLink(src, trg, tag, true, null);
     
-    return ret;
+    mergedLinks_.add(newMergedLink);
+    mergedLinks_.add(newMergedLinkShadow);
   }
   
-  public GraphNA getSmall() {
-    return new GraphNA(small_);
+  /****************************************************************************
+   **
+   ** Combine loneNodeIDs lists into one
+   */
+  
+  private void finalizeLoneNodeIDs(Set<NID.WithName> newLonersG1, Set<NID.WithName> newLonersG2) {
+    mergedLoners_.addAll(newLonersG1);
+    mergedLoners_.addAll(newLonersG2);
+    return;
   }
   
-  public GraphNA getLarge() {
-    return new GraphNA(large_);
+  /****************************************************************************
+   **
+   ** All unaligned edges plus all of their endpoint nodes' edges
+   */
+  
+  private void processForCliqueMisalignment() {
+  
+    List<FabricLink> nonShdwMergedLinks = new ArrayList<FabricLink>();
+    for (FabricLink link : mergedLinks_) {
+      if (!link.isShadow()) {
+        nonShdwMergedLinks.add(link);
+      }
+    }
+    
+    Set<NID.WithName> unalignedNodesG1 = new TreeSet<NID.WithName>();
+    
+    for (FabricLink link : nonShdwMergedLinks) { // find the nodes of interest
+      if (link.getRelation().equals(GRAPH1)) {
+        unalignedNodesG1.add(link.getSrcID());
+        unalignedNodesG1.add(link.getTrgID());
+      }
+    }
+    
+    List<FabricLink> unalignedEdgesG1 = new ArrayList<FabricLink>();
+    
+    for (FabricLink link : nonShdwMergedLinks) { // add the edges connecting to the nodes of interest (one hop away)
+      
+      NID.WithName src = link.getSrcID(), trg = link.getTrgID();
+      
+      if (unalignedNodesG1.contains(src) || unalignedNodesG1.contains(trg)) {
+        unalignedEdgesG1.add(link);
+      }
+    }
+    
+    //
+    // Change the final link-lists
+    //
+    
+    mergedLinks_.clear();
+    mergedLinks_.addAll(unalignedEdgesG1);
+    mergedLoners_.clear();
+  
+    return;
   }
   
+  /***************************************************************************
+   **
+   ** Used ONLY to order links for creating the merged link set in Network Alignments
+   */
   
-  public static class GraphNA { // needs to implement cloneable in future
-    
-    private Map<String, Set<String>> edges_;
-    private Map<Integer, String> names_;
-    private int size_;
-    
-    private GraphNA() {
-    }
-    
-    public GraphNA(GraphNA graphNA) {
-      this.size_ = graphNA.getSize();
-      this.names_ = graphNA.getNames();
-      this.edges_ = graphNA.getEdges();
-    }
-    
-    public static GraphNA readGraphGWFile(File file) {
-      GraphNA ret = new GraphNA();
-      ret.edges_ = new TreeMap<String, Set<String>>();
-      ret.names_ = new TreeMap<Integer, String>();
-      
-      try {
-        BufferedReader br = new BufferedReader(new FileReader(file));
-        
-        for (int i = 0; i < 4; i++) {
-          br.readLine();
-        }
-        
-        ret.size_ = Integer.parseInt(br.readLine());
-        
-        for (int i = 1; i <= ret.size_; i++) {
-          String name = br.readLine().trim();
-          name = name.substring(2, name.length() - 2); // exclude "|{" and "}|"
-          
-          ret.addNode(i, name);
-        }
-        
-        final int edges = Integer.parseInt(br.readLine());
-        
-        for (int i = 1; i <= edges; i++) {
-          StringTokenizer st = new StringTokenizer(br.readLine());
-          int node1 = Integer.parseInt(st.nextToken());
-          int node2 = Integer.parseInt(st.nextToken());
-          
-          ret.addEdge(node1, node2);
-        }
-        
-        br.close();
-      } catch (IOException ioe) {
-        ExceptionHandler.getHandler().displayException(ioe);
-      }
-      
-      return ret;
-    }
-    
-    private void addNode(int nodeNum, String nodeName) {
-      if (edges_.get(nodeName) == null) {
-        edges_.put(nodeName, new TreeSet<String>());
-      }
-      if (names_.get(nodeNum) == null) {
-        names_.put(nodeNum, nodeName);
-      }
-    }
-    
-    private void addEdge(int node1, int node2) {
-      if (node1 == node2) {
-        ExceptionHandler.getHandler().displayException(new IllegalArgumentException("node1 == node2"));
-      }
-      
-      edges_.get(names_.get(node1)).add(names_.get(node2));
-      edges_.get(names_.get(node2)).add(names_.get(node1));
-    }
-    
-    void updateNames(Map<String, String> newNames) {
-      
-      Map<String, Set<String>> newEdges = new TreeMap<String, Set<String>>();
-      
-      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-        String key = entry.getKey();
-        String x = (newNames.get(key) == null) ? key : newNames.get(key);
-        
-        Set<String> newSet = new TreeSet<String>();
-        for (String str : entry.getValue()) {
-          String y = (newNames.get(str) == null) ? str : newNames.get(str);
-          newSet.add(y);
-        }
-        
-        newEdges.put(x, newSet);
-      }
-      
-      edges_ = newEdges;
-    }
-    
-    @Override
-    public String toString() {
-      
-      int linkNum = 0;
-      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-        linkNum += entry.getValue().size();
-      }
-      linkNum /= 2;
-      
-      return String.format("(V, E) = (%d, %d)", size_, linkNum);
-    }
-    
-    public int getSize() {
-      return size_;
-    }
-    
-    public Map<Integer, String> getNames() {
-      return new TreeMap<Integer, String>(names_);
-    }
-    
-    public Map<String, Set<String>> getEdges() {
-      return new TreeMap<String, Set<String>>(edges_);
-    }
-    
-  }
+  private static class NetAlignFabricLinkLocator implements Comparator<FabricLink> {
   
-  public static class AlignmentNA {
+    /***************************************************************************
+     **
+     ** For any different links in the two separate network link sets, this
+     ** says which comes first
+     */
     
-    private Map<String, String> nodeToNode_;
-    
-    private AlignmentNA() {
-    }
-    
-    public AlignmentNA(AlignmentNA alignmentNA) {
-      this.nodeToNode_ = alignmentNA.getNodeToNodeMapping();
-    }
-    
-    public static AlignmentNA readAlignFile(File file) {
-      AlignmentNA ret = new AlignmentNA();
-      ret.nodeToNode_ = new TreeMap<String, String>();
+    public int compare(FabricLink link1, FabricLink link2) {
       
-      try {
-        BufferedReader br = new BufferedReader(new FileReader(file));
-        
-        String line;
-        while ((line = br.readLine()) != null) {
-          StringTokenizer st = new StringTokenizer(line);
-          
-          ret.nodeToNode_.put(st.nextToken(), st.nextToken());
-        }
-        br.close();
-      } catch (IOException ioe) {
-        ExceptionHandler.getHandler().displayException(ioe);
+      if (link1.synonymous(link2)) {
+        return (0);
       }
       
-      return ret;
-    }
-    
-    public Map<String, String> getNodeToNodeMapping() {
-      return new TreeMap<String, String>(nodeToNode_);
-    }
-    
-    public int getSize() {
-      return nodeToNode_.size();
-    }
-    
-  }
+      //
+      // Must sort the node names because A-B must be equivalent to B-A
+      //
+      
+      String[] arr1 = {link1.getSrcID().getName(), link1.getTrgID().getName()};
+      Arrays.sort(arr1);
+      
+      String[] arr2 = {link2.getSrcID().getName(), link2.getTrgID().getName()};
+      Arrays.sort(arr2);
   
-  public static class NetworkAlignInfo {
-    
-    final GraphNA small, large;
-    final AlignmentNA align;
-    
-    public NetworkAlignInfo(GraphNA small, GraphNA large, AlignmentNA align) {
-      this.small = small;
-      this.large = large;
-      this.align = align;
+      String concat1 = String.format("%s___%s",arr1[0], arr1[1]);
+      String concat2 = String.format("%s___%s",arr2[0], arr2[1]);
+
+      // THIS IS COMPLETELY TEMPORARY - RISHI DESAI 7/16/17
+      
+      return concat1.compareTo(concat2);
     }
-    
   }
   
 }
 
-
-//package org.systemsbiology.biofabric.analysis;
+//  private void createNewLinkList(List<FabricLink> newLinks, Set<NID.WithName> newLoners, Graph graph) {
 //
-//        import org.systemsbiology.biofabric.util.ExceptionHandler;
+//    List<FabricLink> oldLinks;
+//    Set<NID.WithName> oldLoners;
+//    Map<NID.WithName, NID.WithName> oldToNewID;
 //
-//        import java.io.BufferedReader;
-//        import java.io.File;
-//        import java.io.FileReader;
-//        import java.io.IOException;
-//        import java.util.*;
-//
-//public class NetworkAlignment {
-//
-//  private GraphNA small_, large_;
-//  private AlignmentNA align_;
-//
-//  public NetworkAlignment(NetworkAlignInfo nai) {
-//
-//    this.small_ = nai.small;
-//    this.large_ = nai.large;
-//    this.align_ = nai.align;
-//
-//    synthesize();
-//
-//
-//  }
-//
-//  private void synthesize() {
-//
-//    Map<String, String> smallNames = new TreeMap<String, String>();
-//    Map<String, String> largeNames = new TreeMap<String, String>();
-//
-//    for (Map.Entry<String, String> entry : align_.nodeToNode_.entrySet()) {
-//
-//      String x = entry.getKey(), y = entry.getValue(), xy = x + '-' + y;
-//
-//      smallNames.put(x, xy);
-//      largeNames.put(y, xy);
-//
-////        nodes.add(xy); // FIX ME: DOESN'T INCLUDE UNALIGNED NODES FROM LARGE GRAPH
+//    switch (graph) {
+//      case SMALL:
+//        oldLinks = linksG1_;
+//        oldLoners = lonersG1_;
+//        oldToNewID = smallToNA_;
+//        break;
+//      case LARGE:
+//        oldLinks = linksG2_;
+//        oldLoners = lonersG2_;
+//        oldToNewID = largeToNA_;
+//        break;
+//      default:
+//        throw new IllegalArgumentException();
 //    }
 //
-//    this.small_.updateNames(smallNames);
-//    this.large_.updateNames(largeNames);
-//  }
+//    boolean wantNonInduced = true;
 //
-//  @Override
-//  public String toString() {
-//    String ret;
-//    ret = "G1: " + small + '\n' + "G2: " + large;
+//    for (FabricLink oldLink : oldLinks) {
 //
-//    return ret;
-//  }
+//      NID.WithName oldA = oldLink.getSrcID();
+//      NID.WithName oldB = oldLink.getTrgID();
 //
-//  public GraphNA getSmall() {
-//    return new GraphNA(small_);
-//  }
+//      //
+//      // Not all nodes are mapped in the large graph
+//      //
 //
-//  public GraphNA getLarge() {
-//    return new GraphNA(large_);
-//  }
-//
-//
-//  public static class GraphNA { // needs to implement cloneable in future
-//
-//    private Map<String, Set<String>> edges_;
-//    private Map<Integer, String> names_;
-//    private int size_;
-//
-//    private GraphNA() {
-//    }
-//
-//    public GraphNA(GraphNA graphNA) {
-//      this.size_ = graphNA.getSize();
-//      this.names_ = graphNA.getNames();
-//      this.edges_ = graphNA.getEdges();
-//    }
-//
-//    public static GraphNA readGraphGWFile(File file) {
-//      GraphNA ret = new GraphNA();
-//      ret.edges_ = new TreeMap<String, Set<String>>();
-//      ret.names_ = new TreeMap<Integer, String>();
-//
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(file));
-//
-//        for (int i = 0; i < 4; i++) {
-//          br.readLine();
+//      NID.WithName newA;
+//      if (oldToNewID.containsKey(oldA)) {
+//        newA = oldToNewID.get(oldA);
+//      } else {
+//        if (wantNonInduced) {
+//          newA = oldA;
+//        } else {
+//          continue;
 //        }
+//      }
 //
-//        ret.size_ = Integer.parseInt(br.readLine());
-//
-//        for (int i = 1; i <= ret.size_; i++) {
-//          String name = br.readLine().trim();
-//          name = name.substring(2, name.length() - 2); // exclude "|{" and "}|"
-//
-//          ret.addNode(i, name);
+//      NID.WithName newB;
+//      if (oldToNewID.containsKey(oldB)) {
+//        newB = oldToNewID.get(oldB);
+//      } else {
+//        if (wantNonInduced) {
+//          newB = oldB;
+//        } else {
+//          continue;
 //        }
-//
-//        final int edges = Integer.parseInt(br.readLine());
-//
-//        for (int i = 1; i <= edges; i++) {
-//          StringTokenizer st = new StringTokenizer(br.readLine());
-//          int node1 = Integer.parseInt(st.nextToken());
-//          int node2 = Integer.parseInt(st.nextToken());
-//
-//          ret.addEdge(node1, node2);
-//        }
-//
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
 //      }
 //
-//      return ret;
+//      FabricLink newLink = new FabricLink(newA, newB, TEMPORARY, false, false);
+//      // 'directed' must be false
+//
+//      newLinks.add(newLink);
 //    }
 //
-//    private void addNode(int nodeNum, String nodeName) {
-//      if (edges_.get(nodeName) == null) {
-//        edges_.put(nodeName, new TreeSet<String>());
-//      }
-//      if (names_.get(nodeNum) == null) {
-//        names_.put(nodeNum, nodeName);
-//      }
+//    for (NID.WithName oldLoner : oldLoners) {
+//
+//      NID.WithName newLoner = (oldToNewID.containsKey(oldLoner)) ? oldToNewID.get(oldLoner) : oldLoner;
+//
+//      newLoners.add(newLoner);
 //    }
-//
-//    private void addEdge(int node1, int node2) {
-//      if (node1 == node2) {
-//        ExceptionHandler.getHandler().displayException(new IllegalArgumentException("node1 == node2"));
-//      }
-//
-//      edges_.get(names_.get(node1)).add(names_.get(node2));
-//      edges_.get(names_.get(node2)).add(names_.get(node1));
-//    }
-//
-//    void updateNames(Map<String, String> newNames) {
-//
-//      Map<String, Set<String>> newEdges = new TreeMap<String, Set<String>>();
-//
-//      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-//        String key = entry.getKey();
-//        String x = (newNames.get(key) == null) ? key : newNames.get(key);
-//
-//        Set<String> newSet = new TreeSet<String>();
-//        for (String str : entry.getValue()) {
-//          String y = (newNames.get(str) == null) ? str : newNames.get(str);
-//          newSet.add(y);
-//        }
-//
-//        newEdges.put(x, newSet);
-//      }
-//
-//      edges_ = newEdges;
-//    }
-//
-//    @Override
-//    public String toString() {
-//
-//      int linkNum = 0;
-//      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-//        linkNum += entry.getValue().size();
-//      }
-//      linkNum /= 2;
-//
-//      return String.format("(V, E) = (%d, %d)", size_, linkNum);
-//    }
-//
-//    public int getSize() {
-//      return size_;
-//    }
-//
-//    public Map<Integer, String> getNames() {
-//      return new TreeMap<Integer, String>(names_);
-//    }
-//
-//    public Map<String, Set<String>> getEdges() {
-//      return new TreeMap<String, Set<String>>(edges_);
-//    }
-//
+//    return;
 //  }
-//
-//  public static class AlignmentNA {
-//
-//    private Map<String, String> nodeToNode_;
-//
-//    private AlignmentNA() {
-//    }
-//
-//    public static AlignmentNA readAlignFile(File file) {
-//      AlignmentNA ret = new AlignmentNA();
-//      ret.nodeToNode_ = new TreeMap<String, String>();
-//
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(file));
-//
-//        String line;
-//        while ((line = br.readLine()) != null) {
-//          StringTokenizer st = new StringTokenizer(line);
-//
-//          ret.nodeToNode_.put(st.nextToken(), st.nextToken());
-//        }
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
-//      }
-//
-//      return ret;
-//    }
-//
-//    //    private void synthesize(GraphNA small, GraphNA large) {
-////
-////      this.small = new GraphNA(small);
-////      this.large = new GraphNA(large);
-////
-////      Map<String, String> smallNames = new TreeMap<String, String>();
-////      Map<String, String> largeNames = new TreeMap<String, String>();
-////
-////      for (Map.Entry<String, String> entry : nodeToNode.entrySet()) {
-////
-////        String x = entry.getKey(), y = entry.getValue(), xy = x + '-' + y;
-////
-////        smallNames.put(x, xy);
-////        largeNames.put(y, xy);
-////
-//////        nodes.add(xy); // FIX ME: DOESN'T INCLUDE UNALIGNED NODES FROM LARGE GRAPH
-////      }
-////
-////      this.small.updateNames(smallNames);
-////      this.large.updateNames(largeNames);
-////    }
-////
-////    @Override
-////    public String toString() {
-////      String ret;
-////      ret = "G1: " + small + '\n' + "G2: " + large;
-////
-////      return ret;
-////    }
-//    public Map<String, String> getNodeToNodeMapping() {
-//      return new TreeMap<String, String>(nodeToNode_);
-//    }
-//
-//    public int getSize() {
-//      return nodeToNode_.size();
-//    }
-//
-//  }
-//
-//  public static class NetworkAlignInfo {
-//
-//    final GraphNA small, large;
-//    final AlignmentNA align;
-//
-//    public NetworkAlignInfo(GraphNA small, GraphNA large, AlignmentNA align) {
-//      this.small = small;
-//      this.large = large;
-//      this.align = align;
-//    }
-//
-//  }
-//
-//}
-
-///*
-//**    Copyright (C) 2003-2014 Institute for Systems Biology
-//**                            Seattle, Washington, USA.
-//**
-//**    This library is free software; you can redistribute it and/or
-//**    modify it under the terms of the GNU Lesser General Public
-//**    License as published by the Free Software Foundation; either
-//**    version 2.1 of the License, or (at your option) any later version.
-//**
-//**    This library is distributed in the hope that it will be useful,
-//**    but WITHOUT ANY WARRANTY; without even the implied warranty of
-//**    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-//**    Lesser General Public License for more details.
-//**
-//**    You should have received a copy of the GNU Lesser General Public
-//**    License along with this library; if not, write to the Free Software
-//**    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-//*/
-//
-//package org.systemsbiology.biofabric.analysis;
-//
-//        import org.systemsbiology.biofabric.util.ExceptionHandler;
-//
-//        import java.io.BufferedReader;
-//        import java.io.File;
-//        import java.io.FileReader;
-//        import java.io.IOException;
-//        import java.util.*;
-//
-//public class NetworkAlignment {
-//
-//  private GraphNA small, large;
-//  private AlignmentNA align;
-//
-//  public NetworkAlignment(NetworkAlignInfo nai) {
-//
-//    this.small = nai.small;
-//    this.large = nai.large;
-//    this.align = nai.align;
-//
-//  }
-//
-//  public static class GraphNA { // needs to implement cloneable in future
-//
-//    Map<String, Set<String>> edges_;
-//    private Map<Integer, String> names_;
-//    private int size_;
-//
-////    public GraphNA(File dir) {
-////
-////      this.edges_ = new TreeMap<String, Set<String>>();
-////      this.names_ = new TreeMap<Integer, String>();
-////
-////      try {
-////        BufferedReader br = new BufferedReader(new FileReader(dir));
-////
-////        for (int i = 0; i < 4; i++) {
-////          br.readLine();
-////        }
-////
-////        this.size_ = Integer.parseInt(br.readLine());
-////
-////        for (int i = 1; i <= size_; i++) {
-////          String name = br.readLine().trim();
-////          name = name.substring(2, name.length() - 2); // exclude "|{" and "}|"
-////
-////          this.addNode(i, name);
-////        }
-////
-////        final int edges = Integer.parseInt(br.readLine());
-////
-////        for (int i = 1; i <= edges; i++) {
-////          StringTokenizer st = new StringTokenizer(br.readLine());
-////          int node1 = Integer.parseInt(st.nextToken());
-////          int node2 = Integer.parseInt(st.nextToken());
-////
-////          this.addEdge(node1, node2);
-////        }
-////
-////        br.close();
-////      } catch (IOException ioe) {
-////        ExceptionHandler.getHandler().displayException(ioe);
-////      }
-////    }
-//
-//    private GraphNA() {
-//    }
-//
-//    public GraphNA(GraphNA graphNA) {
-//      this.size_ = graphNA.getSize();
-//      this.names_ = graphNA.getNames();
-//      this.edges_ = graphNA.getEdges();
-//    }
-//
-//    public static GraphNA readGraphGWFile(File file) {
-//      GraphNA ret = new GraphNA();
-//      ret.edges_ = new TreeMap<String, Set<String>>();
-//      ret.names_ = new TreeMap<Integer, String>();
-//
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(file));
-//
-//        for (int i = 0; i < 4; i++) {
-//          br.readLine();
-//        }
-//
-//        ret.size_ = Integer.parseInt(br.readLine());
-//
-//        for (int i = 1; i <= ret.size_; i++) {
-//          String name = br.readLine().trim();
-//          name = name.substring(2, name.length() - 2); // exclude "|{" and "}|"
-//
-//          ret.addNode(i, name);
-//        }
-//
-//        final int edges = Integer.parseInt(br.readLine());
-//
-//        for (int i = 1; i <= edges; i++) {
-//          StringTokenizer st = new StringTokenizer(br.readLine());
-//          int node1 = Integer.parseInt(st.nextToken());
-//          int node2 = Integer.parseInt(st.nextToken());
-//
-//          ret.addEdge(node1, node2);
-//        }
-//
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
-//      }
-//
-//      return ret;
-//    }
-//
-//    private void addNode(int node, String name) {
-//      if (edges_.get(name) == null) {
-//        edges_.put(name, new TreeSet<String>());
-//      }
-//      if (names_.get(node) == null) {
-//        names_.put(node, name);
-//      }
-//      //      edges.putIfAbsent(name, new TreeSet<String>());
-//      //      names.putIfAbsent(node, name);
-//    }
-//
-//    private void addEdge(int node1, int node2) {
-//      if (node1 == node2) {
-//        ExceptionHandler.getHandler().displayException(new IllegalArgumentException("node1 == node2"));
-//      }
-//
-//      edges_.get(names_.get(node1)).add(names_.get(node2));
-//      edges_.get(names_.get(node2)).add(names_.get(node1));
-//    }
-//
-//    void updateNames(Map<String, String> names) {
-//
-//      Map<String, Set<String>> newEdges = new TreeMap<String, Set<String>>();
-//
-//      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-//        String key = entry.getKey();
-//        String x = (names.get(key) == null) ? key : names.get(key);
-//
-//        Set<String> newSet = new TreeSet<String>();
-//        for (String str : entry.getValue()) {
-//          String y = (names.get(str) == null) ? str : names.get(str);
-//          newSet.add(y);
-//        }
-//
-//        newEdges.put(x, newSet);
-//      }
-//
-//      edges_ = newEdges;
-//    }
-//
-////    public void extractNode(Set<String> set, String seed) throws IOException {
-////
-//////        Queue<String> queue = new LinkedList<>();
-//////
-//////        int level = 0, count = 0;
-//////        queue.add(seed);
-//////        while (! queue.isEmpty()) {
-//////            String node = queue.poll();
-//////            count = edges.get(node).size();
-//////
-//////            level++;
-//////
-//////            if (level > maxLevel) break;
-//////
-//////            for (String s : edges.get(node)) {
-//////                queue.add(s);
-//////                String[] arr = Parser.sort(node, s);
-//////                set.add(arr[0] + " " + arr[1]);
-//////            }
-//////
-//////        }
-//////
-//////        for (String s : set) {
-//////            set.add(s);
-//////        }
-////
-////      Set<String> lvl_1 = edges.get(seed), lvl_2 = new TreeSet<String>();
-////
-////      for (String n : lvl_1) {
-////        for (String s : edges.get(n)) {
-////          lvl_2.add(s);
-////          String[] arr = Parser.sort(n, s);
-////          set.add(arr[0] + " " + arr[1]);
-////        }
-////      }
-////
-//////        for (String n : lvl_2) {
-//////            for (String s : edges.get(n)) {
-//////                String[] arr = Parser.sort(n, s);
-//////                set.add(arr[0] + " " + arr[1]);
-//////            }
-//////        }
-////
-////
-////    }
-//
-////    public void toSIF(String dir, String tag) throws IOException {
-////      Set<String> set = new TreeSet<String>();
-////
-////      for (Map.Entry<String, Set<String>> entry : edges.entrySet()) {
-////
-////        String x = entry.getKey();
-////        for (String y : entry.getValue()) {
-////
-////          String[] arr = Parser.sort(x, y);
-////
-////          String link = arr[0] + " " + tag + " " + arr[1];
-////
-////          set.add(link);
-////        }
-////      }
-////
-////      PrintWriter pw = new PrintWriter(new File(dir));
-////      for (String s : set) {
-////        pw.println(s);
-////      }
-////
-////      pw.close();
-////    }
-//
-//    @Override
-//    public String toString() {
-//
-//      int linkNum = 0;
-//      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-//        linkNum += entry.getValue().size();
-//      }
-//      linkNum /= 2;
-//
-//      return String.format("(V, E) = (%d, %d)", size_, linkNum);
-//    }
-//
-//    public int getSize() {
-//      return size_;
-//    }
-//
-//    public Map<Integer, String> getNames() {
-//      return new TreeMap<Integer, String>(names_);
-//    }
-//
-//    public Map<String, Set<String>> getEdges() {
-//      return new TreeMap<String, Set<String>>(edges_);
-//    }
-//
-//  }
-//
-//  public static class AlignmentNA {
-//
-//    Map<String, String> nodeToNode;
-//    Set<String> nodes;
-//    GraphNA small_A, large_A;
-//
-////    public AlignmentNA(File file) {
-////      try {
-////        BufferedReader br = new BufferedReader(new FileReader(file));
-////
-////        String line;
-////        while ((line = br.readLine()) != null) {
-////          StringTokenizer st = new StringTokenizer(line);
-////
-////          nodeToNode.put(st.nextToken(), st.nextToken());
-////        }
-////        br.close();
-////      } catch (IOException ioe) {
-////        ExceptionHandler.getHandler().displayException(ioe);
-////      }
-////    }
-//
-//    private AlignmentNA() {
-//    }
-//
-////    public AlignmentNA(File dir, GraphNA small_A, GraphNA large_A) {
-////      this.small_A = small_A;
-////      this.large_A = large_A;
-////      this.nodes = new TreeSet<String>();
-////
-////      nodeToNode = new TreeMap<String, String>();
-////
-////      try {
-////        BufferedReader br = new BufferedReader(new FileReader(dir));
-////
-////        String line;
-////        while ((line = br.readLine()) != null) {
-////          StringTokenizer st = new StringTokenizer(line);
-////
-////          nodeToNode.put(st.nextToken(), st.nextToken());
-////        }
-////        br.close();
-////      } catch (IOException ioe) {
-////        ExceptionHandler.getHandler().displayException(ioe);
-////      }
-////
-////      Map<String, String> smallNames = new TreeMap<String, String>();
-////      Map<String, String> largeNames = new TreeMap<String, String>();
-////
-////      for (Map.Entry<String, String> entry : nodeToNode.entrySet()) {
-////
-////        String x = entry.getKey(), y = entry.getValue(), xy = x + '-' + y;
-////
-////        smallNames.put(x, xy);
-////        largeNames.put(y, xy);
-////
-////        nodes.add(xy); // FIX ME: DOESN'T INCLUDE UNALIGNED NODES FROM LARGE GRAPH
-////      }
-////
-////      this.small_A.updateNames(smallNames);
-////      this.large_A.updateNames(largeNames);
-////    }
-//
-//    public static AlignmentNA readAlignFile(File file) {
-//      AlignmentNA ret = new AlignmentNA();
-//
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(file));
-//
-//        String line;
-//        while ((line = br.readLine()) != null) {
-//          StringTokenizer st = new StringTokenizer(line);
-//
-//          ret.nodeToNode.put(st.nextToken(), st.nextToken());
-//        }
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
-//      }
-//
-//      return ret;
-//    }
-//
-//    private void provide(GraphNA small_A, GraphNA large_A) {
-//      Map<String, String> smallNames = new TreeMap<String, String>();
-//      Map<String, String> largeNames = new TreeMap<String, String>();
-//
-//      for (Map.Entry<String, String> entry : nodeToNode.entrySet()) {
-//
-//        String x = entry.getKey(), y = entry.getValue(), xy = x + '-' + y;
-//
-//        smallNames.put(x, xy);
-//        largeNames.put(y, xy);
-//
-//        nodes.add(xy); // FIX ME: DOESN'T INCLUDE UNALIGNED NODES FROM LARGE GRAPH
-//      }
-//
-//      this.small_A.updateNames(smallNames);
-//      this.large_A.updateNames(largeNames);
-//    }
-//
-////    public void toFiles(String alignDir, String ordDir, String tagS, String tagL) throws IOException {
-////      large_A.toSIF(ordDir, "xx");
-////      Parser.toAlignmentSIF(alignDir, this, tagS, tagL);
-////    }
-//
-//    @Override
-//    public String toString() {
-//      String ret;
-//      ret = "G1: " + small_A + '\n' + "G2: " + large_A;
-//
-//      return ret;
-//    }
-//
-////    public static List<String> writeEdges(Graph G) {
-////
-////      Set<String> set = new TreeSet<String>();
-////
-////      for (Map.Entry<String, Set<String>> entry : G.edges.entrySet()) {
-////
-////        String x = entry.getKey();
-////
-////        for (String y : entry.getValue()) {
-////
-////          String[] arr = Parser.sort(x, y);
-////
-////          set.add(arr[0] + " " + arr[1]);
-////        }
-////      }
-////
-////      List<String> ret = new ArrayList<String>();
-////      for (String s : set) {
-////        ret.add(s);
-////      }
-////
-////      return ret;
-////    }
-//
-//  }
-//
-//  public static class NetworkAlignInfo {
-//
-//    GraphNA small, large;
-//    AlignmentNA align;
-//
-//    public NetworkAlignInfo(GraphNA small, GraphNA large, AlignmentNA align) {
-//      this.small = small;
-//      this.large = large;
-//      this.align = align;
-//    }
-//
-//  }
-//
-//  private static class Parser { // FIX ME: THIS CLASS NEEDS TO REMOVED AFTER THE METHODS
-//    // ARE IMPLEMENTED INSIDE GRAPH, ALIGNMENT, OR NETWORKALIGNMENT, OR NOT AT ALL
-//
-////    public static void toAlignmentSIF(String dir, Alignment align, String tagS, String tagL)
-////            throws IOException {
-////      PrintWriter pw = new PrintWriter(new File(dir));
-////
-////      List<String> Sall = Alignment.writeEdges(align.small_A);
-////      List<String> Lall = Alignment.writeEdges(align.large_A);
-////
-////      Collections.sort(Sall);
-////      Collections.sort(Lall);
-////
-////      List<String> CC = new ArrayList<String>();
-////      for (String x : Sall) {
-////        if (Collections.binarySearch(Lall, x) >= 0) {
-////          CC.add(x);
-////        }
-////      }
-////
-////      for (String s : Sall) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + tagS + " " + arr[1]);
-////      }
-////
-////      for (String s : Lall) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + tagL + " " + arr[1]);
-////      }
-////
-////      for (String s : CC) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + "CC" + " " + arr[1]);
-////      }
-////
-////      pw.close();
-////    }
-//
-//    /**
-//     * splits parameter by space
-//     */
-//    public static String[] split(String twoNodes) {
-//      StringTokenizer st = new StringTokenizer(twoNodes);
-//      return new String[]{st.nextToken(), st.nextToken()};
-//    }
-//
-//    /**
-//     * splits parameter by dash
-//     */
-//    public static String[] splice(String edge) {
-//      return edge.split("-");
-//    }
-//
-//    /**
-//     * sorts two strings in array
-//     */
-//    public static String[] sort(String a, String b) {
-//      String[] ret = {a, b};
-//      Arrays.sort(ret);
-//
-//      return ret;
-//    }
-//
-//    /**
-//     * true if two parts are equal; split by dash
-//     */
-//    public static boolean sameNode(String node) {
-//      String[] arr = node.split("-");
-//      return arr[0].equals(arr[1]);
-//    }
-//
-////    public static void write(String filename, Set<String> set) throws IOException {
-////      PrintWriter pw = new PrintWriter(new File(filename));
-////      for (String s : set) {
-////        String[] arr = Parser.split(s);
-////        pw.println(arr[0] + " pp " + arr[1]);
-////      }
-////
-////      pw.close();
-////    }
-//
-//  }
-//
-//}
-
-///*
-//**    Copyright (C) 2003-2014 Institute for Systems Biology
-//**                            Seattle, Washington, USA.
-//**
-//**    This library is free software; you can redistribute it and/or
-//**    modify it under the terms of the GNU Lesser General Public
-//**    License as published by the Free Software Foundation; either
-//**    version 2.1 of the License, or (at your option) any later version.
-//**
-//**    This library is distributed in the hope that it will be useful,
-//**    but WITHOUT ANY WARRANTY; without even the implied warranty of
-//**    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-//**    Lesser General Public License for more details.
-//**
-//**    You should have received a copy of the GNU Lesser General Public
-//**    License along with this library; if not, write to the Free Software
-//**    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-//*/
-//
-//package org.systemsbiology.biofabric.analysis;
-//
-//        import org.systemsbiology.biofabric.util.ExceptionHandler;
-//
-//        import java.io.BufferedReader;
-//        import java.io.File;
-//        import java.io.FileReader;
-//        import java.io.IOException;
-//        import java.util.*;
-//
-//public class NetworkAlignment {
-//
-//  private GraphNA small, large;
-//  private AlignmentNA align;
-//
-//  public NetworkAlignment(NetworkAlignInfo nai) {
-//
-////    GraphNA A = null, B = null;
-////    try {
-////      A = new GraphNA(nai.small);
-////      B = new GraphNA(nai.large);
-////    } catch (IOException ioe) {
-////      ExceptionHandler.getHandler().displayException(ioe);
-////    }
-////
-////    if (A == null || B == null) {
-////
-////    }
-////
-////    if (A.edges.size() >= B.edges.size()) {
-////      large = A;
-////      small = B;
-////    } else {
-////      large = B;
-////      small = A;
-////    }
-////
-////    try {
-////      align = new AlignmentNA(alignment, small, large);
-////    } catch (IOException ioe) {
-////      ExceptionHandler.getHandler().displayException(ioe);
-////    }
-//
-//    this.small = nai.small;
-//    this.large = nai.large;
-//    this.align = nai.align;
-//
-//  }
-//
-//  public static class GraphNA { // needs to implement cloneable in future
-//
-//    Map<String, Set<String>> edges_;
-//    private Map<Integer, String> names_;
-//    private int size_;
-//
-//    public GraphNA(File dir) {
-//      this.edges_ = new TreeMap<String, Set<String>>();
-//      this.names_ = new TreeMap<Integer, String>();
-//
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(dir));
-//
-//        for (int i = 0; i < 4; i++) {
-//          br.readLine();
-//        }
-//
-//        this.size_ = Integer.parseInt(br.readLine());
-//
-//        for (int i = 1; i <= size_; i++) {
-//          String name = br.readLine().trim();
-//          name = name.substring(2, name.length() - 2); // exclude "|{" and "}|"
-//
-//          this.addNode(i, name);
-//        }
-//
-//        final int edges = Integer.parseInt(br.readLine());
-//
-//        for (int i = 1; i <= edges; i++) {
-//          StringTokenizer st = new StringTokenizer(br.readLine());
-//          int node1 = Integer.parseInt(st.nextToken());
-//          int node2 = Integer.parseInt(st.nextToken());
-//
-//          this.addEdge(node1, node2);
-//        }
-//
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
-//      }
-//
-//    }
-//
-//    public GraphNA(GraphNA graphNA) {
-//      this.size_ = graphNA.getSize();
-//      this.names_ = graphNA.getNames();
-//      this.edges_ = graphNA.getEdges();
-//    }
-//
-//    private void addNode(int node, String name) {
-//      if (edges_.get(name) == null) {
-//        edges_.put(name, new TreeSet<String>());
-//      }
-//      if (names_.get(node) == null) {
-//        names_.put(node, name);
-//      }
-//      //      edges.putIfAbsent(name, new TreeSet<String>());
-//      //      names.putIfAbsent(node, name);
-//    }
-//
-//    private void addEdge(int node1, int node2) {
-//      if (node1 == node2) {
-//        ExceptionHandler.getHandler().displayException(new IllegalArgumentException("node1 == node2"));
-//      }
-//
-//      edges_.get(names_.get(node1)).add(names_.get(node2));
-//      edges_.get(names_.get(node2)).add(names_.get(node1));
-//    }
-//
-//    void updateNames(Map<String, String> names) {
-//
-//      Map<String, Set<String>> newEdges = new TreeMap<String, Set<String>>();
-//
-//      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-//        String key = entry.getKey();
-//        String x = (names.get(key) == null) ? key : names.get(key);
-//
-//        Set<String> newSet = new TreeSet<String>();
-//        for (String str : entry.getValue()) {
-//          String y = (names.get(str) == null) ? str : names.get(str);
-//          newSet.add(y);
-//        }
-//
-//        newEdges.put(x, newSet);
-//      }
-//
-//      edges_ = newEdges;
-//    }
-//
-////    public void extractNode(Set<String> set, String seed) throws IOException {
-////
-//////        Queue<String> queue = new LinkedList<>();
-//////
-//////        int level = 0, count = 0;
-//////        queue.add(seed);
-//////        while (! queue.isEmpty()) {
-//////            String node = queue.poll();
-//////            count = edges.get(node).size();
-//////
-//////            level++;
-//////
-//////            if (level > maxLevel) break;
-//////
-//////            for (String s : edges.get(node)) {
-//////                queue.add(s);
-//////                String[] arr = Parser.sort(node, s);
-//////                set.add(arr[0] + " " + arr[1]);
-//////            }
-//////
-//////        }
-//////
-//////        for (String s : set) {
-//////            set.add(s);
-//////        }
-////
-////      Set<String> lvl_1 = edges.get(seed), lvl_2 = new TreeSet<String>();
-////
-////      for (String n : lvl_1) {
-////        for (String s : edges.get(n)) {
-////          lvl_2.add(s);
-////          String[] arr = Parser.sort(n, s);
-////          set.add(arr[0] + " " + arr[1]);
-////        }
-////      }
-////
-//////        for (String n : lvl_2) {
-//////            for (String s : edges.get(n)) {
-//////                String[] arr = Parser.sort(n, s);
-//////                set.add(arr[0] + " " + arr[1]);
-//////            }
-//////        }
-////
-////
-////    }
-//
-////    public void toSIF(String dir, String tag) throws IOException {
-////      Set<String> set = new TreeSet<String>();
-////
-////      for (Map.Entry<String, Set<String>> entry : edges.entrySet()) {
-////
-////        String x = entry.getKey();
-////        for (String y : entry.getValue()) {
-////
-////          String[] arr = Parser.sort(x, y);
-////
-////          String link = arr[0] + " " + tag + " " + arr[1];
-////
-////          set.add(link);
-////        }
-////      }
-////
-////      PrintWriter pw = new PrintWriter(new File(dir));
-////      for (String s : set) {
-////        pw.println(s);
-////      }
-////
-////      pw.close();
-////    }
-//
-//    @Override
-//    public String toString() {
-//
-//      int linkNum = 0;
-//      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-//        linkNum += entry.getValue().size();
-//      }
-//      linkNum /= 2;
-//
-//      return String.format("(V, E) = (%d, %d)", size_, linkNum);
-//    }
-//
-//    public int getSize() {
-//      return size_;
-//    }
-//
-//    public Map<Integer, String> getNames() {
-//      return new TreeMap<Integer, String>(names_);
-//    }
-//
-//    public Map<String, Set<String>> getEdges() {
-//      return new TreeMap<String, Set<String>>(edges_);
-//    }
-//
-//  }
-//
-//
-//  public static class AlignmentNA {
-//
-//    Map<String, String> nodeToNode;
-//    Set<String> nodes;
-//    GraphNA small_A, large_A;
-//
-//    public AlignmentNA(File file) {
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(file));
-//
-//        String line;
-//        while ((line = br.readLine()) != null) {
-//          StringTokenizer st = new StringTokenizer(line);
-//
-//          nodeToNode.put(st.nextToken(), st.nextToken());
-//        }
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
-//      }
-//    }
-//
-//    public AlignmentNA(File dir, GraphNA small_A, GraphNA large_A) {
-//      this.small_A = small_A;
-//      this.large_A = large_A;
-//      this.nodes = new TreeSet<String>();
-//
-//      nodeToNode = new TreeMap<String, String>();
-//
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(dir));
-//
-//        String line;
-//        while ((line = br.readLine()) != null) {
-//          StringTokenizer st = new StringTokenizer(line);
-//
-//          nodeToNode.put(st.nextToken(), st.nextToken());
-//        }
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
-//      }
-//
-//      Map<String, String> smallNames = new TreeMap<String, String>();
-//      Map<String, String> largeNames = new TreeMap<String, String>();
-//
-//      for (Map.Entry<String, String> entry : nodeToNode.entrySet()) {
-//
-//        String x = entry.getKey(), y = entry.getValue(), xy = x + '-' + y;
-//
-//        smallNames.put(x, xy);
-//        largeNames.put(y, xy);
-//
-//        nodes.add(xy); // FIX ME: DOESN'T INCLUDE UNALIGNED NODES FROM LARGE GRAPH
-//      }
-//
-//      this.small_A.updateNames(smallNames);
-//      this.large_A.updateNames(largeNames);
-//    }
-//
-////    public void toFiles(String alignDir, String ordDir, String tagS, String tagL) throws IOException {
-////      large_A.toSIF(ordDir, "xx");
-////      Parser.toAlignmentSIF(alignDir, this, tagS, tagL);
-////    }
-//
-//    @Override
-//    public String toString() {
-//      String ret;
-//      ret = "G1: " + small_A + '\n' + "G2: " + large_A;
-//
-//      return ret;
-//    }
-//
-////    public static List<String> writeEdges(Graph G) {
-////
-////      Set<String> set = new TreeSet<String>();
-////
-////      for (Map.Entry<String, Set<String>> entry : G.edges.entrySet()) {
-////
-////        String x = entry.getKey();
-////
-////        for (String y : entry.getValue()) {
-////
-////          String[] arr = Parser.sort(x, y);
-////
-////          set.add(arr[0] + " " + arr[1]);
-////        }
-////      }
-////
-////      List<String> ret = new ArrayList<String>();
-////      for (String s : set) {
-////        ret.add(s);
-////      }
-////
-////      return ret;
-////    }
-//
-//  }
-//
-//  public static class NetworkAlignInfo {
-//
-//    GraphNA small, large;
-//    AlignmentNA align;
-//
-//    public NetworkAlignInfo(GraphNA small, GraphNA large, AlignmentNA align) {
-//      this.small = small;
-//      this.large = large;
-//      this.align = align;
-//    }
-//
-//  }
-//
-//  private static class Parser { // FIX ME: THIS CLASS NEEDS TO REMOVED AFTER THE METHODS
-//    // ARE IMPLEMENTED INSIDE GRAPH, ALIGNMENT, OR NETWORKALIGNMENT, OR NOT AT ALL
-//
-////    public static void toAlignmentSIF(String dir, Alignment align, String tagS, String tagL)
-////            throws IOException {
-////      PrintWriter pw = new PrintWriter(new File(dir));
-////
-////      List<String> Sall = Alignment.writeEdges(align.small_A);
-////      List<String> Lall = Alignment.writeEdges(align.large_A);
-////
-////      Collections.sort(Sall);
-////      Collections.sort(Lall);
-////
-////      List<String> CC = new ArrayList<String>();
-////      for (String x : Sall) {
-////        if (Collections.binarySearch(Lall, x) >= 0) {
-////          CC.add(x);
-////        }
-////      }
-////
-////      for (String s : Sall) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + tagS + " " + arr[1]);
-////      }
-////
-////      for (String s : Lall) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + tagL + " " + arr[1]);
-////      }
-////
-////      for (String s : CC) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + "CC" + " " + arr[1]);
-////      }
-////
-////      pw.close();
-////    }
-//
-//    /**
-//     * splits parameter by space
-//     */
-//    public static String[] split(String twoNodes) {
-//      StringTokenizer st = new StringTokenizer(twoNodes);
-//      return new String[]{st.nextToken(), st.nextToken()};
-//    }
-//
-//    /**
-//     * splits parameter by dash
-//     */
-//    public static String[] splice(String edge) {
-//      return edge.split("-");
-//    }
-//
-//    /**
-//     * sorts two strings in array
-//     */
-//    public static String[] sort(String a, String b) {
-//      String[] ret = {a, b};
-//      Arrays.sort(ret);
-//
-//      return ret;
-//    }
-//
-//    /**
-//     * true if two parts are equal; split by dash
-//     */
-//    public static boolean sameNode(String node) {
-//      String[] arr = node.split("-");
-//      return arr[0].equals(arr[1]);
-//    }
-//
-////    public static void write(String filename, Set<String> set) throws IOException {
-////      PrintWriter pw = new PrintWriter(new File(filename));
-////      for (String s : set) {
-////        String[] arr = Parser.split(s);
-////        pw.println(arr[0] + " pp " + arr[1]);
-////      }
-////
-////      pw.close();
-////    }
-//
-//  }
-//
-//}
 
 
 ///*
-//**    Copyright (C) 2003-2014 Institute for Systems Biology
-//**                            Seattle, Washington, USA.
-//**
-//**    This library is free software; you can redistribute it and/or
-//**    modify it under the terms of the GNU Lesser General Public
-//**    License as published by the Free Software Foundation; either
-//**    version 2.1 of the License, or (at your option) any later version.
-//**
-//**    This library is distributed in the hope that it will be useful,
-//**    but WITHOUT ANY WARRANTY; without even the implied warranty of
-//**    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-//**    Lesser General Public License for more details.
-//**
-//**    You should have received a copy of the GNU Lesser General Public
-//**    License along with this library; if not, write to the Free Software
-//**    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-//*/
+//import org.systemsbiology.biofabric.model.FabricLink;
+//import org.systemsbiology.biofabric.util.NID;
+//import org.systemsbiology.biofabric.util.UniqueLabeller;
 //
-//package org.systemsbiology.biofabric.analysis;
+//import java.util.ArrayList;
+//import java.util.Arrays;
+//import java.util.Collections;
+//import java.util.Comparator;
+//import java.util.HashSet;
+//import java.util.List;
+//import java.util.Map;
+//import java.util.Set;
+//import java.util.TreeMap;
+//import java.util.TreeSet;
 //
-//        import org.systemsbiology.biofabric.util.ExceptionHandler;
-//
-//        import java.io.BufferedReader;
-//        import java.io.File;
-//        import java.io.FileReader;
-//        import java.io.IOException;
-//        import java.util.*;
+///****************************************************************************
+// **
+// ** This merges two individual graphs and an alignment to form the
+// ** network alignment
+// */
 //
 //public class NetworkAlignment {
 //
-//  private GraphNA small, large;
-//  private AlignmentNA align;
+//  private final String TAG_G1 = "G1", TAG_CC = "CC", TAG_G2 = "G2";
+//  private final String TEMP_TAG = "TEMP";
 //
-//  public NetworkAlignment(NetworkAlignInfo nai) {
+//  private Map<NID.WithName, NID.WithName> mapG1toG2_;
+//  private ArrayList<FabricLink> linksG1_;
+//  private HashSet<NID.WithName> lonersG1_;
+//  private ArrayList<FabricLink> linksG2_;
+//  private HashSet<NID.WithName> lonersG2_;
+//  private boolean forClique_;
+//  private UniqueLabeller idGen_;
 //
-////    GraphNA A = null, B = null;
-////    try {
-////      A = new GraphNA(nai.small);
-////      B = new GraphNA(nai.large);
-////    } catch (IOException ioe) {
-////      ExceptionHandler.getHandler().displayException(ioe);
-////    }
-////
-////    if (A == null || B == null) {
-////
-////    }
-////
-////    if (A.edges.size() >= B.edges.size()) {
-////      large = A;
-////      small = B;
-////    } else {
-////      large = B;
-////      small = A;
-////    }
-////
-////    try {
-////      align = new AlignmentNA(alignment, small, large);
-////    } catch (IOException ioe) {
-////      ExceptionHandler.getHandler().displayException(ioe);
-////    }
+//  private Map<NID.WithName, NID.WithName> smallToNA_;
+//  private Map<NID.WithName, NID.WithName> largeToNA_;
 //
-//    this.small = nai.small;
-//    this.large = nai.large;
-//    this.align = nai.align;
+//  private ArrayList<FabricLink> mergedLinks_;
+//  private Set<NID.WithName> mergedLoners_;
 //
+//  private enum Graph {SMALL, LARGE}
+//
+//  public NetworkAlignment(ArrayList<FabricLink> mergedLinks, Set<NID.WithName> mergedLoneNodeIDs,
+//                          Map<NID.WithName, NID.WithName> mapG1toG2,
+//                          ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
+//                          ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
+//                          boolean forCliques, UniqueLabeller idGen) {
+//
+//    this.mapG1toG2_ = mapG1toG2;
+//    this.linksG1_ = linksG1;
+//    this.lonersG1_ = lonersG1;
+//    this.linksG2_ = linksG2;
+//    this.lonersG2_ = lonersG2;
+//    this.forClique_ =forCliques;
+//    this.idGen_ = idGen;
+//
+//    this.mergedLinks_ = mergedLinks;
+//    this.mergedLoners_ = mergedLoneNodeIDs;
 //  }
 //
-//  public static class GraphNA { // needs to implement cloneable in future
+//  /****************************************************************************
+//   **
+//   ** Merge the Network!
+//   */
 //
-//    Map<String, Set<String>> edges_;
-//    private Map<Integer, String> names_;
-//    private int size_;
+//  public void mergeNetworks() {
 //
-//    public GraphNA(File dir) {
-//      this.edges_ = new TreeMap<String, Set<String>>();
-//      this.names_ = new TreeMap<Integer, String>();
+//    //
+//    // Create merged nodes
+//    //
 //
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(dir));
+//    createMergedNodes();
 //
-//        for (int i = 0; i < 4; i++) {
-//          br.readLine();
-//        }
+//    //
+//    // Create individual link sets; "old" refers to pre-merged networks, "new" is merged network
+//    //
 //
-//        this.size_ = Integer.parseInt(br.readLine());
+//    List<FabricLink> newLinksG1 = new ArrayList<FabricLink>();
+//    Set<NID.WithName> newLonersG1 = new HashSet<NID.WithName>();
 //
-//        for (int i = 1; i <= size_; i++) {
-//          String name = br.readLine().trim();
-//          name = name.substring(2, name.length() - 2); // exclude "|{" and "}|"
+//    createNewLinkList(newLinksG1, newLonersG1, Graph.SMALL);
 //
-//          this.addNode(i, name);
-//        }
+//    List<FabricLink> newLinksG2 = new ArrayList<FabricLink>();
+//    Set<NID.WithName> newLonersG2 = new HashSet<NID.WithName>();
 //
-//        final int edges = Integer.parseInt(br.readLine());
+//    createNewLinkList(newLinksG2, newLonersG2, Graph.LARGE);
 //
-//        for (int i = 1; i <= edges; i++) {
-//          StringTokenizer st = new StringTokenizer(br.readLine());
-//          int node1 = Integer.parseInt(st.nextToken());
-//          int node2 = Integer.parseInt(st.nextToken());
+//    //
+//    // Split individual link-lists into G1 only, CC only, G2 only -> combine into one list
+//    //
 //
-//          this.addEdge(node1, node2);
-//        }
+//    createMergedLinkList(newLinksG1, newLinksG2);
 //
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
-//      }
+//    finalizeLoneNodeIDs(newLonersG1, newLonersG2);
 //
+//    if (forClique_) {
+//      processForCliqueMisalignment();
 //    }
 //
-//    public GraphNA(GraphNA graphNA) {
-//      this.size_ = graphNA.getSize();
-//      this.names_ = graphNA.getNames();
-//      this.edges_ = graphNA.getEdges();
-//    }
-//
-//    private void addNode(int node, String name) {
-//      if (edges_.get(name) == null) {
-//        edges_.put(name, new TreeSet<String>());
-//      }
-//      if (names_.get(node) == null) {
-//        names_.put(node, name);
-//      }
-//      //      edges.putIfAbsent(name, new TreeSet<String>());
-//      //      names.putIfAbsent(node, name);
-//    }
-//
-//    private void addEdge(int node1, int node2) {
-//      if (node1 == node2) {
-//        ExceptionHandler.getHandler().displayException(new IllegalArgumentException("node1 == node2"));
-//      }
-//
-//      edges_.get(names_.get(node1)).add(names_.get(node2));
-//      edges_.get(names_.get(node2)).add(names_.get(node1));
-//    }
-//
-//    void updateNames(Map<String, String> names) {
-//
-//      Map<String, Set<String>> newEdges = new TreeMap<String, Set<String>>();
-//
-//      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-//        String key = entry.getKey();
-//        String x = (names.get(key) == null) ? key : names.get(key);
-//
-//        Set<String> newSet = new TreeSet<String>();
-//        for (String str : entry.getValue()) {
-//          String y = (names.get(str) == null) ? str : names.get(str);
-//          newSet.add(y);
-//        }
-//
-//        newEdges.put(x, newSet);
-//      }
-//
-//      edges_ = newEdges;
-//    }
-//
-////    public void extractNode(Set<String> set, String seed) throws IOException {
-////
-//////        Queue<String> queue = new LinkedList<>();
-//////
-//////        int level = 0, count = 0;
-//////        queue.add(seed);
-//////        while (! queue.isEmpty()) {
-//////            String node = queue.poll();
-//////            count = edges.get(node).size();
-//////
-//////            level++;
-//////
-//////            if (level > maxLevel) break;
-//////
-//////            for (String s : edges.get(node)) {
-//////                queue.add(s);
-//////                String[] arr = Parser.sort(node, s);
-//////                set.add(arr[0] + " " + arr[1]);
-//////            }
-//////
-//////        }
-//////
-//////        for (String s : set) {
-//////            set.add(s);
-//////        }
-////
-////      Set<String> lvl_1 = edges.get(seed), lvl_2 = new TreeSet<String>();
-////
-////      for (String n : lvl_1) {
-////        for (String s : edges.get(n)) {
-////          lvl_2.add(s);
-////          String[] arr = Parser.sort(n, s);
-////          set.add(arr[0] + " " + arr[1]);
-////        }
-////      }
-////
-//////        for (String n : lvl_2) {
-//////            for (String s : edges.get(n)) {
-//////                String[] arr = Parser.sort(n, s);
-//////                set.add(arr[0] + " " + arr[1]);
-//////            }
-//////        }
-////
-////
-////    }
-//
-////    public void toSIF(String dir, String tag) throws IOException {
-////      Set<String> set = new TreeSet<String>();
-////
-////      for (Map.Entry<String, Set<String>> entry : edges.entrySet()) {
-////
-////        String x = entry.getKey();
-////        for (String y : entry.getValue()) {
-////
-////          String[] arr = Parser.sort(x, y);
-////
-////          String link = arr[0] + " " + tag + " " + arr[1];
-////
-////          set.add(link);
-////        }
-////      }
-////
-////      PrintWriter pw = new PrintWriter(new File(dir));
-////      for (String s : set) {
-////        pw.println(s);
-////      }
-////
-////      pw.close();
-////    }
-//
-//    @Override
-//    public String toString() {
-//
-//      int linkNum = 0;
-//      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-//        linkNum += entry.getValue().size();
-//      }
-//      linkNum /= 2;
-//
-//      return String.format("(V, E) = (%d, %d)", size_, linkNum);
-//    }
-//
-//    public int getSize() {
-//      return size_;
-//    }
-//
-//    public Map<Integer, String> getNames() {
-//      return new TreeMap<Integer, String>(names_);
-//    }
-//
-//    public Map<String, Set<String>> getEdges() {
-//      return new TreeMap<String, Set<String>>(edges_);
-//    }
-//
+//    return;
 //  }
 //
+//  /****************************************************************************
+//   **
+//   ** Create merged nodes, install into maps
+//   */
 //
-//  public static class AlignmentNA {
+//  private void createMergedNodes() {
 //
-//    Map<String, String> nodeToNode;
-//    Set<String> nodes;
-//    GraphNA small_A, large_A;
+//    smallToNA_ = new TreeMap<NID.WithName, NID.WithName>();
+//    largeToNA_ = new TreeMap<NID.WithName, NID.WithName>();
 //
-//    public AlignmentNA(File file) {
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(file));
+//    for (Map.Entry<NID.WithName, NID.WithName> entry : mapG1toG2_.entrySet()) {
 //
-//        String line;
-//        while ((line = br.readLine()) != null) {
-//          StringTokenizer st = new StringTokenizer(line);
+//      NID.WithName smallNode = entry.getKey(), largeNode = entry.getValue();
+//      String smallName = smallNode.getName(), largeName = largeNode.getName();
 //
-//          nodeToNode.put(st.nextToken(), st.nextToken());
-//        }
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
+//      String merged_name = String.format("%s-%s", largeName, smallName);
+//
+//      NID nid = idGen_.getNextOID();
+//      NID.WithName merged_node = new NID.WithName(nid, merged_name);
+//
+//      smallToNA_.put(smallNode, merged_node);
+//      largeToNA_.put(largeNode, merged_node);
+//    }
+//    return;
+//  }
+//
+//  /****************************************************************************
+//   **
+//   ** Create new link lists based on merged nodes for both networks
+//   */
+//
+//  private void createNewLinkList(List<FabricLink> newLinks, Set<NID.WithName> newLoners, Graph graph) {
+//
+//    List<FabricLink> oldLinks;
+//    Set<NID.WithName> oldLoners;
+//    Map<NID.WithName, NID.WithName> oldToNewID;
+//
+//    switch (graph) {
+//      case SMALL:
+//        oldLinks = linksG1_;
+//        oldLoners = lonersG1_;
+//        oldToNewID = smallToNA_;
+//        break;
+//      case LARGE:
+//        oldLinks = linksG2_;
+//        oldLoners = lonersG2_;
+//        oldToNewID = largeToNA_;
+//        break;
+//      default:
+//        throw new IllegalArgumentException();
+//    }
+//
+//    for (FabricLink oldLink : oldLinks) {
+//
+//      NID.WithName oldA = oldLink.getSrcID();
+//      NID.WithName oldB = oldLink.getTrgID();
+//
+//      //
+//      // Not all nodes are mapped in the large graph
+//      //
+//
+//      NID.WithName newA = (oldToNewID.containsKey(oldA)) ? oldToNewID.get(oldA) : oldA;
+//      NID.WithName newB = (oldToNewID.containsKey(oldB)) ? oldToNewID.get(oldB) : oldB;
+//
+//      FabricLink newLink = new FabricLink(newA, newB, TEMP_TAG, false, false);
+//      // 'directed' must be false
+//
+//      newLinks.add(newLink);
+//    }
+//
+//    for (NID.WithName oldLoner : oldLoners) {
+//
+//      NID.WithName newLoner = (oldToNewID.containsKey(oldLoner)) ? oldToNewID.get(oldLoner) : oldLoner;
+//
+//      newLoners.add(newLoner);
+//    }
+//    return;
+//  }
+//
+//  /****************************************************************************
+//   **
+//   ** Combine the two link lists into one, with G2,CC,G1 tags accordingly
+//   */
+//
+//  private void createMergedLinkList(List<FabricLink> newLinksG1, List<FabricLink> newLinksG2) {
+//
+//    Collections.sort(newLinksG1, new NetAlignFabricLinkLocator());
+//
+//    for (FabricLink linkG2 : newLinksG2) {
+//
+//      int index = Collections.binarySearch(newLinksG1, linkG2, new NetAlignFabricLinkLocator());
+//
+//      if (index >= 0) {
+//        addMergedLink(linkG2.getSrcID(), linkG2.getTrgID(), TAG_CC);
+//      } else {
+//        addMergedLink(linkG2.getSrcID(), linkG2.getTrgID(), TAG_G2);
 //      }
 //    }
 //
-//    public AlignmentNA(File dir, GraphNA small_A, GraphNA large_A) {
-//      this.small_A = small_A;
-//      this.large_A = large_A;
-//      this.nodes = new TreeSet<String>();
+//    Collections.sort(newLinksG2, new NetAlignFabricLinkLocator());
 //
-//      nodeToNode = new TreeMap<String, String>();
+//    for (FabricLink linkG1 : newLinksG1) {
 //
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(dir));
+//      int index = Collections.binarySearch(newLinksG2, linkG1, new NetAlignFabricLinkLocator());
 //
-//        String line;
-//        while ((line = br.readLine()) != null) {
-//          StringTokenizer st = new StringTokenizer(line);
-//
-//          nodeToNode.put(st.nextToken(), st.nextToken());
-//        }
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
+//      if (index < 0) {
+//        addMergedLink(linkG1.getSrcID(), linkG1.getTrgID(), TAG_G1);
 //      }
+//    }
+//    return; // This method is not ideal. . .
+//  }
 //
-//      Map<String, String> smallNames = new TreeMap<String, String>();
-//      Map<String, String> largeNames = new TreeMap<String, String>();
+//  /****************************************************************************
+//   **
+//   ** Add both non-shadow and shadow links to merged link-list
+//   */
 //
-//      for (Map.Entry<String, String> entry : nodeToNode.entrySet()) {
+//  private void addMergedLink(NID.WithName src, NID.WithName trg, String tag) {
+//    FabricLink newMergedLink = new FabricLink(src, trg, tag, false, null);
+//    FabricLink newMergedLinkShadow = new FabricLink(src, trg, tag, true, null);
 //
-//        String x = entry.getKey(), y = entry.getValue(), xy = x + '-' + y;
+//    mergedLinks_.add(newMergedLink);
+//    mergedLinks_.add(newMergedLinkShadow);
+//  }
 //
-//        smallNames.put(x, xy);
-//        largeNames.put(y, xy);
+//  /****************************************************************************
+// **
+// ** Combine loneNodeIDs lists into one
+// */
 //
-//        nodes.add(xy); // FIX ME: DOESN'T INCLUDE UNALIGNED NODES FROM LARGE GRAPH
+//private void finalizeLoneNodeIDs(Set<NID.WithName> newLonersG1, Set<NID.WithName> newLonersG2) {
+//  mergedLoners_.addAll(newLonersG1);
+//  mergedLoners_.addAll(newLonersG2);
+//  return;
+//}
+//
+//  /****************************************************************************
+//   **
+//   ** All unaligned edges plus all of their endpoint nodes' edges
+//   */
+//
+//  private void processForCliqueMisalignment() {
+//
+//    List<FabricLink> nonShdwMergedLinks = new ArrayList<FabricLink>();
+//    for (FabricLink link : mergedLinks_) {
+//      if (!link.isShadow()) {
+//        nonShdwMergedLinks.add(link);
 //      }
-//
-//      this.small_A.updateNames(smallNames);
-//      this.large_A.updateNames(largeNames);
 //    }
 //
-////    public void toFiles(String alignDir, String ordDir, String tagS, String tagL) throws IOException {
-////      large_A.toSIF(ordDir, "xx");
-////      Parser.toAlignmentSIF(alignDir, this, tagS, tagL);
-////    }
+//    Set<NID.WithName> unalignedNodesG1 = new TreeSet<NID.WithName>();
 //
-//    @Override
-//    public String toString() {
-//      String ret;
-//      ret = "G1: " + small_A + '\n' + "G2: " + large_A;
-//
-//      return ret;
+//    for (FabricLink link : nonShdwMergedLinks) { // find the nodes of interest
+//      if (link.getRelation().equals(TAG_G1)) {
+//        unalignedNodesG1.add(link.getSrcID());
+//        unalignedNodesG1.add(link.getTrgID());
+//      }
 //    }
 //
-////    public static List<String> writeEdges(Graph G) {
-////
-////      Set<String> set = new TreeSet<String>();
-////
-////      for (Map.Entry<String, Set<String>> entry : G.edges.entrySet()) {
-////
-////        String x = entry.getKey();
-////
-////        for (String y : entry.getValue()) {
-////
-////          String[] arr = Parser.sort(x, y);
-////
-////          set.add(arr[0] + " " + arr[1]);
-////        }
-////      }
-////
-////      List<String> ret = new ArrayList<String>();
-////      for (String s : set) {
-////        ret.add(s);
-////      }
-////
-////      return ret;
-////    }
+//    List<FabricLink> unalignedEdgesG1 = new ArrayList<FabricLink>();
 //
+//    for (FabricLink link : nonShdwMergedLinks) { // add the edges connecting to the nodes of interest (one hop away)
+//
+//      NID.WithName src = link.getSrcID(), trg = link.getTrgID();
+//
+//      if (unalignedNodesG1.contains(src) || unalignedNodesG1.contains(trg)) {
+//        unalignedEdgesG1.add(link);
+//      }
+//    }
+//
+//    //
+//    // Change the final link-lists
+//    //
+//
+//    mergedLinks_.clear();
+//    mergedLinks_.addAll(unalignedEdgesG1);
+//    mergedLoners_.clear();
+//
+//    return;
 //  }
 //
-//  public static class NetworkAlignInfo {
+///***************************************************************************
+// **
+// ** Used ONLY to order links for creating the merged link set in Network Alignments
+// */
 //
-//    GraphNA small, large;
-//    AlignmentNA align;
+//private static class NetAlignFabricLinkLocator implements Comparator<FabricLink> {
 //
-//    public NetworkAlignInfo(GraphNA small, GraphNA large, AlignmentNA align) {
-//      this.small = small;
-//      this.large = large;
-//      this.align = align;
+//  /***************************************************************************
+//   **
+//   ** For any different links in the two separate network link sets, this
+//   ** says which comes first
+//   */
+//
+//  public int compare(FabricLink link1, FabricLink link2) {
+//
+//    if (link1.synonymous(link2)) {
+//      return (0);
 //    }
 //
+//    //
+//    // Must sort the node names because A-B must be equivalent to B-A
+//    //
+//
+//    String[] arr1 = {link1.getSrcID().getName(), link1.getTrgID().getName()};
+//    Arrays.sort(arr1);
+//
+//    String[] arr2 = {link2.getSrcID().getName(), link2.getTrgID().getName()};
+//    Arrays.sort(arr2);
+//
+////      String concat1 = arr1[0] + "xxx" + arr1[1];
+////      String concat2 = arr2[0] + "xxx" + arr2[1];
+//    String concat1 = String.format("%s___%s",arr1[0], arr1[1]);
+//    String concat2 = String.format("%s___%s",arr2[0], arr2[1]);
+//
+//    // THIS IS COMPLETELY TEMPORARY - RISHI DESAI 7/16/17
+//
+//    return concat1.compareTo(concat2);
 //  }
-//
-//  private static class Parser { // FIX ME: THIS CLASS NEEDS TO REMOVED AFTER THE METHODS
-//    // ARE IMPLEMENTED INSIDE GRAPH, ALIGNMENT, OR NETWORKALIGNMENT, OR NOT AT ALL
-//
-////    public static void toAlignmentSIF(String dir, Alignment align, String tagS, String tagL)
-////            throws IOException {
-////      PrintWriter pw = new PrintWriter(new File(dir));
-////
-////      List<String> Sall = Alignment.writeEdges(align.small_A);
-////      List<String> Lall = Alignment.writeEdges(align.large_A);
-////
-////      Collections.sort(Sall);
-////      Collections.sort(Lall);
-////
-////      List<String> CC = new ArrayList<String>();
-////      for (String x : Sall) {
-////        if (Collections.binarySearch(Lall, x) >= 0) {
-////          CC.add(x);
-////        }
-////      }
-////
-////      for (String s : Sall) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + tagS + " " + arr[1]);
-////      }
-////
-////      for (String s : Lall) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + tagL + " " + arr[1]);
-////      }
-////
-////      for (String s : CC) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + "CC" + " " + arr[1]);
-////      }
-////
-////      pw.close();
-////    }
-//
-//    /**
-//     * splits parameter by space
-//     */
-//    public static String[] split(String twoNodes) {
-//      StringTokenizer st = new StringTokenizer(twoNodes);
-//      return new String[]{st.nextToken(), st.nextToken()};
-//    }
-//
-//    /**
-//     * splits parameter by dash
-//     */
-//    public static String[] splice(String edge) {
-//      return edge.split("-");
-//    }
-//
-//    /**
-//     * sorts two strings in array
-//     */
-//    public static String[] sort(String a, String b) {
-//      String[] ret = {a, b};
-//      Arrays.sort(ret);
-//
-//      return ret;
-//    }
-//
-//    /**
-//     * true if two parts are equal; split by dash
-//     */
-//    public static boolean sameNode(String node) {
-//      String[] arr = node.split("-");
-//      return arr[0].equals(arr[1]);
-//    }
-//
-////    public static void write(String filename, Set<String> set) throws IOException {
-////      PrintWriter pw = new PrintWriter(new File(filename));
-////      for (String s : set) {
-////        String[] arr = Parser.split(s);
-////        pw.println(arr[0] + " pp " + arr[1]);
-////      }
-////
-////      pw.close();
-////    }
-//
-//  }
+//}
 //
 //}
-
-
-
-
-
-///*
-//**    Copyright (C) 2003-2014 Institute for Systems Biology
-//**                            Seattle, Washington, USA.
-//**
-//**    This library is free software; you can redistribute it and/or
-//**    modify it under the terms of the GNU Lesser General Public
-//**    License as published by the Free Software Foundation; either
-//**    version 2.1 of the License, or (at your option) any later version.
-//**
-//**    This library is distributed in the hope that it will be useful,
-//**    but WITHOUT ANY WARRANTY; without even the implied warranty of
-//**    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-//**    Lesser General Public License for more details.
-//**
-//**    You should have received a copy of the GNU Lesser General Public
-//**    License along with this library; if not, write to the Free Software
-//**    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-//*/
-//
-//package org.systemsbiology.biofabric.analysis;
-//
-//        import org.systemsbiology.biofabric.util.ExceptionHandler;
-//
-//        import java.io.BufferedReader;
-//        import java.io.File;
-//        import java.io.FileReader;
-//        import java.io.IOException;
-//        import java.util.*;
-//
-//public class NetworkAlignment {
-//
-//  private GraphNA small, large;
-//  private AlignmentNA align;
-//
-//  public NetworkAlignment(NetworkAlignInfo nai) {
-//
-//    this.small = nai.small;
-//    this.large = nai.large;
-//    this.align = nai.align;
-//
-//  }
-//
-//  public static class GraphNA { // needs to implement cloneable in future
-//
-//    Map<String, Set<String>> edges_;
-//    private Map<Integer, String> names_;
-//    private int size_;
-//
-////    public GraphNA(File dir) {
-////
-////      this.edges_ = new TreeMap<String, Set<String>>();
-////      this.names_ = new TreeMap<Integer, String>();
-////
-////      try {
-////        BufferedReader br = new BufferedReader(new FileReader(dir));
-////
-////        for (int i = 0; i < 4; i++) {
-////          br.readLine();
-////        }
-////
-////        this.size_ = Integer.parseInt(br.readLine());
-////
-////        for (int i = 1; i <= size_; i++) {
-////          String name = br.readLine().trim();
-////          name = name.substring(2, name.length() - 2); // exclude "|{" and "}|"
-////
-////          this.addNode(i, name);
-////        }
-////
-////        final int edges = Integer.parseInt(br.readLine());
-////
-////        for (int i = 1; i <= edges; i++) {
-////          StringTokenizer st = new StringTokenizer(br.readLine());
-////          int node1 = Integer.parseInt(st.nextToken());
-////          int node2 = Integer.parseInt(st.nextToken());
-////
-////          this.addEdge(node1, node2);
-////        }
-////
-////        br.close();
-////      } catch (IOException ioe) {
-////        ExceptionHandler.getHandler().displayException(ioe);
-////      }
-////    }
-//
-//    private GraphNA() {
-//    }
-//
-//    public GraphNA(GraphNA graphNA) {
-//      this.size_ = graphNA.getSize();
-//      this.names_ = graphNA.getNames();
-//      this.edges_ = graphNA.getEdges();
-//    }
-//
-//    public static GraphNA readGraphGWFile(File file) {
-//      GraphNA ret = new GraphNA();
-//      ret.edges_ = new TreeMap<String, Set<String>>();
-//      ret.names_ = new TreeMap<Integer, String>();
-//
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(file));
-//
-//        for (int i = 0; i < 4; i++) {
-//          br.readLine();
-//        }
-//
-//        ret.size_ = Integer.parseInt(br.readLine());
-//
-//        for (int i = 1; i <= ret.size_; i++) {
-//          String name = br.readLine().trim();
-//          name = name.substring(2, name.length() - 2); // exclude "|{" and "}|"
-//
-//          ret.addNode(i, name);
-//        }
-//
-//        final int edges = Integer.parseInt(br.readLine());
-//
-//        for (int i = 1; i <= edges; i++) {
-//          StringTokenizer st = new StringTokenizer(br.readLine());
-//          int node1 = Integer.parseInt(st.nextToken());
-//          int node2 = Integer.parseInt(st.nextToken());
-//
-//          ret.addEdge(node1, node2);
-//        }
-//
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
-//      }
-//
-//      return ret;
-//    }
-//
-//    private void addNode(int node, String name) {
-//      if (edges_.get(name) == null) {
-//        edges_.put(name, new TreeSet<String>());
-//      }
-//      if (names_.get(node) == null) {
-//        names_.put(node, name);
-//      }
-//      //      edges.putIfAbsent(name, new TreeSet<String>());
-//      //      names.putIfAbsent(node, name);
-//    }
-//
-//    private void addEdge(int node1, int node2) {
-//      if (node1 == node2) {
-//        ExceptionHandler.getHandler().displayException(new IllegalArgumentException("node1 == node2"));
-//      }
-//
-//      edges_.get(names_.get(node1)).add(names_.get(node2));
-//      edges_.get(names_.get(node2)).add(names_.get(node1));
-//    }
-//
-//    void updateNames(Map<String, String> names) {
-//
-//      Map<String, Set<String>> newEdges = new TreeMap<String, Set<String>>();
-//
-//      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-//        String key = entry.getKey();
-//        String x = (names.get(key) == null) ? key : names.get(key);
-//
-//        Set<String> newSet = new TreeSet<String>();
-//        for (String str : entry.getValue()) {
-//          String y = (names.get(str) == null) ? str : names.get(str);
-//          newSet.add(y);
-//        }
-//
-//        newEdges.put(x, newSet);
-//      }
-//
-//      edges_ = newEdges;
-//    }
-//
-////    public void extractNode(Set<String> set, String seed) throws IOException {
-////
-//////        Queue<String> queue = new LinkedList<>();
-//////
-//////        int level = 0, count = 0;
-//////        queue.add(seed);
-//////        while (! queue.isEmpty()) {
-//////            String node = queue.poll();
-//////            count = edges.get(node).size();
-//////
-//////            level++;
-//////
-//////            if (level > maxLevel) break;
-//////
-//////            for (String s : edges.get(node)) {
-//////                queue.add(s);
-//////                String[] arr = Parser.sort(node, s);
-//////                set.add(arr[0] + " " + arr[1]);
-//////            }
-//////
-//////        }
-//////
-//////        for (String s : set) {
-//////            set.add(s);
-//////        }
-////
-////      Set<String> lvl_1 = edges.get(seed), lvl_2 = new TreeSet<String>();
-////
-////      for (String n : lvl_1) {
-////        for (String s : edges.get(n)) {
-////          lvl_2.add(s);
-////          String[] arr = Parser.sort(n, s);
-////          set.add(arr[0] + " " + arr[1]);
-////        }
-////      }
-////
-//////        for (String n : lvl_2) {
-//////            for (String s : edges.get(n)) {
-//////                String[] arr = Parser.sort(n, s);
-//////                set.add(arr[0] + " " + arr[1]);
-//////            }
-//////        }
-////
-////
-////    }
-//
-////    public void toSIF(String dir, String tag) throws IOException {
-////      Set<String> set = new TreeSet<String>();
-////
-////      for (Map.Entry<String, Set<String>> entry : edges.entrySet()) {
-////
-////        String x = entry.getKey();
-////        for (String y : entry.getValue()) {
-////
-////          String[] arr = Parser.sort(x, y);
-////
-////          String link = arr[0] + " " + tag + " " + arr[1];
-////
-////          set.add(link);
-////        }
-////      }
-////
-////      PrintWriter pw = new PrintWriter(new File(dir));
-////      for (String s : set) {
-////        pw.println(s);
-////      }
-////
-////      pw.close();
-////    }
-//
-//    @Override
-//    public String toString() {
-//
-//      int linkNum = 0;
-//      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-//        linkNum += entry.getValue().size();
-//      }
-//      linkNum /= 2;
-//
-//      return String.format("(V, E) = (%d, %d)", size_, linkNum);
-//    }
-//
-//    public int getSize() {
-//      return size_;
-//    }
-//
-//    public Map<Integer, String> getNames() {
-//      return new TreeMap<Integer, String>(names_);
-//    }
-//
-//    public Map<String, Set<String>> getEdges() {
-//      return new TreeMap<String, Set<String>>(edges_);
-//    }
-//
-//  }
-//
-//  public static class AlignmentNA {
-//
-//    Map<String, String> nodeToNode;
-//    Set<String> nodes;
-//    GraphNA small_A, large_A;
-//
-////    public AlignmentNA(File file) {
-////      try {
-////        BufferedReader br = new BufferedReader(new FileReader(file));
-////
-////        String line;
-////        while ((line = br.readLine()) != null) {
-////          StringTokenizer st = new StringTokenizer(line);
-////
-////          nodeToNode.put(st.nextToken(), st.nextToken());
-////        }
-////        br.close();
-////      } catch (IOException ioe) {
-////        ExceptionHandler.getHandler().displayException(ioe);
-////      }
-////    }
-//
-//    private AlignmentNA() {
-//    }
-//
-////    public AlignmentNA(File dir, GraphNA small_A, GraphNA large_A) {
-////      this.small_A = small_A;
-////      this.large_A = large_A;
-////      this.nodes = new TreeSet<String>();
-////
-////      nodeToNode = new TreeMap<String, String>();
-////
-////      try {
-////        BufferedReader br = new BufferedReader(new FileReader(dir));
-////
-////        String line;
-////        while ((line = br.readLine()) != null) {
-////          StringTokenizer st = new StringTokenizer(line);
-////
-////          nodeToNode.put(st.nextToken(), st.nextToken());
-////        }
-////        br.close();
-////      } catch (IOException ioe) {
-////        ExceptionHandler.getHandler().displayException(ioe);
-////      }
-////
-////      Map<String, String> smallNames = new TreeMap<String, String>();
-////      Map<String, String> largeNames = new TreeMap<String, String>();
-////
-////      for (Map.Entry<String, String> entry : nodeToNode.entrySet()) {
-////
-////        String x = entry.getKey(), y = entry.getValue(), xy = x + '-' + y;
-////
-////        smallNames.put(x, xy);
-////        largeNames.put(y, xy);
-////
-////        nodes.add(xy); // FIX ME: DOESN'T INCLUDE UNALIGNED NODES FROM LARGE GRAPH
-////      }
-////
-////      this.small_A.updateNames(smallNames);
-////      this.large_A.updateNames(largeNames);
-////    }
-//
-//    public static AlignmentNA readAlignFile(File file) {
-//      AlignmentNA ret = new AlignmentNA();
-//
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(file));
-//
-//        String line;
-//        while ((line = br.readLine()) != null) {
-//          StringTokenizer st = new StringTokenizer(line);
-//
-//          ret.nodeToNode.put(st.nextToken(), st.nextToken());
-//        }
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
-//      }
-//
-//      return ret;
-//    }
-//
-//    private void provide(GraphNA small_A, GraphNA large_A) {
-//      Map<String, String> smallNames = new TreeMap<String, String>();
-//      Map<String, String> largeNames = new TreeMap<String, String>();
-//
-//      for (Map.Entry<String, String> entry : nodeToNode.entrySet()) {
-//
-//        String x = entry.getKey(), y = entry.getValue(), xy = x + '-' + y;
-//
-//        smallNames.put(x, xy);
-//        largeNames.put(y, xy);
-//
-//        nodes.add(xy); // FIX ME: DOESN'T INCLUDE UNALIGNED NODES FROM LARGE GRAPH
-//      }
-//
-//      this.small_A.updateNames(smallNames);
-//      this.large_A.updateNames(largeNames);
-//    }
-//
-////    public void toFiles(String alignDir, String ordDir, String tagS, String tagL) throws IOException {
-////      large_A.toSIF(ordDir, "xx");
-////      Parser.toAlignmentSIF(alignDir, this, tagS, tagL);
-////    }
-//
-//    @Override
-//    public String toString() {
-//      String ret;
-//      ret = "G1: " + small_A + '\n' + "G2: " + large_A;
-//
-//      return ret;
-//    }
-//
-////    public static List<String> writeEdges(Graph G) {
-////
-////      Set<String> set = new TreeSet<String>();
-////
-////      for (Map.Entry<String, Set<String>> entry : G.edges.entrySet()) {
-////
-////        String x = entry.getKey();
-////
-////        for (String y : entry.getValue()) {
-////
-////          String[] arr = Parser.sort(x, y);
-////
-////          set.add(arr[0] + " " + arr[1]);
-////        }
-////      }
-////
-////      List<String> ret = new ArrayList<String>();
-////      for (String s : set) {
-////        ret.add(s);
-////      }
-////
-////      return ret;
-////    }
-//
-//  }
-//
-//  public static class NetworkAlignInfo {
-//
-//    GraphNA small, large;
-//    AlignmentNA align;
-//
-//    public NetworkAlignInfo(GraphNA small, GraphNA large, AlignmentNA align) {
-//      this.small = small;
-//      this.large = large;
-//      this.align = align;
-//    }
-//
-//  }
-//
-//  private static class Parser { // FIX ME: THIS CLASS NEEDS TO REMOVED AFTER THE METHODS
-//    // ARE IMPLEMENTED INSIDE GRAPH, ALIGNMENT, OR NETWORKALIGNMENT, OR NOT AT ALL
-//
-////    public static void toAlignmentSIF(String dir, Alignment align, String tagS, String tagL)
-////            throws IOException {
-////      PrintWriter pw = new PrintWriter(new File(dir));
-////
-////      List<String> Sall = Alignment.writeEdges(align.small_A);
-////      List<String> Lall = Alignment.writeEdges(align.large_A);
-////
-////      Collections.sort(Sall);
-////      Collections.sort(Lall);
-////
-////      List<String> CC = new ArrayList<String>();
-////      for (String x : Sall) {
-////        if (Collections.binarySearch(Lall, x) >= 0) {
-////          CC.add(x);
-////        }
-////      }
-////
-////      for (String s : Sall) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + tagS + " " + arr[1]);
-////      }
-////
-////      for (String s : Lall) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + tagL + " " + arr[1]);
-////      }
-////
-////      for (String s : CC) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + "CC" + " " + arr[1]);
-////      }
-////
-////      pw.close();
-////    }
-//
-//    /**
-//     * splits parameter by space
-//     */
-//    public static String[] split(String twoNodes) {
-//      StringTokenizer st = new StringTokenizer(twoNodes);
-//      return new String[]{st.nextToken(), st.nextToken()};
-//    }
-//
-//    /**
-//     * splits parameter by dash
-//     */
-//    public static String[] splice(String edge) {
-//      return edge.split("-");
-//    }
-//
-//    /**
-//     * sorts two strings in array
-//     */
-//    public static String[] sort(String a, String b) {
-//      String[] ret = {a, b};
-//      Arrays.sort(ret);
-//
-//      return ret;
-//    }
-//
-//    /**
-//     * true if two parts are equal; split by dash
-//     */
-//    public static boolean sameNode(String node) {
-//      String[] arr = node.split("-");
-//      return arr[0].equals(arr[1]);
-//    }
-//
-////    public static void write(String filename, Set<String> set) throws IOException {
-////      PrintWriter pw = new PrintWriter(new File(filename));
-////      for (String s : set) {
-////        String[] arr = Parser.split(s);
-////        pw.println(arr[0] + " pp " + arr[1]);
-////      }
-////
-////      pw.close();
-////    }
-//
-//  }
-//
-//}
-
-///*
-//**    Copyright (C) 2003-2014 Institute for Systems Biology
-//**                            Seattle, Washington, USA.
-//**
-//**    This library is free software; you can redistribute it and/or
-//**    modify it under the terms of the GNU Lesser General Public
-//**    License as published by the Free Software Foundation; either
-//**    version 2.1 of the License, or (at your option) any later version.
-//**
-//**    This library is distributed in the hope that it will be useful,
-//**    but WITHOUT ANY WARRANTY; without even the implied warranty of
-//**    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-//**    Lesser General Public License for more details.
-//**
-//**    You should have received a copy of the GNU Lesser General Public
-//**    License along with this library; if not, write to the Free Software
-//**    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-//*/
-//
-//package org.systemsbiology.biofabric.analysis;
-//
-//        import org.systemsbiology.biofabric.util.ExceptionHandler;
-//
-//        import java.io.BufferedReader;
-//        import java.io.File;
-//        import java.io.FileReader;
-//        import java.io.IOException;
-//        import java.util.*;
-//
-//public class NetworkAlignment {
-//
-//  private GraphNA small, large;
-//  private AlignmentNA align;
-//
-//  public NetworkAlignment(NetworkAlignInfo nai) {
-//
-////    GraphNA A = null, B = null;
-////    try {
-////      A = new GraphNA(nai.small);
-////      B = new GraphNA(nai.large);
-////    } catch (IOException ioe) {
-////      ExceptionHandler.getHandler().displayException(ioe);
-////    }
-////
-////    if (A == null || B == null) {
-////
-////    }
-////
-////    if (A.edges.size() >= B.edges.size()) {
-////      large = A;
-////      small = B;
-////    } else {
-////      large = B;
-////      small = A;
-////    }
-////
-////    try {
-////      align = new AlignmentNA(alignment, small, large);
-////    } catch (IOException ioe) {
-////      ExceptionHandler.getHandler().displayException(ioe);
-////    }
-//
-//    this.small = nai.small;
-//    this.large = nai.large;
-//    this.align = nai.align;
-//
-//  }
-//
-//  public static class GraphNA { // needs to implement cloneable in future
-//
-//    Map<String, Set<String>> edges_;
-//    private Map<Integer, String> names_;
-//    private int size_;
-//
-//    public GraphNA(File dir) {
-//      this.edges_ = new TreeMap<String, Set<String>>();
-//      this.names_ = new TreeMap<Integer, String>();
-//
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(dir));
-//
-//        for (int i = 0; i < 4; i++) {
-//          br.readLine();
-//        }
-//
-//        this.size_ = Integer.parseInt(br.readLine());
-//
-//        for (int i = 1; i <= size_; i++) {
-//          String name = br.readLine().trim();
-//          name = name.substring(2, name.length() - 2); // exclude "|{" and "}|"
-//
-//          this.addNode(i, name);
-//        }
-//
-//        final int edges = Integer.parseInt(br.readLine());
-//
-//        for (int i = 1; i <= edges; i++) {
-//          StringTokenizer st = new StringTokenizer(br.readLine());
-//          int node1 = Integer.parseInt(st.nextToken());
-//          int node2 = Integer.parseInt(st.nextToken());
-//
-//          this.addEdge(node1, node2);
-//        }
-//
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
-//      }
-//
-//    }
-//
-//    public GraphNA(GraphNA graphNA) {
-//      this.size_ = graphNA.getSize();
-//      this.names_ = graphNA.getNames();
-//      this.edges_ = graphNA.getEdges();
-//    }
-//
-//    private void addNode(int node, String name) {
-//      if (edges_.get(name) == null) {
-//        edges_.put(name, new TreeSet<String>());
-//      }
-//      if (names_.get(node) == null) {
-//        names_.put(node, name);
-//      }
-//      //      edges.putIfAbsent(name, new TreeSet<String>());
-//      //      names.putIfAbsent(node, name);
-//    }
-//
-//    private void addEdge(int node1, int node2) {
-//      if (node1 == node2) {
-//        ExceptionHandler.getHandler().displayException(new IllegalArgumentException("node1 == node2"));
-//      }
-//
-//      edges_.get(names_.get(node1)).add(names_.get(node2));
-//      edges_.get(names_.get(node2)).add(names_.get(node1));
-//    }
-//
-//    void updateNames(Map<String, String> names) {
-//
-//      Map<String, Set<String>> newEdges = new TreeMap<String, Set<String>>();
-//
-//      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-//        String key = entry.getKey();
-//        String x = (names.get(key) == null) ? key : names.get(key);
-//
-//        Set<String> newSet = new TreeSet<String>();
-//        for (String str : entry.getValue()) {
-//          String y = (names.get(str) == null) ? str : names.get(str);
-//          newSet.add(y);
-//        }
-//
-//        newEdges.put(x, newSet);
-//      }
-//
-//      edges_ = newEdges;
-//    }
-//
-////    public void extractNode(Set<String> set, String seed) throws IOException {
-////
-//////        Queue<String> queue = new LinkedList<>();
-//////
-//////        int level = 0, count = 0;
-//////        queue.add(seed);
-//////        while (! queue.isEmpty()) {
-//////            String node = queue.poll();
-//////            count = edges.get(node).size();
-//////
-//////            level++;
-//////
-//////            if (level > maxLevel) break;
-//////
-//////            for (String s : edges.get(node)) {
-//////                queue.add(s);
-//////                String[] arr = Parser.sort(node, s);
-//////                set.add(arr[0] + " " + arr[1]);
-//////            }
-//////
-//////        }
-//////
-//////        for (String s : set) {
-//////            set.add(s);
-//////        }
-////
-////      Set<String> lvl_1 = edges.get(seed), lvl_2 = new TreeSet<String>();
-////
-////      for (String n : lvl_1) {
-////        for (String s : edges.get(n)) {
-////          lvl_2.add(s);
-////          String[] arr = Parser.sort(n, s);
-////          set.add(arr[0] + " " + arr[1]);
-////        }
-////      }
-////
-//////        for (String n : lvl_2) {
-//////            for (String s : edges.get(n)) {
-//////                String[] arr = Parser.sort(n, s);
-//////                set.add(arr[0] + " " + arr[1]);
-//////            }
-//////        }
-////
-////
-////    }
-//
-////    public void toSIF(String dir, String tag) throws IOException {
-////      Set<String> set = new TreeSet<String>();
-////
-////      for (Map.Entry<String, Set<String>> entry : edges.entrySet()) {
-////
-////        String x = entry.getKey();
-////        for (String y : entry.getValue()) {
-////
-////          String[] arr = Parser.sort(x, y);
-////
-////          String link = arr[0] + " " + tag + " " + arr[1];
-////
-////          set.add(link);
-////        }
-////      }
-////
-////      PrintWriter pw = new PrintWriter(new File(dir));
-////      for (String s : set) {
-////        pw.println(s);
-////      }
-////
-////      pw.close();
-////    }
-//
-//    @Override
-//    public String toString() {
-//
-//      int linkNum = 0;
-//      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-//        linkNum += entry.getValue().size();
-//      }
-//      linkNum /= 2;
-//
-//      return String.format("(V, E) = (%d, %d)", size_, linkNum);
-//    }
-//
-//    public int getSize() {
-//      return size_;
-//    }
-//
-//    public Map<Integer, String> getNames() {
-//      return new TreeMap<Integer, String>(names_);
-//    }
-//
-//    public Map<String, Set<String>> getEdges() {
-//      return new TreeMap<String, Set<String>>(edges_);
-//    }
-//
-//  }
-//
-//
-//  public static class AlignmentNA {
-//
-//    Map<String, String> nodeToNode;
-//    Set<String> nodes;
-//    GraphNA small_A, large_A;
-//
-//    public AlignmentNA(File file) {
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(file));
-//
-//        String line;
-//        while ((line = br.readLine()) != null) {
-//          StringTokenizer st = new StringTokenizer(line);
-//
-//          nodeToNode.put(st.nextToken(), st.nextToken());
-//        }
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
-//      }
-//    }
-//
-//    public AlignmentNA(File dir, GraphNA small_A, GraphNA large_A) {
-//      this.small_A = small_A;
-//      this.large_A = large_A;
-//      this.nodes = new TreeSet<String>();
-//
-//      nodeToNode = new TreeMap<String, String>();
-//
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(dir));
-//
-//        String line;
-//        while ((line = br.readLine()) != null) {
-//          StringTokenizer st = new StringTokenizer(line);
-//
-//          nodeToNode.put(st.nextToken(), st.nextToken());
-//        }
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
-//      }
-//
-//      Map<String, String> smallNames = new TreeMap<String, String>();
-//      Map<String, String> largeNames = new TreeMap<String, String>();
-//
-//      for (Map.Entry<String, String> entry : nodeToNode.entrySet()) {
-//
-//        String x = entry.getKey(), y = entry.getValue(), xy = x + '-' + y;
-//
-//        smallNames.put(x, xy);
-//        largeNames.put(y, xy);
-//
-//        nodes.add(xy); // FIX ME: DOESN'T INCLUDE UNALIGNED NODES FROM LARGE GRAPH
-//      }
-//
-//      this.small_A.updateNames(smallNames);
-//      this.large_A.updateNames(largeNames);
-//    }
-//
-////    public void toFiles(String alignDir, String ordDir, String tagS, String tagL) throws IOException {
-////      large_A.toSIF(ordDir, "xx");
-////      Parser.toAlignmentSIF(alignDir, this, tagS, tagL);
-////    }
-//
-//    @Override
-//    public String toString() {
-//      String ret;
-//      ret = "G1: " + small_A + '\n' + "G2: " + large_A;
-//
-//      return ret;
-//    }
-//
-////    public static List<String> writeEdges(Graph G) {
-////
-////      Set<String> set = new TreeSet<String>();
-////
-////      for (Map.Entry<String, Set<String>> entry : G.edges.entrySet()) {
-////
-////        String x = entry.getKey();
-////
-////        for (String y : entry.getValue()) {
-////
-////          String[] arr = Parser.sort(x, y);
-////
-////          set.add(arr[0] + " " + arr[1]);
-////        }
-////      }
-////
-////      List<String> ret = new ArrayList<String>();
-////      for (String s : set) {
-////        ret.add(s);
-////      }
-////
-////      return ret;
-////    }
-//
-//  }
-//
-//  public static class NetworkAlignInfo {
-//
-//    GraphNA small, large;
-//    AlignmentNA align;
-//
-//    public NetworkAlignInfo(GraphNA small, GraphNA large, AlignmentNA align) {
-//      this.small = small;
-//      this.large = large;
-//      this.align = align;
-//    }
-//
-//  }
-//
-//  private static class Parser { // FIX ME: THIS CLASS NEEDS TO REMOVED AFTER THE METHODS
-//    // ARE IMPLEMENTED INSIDE GRAPH, ALIGNMENT, OR NETWORKALIGNMENT, OR NOT AT ALL
-//
-////    public static void toAlignmentSIF(String dir, Alignment align, String tagS, String tagL)
-////            throws IOException {
-////      PrintWriter pw = new PrintWriter(new File(dir));
-////
-////      List<String> Sall = Alignment.writeEdges(align.small_A);
-////      List<String> Lall = Alignment.writeEdges(align.large_A);
-////
-////      Collections.sort(Sall);
-////      Collections.sort(Lall);
-////
-////      List<String> CC = new ArrayList<String>();
-////      for (String x : Sall) {
-////        if (Collections.binarySearch(Lall, x) >= 0) {
-////          CC.add(x);
-////        }
-////      }
-////
-////      for (String s : Sall) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + tagS + " " + arr[1]);
-////      }
-////
-////      for (String s : Lall) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + tagL + " " + arr[1]);
-////      }
-////
-////      for (String s : CC) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + "CC" + " " + arr[1]);
-////      }
-////
-////      pw.close();
-////    }
-//
-//    /**
-//     * splits parameter by space
-//     */
-//    public static String[] split(String twoNodes) {
-//      StringTokenizer st = new StringTokenizer(twoNodes);
-//      return new String[]{st.nextToken(), st.nextToken()};
-//    }
-//
-//    /**
-//     * splits parameter by dash
-//     */
-//    public static String[] splice(String edge) {
-//      return edge.split("-");
-//    }
-//
-//    /**
-//     * sorts two strings in array
-//     */
-//    public static String[] sort(String a, String b) {
-//      String[] ret = {a, b};
-//      Arrays.sort(ret);
-//
-//      return ret;
-//    }
-//
-//    /**
-//     * true if two parts are equal; split by dash
-//     */
-//    public static boolean sameNode(String node) {
-//      String[] arr = node.split("-");
-//      return arr[0].equals(arr[1]);
-//    }
-//
-////    public static void write(String filename, Set<String> set) throws IOException {
-////      PrintWriter pw = new PrintWriter(new File(filename));
-////      for (String s : set) {
-////        String[] arr = Parser.split(s);
-////        pw.println(arr[0] + " pp " + arr[1]);
-////      }
-////
-////      pw.close();
-////    }
-//
-//  }
-//
-//}
-
-
-///*
-//**    Copyright (C) 2003-2014 Institute for Systems Biology
-//**                            Seattle, Washington, USA.
-//**
-//**    This library is free software; you can redistribute it and/or
-//**    modify it under the terms of the GNU Lesser General Public
-//**    License as published by the Free Software Foundation; either
-//**    version 2.1 of the License, or (at your option) any later version.
-//**
-//**    This library is distributed in the hope that it will be useful,
-//**    but WITHOUT ANY WARRANTY; without even the implied warranty of
-//**    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-//**    Lesser General Public License for more details.
-//**
-//**    You should have received a copy of the GNU Lesser General Public
-//**    License along with this library; if not, write to the Free Software
-//**    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-//*/
-//
-//package org.systemsbiology.biofabric.analysis;
-//
-//        import org.systemsbiology.biofabric.util.ExceptionHandler;
-//
-//        import java.io.BufferedReader;
-//        import java.io.File;
-//        import java.io.FileReader;
-//        import java.io.IOException;
-//        import java.util.*;
-//
-//public class NetworkAlignment {
-//
-//  private GraphNA small, large;
-//  private AlignmentNA align;
-//
-//  public NetworkAlignment(NetworkAlignInfo nai) {
-//
-////    GraphNA A = null, B = null;
-////    try {
-////      A = new GraphNA(nai.small);
-////      B = new GraphNA(nai.large);
-////    } catch (IOException ioe) {
-////      ExceptionHandler.getHandler().displayException(ioe);
-////    }
-////
-////    if (A == null || B == null) {
-////
-////    }
-////
-////    if (A.edges.size() >= B.edges.size()) {
-////      large = A;
-////      small = B;
-////    } else {
-////      large = B;
-////      small = A;
-////    }
-////
-////    try {
-////      align = new AlignmentNA(alignment, small, large);
-////    } catch (IOException ioe) {
-////      ExceptionHandler.getHandler().displayException(ioe);
-////    }
-//
-//    this.small = nai.small;
-//    this.large = nai.large;
-//    this.align = nai.align;
-//
-//  }
-//
-//  public static class GraphNA { // needs to implement cloneable in future
-//
-//    Map<String, Set<String>> edges_;
-//    private Map<Integer, String> names_;
-//    private int size_;
-//
-//    public GraphNA(File dir) {
-//      this.edges_ = new TreeMap<String, Set<String>>();
-//      this.names_ = new TreeMap<Integer, String>();
-//
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(dir));
-//
-//        for (int i = 0; i < 4; i++) {
-//          br.readLine();
-//        }
-//
-//        this.size_ = Integer.parseInt(br.readLine());
-//
-//        for (int i = 1; i <= size_; i++) {
-//          String name = br.readLine().trim();
-//          name = name.substring(2, name.length() - 2); // exclude "|{" and "}|"
-//
-//          this.addNode(i, name);
-//        }
-//
-//        final int edges = Integer.parseInt(br.readLine());
-//
-//        for (int i = 1; i <= edges; i++) {
-//          StringTokenizer st = new StringTokenizer(br.readLine());
-//          int node1 = Integer.parseInt(st.nextToken());
-//          int node2 = Integer.parseInt(st.nextToken());
-//
-//          this.addEdge(node1, node2);
-//        }
-//
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
-//      }
-//
-//    }
-//
-//    public GraphNA(GraphNA graphNA) {
-//      this.size_ = graphNA.getSize();
-//      this.names_ = graphNA.getNames();
-//      this.edges_ = graphNA.getEdges();
-//    }
-//
-//    private void addNode(int node, String name) {
-//      if (edges_.get(name) == null) {
-//        edges_.put(name, new TreeSet<String>());
-//      }
-//      if (names_.get(node) == null) {
-//        names_.put(node, name);
-//      }
-//      //      edges.putIfAbsent(name, new TreeSet<String>());
-//      //      names.putIfAbsent(node, name);
-//    }
-//
-//    private void addEdge(int node1, int node2) {
-//      if (node1 == node2) {
-//        ExceptionHandler.getHandler().displayException(new IllegalArgumentException("node1 == node2"));
-//      }
-//
-//      edges_.get(names_.get(node1)).add(names_.get(node2));
-//      edges_.get(names_.get(node2)).add(names_.get(node1));
-//    }
-//
-//    void updateNames(Map<String, String> names) {
-//
-//      Map<String, Set<String>> newEdges = new TreeMap<String, Set<String>>();
-//
-//      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-//        String key = entry.getKey();
-//        String x = (names.get(key) == null) ? key : names.get(key);
-//
-//        Set<String> newSet = new TreeSet<String>();
-//        for (String str : entry.getValue()) {
-//          String y = (names.get(str) == null) ? str : names.get(str);
-//          newSet.add(y);
-//        }
-//
-//        newEdges.put(x, newSet);
-//      }
-//
-//      edges_ = newEdges;
-//    }
-//
-////    public void extractNode(Set<String> set, String seed) throws IOException {
-////
-//////        Queue<String> queue = new LinkedList<>();
-//////
-//////        int level = 0, count = 0;
-//////        queue.add(seed);
-//////        while (! queue.isEmpty()) {
-//////            String node = queue.poll();
-//////            count = edges.get(node).size();
-//////
-//////            level++;
-//////
-//////            if (level > maxLevel) break;
-//////
-//////            for (String s : edges.get(node)) {
-//////                queue.add(s);
-//////                String[] arr = Parser.sort(node, s);
-//////                set.add(arr[0] + " " + arr[1]);
-//////            }
-//////
-//////        }
-//////
-//////        for (String s : set) {
-//////            set.add(s);
-//////        }
-////
-////      Set<String> lvl_1 = edges.get(seed), lvl_2 = new TreeSet<String>();
-////
-////      for (String n : lvl_1) {
-////        for (String s : edges.get(n)) {
-////          lvl_2.add(s);
-////          String[] arr = Parser.sort(n, s);
-////          set.add(arr[0] + " " + arr[1]);
-////        }
-////      }
-////
-//////        for (String n : lvl_2) {
-//////            for (String s : edges.get(n)) {
-//////                String[] arr = Parser.sort(n, s);
-//////                set.add(arr[0] + " " + arr[1]);
-//////            }
-//////        }
-////
-////
-////    }
-//
-////    public void toSIF(String dir, String tag) throws IOException {
-////      Set<String> set = new TreeSet<String>();
-////
-////      for (Map.Entry<String, Set<String>> entry : edges.entrySet()) {
-////
-////        String x = entry.getKey();
-////        for (String y : entry.getValue()) {
-////
-////          String[] arr = Parser.sort(x, y);
-////
-////          String link = arr[0] + " " + tag + " " + arr[1];
-////
-////          set.add(link);
-////        }
-////      }
-////
-////      PrintWriter pw = new PrintWriter(new File(dir));
-////      for (String s : set) {
-////        pw.println(s);
-////      }
-////
-////      pw.close();
-////    }
-//
-//    @Override
-//    public String toString() {
-//
-//      int linkNum = 0;
-//      for (Map.Entry<String, Set<String>> entry : edges_.entrySet()) {
-//        linkNum += entry.getValue().size();
-//      }
-//      linkNum /= 2;
-//
-//      return String.format("(V, E) = (%d, %d)", size_, linkNum);
-//    }
-//
-//    public int getSize() {
-//      return size_;
-//    }
-//
-//    public Map<Integer, String> getNames() {
-//      return new TreeMap<Integer, String>(names_);
-//    }
-//
-//    public Map<String, Set<String>> getEdges() {
-//      return new TreeMap<String, Set<String>>(edges_);
-//    }
-//
-//  }
-//
-//
-//  public static class AlignmentNA {
-//
-//    Map<String, String> nodeToNode;
-//    Set<String> nodes;
-//    GraphNA small_A, large_A;
-//
-//    public AlignmentNA(File file) {
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(file));
-//
-//        String line;
-//        while ((line = br.readLine()) != null) {
-//          StringTokenizer st = new StringTokenizer(line);
-//
-//          nodeToNode.put(st.nextToken(), st.nextToken());
-//        }
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
-//      }
-//    }
-//
-//    public AlignmentNA(File dir, GraphNA small_A, GraphNA large_A) {
-//      this.small_A = small_A;
-//      this.large_A = large_A;
-//      this.nodes = new TreeSet<String>();
-//
-//      nodeToNode = new TreeMap<String, String>();
-//
-//      try {
-//        BufferedReader br = new BufferedReader(new FileReader(dir));
-//
-//        String line;
-//        while ((line = br.readLine()) != null) {
-//          StringTokenizer st = new StringTokenizer(line);
-//
-//          nodeToNode.put(st.nextToken(), st.nextToken());
-//        }
-//        br.close();
-//      } catch (IOException ioe) {
-//        ExceptionHandler.getHandler().displayException(ioe);
-//      }
-//
-//      Map<String, String> smallNames = new TreeMap<String, String>();
-//      Map<String, String> largeNames = new TreeMap<String, String>();
-//
-//      for (Map.Entry<String, String> entry : nodeToNode.entrySet()) {
-//
-//        String x = entry.getKey(), y = entry.getValue(), xy = x + '-' + y;
-//
-//        smallNames.put(x, xy);
-//        largeNames.put(y, xy);
-//
-//        nodes.add(xy); // FIX ME: DOESN'T INCLUDE UNALIGNED NODES FROM LARGE GRAPH
-//      }
-//
-//      this.small_A.updateNames(smallNames);
-//      this.large_A.updateNames(largeNames);
-//    }
-//
-////    public void toFiles(String alignDir, String ordDir, String tagS, String tagL) throws IOException {
-////      large_A.toSIF(ordDir, "xx");
-////      Parser.toAlignmentSIF(alignDir, this, tagS, tagL);
-////    }
-//
-//    @Override
-//    public String toString() {
-//      String ret;
-//      ret = "G1: " + small_A + '\n' + "G2: " + large_A;
-//
-//      return ret;
-//    }
-//
-////    public static List<String> writeEdges(Graph G) {
-////
-////      Set<String> set = new TreeSet<String>();
-////
-////      for (Map.Entry<String, Set<String>> entry : G.edges.entrySet()) {
-////
-////        String x = entry.getKey();
-////
-////        for (String y : entry.getValue()) {
-////
-////          String[] arr = Parser.sort(x, y);
-////
-////          set.add(arr[0] + " " + arr[1]);
-////        }
-////      }
-////
-////      List<String> ret = new ArrayList<String>();
-////      for (String s : set) {
-////        ret.add(s);
-////      }
-////
-////      return ret;
-////    }
-//
-//  }
-//
-//  public static class NetworkAlignInfo {
-//
-//    GraphNA small, large;
-//    AlignmentNA align;
-//
-//    public NetworkAlignInfo(GraphNA small, GraphNA large, AlignmentNA align) {
-//      this.small = small;
-//      this.large = large;
-//      this.align = align;
-//    }
-//
-//  }
-//
-//  private static class Parser { // FIX ME: THIS CLASS NEEDS TO REMOVED AFTER THE METHODS
-//    // ARE IMPLEMENTED INSIDE GRAPH, ALIGNMENT, OR NETWORKALIGNMENT, OR NOT AT ALL
-//
-////    public static void toAlignmentSIF(String dir, Alignment align, String tagS, String tagL)
-////            throws IOException {
-////      PrintWriter pw = new PrintWriter(new File(dir));
-////
-////      List<String> Sall = Alignment.writeEdges(align.small_A);
-////      List<String> Lall = Alignment.writeEdges(align.large_A);
-////
-////      Collections.sort(Sall);
-////      Collections.sort(Lall);
-////
-////      List<String> CC = new ArrayList<String>();
-////      for (String x : Sall) {
-////        if (Collections.binarySearch(Lall, x) >= 0) {
-////          CC.add(x);
-////        }
-////      }
-////
-////      for (String s : Sall) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + tagS + " " + arr[1]);
-////      }
-////
-////      for (String s : Lall) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + tagL + " " + arr[1]);
-////      }
-////
-////      for (String s : CC) {
-////        String[] arr = split(s);
-////
-////        pw.println(arr[0] + " " + "CC" + " " + arr[1]);
-////      }
-////
-////      pw.close();
-////    }
-//
-//    /**
-//     * splits parameter by space
-//     */
-//    public static String[] split(String twoNodes) {
-//      StringTokenizer st = new StringTokenizer(twoNodes);
-//      return new String[]{st.nextToken(), st.nextToken()};
-//    }
-//
-//    /**
-//     * splits parameter by dash
-//     */
-//    public static String[] splice(String edge) {
-//      return edge.split("-");
-//    }
-//
-//    /**
-//     * sorts two strings in array
-//     */
-//    public static String[] sort(String a, String b) {
-//      String[] ret = {a, b};
-//      Arrays.sort(ret);
-//
-//      return ret;
-//    }
-//
-//    /**
-//     * true if two parts are equal; split by dash
-//     */
-//    public static boolean sameNode(String node) {
-//      String[] arr = node.split("-");
-//      return arr[0].equals(arr[1]);
-//    }
-//
-////    public static void write(String filename, Set<String> set) throws IOException {
-////      PrintWriter pw = new PrintWriter(new File(filename));
-////      for (String s : set) {
-////        String[] arr = Parser.split(s);
-////        pw.println(arr[0] + " pp " + arr[1]);
-////      }
-////
-////      pw.close();
-////    }
-//
-//  }
-//
-//}
-
+// */

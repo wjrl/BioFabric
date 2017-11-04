@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -33,6 +34,7 @@ import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.model.FabricLink.AugRelation;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
@@ -41,7 +43,7 @@ import org.systemsbiology.biofabric.util.NID;
 ** with a wide variety of different node layout algorithms, not just the default
 */
 
-public class DefaultEdgeLayout {
+public class DefaultEdgeLayout implements EdgeLayout {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -71,18 +73,24 @@ public class DefaultEdgeLayout {
   
   /***************************************************************************
   **
-  ** Relayout the network!
+  ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
   */
   
-  public void layoutEdges(BioFabricNetwork.RelayoutBuildData rbd, 
-  		                    BTProgressMonitor monitor, 
-                          double startFrac, 
-                          double endFrac) throws AsynchExitRequestException {
-    
-    Map<NID.WithName, Integer> nodeOrder = rbd.nodeOrder;
-    
-    
+  public void preProcessEdges(BioFabricNetwork.RelayoutBuildData rbd, 
+  		                        BTProgressMonitor monitor) throws AsynchExitRequestException {
+  	return;
+  }
 
+  /***************************************************************************
+  **
+  ** Relayout the network, but can accept a subset of network links and nodes.
+  */
+  
+  public SortedMap<Integer, FabricLink> layoutEdges(Map<NID.WithName, Integer> nodeOrder,
+  		                                              Set<FabricLink> allLinks,
+  		                                              List<String> linkGroups,
+  		                                              BioFabricNetwork.LayoutMode layoutMode,
+  		                                              BTProgressMonitor monitor) throws AsynchExitRequestException {
     //
     // Build target->row map:
     //
@@ -101,12 +109,12 @@ public class DefaultEdgeLayout {
     //
     
     Map<String, String> augToRel = new HashMap<String, String>();  
-    for (FabricLink link : rbd.allLinks) {	
+    for (FabricLink link : allLinks) {	
     	FabricLink.AugRelation augRel = link.getAugRelation();
     	String match = augToRel.get(augRel.relation);
     	if (match == null) {
-    		for (String rel : rbd.linkGroups) {
-    			if (bestSuffixMatch(augRel.relation, rel, rbd.linkGroups)) {
+    		for (String rel : linkGroups) {
+    			if (bestSuffixMatch(augRel.relation, rel, linkGroups)) {
     				augToRel.put(augRel.relation, rel);   				
     			}
     		}	
@@ -118,36 +126,40 @@ public class DefaultEdgeLayout {
     // between any two link to set the order. Since this is a TreeSet, this operation is roughly O(e * log e).
     //
     
-    DefaultFabricLinkLocater dfll = new DefaultFabricLinkLocater(targToRow, rbd.linkGroups, augToRel, rbd.layoutMode);
+    DefaultFabricLinkLocater dfll = new DefaultFabricLinkLocater(targToRow, linkGroups, augToRel, layoutMode);
     TreeSet<FabricLink> order = new TreeSet<FabricLink>(dfll);
    
     //
     // Do this discretely to allow progress bar:
     //
     
-    
-    double currProg = startFrac;
-    double inc1 = (endFrac - startFrac) / ((rbd.allLinks.size() == 0) ? 1 : rbd.allLinks.size());    
-    
-    int prog = 0;
-    
-    for (FabricLink link : rbd.allLinks) { 
+    LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor, 0.0, 1.0, "progress.linkLayout");
+    for (FabricLink link : allLinks) {
+    	lr.report();
       order.add(link);
-      currProg += inc1;
-      prog++;
-      if ((monitor != null) && ((prog % 1000) == 0)) {
-        if (!monitor.updateProgress((int)(currProg * 100.0))) {
-          throw new AsynchExitRequestException();
-        }
-      }
     }
+    
     SortedMap<Integer, FabricLink> retval = new TreeMap<Integer, FabricLink>();
     int count = 0;
     for (FabricLink link : order) {
     	retval.put(Integer.valueOf(count++), link);
+    	lr.report();
     }    
-    rbd.setLinkOrder(retval); 
+    lr.finish();
 
+    return (retval);
+  }
+
+  /***************************************************************************
+  **
+  ** Relayout the whole network!
+  */
+  
+  public void layoutEdges(BioFabricNetwork.RelayoutBuildData rbd, 
+  		                    BTProgressMonitor monitor) throws AsynchExitRequestException {
+   
+    SortedMap<Integer, FabricLink> retval = layoutEdges(rbd.nodeOrder, rbd.allLinks, rbd.linkGroups, rbd.layoutMode, monitor);
+    rbd.setLinkOrder(retval);
     return;
   }
 
@@ -211,6 +223,11 @@ public class DefaultEdgeLayout {
 	  */
   	  	
   	public int compare(FabricLink link1, FabricLink link2) {
+  	  
+  	  if (link1.equals(link2)) {
+  	    return (0);
+  	  }
+  	  
   		NID.WithName l1s = link1.getSrcID();
   		NID.WithName l1t = link1.getTrgID();
   		NID.WithName l2s = link2.getSrcID();
@@ -220,7 +237,7 @@ public class DefaultEdgeLayout {
   	  Integer l1tR = nodeToRow_.get(l1t);  			
   		Integer l2sR = nodeToRow_.get(l2s);
   		Integer l2tR = nodeToRow_.get(l2t);
-
+  		
   		int link1Top = Math.min(l1sR.intValue(), l1tR.intValue());
   		int link1Bot = Math.max(l1sR.intValue(), l1tR.intValue());
   		int link2Top = Math.min(l2sR.intValue(), l2tR.intValue());

@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2007 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -31,7 +31,9 @@ public class AsynchExitRequestException extends Exception {
   // PRIVATE CONSTANTS
   //
   //////////////////////////////////////////////////////////////////////////// 
-   
+ 
+  private static final long serialVersionUID = 1L;
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTANTS

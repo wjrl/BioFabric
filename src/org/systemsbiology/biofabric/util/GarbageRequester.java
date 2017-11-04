@@ -17,30 +17,21 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.ui.display;
-
-import java.awt.Color;
-import java.awt.GridLayout;
-
-import javax.swing.JPanel;
-
-import org.systemsbiology.biofabric.util.UiUtil;
+package org.systemsbiology.biofabric.util;
 
 /****************************************************************************
 **
-** This is location announcement
+** This builds and manages image chunks
 */
 
-public class FabricLocation extends JPanel {
-    
+public class GarbageRequester {
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE CONSTANTS
   //
   //////////////////////////////////////////////////////////////////////////// 
 	
-  private static final long serialVersionUID = 1L;
-  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTANTS
@@ -52,11 +43,7 @@ public class FabricLocation extends JPanel {
   // PRIVATE INSTANCE MEMBERS
   //
   ////////////////////////////////////////////////////////////////////////////
-
-  private InfoPanel nodePanel_;
-  private InfoPanel linkPanel_;
-  private InfoPanel linkZonePanel_;
-  
+ 
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTRUCTORS
@@ -68,23 +55,8 @@ public class FabricLocation extends JPanel {
   ** Constructor
   */
 
-  public FabricLocation() {
-    setBackground(Color.WHITE);
-  	setLayout(new GridLayout(1, 3));
-    nodePanel_ = new InfoPanel(false, 15, 150, false);  
-    linkPanel_ = new InfoPanel(false, 15, 150, false);
-    UiUtil.fixMePrintout("Create some separation! This doesn't do it!");
-   // linkPanel_.setBorder(BorderFactory.createEmptyBorder(0, 100, 0, 100));
-    linkPanel_.setBackground(Color.BLUE);
-    linkZonePanel_ = new InfoPanel(false, 15, 150, false);
-    
-    nodePanel_.installName("Mouse Over Node Row: <none>");
-    linkPanel_.installName("Mouse Over Link: <none>");
-    linkZonePanel_.installName("Mouse Over Node Link Zone: <none>");
-   
-    add(nodePanel_);
-    add(linkPanel_);
-    add(linkZonePanel_);
+  public GarbageRequester() {
+  
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -92,17 +64,57 @@ public class FabricLocation extends JPanel {
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-  
+    
   /***************************************************************************
   **
-  ** Drawing routine
+  ** Ask for GC run
   */
+  
+  public void askForGC(BTProgressMonitor monitor) throws AsynchExitRequestException {
+  	
+    long totMem = Runtime.getRuntime().totalMemory();
+    //System.out.println("Tot " + Runtime.getRuntime().totalMemory());
+    long freeMem = Runtime.getRuntime().freeMemory();
+    //System.out.println("Free " + freeMem);
+    //System.out.println("Max " + Runtime.getRuntime().maxMemory());
+    //System.out.flush();
+    
+    //
+    // This whole reclaiming bit is super-obnoxious, so only do it if we are getting low on memory:
+    //
+    
+    if ((freeMem / ((double)totMem)) > 0.33) {
+      return;
+    }
+    
+    LoopReporter lr2 = new LoopReporter(1, 20, monitor, 0.0, 1.0, "progress.garbageRequest");
+    lr2.report();
+    UiUtil.fixMePrintout("ditch the INDET hack");
+    LoopReporter lr3 = new LoopReporter(1, 20, monitor, 0.0, 1.0, "INDET");
+    lr3.report(); 	
 
-  public void setNodeAndLink(BioFabricPanel.MouseLocInfo mlo) {
-     nodePanel_.installName("Mouse Over Node Row: " + mlo.nodeDesc);
-	   linkPanel_.installName("Mouse Over Link: " + mlo.linkDesc);
-	   linkZonePanel_.installName("Mouse Over Node Link Zone: " + mlo.zoneDesc);
-     repaint();   
-    return;
-  }   
+    try {
+      Thread.sleep(2000);
+    } catch (InterruptedException iex) {
+    }
+    
+    // Experiments show doing this twice has a significant effect
+  	Runtime.getRuntime().gc();
+  	Runtime.getRuntime().gc();
+  	for (int i = 0; i < 10; i++) {
+    	try {
+        Thread.sleep(1000);
+      } catch (InterruptedException iex) {
+      }
+    	long freeNow = Runtime.getRuntime().freeMemory();
+    	if (freeNow > freeMem) {
+    		break;
+    	}
+    	System.out.println("On yam, seeing 10 loops of **decreasing** free memory " + Runtime.getRuntime().freeMemory());
+  		System.out.println("Tot " + Runtime.getRuntime().totalMemory());
+  	  System.out.println("Free " + Runtime.getRuntime().freeMemory());
+  	  System.out.println("Max " + Runtime.getRuntime().maxMemory());
+  	  System.out.flush(); 	
+  	}
+  }
 }

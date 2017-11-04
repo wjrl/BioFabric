@@ -17,17 +17,44 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.util;
+package org.systemsbiology.biofabric.ui.render;
 
-import java.util.SortedMap;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
 
 /****************************************************************************
 **
-** An interface for monitoring progress
+** This is a "Path" for drawing a box
 */
 
-public interface BTProgressMonitor {
+public class BoxPath {
  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC CONSTANTS
+  //
+  //////////////////////////////////////////////////////////////////////////// 
+  
+  private Color col;
+  private Rectangle nodeShadeRect;
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC CONSTRUCTORS
+  //
+  ////////////////////////////////////////////////////////////////////////////
+
+  /***************************************************************************
+  **
+  ** Constructor
+  */
+  
+  public BoxPath(Color col, Rectangle rect) {
+    this.col = col;
+    this.nodeShadeRect = rect;
+  }
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
@@ -36,52 +63,12 @@ public interface BTProgressMonitor {
 
   /***************************************************************************
   **
-  ** set total
+  **  Draw it:
   */
-  
-  public void setTotal(int total);  
-  
-  /***************************************************************************
-  **
-  ** Get total
-  */
-  
-  public int getTotal();
-  
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean updateProgress(int done);
-  
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean updateProgressAndPhase(int done, String message);
-  
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean updateRankings(SortedMap<Integer, Double> chartVals);
-    
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean keepGoing();  
-  
-
-  /***************************************************************************
-  **
-  ** Get progress
-  */  
-  
-  public int getProgress();  
-
-}
+ 
+  public int paint(Graphics2D g2) {
+    g2.setPaint(col);
+    g2.fill(nodeShadeRect);
+    return (1);
+  } 
+} 

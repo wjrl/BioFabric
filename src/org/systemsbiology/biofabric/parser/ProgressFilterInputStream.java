@@ -17,17 +17,46 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.util;
+package org.systemsbiology.biofabric.parser;
 
-import java.util.SortedMap;
+import java.io.FilterInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 /****************************************************************************
 **
-** An interface for monitoring progress
+** We need to track the processed byte count of the XML parser.
+**
 */
 
-public interface BTProgressMonitor {
- 
+public class ProgressFilterInputStream extends FilterInputStream {
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PRIVATE INSTANCES
+  //
+  ////////////////////////////////////////////////////////////////////////////
+  
+  private long count_;
+  private long total_;
+  private double progress_;
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC CONSTRUCTORS
+  //
+  ////////////////////////////////////////////////////////////////////////////
+
+  /***************************************************************************
+  **
+  ** Standard constructor:
+  */
+
+  public ProgressFilterInputStream(InputStream in, long total) {
+    super(in);
+    total_ = total;
+  }
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
@@ -35,53 +64,29 @@ public interface BTProgressMonitor {
   ////////////////////////////////////////////////////////////////////////////
 
   /***************************************************************************
-  **
-  ** set total
+  ** 
+  ** Return current progress:
   */
-  
-  public void setTotal(int total);  
-  
-  /***************************************************************************
-  **
-  ** Get total
-  */
-  
-  public int getTotal();
-  
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean updateProgress(int done);
-  
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean updateProgressAndPhase(int done, String message);
-  
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean updateRankings(SortedMap<Integer, Double> chartVals);
-    
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean keepGoing();  
-  
 
+  public double getProgress(){
+    return (progress_);
+  }
+ 
   /***************************************************************************
-  **
-  ** Get progress
-  */  
-  
-  public int getProgress();  
+  ** 
+  ** Override the core function to track the bytes passing by:
+  */
 
+  @Override
+  public int read(byte[] b, int off, int len) throws IOException {
+    int numRead = super.read(b, off, len);
+    if (numRead == -1) {
+    	progress_ = 1.0;
+    } else {
+      count_ += numRead;
+      progress_ = (double)count_ / (double)total_;
+      progress_ = Math.min(1.0, progress_);
+    }
+    return (numRead);
+  }
 }

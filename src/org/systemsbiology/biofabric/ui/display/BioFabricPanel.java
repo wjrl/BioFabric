@@ -35,8 +35,6 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferByte;
-import java.awt.image.WritableRaster;
 import java.awt.print.PageFormat;
 import java.awt.print.Printable;
 import java.io.File;
@@ -71,8 +69,6 @@ import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.model.BioFabricNetwork.LinkInfo;
-import org.systemsbiology.biofabric.model.BioFabricNetwork.NodeInfo;
 import org.systemsbiology.biofabric.ui.BasicZoomTargetSupport;
 import org.systemsbiology.biofabric.ui.CursorManager;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -83,10 +79,14 @@ import org.systemsbiology.biofabric.ui.PopupMenuControl;
 import org.systemsbiology.biofabric.ui.ZoomPresentation;
 import org.systemsbiology.biofabric.ui.render.BucketRenderer;
 import org.systemsbiology.biofabric.ui.render.BufBuildDrawer;
-import org.systemsbiology.biofabric.ui.render.BufImgStack;
+import org.systemsbiology.biofabric.ui.render.ImgAndBufPool;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
 import org.systemsbiology.biofabric.ui.render.PaintCache;
+import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
+import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.QuadTree;
@@ -155,16 +155,22 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   
   private BioFabricPanel myMini_;
   
+  
+  // Selection-related data:
   private HashSet<FabricLink> currLinkSelections_; 
   private HashSet<NID.WithName> currNodeSelections_; 
   private HashSet<Integer> currColSelections_;
-  private ArrayList<NodeInfo> targetList_;
-  private ArrayList<LinkInfo> linkList_;
+  
+  private ArrayList<BioFabricNetwork.NodeInfo> targetList_;
+  private ArrayList<BioFabricNetwork.LinkInfo> linkList_;
+  private ArrayList<Rectangle> rects_;
+  private int currSel_;
+  private PaintCache.Reduction selections_;
+  // End Selection-related data
   
   private BufferBuilder bufferBuilder_;
   
-  private ArrayList<Rectangle> rects_;
-  private int currSel_;
+
   private FabricLocation myLocation_;
   private MouseOverView mov_;
   private Rectangle2D worldRectNetAR_;
@@ -178,8 +184,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   
   private BioFabricNetwork bfn_;
   private PaintCache painter_;
-//  private PaintCache selectionPainter_;
-  private PaintCache.Reduction selections_;
+
   private BioFabricApplication bfa_;
   private FabricMagnifyingTool fmt_;
   private FabricNavTool fnt_;
@@ -201,7 +206,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   
   private Rectangle clipRect_;
   private Rectangle clipRect2_;
-  private BufImgStack bis_;
+  private ImgAndBufPool bis_;
   private List<BufferedImage> staleImages_;
   
   ////////////////////////////////////////////////////////////////////////////
@@ -228,9 +233,8 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     CommandSet fc = CommandSet.getCmds((isForMain) ? "mainWindow" : "selectionWindow");
     zcs_ = new ZoomCommandSupport(fc);
     isAMac_ = fc.isAMac();
-    painter_ = new PaintCache(colGen);
-   // selectionPainter_ = new PaintCache(colGen);
-    fmt_.setPainters(painter_, null);
+    painter_ = new PaintCacheSmall(colGen);
+    fmt_.setPainters(painter_, painter_);
     zoomMap_ = new TreeMap<Double, Integer>();
     numZoom_ = 0;
     addMouseListener(new MouseHandler());
@@ -238,8 +242,8 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     currLinkSelections_ = new HashSet<FabricLink>();
     currNodeSelections_ = new HashSet<NID.WithName>();
     currColSelections_ = new HashSet<Integer>();
-    targetList_ = new ArrayList<NodeInfo>();
-    linkList_ = new ArrayList<LinkInfo>();
+    targetList_ = new ArrayList<BioFabricNetwork.NodeInfo>();
+    linkList_ = new ArrayList<BioFabricNetwork.LinkInfo>();
     collectingZoomMode_ = false;
     collectingTourStart_ = false;
     tourStartSelectionOnly_ = false;
@@ -288,7 +292,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   ** Get the buffered image stack
   */
 
-  public BufImgStack getBufImgStack() { 
+  public ImgAndBufPool getBufImgStack() { 
     return (bis_);
   }
   
@@ -367,7 +371,9 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     if (bufferBuilder_ != null) {
       bufferBuilder_.release();
     }
+    painter_.clear();
     bfn_ = null;
+    fmt_.setModel(null); 
     zoomMap_.clear();
     worldRectNetAR_ = new Rectangle2D.Double(0.0, 0.0, 100.0, 100.0); 
     zoomSrc_.simpleSetWorkspace(new Workspace(UiUtil.rectFromRect2D(worldRectNetAR_))); 
@@ -401,7 +407,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     if (bfn_ == null) {
       return;
     }
-    System.out.println("OIR " + size + " " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
+    //System.out.println("OIR " + size + " " + System.currentTimeMillis() + " " + Runtime.getRuntime().freeMemory());
     Double zoomVal = new Double(zoomer_.getZoomFactor());
     Integer numObj = zoomMap_.get(zoomVal);
     if ((numObj != null) && (size == numObj.intValue())) {
@@ -431,13 +437,54 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
  
   /***************************************************************************
   **
-  ** Figure out the baseline zoom and derive others
+  ** This is currently the entire contorted calculation of zooms
   */
   
-  public void zoomForBuf(int[] zooms, Dimension screenSize) {
+  public int[] zoomForBuf(Dimension screenSize) {
+    
+  	//
+  	// Given the network in hand, we need to figure out the zoom settings we will use.
+  	// We also need to generate the zoom settings that will be used by the image buffer
+  	// generator
+  	//
+  	
+  	// We only do image-based zooms if we need to, and switch over to actual drawing
+    // when the link count in the frame gets small enough. Note that right now, that
+    // cross-over is set to 10,000 links:
+  	
+  	System.out.println("This is actually the first step in determining our zoom settings.");
+    boolean showShadows = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getDisplayShadows();
+    int lco = (bfn_ == null) ? 0 : bfn_.getLinkCount(showShadows);
+    
+    
+    /*
+    int[] preZooms;
+    if (lco != 0) {
+      int linkLog = (int)Math.ceil(Math.log(lco) / Math.log(2.0));
+      int firstDrawLog = (int)Math.ceil(Math.log(1.0E4) / Math.log(2.0));
+      // For tiny networks (1 link), previous 4 levels of zoom is too much.
+      int numPre = Math.max(linkLog - firstDrawLog, 2);
+      preZooms = new int[numPre];
+      preZooms[0] = 1;
+      for (int i = 1; i < numPre; i++) {
+        preZooms[i] = 2 * preZooms[i - 1];
+        System.out.println("pz " + preZooms[i]);
+      }
+      System.out.println("Link log " + linkLog);
+      System.out.println("First Draw log " + firstDrawLog);
+    } else {
+      preZooms = new int[1];
+      preZooms[0] = 1;   
+    } 
+
+  	int[] zooms = preZooms;
+  	*/
+    
     
     //
-    // Figure out the fundamental zoom to get the model to fill the screen:
+    // Figure out the fundamental zoom to get the model to fill the screen. We will use this largest version
+  	// as the baseline. Note that for the view with the nav panel showing, we will zoom out on this largest
+  	// view.
     //
 
     double screenAR = screenSize.getWidth()  / screenSize.getHeight(); // > 1.0 for wide and flat screen
@@ -451,8 +498,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     
     double worldWidthScreenAR;
     double worldHeightScreenAR;
-    double zoom;
-    
+    double zoom;    
     
     if (worldAR > screenAR) {
     	worldWidthScreenAR = worldRectNetAR_.getWidth();
@@ -465,7 +511,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     }
     
     screenDim_ = new Dimension(screenSize);
-    bis_ = new BufImgStack(50000);
+    bis_ = new ImgAndBufPool(50000);
     
     //
     // We create a world rectangle centered on the existing world, with the aspect ratio
@@ -481,24 +527,103 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     double worldULX = worldCenterX - (worldWidthScreenAR / 2.0);
     double worldULY = worldCenterY - (worldHeightScreenAR / 2.0);
     worldRectScreenAR_ = new Rectangle2D.Double(worldULX, worldULY, worldWidthScreenAR, worldHeightScreenAR);
-    
-    
-     System.out.println("worldWidthScreenAR " + worldWidthScreenAR);
+      
+    System.out.println("worldWidthScreenAR " + worldWidthScreenAR);
     System.out.println("worldHeightScreenAR " + worldHeightScreenAR);
-     System.out.println("worldRectScreenAR_ " + worldRectScreenAR_);
+    System.out.println("worldRectScreenAR_ " + worldRectScreenAR_);
     
-    System.out.println("SD " + screenDim_ + " zoomLength " + zooms.length);
+    System.out.println("We generate all zooms from the supposed full-screen zoom, in powers of two.");
+    System.out.println("SD " + screenDim_);
+    
+    //
+    // OK, the start zoom has been calculated to show the whole network. We now calculate powers of
+    // two until we basically fill the screen with a link glyph. Figure out that zoom level:
+    //
+    
+    double maxZoom =  screenSize.getHeight() / (4.0 * GRID_SIZE);
+    System.out.println("MZ = " + maxZoom);
+    
+    //
+    // We terminate the image tiling and go to straight rendering when we hit 10E4 links across the screen.
+    // In the case of tiny networks, we only generate a single image:
+    //
+    
+    double transitionZoom =  screenSize.getWidth() / (1.0E4 * GRID_SIZE);
+    System.out.println("tZ = " + transitionZoom);
+    
+    
+    System.out.println("FIX ME! Make sure transition is not smaller that min, make sure one image created");
+    
+    //
+    // Generate the zoom settings
+    
     double lastZoom = zoom;
-    for (int i = 0; i < zooms.length; i++) {
-      zoomMap_.put(new Double(lastZoom), Integer.valueOf(i));
-      lastZoom *= 2.0;
+    
+    ArrayList<Double> zoomList = new ArrayList<Double>();
+    ArrayList<Integer> forRet = new ArrayList<Integer>();
+    int count = 0;
+    while (lastZoom < maxZoom) {
+    	Double zObj = Double.valueOf(lastZoom);
+    	System.out.println("zoom = " + lastZoom); 
+    	zoomList.add(zObj);
+    	if ((lastZoom < transitionZoom) || (count < 2)) {
+    		Integer index = Integer.valueOf(count++);
+    	  zoomMap_.put(zObj, index); 
+    	  forRet.add(index);
+    	}  	
+      lastZoom *= 2.0;	
     }
+    
+    
     //
     // Companion renderer needs this info too:
     //
+    
     bucketRend_.setModelDims(screenDim_, worldRectScreenAR_, bis_);
+    
+   /*
+    double linkLog = (lco == 0) ? 0 : Math.log(lco) / Math.log(2.0);
+    System.out.println("install zoom size " + zoomMap_.size());
+    numZoom_ = Math.max(zoomMap_.size() + 8, (int)Math.ceil(linkLog) - 5);
+    System.out.println("install zooms " + numZoom_);
+    double[] zoomVals = new double[numZoom_];
+    Iterator<Double> zmit = zoomMap_.keySet().iterator();
+    int count = 0;
+    while (zmit.hasNext()) {
+      Double zoomd = zmit.next();
+      System.out.println("pre zoom " + zoomd);
+      zoomVals[count++] = zoomd.doubleValue();
+      
+    }
+    double val = zoomVals[count - 1];
+    double div = 2.0;
+    for (int i = count; i < numZoom_; i++) {
+      zoomVals[i] = val * div;
+      System.out.println("add zoom " + zoomVals[i]);
+      //if (zoomVals[i] > 15.0) {
+    ///  	break; 
+    //  }
+      div *= 2.0;
+    }
+    */
+    
+    int[] zooms = new int[forRet.size()];
+    double[] zoomVals = new double[zoomList.size()];
+    
+    count = 0;
+    for (Integer zo : forRet) {
+    	zooms[count++] = zo.intValue();
+    }
+    count = 0;
+    for (Double zo : zoomList) {
+    	zoomVals[count++] = zo.doubleValue();
+    }
 
-    return;
+    System.out.println("This sets the calculated zooms into the zoom array ");
+    zcs_.setCustomZoomPoints(zoomVals, 0); 
+   
+
+    return (zooms);
   }
 
   /***************************************************************************
@@ -526,9 +651,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     floaterSet_.currSelRect = null;
     rects_.clear();
     currSel_ = -1;
-    this.selections_ = null;
- //   selectionPainter_.buildObjCache(targetList_, linkList_, false, false, new HashMap<NID.WithName, Rectangle2D>(), 
-    		                          //  new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_);
+    selections_ = null;
     fnt_.haveASelection(false);
     handleFloaterChange();
     EventManager mgr = EventManager.getManager();
@@ -621,7 +744,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   ** Send selections to mini panel
   */
 
-  private void transmitSelections(List<NodeInfo> targetList, List<LinkInfo> linkList) {      
+  private void transmitSelections(List<BioFabricNetwork.NodeInfo> targetList, List<BioFabricNetwork.LinkInfo> linkList) {      
     if (myMini_ == null) {
       bfa_.launchSelection();
       if (myMini_ == null) {
@@ -774,7 +897,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       colMin = nmm.max; // Yes, both are max
       colMax = nmm.max;
     } else {
-      UiUtil.fixMePrintout("This needs review");
+      UiUtil.fixMePrintout("Crash here on go to drain zone in tour: array size 0");
       colMin = dropZone.get(0).getMinMax().min; // QUICK FIX WILL MAKE BETTER SOLUTION LATER
       colMax = dropZone.get(0).getMinMax().max;
     }
@@ -1166,7 +1289,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   ** Change the paint
   */
 
-  public void changePaint() {
+  public void changePaint(BTProgressMonitor monitor) throws AsynchExitRequestException {
     if (bufferBuilder_ != null) {
       bufferBuilder_.release();
     }    
@@ -1178,10 +1301,8 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     boolean showShadows = fdo.getDisplayShadows();
     painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), shadeNodes, 
                            showShadows, new HashMap<NID.WithName, Rectangle2D>(), 
-                           new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_);
-  //  selectionPainter_.buildObjCache(targetList_, linkList_, shadeNodes, showShadows, 
-                                //    new HashMap<NID.WithName, Rectangle2D>(), 
-                                 //   new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_);
+                           new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_, 
+                           bfn_.getNodeAnnotations(), bfn_.getLinkAnnotations(), monitor);
     handleFloaterChange();
     return;
   }
@@ -1191,7 +1312,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   ** Install a model
   */
 
-  public void installModel(BioFabricNetwork bfn) { 
+  public void installModel(BioFabricNetwork bfn, BTProgressMonitor monitor) throws AsynchExitRequestException {
     bfn_ = bfn;
     FabricDisplayOptions fdo = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
     boolean shadeNodes = fdo.getShadeNodes();
@@ -1212,17 +1333,19 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     nodeNameLocations_ = new HashMap<NID.WithName, Rectangle2D>();
     drainNameLocations_ = new HashMap<NID.WithName, List<Rectangle2D>>();    
     painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), 
-    		                   shadeNodes, showShadows, nodeNameLocations_, drainNameLocations_, worldRectNetAR_);
-  //  selectionPainter_.buildObjCache(new ArrayList<NodeInfo>(), new ArrayList<LinkInfo>(), 
-    		                    //        shadeNodes, showShadows, new HashMap<NID.WithName, Rectangle2D>(), 
-    		                        //    new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_);
+    		                   shadeNodes, showShadows, nodeNameLocations_, 
+    		                   drainNameLocations_, worldRectNetAR_, 
+    		                   bfn_.getNodeAnnotations(), bfn_.getLinkAnnotations(), monitor);
     bucketRend_.buildBucketCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), showShadows);
-    
+      
+    LoopReporter lr = new LoopReporter(drainNameLocations_.size(), 20, monitor, 0.0, 1.0, "progress.drainsToQuad");
+
     forSelections_ = new QuadTree(worldRectNetAR_, 5);
     Iterator<NID.WithName> kit = drainNameLocations_.keySet().iterator();
     int count = 0;
     while (kit.hasNext()) {
     	NID.WithName nid = kit.next();
+    	lr.report();
     	List<Rectangle2D> rects = drainNameLocations_.get(nid);
     	int numR = rects.size();
     	for (int i = 0; i < numR; i++) {
@@ -1231,6 +1354,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     	  forSelections_.insertPayload(pay);
     	}
     }
+    lr.finish();
     fnt_.haveAModel(true);
     return;
   }
@@ -1245,35 +1369,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     requestFocus();
     return;
   }
-
-  /***************************************************************************
-  **
-  ** Install our zooms
-  */
   
-  public void installZooms() {
-    boolean showShadows = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getDisplayShadows();
-    int lco = bfn_.getLinkCount(showShadows);
-    double linkLog = (lco == 0) ? 0 : Math.log(lco) / Math.log(2.0);
-    numZoom_ = Math.max(zoomMap_.size() + 8, (int)Math.ceil(linkLog) - 5);
-    double[] zoomVals = new double[numZoom_];
-    Iterator<Double> zmit = zoomMap_.keySet().iterator();
-    int count = 0;
-    while (zmit.hasNext()) {
-      Double zoom = zmit.next();
-      zoomVals[count++] = zoom.doubleValue();
-    }
-    double val = zoomVals[count - 1];
-    double div = 2.0;
-    for (int i = count; i < numZoom_; i++) {
-      zoomVals[i] = val * div;
-      div *= 2.0;
-    }
-    
-    zcs_.setCustomZoomPoints(zoomVals, 0, 0); 
-    return;
-  }
- 
   /***************************************************************************
   ** 
   ** Needed? Yes.
@@ -1346,28 +1442,39 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     while (siit.hasNext()) {
     	BufferedImage bi = siit.next();
     	bis_.returnImage(bi);
-  	//  WritableRaster biRast = bi.getRaster(); 
-  //	  DataBufferByte biDbb = (DataBufferByte)biRast.getDataBuffer();
-  //	  bis_.returnByteBuf(biDbb.getData());
     }
     staleImages_.clear();
-    
-    
+      
     if (bfn_ == null) {
       return;
     }
     
-    Double zoomVal = new Double(zoomer_.getZoomFactor());
+    Double zoomVal = Double.valueOf(zoomer_.getZoomFactor());
     Rectangle2D viewInWorld = getViewInWorld();
+    
+    System.out.println("OK, with *far out* zooms, they are not in the zoom map, so we end up drawing it");
+    System.out.println("instead of using the full-network image. DISASTER");
+    
     //
-    // When we zoom in far enough, we start to draw it instead:
+    // When we zoom in far enough, we start to draw it instead. If our zoom is too wide, we need to use the
+    // full-screen version and scale it.
     //
-    System.out.println("paint " + Runtime.getRuntime().freeMemory());
+    
+    System.out.println("Want zoom " + zoomVal);
     Integer numObj = zoomMap_.get(zoomVal);
-    if ((numObj == null) || (bufferBuilder_ == null)) {
-      Graphics2D g2 = (Graphics2D)g;
-      drawingGuts(g2, viewInWorld);
-      return;
+    System.out.println("Want zoom obj" + numObj);
+    boolean wideCase = false;
+    
+    if (zoomVal.doubleValue() < zoomMap_.firstKey().doubleValue()) {
+    	System.out.println("DONT WANNA DRAW " + bufferBuilder_);
+    	numObj = Integer.valueOf(0);
+    	wideCase = true;
+    } else {
+	    if ((numObj == null) || (bufferBuilder_ == null)) {
+	      Graphics2D g2 = (Graphics2D)g;
+	      drawingGuts(g2, viewInWorld);
+	      return;
+	    }
     }
     ArrayList<ImageToUse> imagesToUse = new ArrayList<ImageToUse>();
     
@@ -1383,6 +1490,8 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     ArrayList<Rectangle2D> slicesToCover = new ArrayList<Rectangle2D>();
     bufferBuilder_.getSlicesToCover(numObj, viewInWorld, slicesToCover);
     int numSlice = slicesToCover.size();
+    System.out.println("Need " + numSlice + " to cover");
+    AffineTransform wideTrans = null;
     for (int i = 0; i < numSlice; i++) {
     	Rectangle2D worldRect = slicesToCover.get(i);
 	    BufferedImage img = null;
@@ -1395,6 +1504,30 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
 	      Point wtv = pointToViewport(new Point((int)Math.round(worldRect.getX()), (int)Math.round(worldRect.getY())));
 	      int stX = wtv.x;
 	      int stY = wtv.y;
+	    	if (wideCase) {
+	    	  wideTrans = new AffineTransform();
+          System.out.println(wideTrans);
+          JViewport view = jsp_.getViewport();
+          Point viewPos = view.getViewPosition();
+          System.out.println("vp " + viewPos);
+          Dimension viewDim = view.getExtentSize();
+          // When last zoom selected was from fixed set, window resize DOES NOT CHANGE ZOOM. If last zoom
+          // selected was whole model, the ops below are dynamically resizing the model to keep fitting into
+          // viewport (because the fixed set zoom choice remains null) This is not consistent.
+          
+          double hzoom = viewDim.getHeight() / img.getHeight();
+          double wzoom = viewDim.getWidth() / img.getWidth();
+          double izoom = Math.min(hzoom, wzoom);
+          System.out.println("izoom " + izoom);
+          wideTrans.translate(viewDim.getWidth() / 2.0, viewDim.getHeight() / 2.0);
+          System.out.println(wideTrans);
+	        wideTrans.scale(izoom, izoom);
+          System.out.println(wideTrans);
+	     	  wideTrans.translate(-img.getWidth() / 2.0, -img.getHeight() / 2.0);
+          System.out.println(wideTrans);
+	    	}
+
+	      System.out.println("WC " + wideCase + " " + stX + " " + stY);
 	      ImageToUse itu = new ImageToUse(img, stX, stY);
 	      imagesToUse.add(itu);
 	    }
@@ -1408,15 +1541,31 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     while (ituit.hasNext()) {
       ImageToUse it = ituit.next();
       if (it.image != null) {
-        g2p.drawImage(it.image, it.stX, it.stY, null);
+      	int useX = it.stX;
+      	int useY = it.stY;
+      	AffineTransform stash = null;
+      	if (wideTrans != null) {
+      		stash = g2p.getTransform();
+      		useX = 0;
+      		useY = 0;
+      		g2p.transform(wideTrans);
+      	}
+        g2p.drawImage(it.image, useX, useY, null);
+        if (stash != null) {
+        	g2p.transform(stash); 
+        }
         staleImages_.add(it.image);
       }
     }
+    System.out.println("After window resize, need to click on zoom to model twice to get mouse/overview/mag in sync with view");
+    
     clipRect_.setBounds((int)viewInWorld.getX(), (int)viewInWorld.getY(),
                                    (int)viewInWorld.getWidth(), (int)viewInWorld.getHeight());
     if (!targetList_.isEmpty() || !linkList_.isEmpty()) {
+    	System.out.println("wrong frame for all model zoom");
       drawSelections(g2p, clipRect_);
     }
+    System.out.println("wrong frame for all model zoom");
     drawFloater(g, true);
     g.dispose();
     return;
@@ -1444,7 +1593,8 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     
     g2.setPaint(Color.WHITE);
     g2.drawRect(clipRect2_.x, clipRect2_.y, clipRect2_.width, clipRect2_.height); 
-    painter_.paintIt(g2, clipRect2_, false, null);
+    painter_.paintIt(g2, clipRect2_, null);
+    
     if (!targetList_.isEmpty() || !linkList_.isEmpty()) {
       g2.setTransform(saveTrans);
       drawSelections(g2, clipRect2_);
@@ -1529,7 +1679,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     g2.setStroke(selectedStroke);
     g2.transform(trans); 
     g2.fillRect(worldPiece.x, worldPiece.y, worldPiece.width, worldPiece.height);
-    painter_.paintIt(g2, worldPiece, false, null);
+    painter_.paintIt(g2, worldPiece, null);
     return (PAGE_EXISTS);
   }
  
@@ -1542,7 +1692,6 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   		                         Rectangle2D worldRec, int heightPad, double linksPerPixel) { 
   	Graphics2D g2 = bi.createGraphics();
     g2.setColor(Color.WHITE);
-    g2.setColor(new Color(255, 220, 220)); //Debug sizing problems
     g2.fillRect(0, 0, screenDim.width, screenDim.height + heightPad);
     double zoomH = screenDim.getWidth() / worldRec.getWidth();
     double zoomV = screenDim.getHeight() / worldRec.getHeight();
@@ -1558,15 +1707,15 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     BasicStroke selectedStroke = new BasicStroke(PaintCache.STROKE_SIZE, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
     g2.setStroke(selectedStroke);
     g2.setTransform(transform); 
-    boolean retval = painter_.paintIt(g2, UiUtil.rectFromRect2D(clip), false, null);
+    boolean retval = painter_.paintIt(g2, UiUtil.rectFromRect2D(clip), null);
     
-    // Debug sizing problems:
-    AffineTransform transformx = new AffineTransform();
-    g2.setTransform(transformx);
-    BasicStroke selectedStrokex = new BasicStroke(1, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
-    g2.setStroke(selectedStrokex);  
-    g2.setColor(Color.GREEN);
-    g2.drawRect(0, 0, screenDim.width - 1, screenDim.height - 1);
+    // To debug sizing problems, this draws a green bounding rectangle:
+    //AffineTransform transformx = new AffineTransform();
+    //g2.setTransform(transformx);
+    //BasicStroke selectedStrokex = new BasicStroke(1, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
+    //g2.setStroke(selectedStrokex);  
+    //g2.setColor(Color.GREEN);
+    //g2.drawRect(0, 0, screenDim.width - 1, screenDim.height - 1);
 
     g2.dispose();
     return (retval);
@@ -1593,7 +1742,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     BasicStroke selectedStroke = new BasicStroke(PaintCache.STROKE_SIZE, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
     g2.setStroke(selectedStroke);
     g2.setTransform(transform);
-    boolean retval = painter_.paintIt(g2, clip, false, null);
+    boolean retval = painter_.paintIt(g2, clip, null);
     // Debug sizing problems
     //g2.setColor(Color.red);
     //g2.drawRect(clip.x, clip.y, clip.width - 1, clip.height - 1);
@@ -1632,6 +1781,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     // Need to offset the origin to handle view rectangle offset:
     otp.translate(-viewRect.getX(), -viewRect.getY());
     // This needs to be pre-concatenated to have it "done first"
+    System.out.println("Sel preCon " + viewRect + " " + zoomer_.getZoomFactor());
     overTrans.preConcatenate(otp);
     ig2.setTransform(overTrans);
   
@@ -1641,7 +1791,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     //ig2.setComposite(AlphaComposite.Clear);
     
     ig2.setComposite(AlphaComposite.Src);
-    painter_.paintIt(ig2, clip, false, selections_);
+    painter_.paintIt(ig2, clip, selections_);
 
     g2.drawImage(bim_, viewRect.x, viewRect.y, viewRect.width, viewRect.height, null);
     return;
@@ -2044,7 +2194,11 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
       } else {
         Rectangle2D nnl = nodeNameLocations_.get(target);
         Point2D inWorld = rowColToWorld(cprc);
-        if (nnl.contains(inWorld)) {
+        UiUtil.fixMePrintout("zigg.sif plus zigg.noa see null ptr here *on mouse move during node-attribute relayout??*");
+        if ((nnl == null) || (inWorld == null)) {
+        	System.err.println("nnl " + nnl + " iw " + inWorld);
+        	Thread.dumpStack();
+        } else if (nnl.contains(inWorld)) {
           retval.nodeDesc = target.getName();
         }       
       }    
@@ -2454,18 +2608,19 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     System.out.println("This has gotta change");
     HashSet<Integer> targRows = new HashSet<Integer>();
     HashSet<Integer> targCols = new HashSet<Integer>(currColSelections_);
+    HashSet<NID> targIDs = new HashSet<NID>();
     
     int numTarg = targetList_.size();
     for (int i = 0; i < numTarg; i++) {
     	BioFabricNetwork.NodeInfo targetInf = targetList_.get(i);
     	targRows.add(Integer.valueOf(targetInf.nodeRow));
+    	targIDs.add(targetInf.getNodeID());
     }
-    this.selections_ = new PaintCache.Reduction(targRows, targCols, new HashSet<String>());   
-  //  selectionPainter_.buildObjCache(targetList_, linkList_, false, showShadows, 
-                               //     new HashMap<NID.WithName, Rectangle2D>(),
-                               //     new HashMap<NID.WithName, List<Rectangle2D>>());
+    selections_ = new PaintCache.Reduction(targRows, targCols, targIDs); 
+    fmt_.setSelections(selections_);
     EventManager mgr = EventManager.getManager();
     SelectionChangeEvent ev = new SelectionChangeEvent(null, null, SelectionChangeEvent.SELECTED_ELEMENT);
+   
     mgr.sendSelectionChangeEvent(ev);  
     return;
   }
@@ -2914,7 +3069,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
         }
         
         boolean shiftPressed = me.isShiftDown();
-    
+        System.out.println("click " + me.getX() + "  " + me.getY());
         int currX = me.getX();
         int currY = me.getY();     
         if (lastPress_ == null) {
