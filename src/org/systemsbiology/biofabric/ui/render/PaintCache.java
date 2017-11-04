@@ -132,6 +132,7 @@ public interface PaintCache {
     }
     
     public boolean isEmpty() {
+    	System.out.println("CF : " + floater + " : " + tourRect + " : " + currSelRect);
       return ((floater == null) &&
               (tourRect == null) &&
               (currSelRect == null));

@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2012 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -20,9 +20,6 @@
 package org.systemsbiology.biofabric.ui;
 
 import java.awt.Rectangle;
-import java.util.Map;
-
-import org.systemsbiology.biofabric.util.TaggedSet;
 
 /****************************************************************************
 **
@@ -31,11 +28,6 @@ import org.systemsbiology.biofabric.util.TaggedSet;
 
 public interface ZoomPresentation {
  
-  ////////////////////////////////////////////////////////////////////////////
-  //
-  // PUBLIC CONSTANTS
-  //
-  ////////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
@@ -47,7 +39,7 @@ public interface ZoomPresentation {
   ** Return the required size of the layout
   */
   
-  public Rectangle getRequiredSize(String genomeKey, String layoutKey);
+  public Rectangle getRequiredSize();
  
   /***************************************************************************
   **
@@ -55,7 +47,7 @@ public interface ZoomPresentation {
   ** selected.
   */
   
-  public Rectangle getSelectionSize(String genomeKey, String layoutKey); 
+  public Rectangle getSelectionSize(); 
 
   /***************************************************************************
   **
@@ -63,7 +55,7 @@ public interface ZoomPresentation {
   ** selected.
   */
   
-  public Rectangle getCurrentSelectionSize(String genomeKey, String layoutKey);   
+  public Rectangle getCurrentSelectionSize();   
  
   /***************************************************************************
   **
@@ -84,14 +76,14 @@ public interface ZoomPresentation {
   ** Bump to the next selection for zoom
   */
   
-  public void bumpNextSelection(String modelKey);
+  public void bumpNextSelection();
   
   /***************************************************************************
   **
   ** Bump to the previous selection for zoom
   */
   
-  public void bumpPreviousSelection(String modelKey);
+  public void bumpPreviousSelection();
   
   /***************************************************************************
   **
