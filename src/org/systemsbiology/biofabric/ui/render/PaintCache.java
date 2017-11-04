@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
@@ -84,6 +85,7 @@ public interface PaintCache {
   public void buildObjCache(List<BioFabricNetwork.NodeInfo> targets, List<BioFabricNetwork.LinkInfo> links, 
                             boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
                             Map<NID.WithName, List<Rectangle2D>> drainMap, Rectangle2D worldRect,
+                            AnnotationSet nodeAnnot, AnnotationSet linkAnnot,
                             BTProgressMonitor monitor) throws AsynchExitRequestException;
  
   /***************************************************************************

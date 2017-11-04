@@ -19,7 +19,6 @@
 
 package org.systemsbiology.biofabric.model;
 
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -43,7 +42,6 @@ import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.EdgeLayout;
 import org.systemsbiology.biofabric.layouts.HierDAGLayout;
-import org.systemsbiology.biofabric.layouts.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.layouts.NetworkAlignmentLayout;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeLayout;
@@ -62,7 +60,6 @@ import org.systemsbiology.biofabric.util.AttributeExtractor;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.CharacterEntityMapper;
 import org.systemsbiology.biofabric.util.DataUtil;
-import org.systemsbiology.biofabric.util.GarbageRequester;
 import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.MinMax;
@@ -182,7 +179,11 @@ public class BioFabricNetwork {
   private LayoutMode layoutMode_;
   
   private UniqueLabeller nodeIDGenerator_;
- 
+  
+  private AnnotationSet nodeAnnot_;
+  private AnnotationSet linkAnnot_;
+  
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTRUCTORS
@@ -198,7 +199,8 @@ public class BioFabricNetwork {
   	nodeIDGenerator_ = new UniqueLabeller();
   	layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
     BuildMode mode = bd.getMode();
-    
+    nodeAnnot_ = new AnnotationSet();
+    linkAnnot_ = new AnnotationSet();   
     switch (mode) {
       case DEFAULT_LAYOUT:  
       case REORDER_LAYOUT:
@@ -258,6 +260,8 @@ public class BioFabricNetwork {
         this.rowCount_ = built.rowCount_;
         this.linkGrouping_ = built.linkGrouping_;
         this.layoutMode_ = built.layoutMode_;
+        this.nodeAnnot_ = built.nodeAnnot_;
+        this.linkAnnot_= built.linkAnnot_;
         break;
       case BUILD_FROM_SIF:
         RelayoutBuildData obd = (RelayoutBuildData)bd;    
@@ -283,6 +287,44 @@ public class BioFabricNetwork {
   //
   ////////////////////////////////////////////////////////////////////////////
 
+  /***************************************************************************
+  ** 
+  ** Set node annotations
+  */
+
+  public void setNodeAnnotations(AnnotationSet aSet) {
+    nodeAnnot_ = aSet;
+    return;
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Set link annotations
+  */
+
+  public void setLinkAnnotations(AnnotationSet aSet) {
+    linkAnnot_ = aSet;
+    return;
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Get node annotations
+  */
+
+  public AnnotationSet getNodeAnnotations() {
+    return (nodeAnnot_);
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Get link annotations
+  */
+
+  public AnnotationSet getLinkAnnotations() {
+    return (linkAnnot_);
+  }
+ 
   /***************************************************************************
   ** 
   ** Get map from normalized name to IDs (Moving to Cytoscape SUIDs, there
@@ -852,11 +894,13 @@ public class BioFabricNetwork {
     int numNodes = rowToTargID_.size();
     int numLinks = fullLinkDefs_.size();
     int numLm = nonShadowedLinkMap_.size();
+    int numNA = nodeAnnot_.size();
+    int numLA = linkAnnot_.size();
       
     out.println("<BioFabric>");
     ind.up();
     String label = (forCache) ? "progress.cachingCurrentNetwork" : "progress.writingFile";
-    LoopReporter lr = new LoopReporter(numNodes + numLinks + numLm, 20, monitor, 0.0, 1.0, label);   
+    LoopReporter lr = new LoopReporter(numNodes + numLinks + numLm + numNA + numLA , 20, monitor, 0.0, 1.0, label);   
     colGen_.writeXML(out, ind);
     
     //
@@ -945,9 +989,30 @@ public class BioFabricNetwork {
       out.print(li.getColorKey());
       out.println("\" />");
     }
-    lr.finish();
     ind.down().indent();
     out.println("</links>");
+      
+    ind.indent();
+    out.println("<nodeAnnotations>");
+    ind.up();
+    for (AnnotationSet.Annot an : nodeAnnot_) {
+      lr.report();
+      an.writeXML(out, ind);
+    }
+    ind.down().indent();
+    out.println("</nodeAnnotations>");
+    
+    ind.indent();
+    out.println("<linkAnnotations>");
+    ind.up();
+    for (AnnotationSet.Annot an : linkAnnot_) {
+      lr.report();
+      ind.indent();
+      an.writeXML(out, ind);
+    }
+    ind.down().indent();
+    out.println("</linkAnnotations>");
+    lr.finish();
     ind.down().indent();
     out.println("</BioFabric>"); 
     return;
@@ -2724,6 +2789,8 @@ public class BioFabricNetwork {
       installWorker(new NodeInfoWorker(whiteboard), new MyNodeGlue());
       installWorker(new LinkInfoWorker(whiteboard), new MyLinkGlue());
       installWorker(new LinkGroupWorker(whiteboard), null);
+      installWorker(new AnnotationSet.AnnotsWorker(whiteboard, "nodeAnnotations"), new MyAnnotsGlue(true));
+      installWorker(new AnnotationSet.AnnotsWorker(whiteboard, "linkAnnotations"), new MyAnnotsGlue(false));
     }
     
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
@@ -2746,6 +2813,27 @@ public class BioFabricNetwork {
     }
   }  
   
+  public static class MyAnnotsGlue implements GlueStick {
+    
+    private boolean forNodes_;
+    
+    public MyAnnotsGlue(boolean forNodes) {
+      forNodes_ = forNodes;  
+    }
+   
+    public Object glueKidToParent(Object kidObj, AbstractFactoryClient parentWorker, 
+                                  Object optionalArgs) throws IOException {
+      FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard)optionalArgs;
+      if (forNodes_) {
+        System.out.println("SETTING NODE ANNOTS " + board.currAnnots);
+        board.bfn.setNodeAnnotations(board.currAnnots);
+      } else {
+        board.bfn.setLinkAnnotations(board.currAnnots);
+      }
+      return (null);
+    }
+  }  
+
   public static class MyNodeGlue implements GlueStick {
     public Object glueKidToParent(Object kidObj, AbstractFactoryClient parentWorker, 
                                   Object optionalArgs) throws IOException {

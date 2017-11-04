@@ -92,6 +92,7 @@ import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.event.SelectionChangeListener;
 import org.systemsbiology.biofabric.io.AlignmentLoader;
+import org.systemsbiology.biofabric.io.AnnotationLoader;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.io.FabricImportLoader;
@@ -100,14 +101,11 @@ import org.systemsbiology.biofabric.io.SIFImportLoader;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
-import org.systemsbiology.biofabric.layouts.SetLayout;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
-import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.EdgeLayout;
-import org.systemsbiology.biofabric.layouts.HierDAGLayout;
 import org.systemsbiology.biofabric.layouts.LayoutCriterionFailureException;
-import org.systemsbiology.biofabric.layouts.WorldBankLayout;
+import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.parser.ParserClient;
@@ -244,6 +242,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public static final int WORLD_BANK_LAYOUT            = 52;
   public static final int LOAD_WITH_EDGE_WEIGHTS       = 53;
   public static final int LOAD_NETWORK_ALIGNMENT       = 54;
+  public static final int ADD_NODE_ANNOTATIONS         = 55;
  
   public static final int GENERAL_PUSH   = 0x01;
   public static final int ALLOW_NAV_PUSH = 0x02;
@@ -557,6 +556,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           break;
         case WORLD_BANK_LAYOUT:
           retval = new WorldBankLayoutAction(withIcon); 
+          break;
+        case ADD_NODE_ANNOTATIONS:
+          retval = new AddNodeAnnotations(withIcon); 
           break;
         default:
           throw new IllegalArgumentException();
@@ -1400,6 +1402,35 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     return (file);
   }
 
+  /***************************************************************************
+  **
+  ** Load an annotation file
+  */
+     
+  public AnnotationSet loadAnnotations(File file) {
+    AnnotationLoader.ReadStats stats = new AnnotationLoader.ReadStats();
+    try {         
+      AnnotationLoader alod = new AnnotationLoader();
+      AnnotationSet aSet = alod.readAnnotations(file, stats, bfp_.getNetwork(), null);
+      FabricCommands.setPreference("AnnotDirectory", file.getAbsoluteFile().getParent());
+      return (aSet);
+    } catch (IOException ioe) {
+      if (stats.errStr != null) {
+        ResourceManager rMan = ResourceManager.getManager();
+        JOptionPane.showMessageDialog(topWindow_, rMan.getString("attribRead.IOException"),
+                                      rMan.getString("attribRead.IOExceptionTitle"),
+                                      JOptionPane.ERROR_MESSAGE);
+        return (null);
+      } else {
+        displayFileInputError(ioe);
+        return (null);              
+      }  
+    } catch (AsynchExitRequestException aerex) {
+      UiUtil.fixMePrintout("Do this read on background thread");
+      return (null);
+    }
+  }
+  
   /***************************************************************************
   **
   ** Load the file. Map keys are strings or Links
@@ -2750,6 +2781,68 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
   }      
   
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+   
+  private class AddNodeAnnotations extends ChecksForEnabled  {
+    
+    private static final long serialVersionUID = 1L;
+    
+    AddNodeAnnotations(boolean doIcon) {
+      
+      ResourceManager rMan = ResourceManager.getManager(); 
+      putValue(Action.NAME, rMan.getString("command.AddNodeAnnotations"));
+      if (doIcon) {
+        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.AddNodeAnnotations"));
+        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/FIXME24.gif");  
+        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
+      } else {
+        char mnem = rMan.getChar("command.AddNodeAnnotationsMnem"); 
+        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
+      }
+    } 
+    
+    public void actionPerformed(ActionEvent e) {
+      try {
+        performOperation();
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }      
+      return;
+    }
+
+    protected boolean performOperation() {
+      File file = getTheFile(".tsv", null, "AnnotDirectory", "filterName.tsv");
+      if (file == null) {
+        return (true);
+      }
+      AnnotationSet aSet = loadAnnotations(file);
+      if (aSet == null) {
+        return (true);
+      }
+      bfp_.getNetwork().setNodeAnnotations(aSet);
+      File holdIt;  
+      try {
+        holdIt = File.createTempFile("BioFabricHold", ".zip");
+        holdIt.deleteOnExit();
+      } catch (IOException ioex) {
+        holdIt = null;
+      }
+
+      NetworkRecolor nb = new NetworkRecolor(); 
+      nb.doNetworkRecolor(isForMain_, holdIt);
+      
+      return (true);
+    }
+    
+    @Override
+    protected boolean checkGuts() {
+      return (bfp_.hasAModel() && (bfp_.getNetwork().getLinkCount(true) != 0));
+    }
+  }
+ 
   /***************************************************************************
   **
   ** Command
