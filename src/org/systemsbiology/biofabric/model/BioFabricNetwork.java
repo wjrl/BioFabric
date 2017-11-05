@@ -69,7 +69,7 @@ import org.systemsbiology.biofabric.util.UniqueLabeller;
 
 /****************************************************************************
 **
-** This is the Network model. Foo!
+** This is the Network model.
 */
 
 public class BioFabricNetwork {
@@ -181,7 +181,7 @@ public class BioFabricNetwork {
   private UniqueLabeller nodeIDGenerator_;
   
   private AnnotationSet nodeAnnot_;
-  private AnnotationSet linkAnnot_;
+  private Map<Boolean, AnnotationSet> linkAnnots_;
   
   
   ////////////////////////////////////////////////////////////////////////////
@@ -200,7 +200,9 @@ public class BioFabricNetwork {
   	layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
     BuildMode mode = bd.getMode();
     nodeAnnot_ = new AnnotationSet();
-    linkAnnot_ = new AnnotationSet();   
+    Map<Boolean, AnnotationSet> linkAnnots_ = new HashMap<Boolean, AnnotationSet>();
+    linkAnnots_.put(Boolean.TRUE, new AnnotationSet());
+    linkAnnots_.put(Boolean.FALSE, new AnnotationSet());
     switch (mode) {
       case DEFAULT_LAYOUT:  
       case REORDER_LAYOUT:
@@ -261,7 +263,7 @@ public class BioFabricNetwork {
         this.linkGrouping_ = built.linkGrouping_;
         this.layoutMode_ = built.layoutMode_;
         this.nodeAnnot_ = built.nodeAnnot_;
-        this.linkAnnot_= built.linkAnnot_;
+        this.linkAnnots_= built.linkAnnots_;
         break;
       case BUILD_FROM_SIF:
         RelayoutBuildData obd = (RelayoutBuildData)bd;    
@@ -302,8 +304,11 @@ public class BioFabricNetwork {
   ** Set link annotations
   */
 
-  public void setLinkAnnotations(AnnotationSet aSet) {
-    linkAnnot_ = aSet;
+  public void setLinkAnnotations(AnnotationSet aSet, boolean forShadow) {
+    if (linkAnnots_ == null) {
+      linkAnnots_ = new HashMap<Boolean, AnnotationSet>();
+    }
+    linkAnnots_.put(Boolean.valueOf(forShadow), aSet);
     return;
   }
   
@@ -321,8 +326,8 @@ public class BioFabricNetwork {
   ** Get link annotations
   */
 
-  public AnnotationSet getLinkAnnotations() {
-    return (linkAnnot_);
+  public AnnotationSet getLinkAnnotations(boolean forShadow) {
+    return ((linkAnnots_ == null) ? null : linkAnnots_.get(Boolean.valueOf(forShadow)));
   }
  
   /***************************************************************************
@@ -894,13 +899,14 @@ public class BioFabricNetwork {
     int numNodes = rowToTargID_.size();
     int numLinks = fullLinkDefs_.size();
     int numLm = nonShadowedLinkMap_.size();
-    int numNA = nodeAnnot_.size();
-    int numLA = linkAnnot_.size();
+    int numNA = (nodeAnnot_ == null) ? 0 : nodeAnnot_.size();
+    int numLAs = (linkAnnots_ == null) ? 0 : linkAnnots_.get(Boolean.TRUE).size();
+    int numLAns = (linkAnnots_ == null) ? 0 : linkAnnots_.get(Boolean.FALSE).size();
       
     out.println("<BioFabric>");
     ind.up();
     String label = (forCache) ? "progress.cachingCurrentNetwork" : "progress.writingFile";
-    LoopReporter lr = new LoopReporter(numNodes + numLinks + numLm + numNA + numLA , 20, monitor, 0.0, 1.0, label);   
+    LoopReporter lr = new LoopReporter(numNodes + numLinks + numLm + numNA + numLAs + numLAns , 20, monitor, 0.0, 1.0, label);   
     colGen_.writeXML(out, ind);
     
     //
@@ -995,9 +1001,11 @@ public class BioFabricNetwork {
     ind.indent();
     out.println("<nodeAnnotations>");
     ind.up();
-    for (AnnotationSet.Annot an : nodeAnnot_) {
-      lr.report();
-      an.writeXML(out, ind);
+    if (nodeAnnot_ != null) {
+      for (AnnotationSet.Annot an : nodeAnnot_) {
+        lr.report();
+        an.writeXML(out, ind);
+      }
     }
     ind.down().indent();
     out.println("</nodeAnnotations>");
@@ -1005,13 +1013,29 @@ public class BioFabricNetwork {
     ind.indent();
     out.println("<linkAnnotations>");
     ind.up();
-    for (AnnotationSet.Annot an : linkAnnot_) {
-      lr.report();
-      ind.indent();
-      an.writeXML(out, ind);
+    if (linkAnnots_ != null) {
+      for (AnnotationSet.Annot an : linkAnnots_.get(Boolean.FALSE)) {
+        lr.report();
+        ind.indent();
+        an.writeXML(out, ind);
+      }
     }
     ind.down().indent();
     out.println("</linkAnnotations>");
+    
+    ind.indent();
+    out.println("<shadowLinkAnnotations>");
+    ind.up();
+    if (linkAnnots_ != null) {
+      for (AnnotationSet.Annot an : linkAnnots_.get(Boolean.TRUE)) {
+        lr.report();
+        ind.indent();
+        an.writeXML(out, ind);
+      }
+    }
+    ind.down().indent();
+    out.println("</shadowLinkAnnotations>");
+
     lr.finish();
     ind.down().indent();
     out.println("</BioFabric>"); 
@@ -2789,8 +2813,9 @@ public class BioFabricNetwork {
       installWorker(new NodeInfoWorker(whiteboard), new MyNodeGlue());
       installWorker(new LinkInfoWorker(whiteboard), new MyLinkGlue());
       installWorker(new LinkGroupWorker(whiteboard), null);
-      installWorker(new AnnotationSet.AnnotsWorker(whiteboard, "nodeAnnotations"), new MyAnnotsGlue(true));
-      installWorker(new AnnotationSet.AnnotsWorker(whiteboard, "linkAnnotations"), new MyAnnotsGlue(false));
+      installWorker(new AnnotationSet.AnnotsWorker(whiteboard, "nodeAnnotations"), new MyAnnotsGlue(true, false));
+      installWorker(new AnnotationSet.AnnotsWorker(whiteboard, "linkAnnotations"), new MyAnnotsGlue(false, false));
+      installWorker(new AnnotationSet.AnnotsWorker(whiteboard, "shadowLinkAnnotations"), new MyAnnotsGlue(false, true));
     }
     
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
@@ -2816,19 +2841,20 @@ public class BioFabricNetwork {
   public static class MyAnnotsGlue implements GlueStick {
     
     private boolean forNodes_;
+    private boolean forShadow_;
     
-    public MyAnnotsGlue(boolean forNodes) {
-      forNodes_ = forNodes;  
+    public MyAnnotsGlue(boolean forNodes, boolean forShadow) {
+      forNodes_ = forNodes;
+      forShadow_ = forShadow;
     }
    
     public Object glueKidToParent(Object kidObj, AbstractFactoryClient parentWorker, 
                                   Object optionalArgs) throws IOException {
       FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard)optionalArgs;
       if (forNodes_) {
-        System.out.println("SETTING NODE ANNOTS " + board.currAnnots);
         board.bfn.setNodeAnnotations(board.currAnnots);
       } else {
-        board.bfn.setLinkAnnotations(board.currAnnots);
+        board.bfn.setLinkAnnotations(board.currAnnots, forShadow_);
       }
       return (null);
     }

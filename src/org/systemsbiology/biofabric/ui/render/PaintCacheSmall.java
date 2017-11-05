@@ -48,7 +48,7 @@ import org.systemsbiology.biofabric.util.QuadTree;
 
 /****************************************************************************
 **
-** This is the cache of simple paint objects. Foo!
+** This is the cache of simple paint objects.
 */
 
 public class PaintCacheSmall implements PaintCache {
@@ -508,11 +508,21 @@ public class PaintCacheSmall implements PaintCache {
     }
     
     int annotCount = 0;
-    for (AnnotationSet.Annot an : nodeAnnot) {
-      Color col = annotColors_[annotCount++ % annotColors_.length];
-      buildAnAnnotationRect(an.getRange(), an.getName(), col, true, nodeExtents, frc);
+    if (nodeAnnot != null) {
+      for (AnnotationSet.Annot an : nodeAnnot) {
+        Color col = annotColors_[annotCount++ % annotColors_.length];
+        buildAnAnnotationRect(an.getRange(), an.getName(), col, true, nodeExtents, frc);
+      }
     }
     
+    annotCount = 0;
+    if (linkAnnot != null) {
+      for (AnnotationSet.Annot an : linkAnnot) {
+        Color col = annotColors_[annotCount++ % annotColors_.length];
+        buildAnAnnotationRect(an.getRange(), an.getName(), col, false, linkExtents, frc);
+      }
+    }
+
     return;
   }
  
@@ -775,7 +785,6 @@ public class PaintCacheSmall implements PaintCache {
       int rectWidth = rectRight - rectLeft;
       int rectHeight = rectBot - rectTop;
       rect = new Rectangle(rectLeft, rectTop, rectWidth, rectHeight);
-      System.out.println("Annot Rect " + rect);
     } else {
       int rectLeft = dzmm.min * BioFabricPanel.GRID_SIZE;
       int rectRight = dzmm.max * BioFabricPanel.GRID_SIZE;

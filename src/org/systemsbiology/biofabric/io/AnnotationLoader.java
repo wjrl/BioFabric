@@ -32,11 +32,9 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.systemsbiology.biofabric.io.AttributeLoader.StringKey;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.model.BioFabricNetwork.LinkInfo;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.DataUtil;
@@ -110,7 +108,7 @@ public class AnnotationLoader {
         if (line.trim().equals("")) {
           continue;
         }
-        String[] tokens = lineToToks(line, stats);
+        String[] tokens = lineToToks(line, stats, forNodes);
         if (tokens != null) {
           tokSets.add(tokens);
         }
@@ -125,14 +123,14 @@ public class AnnotationLoader {
     int numLines = tokSets.size();
     lr = new LoopReporter(numLines, 20, monitor, 0.0, 1.0, "progress.buildingAnnotations");
     
-    AnnotationSet aSet = new AnnotationSet();
-    
+    Map<Boolean, AnnotationSet> retval = new HashMap<Boolean, AnnotationSet>();
+     
     if (forNodes) {
       //
 	    // Need to build a map from node name to row so we can build the Annotations. Invert
 	    // what we have:
 	    //
-	    
+      AnnotationSet aSet = new AnnotationSet();
 	    HashMap<NID.WithName, Integer> idToRow = new HashMap<NID.WithName, Integer>();
 	    int numNodes = bfn.getRowCount();
 	    for (int i = 0; i < numNodes; i++) {
@@ -144,49 +142,59 @@ public class AnnotationLoader {
 	      lr.report();
 	      consumeTokens(tokens, idToRow, nameToIDs, aSet, stats);
 	    }
-   
+	    retval.put(Boolean.FALSE, aSet);
+	    retval.put(Boolean.TRUE, aSet);   
     } else {  
     	
-    	Map<FabricLink, Integer> linkToColWithShadow = new HashMap<FabricLink, Integer>();
-    	List<BioFabricNetwork.LinkInfo> lis = bfn.getLinkDefList(true);
-      int numLinks = lis.size();
-	    for (int i = 0; i < numLinks; i++) {
-	    	BioFabricNetwork.LinkInfo li = lis.get(i);
-	    	linkToColWithShadow.put(li.getLink(), li.getUseColumn(true));
-	    }
-    	Map<FabricLink, Integer> linkToColNoShadow = new HashMap<FabricLink, Integer>();
-    	lis = bfn.getLinkDefList(false);
-      numLinks = lis.size();
-	    for (int i = 0; i < numLinks; i++) {
-	    	BioFabricNetwork.LinkInfo li = lis.get(i);
-	    	linkToColNoShadow.put(li.getLink(), li.getUseColumn(false));
-	    }
+      //
+      // Need to build a map from FabricLink to column so we can build the Annotations. Invert
+      // what we have:
+      //
+      
+    	Map<FabricLink, Integer> linkToColWithShadow = buildLinkToCol(bfn, true);
+    	Map<FabricLink, Integer> linkToColNoShadow = buildLinkToCol(bfn, false);
+    	Map<Boolean, Map<FabricLink, Integer>> linksToCols = new HashMap<Boolean, Map<FabricLink, Integer>>();
+    	linksToCols.put(Boolean.TRUE, linkToColWithShadow);
+    	linksToCols.put(Boolean.FALSE, linkToColNoShadow);
+    	 
+      AnnotationSet aSetShad = new AnnotationSet();
+      AnnotationSet aSet = new AnnotationSet();
+      retval.put(Boolean.TRUE, aSetShad);
+      retval.put(Boolean.FALSE, aSet);
     	
-      Pattern linkPat = Pattern.compile("(.*\\S) (.*)\\((.*)\\) (\\S.*)=(.*)"); 
+      Pattern linkPat = Pattern.compile("(.*\\S) (.*)\\((.*)\\) (\\S.*)"); 
       Matcher mainMatch = linkPat.matcher("");
     	for (int i = 0; i < numLines; i++) {
         String[] tokens = tokSets.get(i);
         lr.report();
-        consumeTokensForLink(tokens, linkToColNoShadow, nameToIDs, aSet, stats, mainMatch);
+        consumeTokensForLink(tokens, linksToCols, nameToIDs, retval, stats, mainMatch);
       }  	
     }
-    UiUtil.fixMePrintout("Gotta do both shadow and non-shadow");
-    UiUtil.fixMePrintout("Gotta check min < max");
-    lr.finish();
-    
-    Map<Boolean, AnnotationSet> retval = new HashMap<Boolean, AnnotationSet>();
-    retval.put(Boolean.FALSE, aSet);
-    retval.put(Boolean.TRUE, aSet);
-    
+    lr.finish();   
     return (retval);
   }
 
   /***************************************************************************
   ** 
+  ** Build link to col map
+  */
+  
+  private Map<FabricLink, Integer> buildLinkToCol(BioFabricNetwork bfn, boolean forShadows) {
+    Map<FabricLink, Integer> linkToCol = new HashMap<FabricLink, Integer>();
+    List<BioFabricNetwork.LinkInfo> lis = bfn.getLinkDefList(forShadows);
+    for (BioFabricNetwork.LinkInfo li : lis) {
+      linkToCol.put(li.getLink(), li.getUseColumn(forShadows));
+    }
+    return (linkToCol);
+  }
+   
+  /***************************************************************************
+  ** 
   ** Parse a line to tokens
   */
 
-  protected String[] lineToToks(String line, ReadStats stats) throws IOException {
+  protected String[] lineToToks(String line, ReadStats stats, boolean forNodes) throws IOException {
+    int expected = (forNodes) ? 4 : 5;
   	if (line.trim().equals("")) {
   		return (null);
   	}
@@ -197,9 +205,9 @@ public class AnnotationLoader {
     
     if (tokens.length == 0) {
       return (null);
-    } else if (tokens.length != 4) {
+    } else if (tokens.length != expected) {
       stats.badLine = line;
-      stats.errStr = "annotLoad.tooManyTokens";
+      stats.errStr = "annotLoad.incorrectTokenCount";
       throw new IOException();
     } else {        
       return (tokens);
@@ -211,10 +219,14 @@ public class AnnotationLoader {
   ** Consume tokens, make Annotations
   */
 
-  protected void consumeTokensForLink(String[] tokens, Map<FabricLink, Integer> linkToCol, 
-                                      Map<String, Set<NID.WithName>> nameToID, AnnotationSet aSet,
+  protected void consumeTokensForLink(String[] tokens, Map<Boolean, Map<FabricLink, Integer>> linksToCols, 
+                                      Map<String, Set<NID.WithName>> nameToID, 
+                                      Map<Boolean, AnnotationSet> aSets,
                                       ReadStats stats, Matcher mainMatch) throws IOException {
-    
+
+    boolean isShadow = tokens[4].trim().equalsIgnoreCase("isShadow");
+    Map<FabricLink, Integer> linkToCol = linksToCols.get(Boolean.valueOf(isShadow));
+ 
     int layer;
     try {
       layer = Integer.valueOf(tokens[3]).intValue();
@@ -257,8 +269,14 @@ public class AnnotationLoader {
     int min = minCol.intValue();
     int max = maxCol.intValue();
    
-    AnnotationSet.Annot annot = new AnnotationSet.Annot(name, min, max, layer);
-    aSet.addAnnot(annot);
+    try {
+      AnnotationSet.Annot annot = new AnnotationSet.Annot(name, min, max, layer);
+      aSets.get(Boolean.valueOf(isShadow)).addAnnot(annot);
+    } catch (IllegalArgumentException iaex) {
+      stats.badTok = tokens[1] + " " + tokens[2] + " " + tokens[3];
+      stats.errStr = "annotLoad.badAnnotDefinition";
+      throw new IOException();
+    }
     return;
   }
   
@@ -303,7 +321,8 @@ public class AnnotationLoader {
       throw new IOException();   
     }
     NID.WithName trgID = trgIDs.iterator().next();
-    FabricLink nextLink = new FabricLink(srcID, trgID, rel, isShadow);
+    UiUtil.fixMePrintout("NO! Cannot assume undirected");
+    FabricLink nextLink = new FabricLink(srcID, trgID, rel, isShadow, false);
     return (nextLink);
   }
 
@@ -315,9 +334,11 @@ public class AnnotationLoader {
   
   protected String stripQuotes(String inString) {
     String procString = inString.trim();
+    System.err.println(procString);
     if ((procString.indexOf("\"") == 0) && (procString.lastIndexOf("\"") == (procString.length() - 1))) {
       procString = procString.replaceAll("\"", "");
     }
+    System.err.println(procString);
     return (procString);
   }
   
@@ -357,8 +378,14 @@ public class AnnotationLoader {
     int min = nameToRow(startNode, idToRow, nameToID, stats);  
     int max = nameToRow(endNode, idToRow, nameToID, stats);
    
-    AnnotationSet.Annot annot = new AnnotationSet.Annot(name, min, max, layer);
-    aSet.addAnnot(annot);
+    try {
+      AnnotationSet.Annot annot = new AnnotationSet.Annot(name, min, max, layer);
+      aSet.addAnnot(annot);
+    } catch (IllegalArgumentException iaex) {
+      stats.badTok = tokens[1] + " " + tokens[2] + " " + tokens[3];
+      stats.errStr = "annotLoad.badAnnotDefinition";
+      throw new IOException();
+    }
     return;
   }
 

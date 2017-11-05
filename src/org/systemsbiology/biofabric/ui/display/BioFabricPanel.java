@@ -1220,7 +1220,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), shadeNodes, 
                            showShadows, new HashMap<NID.WithName, Rectangle2D>(), 
                            new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_, 
-                           bfn_.getNodeAnnotations(), bfn_.getLinkAnnotations(), monitor);
+                           bfn_.getNodeAnnotations(), bfn_.getLinkAnnotations(Boolean.valueOf(showShadows)), monitor);
     handleFloaterChange();
     return;
   }
@@ -1253,7 +1253,7 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), 
     		                   shadeNodes, showShadows, nodeNameLocations_, 
     		                   drainNameLocations_, worldRectNetAR_, 
-    		                   bfn_.getNodeAnnotations(), bfn_.getLinkAnnotations(), monitor);
+    		                   bfn_.getNodeAnnotations(), bfn_.getLinkAnnotations(Boolean.valueOf(showShadows)), monitor);
     bucketRend_.buildBucketCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), showShadows);
       
     LoopReporter lr = new LoopReporter(drainNameLocations_.size(), 20, monitor, 0.0, 1.0, "progress.drainsToQuad");

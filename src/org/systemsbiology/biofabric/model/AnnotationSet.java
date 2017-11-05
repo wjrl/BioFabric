@@ -82,13 +82,13 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
     private MinMax range_;
     private int layer_;
    
-    public Annot(String tag, int startRow, int endRow, int layer) {
-      if ((startRow > endRow) || (layer < 0)) {
-        System.err.println(tag + " start after end "  + startRow + " " + endRow);
+    public Annot(String tag, int startPos, int endPos, int layer) {
+      if ((startPos > endPos) || (layer < 0)) {
+        System.err.println(tag + " start after end "  + startPos + " " + endPos);
         throw new IllegalArgumentException();
       }
       tag_ = tag;
-      range_ = new MinMax(startRow, endRow);
+      range_ = new MinMax(startPos, endPos);
       layer_ = layer;
     }
     

@@ -2888,7 +2888,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       if (aSet == null) {
         return (true);
       }
-      bfp_.getNetwork().setLinkAnnotations(aSet.get(Boolean.TRUE));
+      bfp_.getNetwork().setLinkAnnotations(aSet.get(Boolean.TRUE), true);
+      bfp_.getNetwork().setLinkAnnotations(aSet.get(Boolean.FALSE), false);
       File holdIt;  
       try {
         holdIt = File.createTempFile("BioFabricHold", ".zip");
