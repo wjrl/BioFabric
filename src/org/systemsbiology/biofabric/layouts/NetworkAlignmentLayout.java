@@ -25,6 +25,7 @@ import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -264,8 +265,16 @@ public class NetworkAlignmentLayout extends NodeLayout {
     
     targets.addAll(classToGroup.get(PURPLE_SINGLETON));
     for (int i = 1; i < NUMBER_NODE_GROUPS; i++) {
-      for (NID.WithName node : targetsGroup.get(i)) {
+      List<NID.WithName> get = targetsGroup.get(i);
+//      if (!get.isEmpty()) {
+//        System.out.println("NG " + i);
+//      }
+      for (int k = 0; k < get.size(); k++) {
+        NID.WithName node = get.get(k);
         targets.add(node);
+//        if (k == 0 || k == get.size() - 1) {
+//          System.out.println(node.getName());
+//        }
       }
     }
     targets.addAll(classToGroup.get(RED_SINGLETON));
@@ -274,6 +283,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       throw new IllegalStateException("target size not equal to all-nodes size");
     }
     
+    UiUtil.fixMePrintout("Loop Reporter all messed up in NetworkAlignmentLayout.FlushQueue");
     return (targets);
   }
   
@@ -500,6 +510,18 @@ public class NetworkAlignmentLayout extends NodeLayout {
     
     int getNodeGroup(NID.WithName node) {
       
+//      if (node.getName().equals("PHM8") ||
+//              node.getName().equals("ATM1")||
+//      node.getName().equals("PUT1")||
+//      node.getName().equals("CTM1")||
+//      node.getName().equals("SBE2")){
+//
+//      }
+//
+//      if (!nodeToLinks_.containsKey(node)) {
+//        System.out.println("Node error:" + node);
+//      }
+      
       if (purpleSingleton(node)) {
         return PURPLE_SINGLETON;
         
@@ -561,7 +583,11 @@ public class NetworkAlignmentLayout extends NodeLayout {
         return RED_SINGLETON;
         
       } else {
+//        System.out.println(node.getName() + "  " + nodeToLinks_.get(node).size());
+//        return RED_SINGLETON;
+//        System.out.println(node + "  " + nodeToLinks_.get(node).size());
         throw new IllegalArgumentException("Node group not found");
+//        return RED_SINGLETON;
       }
     }
     
@@ -801,7 +827,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       }
       return (true);
     }
-  
+    
     /*******************************************************************
      **
      ** Identifies Aligned Nodes if they have a dash ('-') in name:
@@ -809,7 +835,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
      */
     
     boolean isPurple(NID.WithName node) {
-      
+      UiUtil.fixMePrintout("FIX ME:find way to identify aligned nodes besides having dash in name");
       return node.getName().contains("-"); // THERE IS DEFINETLY A BETTER WAY TO DO THIS
     }
     
@@ -926,91 +952,66 @@ public class NetworkAlignmentLayout extends NodeLayout {
   
 }
 
-/*
-// LINK GROUP 1, 2 , 3
-      if (PURPLE_WITH_ONLY_PURPLE(node)) {
-              err.add(1);
-          
-              }
-        
-              if (PURPLE_WITH_ONLY_BLUE(node)){
-              err.add(2);
-          
-          
-              } if (PURPLE_WITH_ONLY_RED(node)) {
-              err.add(3);
-          
-          
-              }  if (PURPLE_WITH_PURPLE_BLUE(node)) {
-              err.add(4);
-          
-              }  if (PURPLE_WITH_PURPLE_RED(node)) {
-              err.add(5);
-          
-          
-              }  if (PURPLE_WITH_BLUE_RED(node)) {
-              err.add(6);
-          
-          
-              }  if (PURPLE_WITH_PURPLE_BLUE_RED(node)) {
-              err.add(7);
-        
-        
-              // LINK GROUP 4
-              }  if (PURPLE_WITH_ONLY_ORANGE(node)) {
-              err.add(8);
-          
-          
-              } if (PURPLE_WITH_PURPLE_ORANGE(node)) {
-              err.add(9);
-          
-              }  if (PURPLE_WITH_BLUE_ORANGE(node)) {
-              err.add(10);
-          
-          
-              }  if (PURPLE_WITH_RED_ORANGE(node)) {
-              err.add(11);
-          
-          
-              }  if (PURPLE_WITH_PURPLE_BLUE_ORANGE(node)) {
-              err.add(12);
-          
-          
-              }  if (PURPLE_WITH_PURPLE_RED_ORANGE(node)) {
-              err.add(13);
-          
-          
-              }  if (PURPLE_WITH_BLUE_RED_ORANGE(node)) {
-              err.add(14);
-          
-          
-              }  if (PURPLE_WITH_PURPLE_BLUE_RED_ORANGE(node)) {
-              err.add(15);
-          
-          
-              }  if (RED_WITH_ORANGE(node)) {
-              err.add(16);
-        
-        
-              // LINK GROUP 5
-              }  if (RED_WITH_ONLY_YELLOW(node)) {
-              err.add(17);
-          
-          
-              }  if (redWithOrangeYellow(node)) {
-              err.add(18);
-          
-          
-              }  if (PURPLE_SINGLETON(node)) {
-              err.add(19);
-          
-          
-              }  if (RED_SINGLETON(node)) {
-              err.add(20);
-
-
-//      } else {
-//        System.out.println(node.getName());
-//        throw new IllegalArgumentException();
-              }
-              */
+//if (purpleSingleton(node)) {
+//        return PURPLE_SINGLETON;
+//
+//        } else if (purpleWithOnlyPurple(node)) {
+//        return PURPLE_WITH_ONLY_PURPLE;
+//
+//        } else if (purpleWithPurpleBlue(node)) {
+//        return PURPLE_WITH_PURPLE_BLUE;
+//
+//        } else if (purpleWithPurpleBlueRed(node)) {
+//        return PURPLE_WITH_PURPLE_BLUE_RED;
+//
+//        } else if (purpleWithPurpleRed(node)) {
+//        return PURPLE_WITH_PURPLE_RED;
+//
+//        } else if (purpleWithOnlyRed(node)) {
+//        return PURPLE_WITH_ONLY_RED;
+//
+//        } else if (purpleWithBlueRed(node)) {
+//        return PURPLE_WITH_BLUE_RED;
+//
+//        } else if (purpleWithOnlyBlue(node)) {
+//        return PURPLE_WITH_ONLY_BLUE;
+//
+//        } else if (purpleWithBlueOrange(node)) {
+//        return PURPLE_WITH_BLUE_ORANGE;
+//
+//        } else if (purpleWithOnlyOrange(node)) {
+//        return PURPLE_WITH_ONLY_ORANGE;
+//
+//        } else if (purpleWithPurpleOrange(node)) {
+//        return PURPLE_WITH_PURPLE_ORANGE;
+//
+//        } else if (purpleWithPurpleBlueOrange(node)) {
+//        return PURPLE_WITH_PURPLE_BLUE_ORANGE;
+//
+//        } else if (purpleWithPurpleBlueRedOrange(node)) {
+//        return PURPLE_WITH_PURPLE_BLUE_RED_ORANGE;
+//
+//        } else if (purpleWithPurpleRedOrange(node)) {
+//        return PURPLE_WITH_PURPLE_RED_ORANGE;
+//
+//        } else if (purpleWithRedOrange(node)) {
+//        return PURPLE_WITH_RED_ORANGE;
+//
+//        } else if (purpleWithBlueRedOrange(node)) {
+//        return PURPLE_WITH_BLUE_RED_ORANGE;
+//
+//        } else if (redWithOnlyOrange(node)) {
+//        return RED_WITH_ORANGE;
+//
+//        } else if (redWithOrangeYellow(node)) {
+//        return RED_WITH_ORANGE_YELLOW;
+//
+//        } else if (redWithOnlyYellow(node)) {
+//        return RED_WITH_ONLY_YELLOW;
+//
+//        } else if (redSingleton(node)) {
+//        return RED_SINGLETON;
+//
+//        } else {
+//        throw new IllegalArgumentException("Node group not found");
+//        }

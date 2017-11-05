@@ -944,6 +944,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     ArrayList<FabricLink> linksGraphA = new ArrayList<FabricLink>();
     HashSet<NID.WithName> lonersGraphA = new HashSet<NID.WithName>();
     
+    UiUtil.fixMePrintout("distinguish .gw from .sif files");
+    
     loadFromGWSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
   
     ArrayList<FabricLink> linksGraphB = new ArrayList<FabricLink>();
@@ -976,8 +978,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     HashSet<NID.WithName> lonersLarge = new HashSet<NID.WithName>();
   
     try {
-      
-      int numNodesA = BioFabricNetwork.extractNodes(linksGraphA, loneNodeIDsGraphA, null).size(); // CAN I PUT NULL AS THE MONITOR??
+      // CAN I PUT NULL AS THE MONITOR??
+      int numNodesA = BioFabricNetwork.extractNodes(linksGraphA, loneNodeIDsGraphA, null).size();
       int numNodesB = BioFabricNetwork.extractNodes(linksGraphB, loneNodeIDsGraphB, null).size();
       
       if (numNodesA > numNodesB) { // We compare #nodes
@@ -991,10 +993,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         linksSmall = linksGraphA;
         lonersSmall = loneNodeIDsGraphA;
       } else { // now we compare #links
-        
+
+        UiUtil.fixMePrintout("figure out G1/G2 from .align if networks have same # of nodes");
         int numLinksA = linksGraphA.size();
         int numLinksB = linksGraphB.size();
-        
+
         if (numLinksA >= numLinksB) { // if #links are still equal, we do choose graphA as larger
           linksLarge = linksGraphA;   // We don't take the alignment file into consideration. . .
           lonersLarge = loneNodeIDsGraphA;

@@ -21,6 +21,7 @@ package org.systemsbiology.biofabric.io;
 
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
 
 import java.io.IOException;
@@ -163,6 +164,10 @@ public class GWImportLoader extends FabricImportLoader {
       
       sourceName = stripBrackets(sourceName);
       targetName = stripBrackets(targetName);
+      
+      sourceName = sourceName.replaceAll("-","_");
+      targetName = targetName.replaceAll("-","_");
+      UiUtil.fixMePrintout("Auto-replacing dashes with underscores in .gw files");
   
       NID.WithName srcID = nameToNode(sourceName, idGen, nameToID);
       NID.WithName trgID = nameToNode(targetName, idGen, nameToID);

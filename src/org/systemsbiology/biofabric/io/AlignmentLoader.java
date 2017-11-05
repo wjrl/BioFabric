@@ -21,6 +21,7 @@ package org.systemsbiology.biofabric.io;
 
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -95,10 +96,28 @@ public class AlignmentLoader {
       //
   
       String strNameG1 = st.nextToken(), strNameG2 = st.nextToken();
+  
+      strNameG1 = strNameG1.replaceAll("-","_");
+      strNameG2 = strNameG2.replaceAll("-","_");
+      UiUtil.fixMePrintout("Auto-replacing dashes with underscores in .align files");
      
-      if (!(G1nameToNID.containsKey(strNameG1) && G2nameToNID.containsKey(strNameG2))) {
-        throw new IOException("Incorrect node(s) or node names");
+      boolean existsInG1 = G1nameToNID.containsKey(strNameG1),
+              existsInG2 = G2nameToNID.containsKey(strNameG2);
+//      if (!existsInG1) {
+//        System.out.println("Not in G1 " + strNameG1);
+//      }
+//      if (!existsInG2) {
+//        System.out.println("Not in G2 " + strNameG2);
+//      }
+      
+      if (!(existsInG1 && existsInG2)) {
+        System.out.println("Load error: " + strNameG1 + "  " + strNameG2);
+        throw new IOException("Incorrect node names or nodes do not exist in graph files");
       }
+//      if (!(G1nameToNID.containsKey(strNameG1) && G2nameToNID.containsKey(strNameG2))) {
+//
+//        throw new IOException("Incorrect node(s) or node names");
+//      }
       
       NID.WithName nodeG1 = G1nameToNID.get(strNameG1), nodeG2 = G2nameToNID.get(strNameG2);
       
@@ -113,6 +132,18 @@ public class AlignmentLoader {
         mapG1ToG2.put(nodeG1, nodeG2);
       }
     }
+  
+//    System.out.println("size of map: " +mapG1ToG2.size() + "  size of G1: " + G1nameToNID.size());
+//
+//    Set<String> g1 = G1nameToNID.keySet(), map = new HashSet<String>();
+//
+//    for (NID.WithName n : mapG1ToG2.keySet()) {
+//      map.add(n.getName());
+//    }
+//
+//    g1.removeAll(map);
+//    System.out.println("G1 removed map: "+g1);
+    
     
     if (mapG1ToG2.size() != G1nameToNID.size()) {
       throw new IOException("Incomplete node mapping");
