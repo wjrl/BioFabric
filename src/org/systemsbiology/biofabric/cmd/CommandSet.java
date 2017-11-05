@@ -243,6 +243,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public static final int LOAD_WITH_EDGE_WEIGHTS       = 53;
   public static final int LOAD_NETWORK_ALIGNMENT       = 54;
   public static final int ADD_NODE_ANNOTATIONS         = 55;
+  public static final int ADD_LINK_ANNOTATIONS         = 56;
  
   public static final int GENERAL_PUSH   = 0x01;
   public static final int ALLOW_NAV_PUSH = 0x02;
@@ -559,6 +560,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           break;
         case ADD_NODE_ANNOTATIONS:
           retval = new AddNodeAnnotations(withIcon); 
+          break;
+        case ADD_LINK_ANNOTATIONS:
+          retval = new AddLinkAnnotations(withIcon); 
           break;
         default:
           throw new IllegalArgumentException();
@@ -1407,11 +1411,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   ** Load an annotation file
   */
      
-  public AnnotationSet loadAnnotations(File file) {
+  public Map<Boolean, AnnotationSet> loadAnnotations(File file, boolean forNodes) {
     AnnotationLoader.ReadStats stats = new AnnotationLoader.ReadStats();
     try {         
       AnnotationLoader alod = new AnnotationLoader();
-      AnnotationSet aSet = alod.readAnnotations(file, stats, bfp_.getNetwork(), null);
+      Map<Boolean, AnnotationSet> aSet = alod.readAnnotations(file, stats, forNodes, bfp_.getNetwork(), null);
       FabricCommands.setPreference("AnnotDirectory", file.getAbsoluteFile().getParent());
       return (aSet);
     } catch (IOException ioe) {
@@ -2817,11 +2821,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       if (file == null) {
         return (true);
       }
-      AnnotationSet aSet = loadAnnotations(file);
+      Map<Boolean, AnnotationSet> aSet = loadAnnotations(file, true);
       if (aSet == null) {
         return (true);
       }
-      bfp_.getNetwork().setNodeAnnotations(aSet);
+      bfp_.getNetwork().setNodeAnnotations(aSet.get(Boolean.TRUE));
       File holdIt;  
       try {
         holdIt = File.createTempFile("BioFabricHold", ".zip");
@@ -2842,6 +2846,73 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
   }
  
+  
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+   
+  private class AddLinkAnnotations extends ChecksForEnabled  {
+    
+    private static final long serialVersionUID = 1L;
+    
+    AddLinkAnnotations(boolean doIcon) {
+      
+      ResourceManager rMan = ResourceManager.getManager(); 
+      putValue(Action.NAME, rMan.getString("command.AddLinkAnnotations"));
+      if (doIcon) {
+        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.AddLinkAnnotations"));
+        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/FIXME24.gif");  
+        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
+      } else {
+        char mnem = rMan.getChar("command.AddLinkAnnotationsMnem"); 
+        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
+      }
+    } 
+    
+    public void actionPerformed(ActionEvent e) {
+      try {
+        performOperation();
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }      
+      return;
+    }
+
+    protected boolean performOperation() {
+      File file = getTheFile(".tsv", null, "AnnotDirectory", "filterName.tsv");
+      if (file == null) {
+        return (true);
+      }
+      Map<Boolean, AnnotationSet> aSet = loadAnnotations(file, false);
+      if (aSet == null) {
+        return (true);
+      }
+      bfp_.getNetwork().setLinkAnnotations(aSet.get(Boolean.TRUE));
+      File holdIt;  
+      try {
+        holdIt = File.createTempFile("BioFabricHold", ".zip");
+        holdIt.deleteOnExit();
+      } catch (IOException ioex) {
+        holdIt = null;
+      }
+
+      NetworkRecolor nb = new NetworkRecolor(); 
+      nb.doNetworkRecolor(isForMain_, holdIt);
+      
+      return (true);
+    }
+    
+    @Override
+    protected boolean checkGuts() {
+      return (bfp_.hasAModel() && (bfp_.getNetwork().getLinkCount(true) != 0));
+    }
+  }
+  
+  
+  
+  
+  
   /***************************************************************************
   **
   ** Command
