@@ -1,3 +1,4 @@
+
 /*
 **    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
@@ -508,9 +509,11 @@ public class PaintCacheSmall implements PaintCache {
     }
     
     int annotCount = 0;
-    for (AnnotationSet.Annot an : nodeAnnot) {
-      Color col = annotColors_[annotCount++ % annotColors_.length];
-      buildAnAnnotationRect(an.getRange(), an.getName(), col, true, nodeExtents, frc);
+    if (nodeAnnot != null) {
+      for (AnnotationSet.Annot an : nodeAnnot) {
+        Color col = annotColors_[annotCount++ % annotColors_.length];
+        buildAnAnnotationRect(an.getRange(), an.getName(), col, true, nodeExtents, frc);
+      }
     }
     
     return;
