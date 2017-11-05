@@ -48,7 +48,7 @@ import org.systemsbiology.biofabric.util.QuadTree;
 
 /****************************************************************************
 **
-** This is the cache of simple paint objects
+** This is the cache of simple paint objects. Foo!
 */
 
 public class PaintCacheSmall implements PaintCache {

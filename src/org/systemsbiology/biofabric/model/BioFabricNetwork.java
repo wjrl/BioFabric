@@ -69,7 +69,7 @@ import org.systemsbiology.biofabric.util.UniqueLabeller;
 
 /****************************************************************************
 **
-** This is the Network model
+** This is the Network model. Foo!
 */
 
 public class BioFabricNetwork {
