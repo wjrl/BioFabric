@@ -83,7 +83,8 @@ public interface PaintCache {
   */
   
   public void buildObjCache(List<BioFabricNetwork.NodeInfo> targets, List<BioFabricNetwork.LinkInfo> links, 
-                            boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
+                            boolean shadeNodes, boolean showShadows, BioFabricNetwork.Extents ext, 
+                            Map<NID.WithName, Rectangle2D> nameMap, 
                             Map<NID.WithName, List<Rectangle2D>> drainMap, Rectangle2D worldRect,
                             AnnotationSet nodeAnnot, AnnotationSet linkAnnot,
                             BTProgressMonitor monitor) throws AsynchExitRequestException;

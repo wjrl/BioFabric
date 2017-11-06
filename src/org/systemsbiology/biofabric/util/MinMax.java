@@ -141,7 +141,7 @@ public class MinMax implements Cloneable, Comparable<MinMax> {
     min = Integer.MAX_VALUE;
     max = Integer.MIN_VALUE;
     return (this);
-  }     
+  }
   
   public MinMax update(int newVal) {
     if (newVal < min) {
