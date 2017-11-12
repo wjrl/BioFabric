@@ -2,3 +2,8 @@
 .gitignore
 .idea/
 BioFabric.iml
+/bin/
+.DS_Store
+.classpath
+.project
+

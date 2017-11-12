@@ -262,7 +262,7 @@ public class FabricSearchDialog extends JDialog {
     result_ = bfn_.nodeMatches(matchType == FULL_MATCH_, search);
     if (result_.isEmpty()) { 
       ResourceManager rMan = ResourceManager.getManager();
-      JOptionPane.showMessageDialog(parent_, rMan.getString("nsearch.noMatchMessage"),
+      JOptionPane.showMessageDialog(this, rMan.getString("nsearch.noMatchMessage"),
                                       rMan.getString("nsearch.noMatchTitle"),
                                       JOptionPane.WARNING_MESSAGE);
       return (false);

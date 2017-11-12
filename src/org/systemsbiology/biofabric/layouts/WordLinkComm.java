@@ -52,7 +52,7 @@ import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
-** Do BioFabric cluster layout
+** Do layout that creates edge communities
 */
 
 public class WordLinkComm {
@@ -75,7 +75,6 @@ public class WordLinkComm {
   //
   ////////////////////////////////////////////////////////////////////////////
 
- 
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTRUCTORS

@@ -548,6 +548,16 @@ public class UiUtil {
     return;
   }
   
+  /***************************************************************************
+  **
+  ** Get center
+  */
+  
+  public static Point2D getRectCenter(Rectangle rect) {
+    double x = rect.getX() + (rect.getWidth() / 2.0);
+    double y = rect.getY() + (rect.getHeight() / 2.0);    
+    return (new Point2D.Double(x, y));
+  }
   
   /***************************************************************************
   **

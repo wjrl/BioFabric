@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -37,7 +37,7 @@ import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.render.PaintCache;
-import org.systemsbiology.biofabric.ui.render.PaintCacheFast;
+import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
 import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
@@ -67,7 +67,8 @@ public class FabricMagnifier extends JPanel {
   private int miniSize_;
   private boolean needInit_;
   private PaintCache painter_;
- // private PaintCache selectionPainter_;
+  private PaintCache selectionPainter_;
+  private PaintCache.Reduction selections_;
   private AffineTransform miniTrans_;
   private Rectangle worldRec_;
   private Rectangle clipRec_;
@@ -104,7 +105,8 @@ public class FabricMagnifier extends JPanel {
     centerRC_ = new Point(0, 0);
     miniTrans_ = new AffineTransform();
     setBackground(Color.white);
-    painter_ = new PaintCacheFast(colGen);
+    painter_ = new PaintCacheSmall(colGen);
+    selectionPainter_ = new PaintCacheSmall(colGen);
     floaters_ = null;
     worldRec_ = new Rectangle();
     clipRec_= new Rectangle();
@@ -116,6 +118,16 @@ public class FabricMagnifier extends JPanel {
   //
   ////////////////////////////////////////////////////////////////////////////
 
+  /***************************************************************************
+  **
+  ** Set current selections
+  */
+
+  public void setSelections(PaintCache.Reduction selections) {
+    selections_ = selections;
+    return;
+  } 
+  
   /***************************************************************************
   **
   ** Set the current floater
@@ -392,7 +404,7 @@ public class FabricMagnifier extends JPanel {
 
   public void setPainters(PaintCache painter, PaintCache selectionPainter) {
     painter_ = painter;
- //   selectionPainter_ = selectionPainter;
+    selectionPainter_ = selectionPainter;
     repaint();
     return;
   }
@@ -416,12 +428,12 @@ public class FabricMagnifier extends JPanel {
     g2.transform(miniTrans_);
     BasicStroke selectedStroke = new BasicStroke(PaintCache.STROKE_SIZE, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
     g2.setStroke(selectedStroke);
-    painter_.paintIt(g2, clipRec_, false, null);
+    painter_.paintIt(g2, clipRec_, null);
     g2.setTransform(saveTrans);
- //   if (selectionPainter_.needToPaint()) {
-    	UiUtil.fixMePrintout("THIS IS NEEDED");
-  //    drawSelections(g2, clipRec_);
-  //  }    
+    
+    if ((selections_ != null) && selections_.somethingToPaint()) {
+      drawSelections(g2, clipRec_);
+    }
     if (floaters_ != null) {
       g2.transform(miniTrans_);
       painter_.drawFloater(g2, floaters_); 
@@ -454,7 +466,7 @@ public class FabricMagnifier extends JPanel {
     ig2.setStroke(selectedStroke);
     ig2.setTransform(miniTrans_);
     ig2.setComposite(AlphaComposite.Src);
-   // selectionPainter_.paintIt(ig2, clip, false);
+    selectionPainter_.paintIt(ig2, clip, selections_);
     g2.drawImage(bim_, 0, 0, viewDim.width, viewDim.height, null);
     return;
   } 

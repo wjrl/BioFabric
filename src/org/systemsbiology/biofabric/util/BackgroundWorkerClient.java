@@ -53,7 +53,6 @@ public class BackgroundWorkerClient {
   private String waitMsg_;
   private BackgroundWorkerControlManager suw_;
   private JFrame topWindow_;
-  private UndoSupport support_;
   private boolean allowCancels_;
   private boolean cancelRequested_;
   private JLabel cancellingMessage_;
@@ -67,7 +66,7 @@ public class BackgroundWorkerClient {
   
   public BackgroundWorkerClient(BackgroundWorkerOwner owner, BackgroundWorker worker, 
                                 JFrame topWindow, BackgroundWorkerControlManager suw, String waitTitle, 
-                                String waitMsg, UndoSupport support, boolean allowCancels) {
+                                String waitMsg, boolean allowCancels) {
       
     done_ = false;
     worker_ = worker;
@@ -76,7 +75,6 @@ public class BackgroundWorkerClient {
     waitMsg_ = waitMsg;
     suw_ = suw;
     topWindow_ = topWindow;
-    support_ = support;
     allowCancels_ = allowCancels;
     cancelRequested_ = false;
     isHeadless_ = false;
@@ -91,7 +89,7 @@ public class BackgroundWorkerClient {
   // For headless operation ON THE CALLING THREAD
   //
   
-  public BackgroundWorkerClient(BackgroundWorkerOwner owner, BackgroundWorker worker, UndoSupport support) {
+  public BackgroundWorkerClient(BackgroundWorkerOwner owner, BackgroundWorker worker) {
     
  
     done_ = false;
@@ -101,7 +99,6 @@ public class BackgroundWorkerClient {
     waitMsg_ = null;
     suw_ = null;
     topWindow_ = null;
-    support_ = support;
     allowCancels_ = false;
     cancelRequested_ = false;
     isHeadless_ = true;
@@ -283,9 +280,6 @@ public class BackgroundWorkerClient {
     }
     try {
       UiUtil.fixMePrintout("NO! If IO ERROR, DO NOT CLOSE, RIGHT??");
-      if (support_ != null) {
-        support_.finish();
-      }
       if (progressDialog_ != null) {
         progressDialog_.setVisible(false);
         progressDialog_.dispose();
@@ -313,10 +307,6 @@ public class BackgroundWorkerClient {
     try {
       if (!allowCancels_) {
         throw new IllegalStateException();
-      }
-      // rollback the changes on the UI thread!
-      if (support_ != null) {
-        support_.rollback();
       }
       if (progressDialog_ != null) {
         progressDialog_.setVisible(false);

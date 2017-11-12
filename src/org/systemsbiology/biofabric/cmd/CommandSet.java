@@ -92,6 +92,7 @@ import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.event.SelectionChangeListener;
 import org.systemsbiology.biofabric.io.AlignmentLoader;
+import org.systemsbiology.biofabric.io.AnnotationLoader;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.io.FabricImportLoader;
@@ -104,6 +105,8 @@ import org.systemsbiology.biofabric.layouts.ControlTopLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.EdgeLayout;
 import org.systemsbiology.biofabric.layouts.LayoutCriterionFailureException;
+
+import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.parser.ParserClient;
@@ -240,6 +243,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public static final int WORLD_BANK_LAYOUT            = 52;
   public static final int LOAD_WITH_EDGE_WEIGHTS       = 53;
   public static final int LOAD_NETWORK_ALIGNMENT       = 54;
+  public static final int ADD_NODE_ANNOTATIONS         = 55;
+  public static final int ADD_LINK_ANNOTATIONS         = 56;
  
   public static final int GENERAL_PUSH   = 0x01;
   public static final int ALLOW_NAV_PUSH = 0x02;
@@ -553,6 +558,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           break;
         case WORLD_BANK_LAYOUT:
           retval = new WorldBankLayoutAction(withIcon); 
+          break;
+        case ADD_NODE_ANNOTATIONS:
+          retval = new AddNodeAnnotations(withIcon); 
+          break;
+        case ADD_LINK_ANNOTATIONS:
+          retval = new AddLinkAnnotations(withIcon); 
           break;
         default:
           throw new IllegalArgumentException();
@@ -1416,6 +1427,35 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
 
   /***************************************************************************
   **
+  ** Load an annotation file
+  */
+     
+  public Map<Boolean, AnnotationSet> loadAnnotations(File file, boolean forNodes) {
+    AnnotationLoader.ReadStats stats = new AnnotationLoader.ReadStats();
+    try {         
+      AnnotationLoader alod = new AnnotationLoader();
+      Map<Boolean, AnnotationSet> aSet = alod.readAnnotations(file, stats, forNodes, bfp_.getNetwork(), null);
+      FabricCommands.setPreference("AnnotDirectory", file.getAbsoluteFile().getParent());
+      return (aSet);
+    } catch (IOException ioe) {
+      if (stats.errStr != null) {
+        ResourceManager rMan = ResourceManager.getManager();
+        JOptionPane.showMessageDialog(topWindow_, rMan.getString("attribRead.IOException"),
+                                      rMan.getString("attribRead.IOExceptionTitle"),
+                                      JOptionPane.ERROR_MESSAGE);
+        return (null);
+      } else {
+        displayFileInputError(ioe);
+        return (null);              
+      }  
+    } catch (AsynchExitRequestException aerex) {
+      UiUtil.fixMePrintout("Do this read on background thread");
+      return (null);
+    }
+  }
+  
+  /***************************************************************************
+  **
   ** Load the file. Map keys are strings or Links
   */
      
@@ -1523,8 +1563,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     // Possibly expensive display object creation:
     bfp_.installModel(bfn, monitor); 
     // Very expensive display buffer creation:
-    int[] preZooms = BufferBuilder.calcImageZooms(bfn);
-    bfp_.zoomForBuf(preZooms, screenSize);
+    int[] preZooms = bfp_.calcZoomSettings(screenSize);
     BufferedImage topImage = null;
     if (forMain) {
       BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
@@ -1549,9 +1588,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     screenSize.setSize((int)(screenSize.getWidth() * 0.8), (int)(screenSize.getHeight() * 0.4));
     colGen_.newColorModel();
     bfp_.changePaint(monitor);
-    BioFabricNetwork bfn = bfp_.getNetwork();
-    int[] preZooms = BufferBuilder.calcImageZooms(bfn);
-    bfp_.zoomForBuf(preZooms, screenSize);
+    int[] preZooms = bfp_.calcZoomSettings(screenSize);
     BufferedImage topImage = null;
     if (forMain) {
       BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
@@ -1583,7 +1620,6 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public void postLoadOperations(BufferedImage topImage) {
     topWindow_.getOverview().installImage(topImage, bfp_.getWorldScreen());
     bfp_.installModelPost();
-    bfp_.installZooms();
     bfp_.initZoom();
     checkForChanges();
     bfp_.repaint();
@@ -2766,6 +2802,136 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       return (bfp_.hasAModel() && (bfp_.getNetwork().getLinkCount(true) != 0));
     }
   }      
+  
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+   
+  private class AddNodeAnnotations extends ChecksForEnabled  {
+    
+    private static final long serialVersionUID = 1L;
+    
+    AddNodeAnnotations(boolean doIcon) {
+      
+      ResourceManager rMan = ResourceManager.getManager(); 
+      putValue(Action.NAME, rMan.getString("command.AddNodeAnnotations"));
+      if (doIcon) {
+        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.AddNodeAnnotations"));
+        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/FIXME24.gif");  
+        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
+      } else {
+        char mnem = rMan.getChar("command.AddNodeAnnotationsMnem"); 
+        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
+      }
+    } 
+    
+    public void actionPerformed(ActionEvent e) {
+      try {
+        performOperation();
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }      
+      return;
+    }
+
+    protected boolean performOperation() {
+      File file = getTheFile(".tsv", null, "AnnotDirectory", "filterName.tsv");
+      if (file == null) {
+        return (true);
+      }
+      Map<Boolean, AnnotationSet> aSet = loadAnnotations(file, true);
+      if (aSet == null) {
+        return (true);
+      }
+      bfp_.getNetwork().setNodeAnnotations(aSet.get(Boolean.TRUE));
+      File holdIt;  
+      try {
+        holdIt = File.createTempFile("BioFabricHold", ".zip");
+        holdIt.deleteOnExit();
+      } catch (IOException ioex) {
+        holdIt = null;
+      }
+
+      NetworkRecolor nb = new NetworkRecolor(); 
+      nb.doNetworkRecolor(isForMain_, holdIt);
+      
+      return (true);
+    }
+    
+    @Override
+    protected boolean checkGuts() {
+      return (bfp_.hasAModel() && (bfp_.getNetwork().getLinkCount(true) != 0));
+    }
+  }
+ 
+  
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+   
+  private class AddLinkAnnotations extends ChecksForEnabled  {
+    
+    private static final long serialVersionUID = 1L;
+    
+    AddLinkAnnotations(boolean doIcon) {
+      
+      ResourceManager rMan = ResourceManager.getManager(); 
+      putValue(Action.NAME, rMan.getString("command.AddLinkAnnotations"));
+      if (doIcon) {
+        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.AddLinkAnnotations"));
+        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/FIXME24.gif");  
+        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
+      } else {
+        char mnem = rMan.getChar("command.AddLinkAnnotationsMnem"); 
+        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
+      }
+    } 
+    
+    public void actionPerformed(ActionEvent e) {
+      try {
+        performOperation();
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }      
+      return;
+    }
+
+    protected boolean performOperation() {
+      File file = getTheFile(".tsv", null, "AnnotDirectory", "filterName.tsv");
+      if (file == null) {
+        return (true);
+      }
+      Map<Boolean, AnnotationSet> aSet = loadAnnotations(file, false);
+      if (aSet == null) {
+        return (true);
+      }
+      bfp_.getNetwork().setLinkAnnotations(aSet.get(Boolean.TRUE), true);
+      bfp_.getNetwork().setLinkAnnotations(aSet.get(Boolean.FALSE), false);
+      File holdIt;  
+      try {
+        holdIt = File.createTempFile("BioFabricHold", ".zip");
+        holdIt.deleteOnExit();
+      } catch (IOException ioex) {
+        holdIt = null;
+      }
+
+      NetworkRecolor nb = new NetworkRecolor(); 
+      nb.doNetworkRecolor(isForMain_, holdIt);
+      
+      return (true);
+    }
+    
+    @Override
+    protected boolean checkGuts() {
+      return (bfp_.hasAModel() && (bfp_.getNetwork().getLinkCount(true) != 0));
+    }
+  }
+  
+  
+  
+  
   
   /***************************************************************************
   **
@@ -4168,7 +4334,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
    
     protected ExportSettingsDialog.ExportSettings getExportSettings() {
-      Rectangle wr = bfp_.getWorldRect();
+      Rectangle wr = bfp_.getRequiredSize();
       ExportSettingsDialog esd = new ExportSettingsDialog(topWindow_, wr.width, wr.height);
       esd.setVisible(true);
       ExportSettingsDialog.ExportSettings set = esd.getResults();
@@ -4191,7 +4357,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
    
     protected ExportSettingsDialog.ExportSettings getExportSettings() {
-      Rectangle wr = bfp_.getWorldRect();
+      Rectangle wr = bfp_.getRequiredSize();
       ExportSettingsPublishDialog esd = new ExportSettingsPublishDialog(topWindow_, wr.width, wr.height);
       esd.setVisible(true);
       ExportSettingsDialog.ExportSettings set = esd.getResults();
@@ -4455,7 +4621,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     	finished_ = true;
       try {
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner_, topWindow_, topWindow_, 
-                                                                "netBuild.waitTitle", "netBuild.wait", null, true);
+                                                                "netBuild.waitTitle", "netBuild.wait", true);
         runner_.setClient(bwc);
         bwc.launchWorker();         
       } catch (Exception ex) {
@@ -4549,7 +4715,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     		holdIt_.deleteOnExit();
         runner_.setNetworkAndMode(holdIt_, bfn, bMode);                                                                  
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner_, topWindow_, topWindow_, 
-                                                                "netRelayout.waitTitle", "netRelayout.wait", null, true);
+                                                                "netRelayout.waitTitle", "netRelayout.wait", true);
         if (bMode == BioFabricNetwork.BuildMode.REORDER_LAYOUT) {
           bwc.makeSuperChart();
         }
@@ -4630,7 +4796,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                 linksG1, lonersG1, linksG2, lonersG2, relMap, forClique, idGen);
         
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_,
-                "fileLoad.waitTitle", "fileLoad.wait", null, true);
+                "fileLoad.waitTitle", "fileLoad.wait", true);
         
         runner.setClient(bwc);
         bwc.launchWorker();
@@ -4707,7 +4873,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       try {
         SIFReaderRunner runner = new SIFReaderRunner(file, idGen, links, loneNodeIDs, nameMap, sss, magBins, relMap, holdIt_);                                                        
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
-                                                                 "fileLoad.waitTitle", "fileLoad.wait", null, true);
+                                                                 "fileLoad.waitTitle", "fileLoad.wait", true);
         runner.setClient(bwc);
         bwc.launchWorker();         
       } catch (Exception ex) {
@@ -4727,7 +4893,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       try {
         GWReaderRunner runner = new GWReaderRunner(file, idGen, links, loneNodeIDs, nameMap, gws, magBins, relMap, holdIt_);
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_,
-                "fileLoad.waitTitle", "fileLoad.wait", null, true);
+                "fileLoad.waitTitle", "fileLoad.wait", true);
         
         runner.setClient(bwc);
         bwc.launchWorker();
@@ -4744,7 +4910,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       try {
         ReaderRunner runner = new ReaderRunner(sup, file, compressed, holdIt_);                                                                  
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
-                                                                 "fileLoad.waitTitle", "fileLoad.wait", null, true);
+                                                                 "fileLoad.waitTitle", "fileLoad.wait", true);
         runner.setClient(bwc);
         bwc.launchWorker();         
       } catch (Exception ex) {
@@ -4814,7 +4980,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private void doWrite(WriterRunner runner) {
       try {                                                                
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
-                                                                 "fileWrite.waitTitle", "fileWrite.wait", null, true);
+                                                                 "fileWrite.waitTitle", "fileWrite.wait", true);
         runner.setClient(bwc);
         bwc.launchWorker();         
       } catch (Exception ex) {
@@ -4874,7 +5040,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         bfp_.shutdown();
         RecolorNetworkRunner runner = new RecolorNetworkRunner(isMain, holdIt_);                                                                  
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
-                                                                 "netRecolor.waitTitle", "netRecolor.wait", null, true);
+                                                                 "netRecolor.waitTitle", "netRecolor.wait", true);
         runner.setClient(bwc);
         bwc.launchWorker();         
       } catch (Exception ex) {
@@ -4932,7 +5098,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       try {
         PreprocessRunner runner = new PreprocessRunner(links, relaMap, reducedLinks, culledLinks, holdIt_);                                                            
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
-                                                                 "netPreprocess.waitTitle", "netPreprocess.wait", null, true);
+                                                                 "netPreprocess.waitTitle", "netPreprocess.wait", true);
         runner.setClient(bwc);
         bwc.launchWorker();         
       } catch (Exception ex) {

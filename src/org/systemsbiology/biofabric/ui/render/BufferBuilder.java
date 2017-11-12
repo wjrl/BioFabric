@@ -673,36 +673,6 @@ public class BufferBuilder {
     }
     return (true);
   }
-
-  /***************************************************************************
-  **
-  ** We only do image-based zooms if we need to, and switch over to actual drawing
-  ** when the link count in the frame gets small enough. Note that right now, that
-  ** cross-over is set to 10,000 links:
-  */ 
-
-  public static int[] calcImageZooms(BioFabricNetwork bfn) { 
-
-    boolean showShadows = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getDisplayShadows();
-    int lco = (bfn == null) ? 0 : bfn.getLinkCount(showShadows);
-    int[] preZooms;
-    if (lco != 0) {
-      int linkLog = (int)Math.ceil(Math.log(lco) / Math.log(2.0));
-      int firstDrawLog = (int)Math.ceil(Math.log(1.0E4) / Math.log(2.0));
-      // For tiny networks (1 link), previous 4 levels of zoom is too much.
-      int numPre = Math.max(linkLog - firstDrawLog, 2);
-      preZooms = new int[numPre];
-      preZooms[0] = 1;
-      for (int i = 1; i < numPre; i++) {
-        preZooms[i] = 2 * preZooms[i - 1];
-      }
-    } else {
-      preZooms = new int[1];
-      preZooms[0] = 1;   
-    } 
-    return (preZooms);
-  }
-  
   
   /***************************************************************************
   **

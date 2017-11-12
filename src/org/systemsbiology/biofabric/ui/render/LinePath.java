@@ -96,12 +96,12 @@ public class LinePath {
   ** Draw it
   */ 
   
-  int paint(Graphics2D g2, Rectangle bounds, boolean forSelection) {
+  int paint(Graphics2D g2, Rectangle bounds) {
     int didPaint = 0;
     if (px == Integer.MIN_VALUE) {  // Horizontal (node) drawing
-    	didPaint = paintAsNode(g2, bounds, forSelection);   
+    	didPaint = paintAsNode(g2, bounds);   
     } else if (py == Integer.MIN_VALUE) {  // Vertical (link) drawing
-    	didPaint = paintAsLink(g2, bounds, forSelection);
+    	didPaint = paintAsLink(g2, bounds);
     }
     return (didPaint);
   } 
@@ -111,9 +111,9 @@ public class LinePath {
   ** Draw it
   */ 
   
-  private int paintAsNode(Graphics2D g2, Rectangle bounds, boolean forSelection) {
+  private int paintAsNode(Graphics2D g2, Rectangle bounds) {
     int didPaint = 0;
-    g2.setPaint(forSelection ? Color.black : col);
+    g2.setPaint(col);
   	//
     // 4A: Horizontal (node) drawing:
     //   	      
@@ -158,9 +158,9 @@ public class LinePath {
   ** Draw it
   */ 
   
-  private int paintAsLink(Graphics2D g2, Rectangle bounds, boolean forSelection) {
+  private int paintAsLink(Graphics2D g2, Rectangle bounds) {
     int didPaint = 0;
-    g2.setPaint(forSelection ? Color.black : col);
+    g2.setPaint(col);
     //
     // 4B: Vertical (link) drawing:
     //    

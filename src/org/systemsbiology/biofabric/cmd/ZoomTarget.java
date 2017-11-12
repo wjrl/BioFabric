@@ -25,8 +25,6 @@ import java.awt.Rectangle;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 
-import org.systemsbiology.biofabric.util.UndoSupport;
-
 /****************************************************************************
 **
 ** Used to abstract away zoom operations of SUPanel
@@ -54,24 +52,18 @@ public interface ZoomTarget {
   public Point pointToViewport(Point world); 
   public Point2D getRawCenterPoint();  
   public Rectangle getSelectedBounds();
-  public boolean haveCurrentSelectionForBounds();
-  public boolean haveMultipleSelectionsForBounds();
   public Rectangle getCurrentSelectedBounds();
   public void incrementToNextSelection();
   public void decrementToPreviousSelection();
-  public Rectangle getWorkspaceBounds();
+  public Rectangle getWorldRect();
   public Dimension getPreferredSize();
-  public void fixCenterPoint(boolean doComplete, UndoSupport support, boolean closeIt);
   public void repaint();
   public Dimension getBasicSize();
-  public Point2D viewToWorld(Point vPt);    
-  public void setWideZoomFactor(double newZoomVal, Dimension vDim);
-  public double getWorkspaceZoom(Dimension viewportDim, double percent);
+  public Point2D viewToWorld(Point vPt);
+  public void setZoomFactor(double newZoomVal, Dimension vDim);
   public Rectangle getCurrentBasicBounds();
-  public Rectangle getAllModelBounds();
   public void adjustWideZoomForSize(Dimension dims);
   public Point getCenterPoint();
-  public void setZoomFactor(double zoom);
   public void setCurrClipRect(Rectangle2D clipRect);
   public double getZoomFactor();
 }
