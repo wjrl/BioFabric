@@ -111,7 +111,7 @@ public class AlignmentLoader {
 //      }
       
       if (!(existsInG1 && existsInG2)) {
-        System.out.println("Load error: " + strNameG1 + "  " + strNameG2);
+        System.out.println("Load error: " + strNameG1 + " " + existsInG1 + "  " + strNameG2 + " "+ existsInG2);
         throw new IOException("Incorrect node names or nodes do not exist in graph files");
       }
 //      if (!(G1nameToNID.containsKey(strNameG1) && G2nameToNID.containsKey(strNameG2))) {

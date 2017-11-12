@@ -98,6 +98,7 @@ public class NetworkAlignment {
   
   private Map<NID.WithName, NID.WithName> smallToMergedID_;
   private Map<NID.WithName, NID.WithName> largeToMergedID_;
+  private Map<NID.WithName, NID.WithName> mergedIDToSmall_;
   
   private ArrayList<FabricLink> mergedLinks_;
   private Set<NID.WithName> mergedLoners_;
@@ -165,16 +166,17 @@ public class NetworkAlignment {
     
     finalizeLoneNodeIDs(newLonersG1, newLonersG2);
     
-    if (forClique_) { // FOR NOW THIS IS JUST A POST-PROCESSING STEP
-//      processForCliqueMisalignment();
-      (new CliqueMisalignment()).process(mergedLinks_, mergedLoners_);
+    if (forClique_) {
+      (new CliqueMisalignment()).process(mergedLinks_, mergedLoners_, mergedIDToSmall_);
     }
+    UiUtil.fixMePrintout("Should Clique Misalignment remain a postprocessing step");
     
     //
     // Output calculated scores to console
     //
     
     new NetworkAlignmentScorer(this).printScores();
+    UiUtil.fixMePrintout("Need to add net-align scores to UI");
     
     return;
   }
@@ -194,6 +196,7 @@ public class NetworkAlignment {
     
     smallToMergedID_ = new TreeMap<NID.WithName, NID.WithName>();
     largeToMergedID_ = new TreeMap<NID.WithName, NID.WithName>();
+    mergedIDToSmall_ = new TreeMap<NID.WithName, NID.WithName>();
     
     for (Map.Entry<NID.WithName, NID.WithName> entry : mapG1toG2_.entrySet()) {
       
@@ -211,6 +214,7 @@ public class NetworkAlignment {
       
       smallToMergedID_.put(smallNode, merged_node);
       largeToMergedID_.put(largeNode, merged_node);
+      mergedIDToSmall_.put(merged_node, smallNode);
     }
     return;
   }
@@ -367,7 +371,8 @@ public class NetworkAlignment {
     private CliqueMisalignment() {
     }
     
-    private void process(List<FabricLink> mergedLinks, Set<NID.WithName> mergedLoneNodeIDs)
+    private void process(List<FabricLink> mergedLinks, Set<NID.WithName> mergedLoneNodeIDs,
+                         Map<NID.WithName, NID.WithName> mergedIDToSmall)
             throws AsynchExitRequestException {
       
       List<FabricLink> nonShdwMergedLinks = new ArrayList<FabricLink>();
@@ -378,7 +383,6 @@ public class NetworkAlignment {
       }
       
       Set<NID.WithName> unalignedNodesG1 = new TreeSet<NID.WithName>();
-      
       for (FabricLink link : nonShdwMergedLinks) { // find the nodes of interest
         if (link.getRelation().equals(GRAPH1)) {
           unalignedNodesG1.add(link.getSrcID());
@@ -387,7 +391,6 @@ public class NetworkAlignment {
       }
       
       List<FabricLink> unalignedEdgesG1 = new ArrayList<FabricLink>();
-      
       for (FabricLink link : nonShdwMergedLinks) { // add the edges connecting to the nodes of interest (one hop away)
         
         NID.WithName src = link.getSrcID(), trg = link.getTrgID();
@@ -398,16 +401,32 @@ public class NetworkAlignment {
       }
       
       //
-      // Change the final link-lists
+      // Go back to old G1 names
       //
       
+      List<FabricLink> oldUnalignedEdgesG1 = new ArrayList<FabricLink>();
+      for (FabricLink link : unalignedEdgesG1) {
+        
+        NID.WithName srcNew = link.getSrcID(), trgNew = link.getTrgID();
+        NID.WithName srcOld = mergedIDToSmall.get(srcNew), trgOld = mergedIDToSmall.get(trgNew);
+        
+        FabricLink linkOldName = new FabricLink(srcOld, trgOld, GRAPH1, false, null);
+        FabricLink linkOldNameShdw = new FabricLink(srcOld, trgOld, GRAPH1, true, null);
+        
+        oldUnalignedEdgesG1.add(linkOldName);
+        oldUnalignedEdgesG1.add(linkOldNameShdw);
+      }
+  
+      //
+      // Change the final link-lists
+      //
+  
       mergedLinks.clear();
-      mergedLinks.addAll(unalignedEdgesG1);
       mergedLoneNodeIDs.clear();
+      mergedLinks.addAll(oldUnalignedEdgesG1);
       
       //  GO BACK TO OLD NAMES and ADD SHADOWS BACK
       UiUtil.fixMePrintout("FIX ME:Need to add back the nodes' old names and re-add shadow links");
-      
       return;
     }
     

@@ -27,6 +27,7 @@ import java.util.Set;
 
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
 
 /****************************************************************************
@@ -112,7 +113,11 @@ public class SIFImportLoader extends FabricImportLoader {
     
       String target = tokens[2].trim();
       target = stripQuotes(target);
-     
+  
+      source = source.replaceAll("-","_");
+      target = target.replaceAll("-","_");
+      UiUtil.fixMePrintout("Auto-replacing dashes with underscores in .sif files");
+  
       //
       // This name map is for the load SIF with node attributes feature:
       //
@@ -126,7 +131,6 @@ public class SIFImportLoader extends FabricImportLoader {
       
       NID.WithName srcID = nameToNode(source, idGen, nameToID);
       NID.WithName trgID = nameToNode(target, idGen, nameToID);
-      
 
       String rel = tokens[1].trim();
       rel = stripQuotes(rel);

@@ -19,12 +19,17 @@
 
 package org.systemsbiology.biofabric.io;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -209,6 +214,53 @@ public class GWImportLoader extends FabricImportLoader {
       }
     }
     return;
+  }
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // STATIC METHODS
+  //
+  ////////////////////////////////////////////////////////////////////////////
+  
+  /***************************************************************************
+   **
+   ** Test if file is .gw file
+   */
+  
+  public static boolean isGWFile(File file) {
+    UiUtil.fixMePrintout("Sketchy way to check if file is .gw");
+    try {
+      BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+  
+      String line = in.readLine();
+      if (line.equals("LEDA.GRAPH")) {
+        return (true);
+      }
+      for (int i = 1;i <= 3; i++) { // skip next three lines; We assume four header lines
+        in.readLine();
+      }
+      String[] tok = in.readLine().split(" ");
+      if (tok.length != 1) {  // should be #nodes here
+        return (false);
+      }
+      
+      int numNodes = Integer.parseInt(tok[0]); // to test if #nodes is in fact integer
+      if (numNodes > 0) {
+        String aNode = in.readLine();
+        int len = aNode.length();
+        if (aNode.substring(0,2).equals("|{") && aNode.substring(len - 2, len).equals("}|")) {
+          return (true);
+        }
+      } else {
+        return (false);
+      }
+  
+    } catch (IOException ioe) {
+      ExceptionHandler.getHandler().displayException(ioe);
+    } catch (NumberFormatException nfe) {
+      return (false);
+    }
+    return (false);
   }
   
 }

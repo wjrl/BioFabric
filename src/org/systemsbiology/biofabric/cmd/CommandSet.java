@@ -100,14 +100,10 @@ import org.systemsbiology.biofabric.io.SIFImportLoader;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
-import org.systemsbiology.biofabric.layouts.SetLayout;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
-import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.EdgeLayout;
-import org.systemsbiology.biofabric.layouts.HierDAGLayout;
 import org.systemsbiology.biofabric.layouts.LayoutCriterionFailureException;
-import org.systemsbiology.biofabric.layouts.WorldBankLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.parser.ParserClient;
@@ -902,38 +898,42 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     return (true);
   }
   
-  /***************************************************************************
-   **
-   ** Create individual networks from two .sif files and one .align file
-   */
-  
-  private boolean networkAlignmentFromSIFSources(NetworkAlignmentDialog.NetworkAlignmentDialogInfo nadi) {
-  
-    UniqueLabeller idGen = new UniqueLabeller();
-  
-    //
-    // create the individual networks (links + lone nodes)
-    //
-  
-    ArrayList<FabricLink> linksGraphA = new ArrayList<FabricLink>();
-    HashSet<NID.WithName> lonersGraphA = new HashSet<NID.WithName>();
-    
-    loadFromSifSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
-  
-    ArrayList<FabricLink> linksGraphB = new ArrayList<FabricLink>();
-    HashSet<NID.WithName> lonersGraphB = new HashSet<NID.WithName>();
-  
-    loadFromSifSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
-  
-    return (networkAlignmentStepTwo(nadi, linksGraphA, lonersGraphA, linksGraphB, lonersGraphB, idGen));
-  }
+//  /***************************************************************************
+//   **
+//   ** Create individual networks from two .sif files and one .align file
+//   */
+//
+//  private boolean networkAlignmentFromSIFSources(NetworkAlignmentDialog.NetworkAlignmentDialogInfo nadi) {
+//
+//    if (true) {
+//      throw new IllegalStateException();
+//    }
+//
+//    UniqueLabeller idGen = new UniqueLabeller();
+//
+//    //
+//    // create the individual networks (links + lone nodes)
+//    //
+//
+//    ArrayList<FabricLink> linksGraphA = new ArrayList<FabricLink>();
+//    HashSet<NID.WithName> lonersGraphA = new HashSet<NID.WithName>();
+//
+//    loadFromSifSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
+//
+//    ArrayList<FabricLink> linksGraphB = new ArrayList<FabricLink>();
+//    HashSet<NID.WithName> lonersGraphB = new HashSet<NID.WithName>();
+//
+//    loadFromSifSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
+//
+//    return (networkAlignmentStepTwo(nadi, linksGraphA, lonersGraphA, linksGraphB, lonersGraphB, idGen));
+//  }
   
   /***************************************************************************
    **
    ** Create individual networks from two .gw files and one .align file
    */
   
-  private boolean networkAlignmentFromGWSources(NetworkAlignmentDialog.NetworkAlignmentDialogInfo nadi) {
+  private boolean networkAlignmentFromSources(NetworkAlignmentDialog.NetworkAlignmentDialogInfo nadi) {
     
     UniqueLabeller idGen = new UniqueLabeller();
     
@@ -946,13 +946,22 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     UiUtil.fixMePrintout("distinguish .gw from .sif files");
     
-    loadFromGWSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
-  
+    if (GWImportLoader.isGWFile(nadi.graphA)) {
+      loadFromGWSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
+    } else {
+      loadFromSifSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
+    } // assume it's sif if it's not gw
+    
+    
     ArrayList<FabricLink> linksGraphB = new ArrayList<FabricLink>();
     HashSet<NID.WithName> lonersGraphB = new HashSet<NID.WithName>();
     
-    loadFromGWSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
-
+    if (GWImportLoader.isGWFile(nadi.graphB)) {
+      loadFromGWSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
+    } else {
+      loadFromSifSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
+    }
+    
     return (networkAlignmentStepTwo(nadi, linksGraphA, lonersGraphA, linksGraphB, lonersGraphB, idGen));
   }
   
@@ -3357,7 +3366,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       }
   
       // STILL HAVE TO DECIDE WHETHER IT'S GW OR SIF
-      return (networkAlignmentFromGWSources(nai));
+      return (networkAlignmentFromSources(nai));
     }
   
   }

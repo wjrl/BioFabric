@@ -90,8 +90,9 @@ public class NetworkAlignmentLayout extends NodeLayout {
     
     BioFabricNetwork.NetworkAlignmentBuildData nabd = (BioFabricNetwork.NetworkAlignmentBuildData) rbd;
     
-    List<NID.WithName> targetIDs = BFSNodeGroupByClass(nabd, monitor);
-    
+    UiUtil.fixMePrintout("Clique Misalignment needs Default layout not BFSNodeGroup");
+//    List<NID.WithName> targetIDs = BFSNodeGroupByClass(nabd, monitor);
+    List<NID.WithName> targetIDs = (new DefaultLayout()).defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs,null,monitor);
     installNodeOrder(targetIDs, nabd, monitor);
     return (new ArrayList<NID.WithName>(targetIDs));
   }
