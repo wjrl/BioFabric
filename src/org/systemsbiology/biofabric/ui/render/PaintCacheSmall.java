@@ -103,6 +103,7 @@ public class PaintCacheSmall implements PaintCache {
   private Color superLightPink_;
   private Color superLightBlue_;
   private Color[] annotColors_;
+  private Color[] annotGrays_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -151,7 +152,19 @@ public class PaintCacheSmall implements PaintCache {
     annotColors_[5] = new Color(253, 224, 235, 255);
     annotColors_[6] = new Color(224, 243, 253, 255);
     annotColors_[7] = new Color(254, 246, 225, 255);
+
+    annotGrays_ = new Color[8];
+    annotGrays_[0] = new Color(127, 127, 127, 127);
+    annotGrays_[1] = new Color(194, 194, 194, 127);
+    annotGrays_[2] = new Color(144, 144, 144, 127);
+    annotGrays_[3] = new Color(211, 211, 211, 127);
+    annotGrays_[4] = new Color(161, 161, 161, 127);
+    annotGrays_[5] = new Color(228, 228, 228, 127);
+    annotGrays_[6] = new Color(178, 178, 178, 127);
+    annotGrays_[7] = new Color(245, 245, 245, 127);
   }
+  
+  
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -205,7 +218,7 @@ public class PaintCacheSmall implements PaintCache {
       for (String pkey : pKeys) {
         BoxPath pp = nameKeyToPaintZero_.get(pkey);
         if (pp != null) {
-          int result = pp.paint(g2);
+          int result = pp.paint(g2, clip);
           retval = retval || (result > 0);
         }
       }
@@ -233,7 +246,7 @@ public class PaintCacheSmall implements PaintCache {
 	    for (String pkey : pKeys) {
 	      BoxPath pp = nameKeyToPaintFirst_.get(pkey);
 	    	if (pp != null) {
-	        int result = pp.paint(g2);
+	        int result = pp.paint(g2, clip);
 	        retval = retval || (result > 0);
 	    	}
 	    }
@@ -516,9 +529,10 @@ public class PaintCacheSmall implements PaintCache {
     }
     
     annotCount = 0;
+    Color[] useColors = (nodeAnnot != null) ? annotGrays_ : annotColors_;
     if (linkAnnot != null) {
       for (AnnotationSet.Annot an : linkAnnot) {
-        Color col = annotColors_[annotCount++ % annotColors_.length];
+        Color col = useColors[annotCount++ % annotColors_.length];
         buildAnAnnotationRect(an.getRange(), an.getName(), col, false, linkExtents, frc);
       }
     }
