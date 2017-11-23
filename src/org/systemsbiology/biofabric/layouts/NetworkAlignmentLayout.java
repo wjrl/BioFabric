@@ -19,6 +19,8 @@
 
 package org.systemsbiology.biofabric.layouts;
 
+import javax.xml.soap.Node;
+import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
@@ -91,60 +93,10 @@ public class NetworkAlignmentLayout extends NodeLayout {
     BioFabricNetwork.NetworkAlignmentBuildData nabd = (BioFabricNetwork.NetworkAlignmentBuildData) rbd;
     
     UiUtil.fixMePrintout("Clique Misalignment needs Default layout not BFSNodeGroup");
-//    List<NID.WithName> targetIDs = BFSNodeGroupByClass(nabd, monitor);
-    List<NID.WithName> targetIDs = (new DefaultLayout()).defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs,null,monitor);
+    List<NID.WithName> targetIDs = BFSNodeGroupByClass(nabd, monitor);
+//    List<NID.WithName> targetIDs = (new DefaultLayout()).defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs,null,monitor);
     installNodeOrder(targetIDs, nabd, monitor);
     return (new ArrayList<NID.WithName>(targetIDs));
-  }
-  
-  /***************************************************************************
-   **
-   **
-   */
-  
-  private List<NID.WithName> nodeGroupByClass(BioFabricNetwork.NetworkAlignmentBuildData nabd, BTProgressMonitor monitor)
-          throws AsynchExitRequestException {
-    
-    NetAlignNodeGrouper grouper = new NetAlignNodeGrouper(nabd);
-    
-    ArrayList<NID.WithName>[] classToGroup; // list should be set, but error checking for now. . .
-    
-    classToGroup = new ArrayList[NUMBER_NODE_GROUPS + 1];
-    for (int i = 0; i < classToGroup.length; i++) {
-      classToGroup[i] = new ArrayList<NID.WithName>();
-    }
-    
-    Set<NID.WithName> allNodes = BioFabricNetwork.extractNodes(nabd.allLinks, nabd.loneNodeIDs, monitor);
-    for (NID.WithName node : allNodes) {
-      
-      int nodeClass = grouper.getNodeGroup(node);
-      classToGroup[nodeClass].add(node);
-    }
-    
-    List<NID.WithName> targetIDs = new ArrayList<NID.WithName>();
-    
-    for (int i = 1; i < classToGroup.length; i++) {
-
-//      if (classToGroup[i].size() == 0) {
-//        System.out.println("Empty Class:" + i + '\n');
-//      }
-      
-      Set<NID.WithName> setForm = new TreeSet<NID.WithName>(classToGroup[i]);
-      if (setForm.size() != classToGroup[i].size()) {
-        throw new IllegalStateException("duplicate nodes in node group");
-      }
-      
-      grouper.sortByDegree(classToGroup[i]);
-      
-      for (NID.WithName node : classToGroup[i]) {
-        if (targetIDs.contains(node)) {
-          throw new IllegalStateException("node already exists in node group");
-        }
-        targetIDs.add(node);
-      }
-    }
-    
-    return targetIDs;
   }
   
   /***************************************************************************
@@ -199,12 +151,13 @@ public class NetworkAlignmentLayout extends NodeLayout {
     lr.finish();
     
     //
-    // Initialize data stuctures for layout
+    // Initialize data structures for layout
     //
     
     NetAlignNodeGrouper grouper = new NetworkAlignmentLayout.NetAlignNodeGrouper(nabd.allLinks, nabd.loneNodeIDs);
-    
-    SortedMap<Integer, List<NID.WithName>> classToGroup = new TreeMap<Integer, List<NID.WithName>>(); // master list of nodes in each group
+  
+    // master list of nodes in each group
+    SortedMap<Integer, List<NID.WithName>> classToGroup = new TreeMap<Integer, List<NID.WithName>>();
     
     for (int i = 0; i <= NUMBER_NODE_GROUPS; i++) {
       classToGroup.put(i, new ArrayList<NID.WithName>());
@@ -220,20 +173,18 @@ public class NetworkAlignmentLayout extends NodeLayout {
       grouper.sortByDegree(group);
     }
     
+    SortedMap<Integer, List<NID.WithName>> targetsGroup = new TreeMap<Integer, List<NID.WithName>>();
+    SortedMap<Integer, List<NID.WithName>> queueGroup = new TreeMap<Integer, List<NID.WithName>>();
     SortedMap<Integer, List<NID.WithName>> targsLeftToGoGroup = new TreeMap<Integer, List<NID.WithName>>();
+  
+    // each group (including singletons) gets queue and targets list
     for (int i = 1; i < NUMBER_NODE_GROUPS; i++) {
+      targetsGroup.put(i, new ArrayList<NID.WithName>());
+      queueGroup.put(i, new ArrayList<NID.WithName>());
       targsLeftToGoGroup.put(i, new ArrayList<NID.WithName>());
       for (NID.WithName node : classToGroup.get(i)) {
         targsLeftToGoGroup.get(i).add(node);
       }
-    }
-    
-    SortedMap<Integer, List<NID.WithName>> targetsGroup = new TreeMap<Integer, List<NID.WithName>>();
-    SortedMap<Integer, List<NID.WithName>> queueGroup = new TreeMap<Integer, List<NID.WithName>>();
-    
-    for (int i = 1; i < NUMBER_NODE_GROUPS; i++) { // each group gets a queue and targets list
-      targetsGroup.put(i, new ArrayList<NID.WithName>());
-      queueGroup.put(i, new ArrayList<NID.WithName>());
     }
     
     //
@@ -247,43 +198,39 @@ public class NetworkAlignmentLayout extends NodeLayout {
         currGroup++;
         continue; // continue only after each node in group has been visited
       }
-      
+      // if queue is empty, pull head node from list
       if (queueGroup.get(currGroup).isEmpty()) {
-        // if queue is emtpy, pull head node from list
         NID.WithName head = targsLeftToGoGroup.get(currGroup).remove(0);
         queueGroup.get(currGroup).add(head);
       }
       
       flushQueue(targetsGroup, targsPerSource, linkCounts, targsToGo, targsLeftToGoGroup, queueGroup,
-              classToGroup, monitor, .25, .50, nabd.allLinks, nabd.loneNodeIDs, currGroup, grouper);
+              monitor, .25, .50, currGroup, grouper);
     }
     
     //
     // Add lone nodes and "flatten" out the targets into one list
     //
     
-    List<NID.WithName> targets = new ArrayList<NID.WithName>();
+    targetsGroup.put(PURPLE_SINGLETON, new ArrayList<NID.WithName>());
+    targetsGroup.get(PURPLE_SINGLETON).addAll(classToGroup.get(PURPLE_SINGLETON));
+    targetsGroup.put(RED_SINGLETON, new ArrayList<NID.WithName>());
+    targetsGroup.get(RED_SINGLETON).addAll(classToGroup.get(RED_SINGLETON));
     
-    targets.addAll(classToGroup.get(PURPLE_SINGLETON));
-    for (int i = 1; i < NUMBER_NODE_GROUPS; i++) {
-      List<NID.WithName> get = targetsGroup.get(i);
-//      if (!get.isEmpty()) {
-//        System.out.println("NG " + i);
-//      }
-      for (int k = 0; k < get.size(); k++) {
-        NID.WithName node = get.get(k);
+    List<NID.WithName> targets = new ArrayList<NID.WithName>();
+    for (int i = 0; i <= NUMBER_NODE_GROUPS; i++) {
+      List<NID.WithName> group = targetsGroup.get(i);
+      for (NID.WithName node : group) {
         targets.add(node);
-//        if (k == 0 || k == get.size() - 1) {
-//          System.out.println(node.getName());
-//        }
       }
     }
-    targets.addAll(classToGroup.get(RED_SINGLETON));
     
     if (targets.size() != allNodes.size()) {
       throw new IllegalStateException("target size not equal to all-nodes size");
     }
     
+    installAnnotations(nabd, targetsGroup, targets);
+
     UiUtil.fixMePrintout("Loop Reporter all messed up in NetworkAlignmentLayout.FlushQueue");
     return (targets);
   }
@@ -298,9 +245,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
                           Map<NID.WithName, Integer> linkCounts,
                           Set<NID.WithName> targsToGo, SortedMap<Integer, List<NID.WithName>> targsLeftToGoGroup,
                           SortedMap<Integer, List<NID.WithName>> queuesGroup,
-                          SortedMap<Integer, List<NID.WithName>> classToGroup,
-                          BTProgressMonitor monitor, double startFrac, double endFrac, Set<FabricLink> allLinks,
-                          Set<NID.WithName> loneNodes, final int currGroup,
+                          BTProgressMonitor monitor, double startFrac, double endFrac, final int currGroup,
                           NetAlignNodeGrouper grouper)
           throws AsynchExitRequestException {
     
@@ -325,7 +270,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
         throw new IllegalStateException("Node of incorrect group in queue");
       }
       
-      List<NID.WithName> myKids = orderMyKids(targsPerSource, linkCounts, targsToGo, node, allLinks, loneNodes);
+      List<NID.WithName> myKids = orderMyKids(targsPerSource, linkCounts, targsToGo, node);
       for (NID.WithName kid : myKids) {
         
         if (! targsToGo.contains(kid)) {
@@ -363,10 +308,9 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Node ordering
    */
   
-  private static List<NID.WithName> orderMyKids(final Map<NID.WithName, Set<NID.WithName>> targsPerSource,
+  private List<NID.WithName> orderMyKids(final Map<NID.WithName, Set<NID.WithName>> targsPerSource,
                                                 Map<NID.WithName, Integer> linkCounts,
-                                                Set<NID.WithName> targsToGo, final NID.WithName node, Set<FabricLink> allLinks,
-                                                Set<NID.WithName> loneNodeIDs) {
+                                                Set<NID.WithName> targsToGo, final NID.WithName node) {
     Set<NID.WithName> targs = targsPerSource.get(node);
     if (targs == null) {
       return (new ArrayList<NID.WithName>());
@@ -401,6 +345,55 @@ public class NetworkAlignmentLayout extends NodeLayout {
   
   /***************************************************************************
    **
+   ** Install Layer Zero Node Annotations
+   */
+  
+  private void installAnnotations(BioFabricNetwork.NetworkAlignmentBuildData nabd,
+                                         SortedMap<Integer, List<NID.WithName>> targetsGroup,
+                                         List<NID.WithName> targets) {
+  
+    Map<Integer, List<NID.WithName>> layerZeroAnnot = new TreeMap<Integer, List<NID.WithName>>();
+  
+    for (int i = 0; i <= NUMBER_NODE_GROUPS; i++) { // include singletons
+      List<NID.WithName> group = targetsGroup.get(i);
+      if (group.isEmpty()) {
+        continue;
+      }
+      layerZeroAnnot.put(i, new ArrayList<NID.WithName>()); // add first and last node in each group
+      layerZeroAnnot.get(i).add(group.get(0));
+      layerZeroAnnot.get(i).add(group.get(group.size() - 1));
+    }
+
+    AnnotationSet annots = new AnnotationSet();
+    for (Map.Entry<Integer, List<NID.WithName>> entry : layerZeroAnnot.entrySet()) {
+
+      int nodeGroup = entry.getKey();
+      String start = entry.getValue().get(0).toString(), end = entry.getValue().get(1).toString();
+      int min = -1, max = -1;
+
+      // make more efficient
+      for (int i = 0; i < targets.size(); i++) {
+        if (start.equals(targets.get(i).toString())) {
+          min = i;
+        }
+        if (end.equals(targets.get(i).toString())) {
+          max = i;
+        }
+      }
+      if (min > max || min < 0) {
+        System.out.println(min + "  " + max +"  NG:" + nodeGroup);
+        throw new IllegalStateException("Annotation min max error in NetAlign Layout");
+      }
+
+      AnnotationSet.Annot annot = new AnnotationSet.Annot(NodeAnnotations[nodeGroup], min, max,0);
+      annots.addAnnot(annot);
+    }
+    nabd.setNodeAnnots(annots);
+    return;
+  }
+  
+  /***************************************************************************
+   **
    ** LG = LINK GROUP
    **
    ** FIRST LG  = PURPLE EDGES           // COVERERED EDGE
@@ -411,37 +404,17 @@ public class NetworkAlignmentLayout extends NodeLayout {
    **
    ** PURPLE NODE =  ALIGNED NODE
    ** RED NODE    =  UNALINGED NODE
+   **
+   **
+   ** WE HAVE 18 DISTINCT CLASSES (NODE GROUPS) FOR EACH ALIGNED AND UNALIGNED NODE
+   ** TECHNICALLY 20 INCLUDING THE SINGLETON ALIGNED AND SINGLETON UNALIGNED NODES
+   **
    */
   
   private static final int NUMBER_NODE_GROUPS = 19;
   
   private static final int
-
-//          PURPLE_SINGLETON = 0,
-//          PURPLE_WITH_ONLY_PURPLE = 1,            // PURPLE NODES IN LINK GROUP 1, 2, 3
-//          PURPLE_WITH_PURPLE_BLUE = 2,
-//          PURPLE_WITH_PURPLE_BLUE_RED = 3,
-//          PURPLE_WITH_PURPLE_RED = 4,
-//          PURPLE_WITH_ONLY_RED = 5,
-//          PURPLE_WITH_BLUE_RED = 6,
-//          PURPLE_WITH_ONLY_BLUE = 7,
-//
-//          PURPLE_WITH_BLUE_ORANGE = 8,            // PURPLE NODES IN LINK GROUP 4
-//          PURPLE_WITH_ONLY_ORANGE = 9,
-//          PURPLE_WITH_PURPLE_ORANGE = 10,
-//          PURPLE_WITH_PURPLE_BLUE_ORANGE = 11,
-//          PURPLE_WITH_PURPLE_BLUE_RED_ORANGE = 12,
-//          PURPLE_WITH_PURPLE_RED_ORANGE = 13,
-//          PURPLE_WITH_RED_ORANGE = 14,
-//          PURPLE_WITH_BLUE_RED_ORANGE = 15,
-//
-//          RED_WITH_ORANGE = 16,                   // RED NODES IN LINK GROUP 4
-//          RED_WITH_ORANGE_YELLOW = 17,
-//          RED_WITH_ONLY_YELLOW = 18,              // RED NODES IN LINK GROUP 5
-//          RED_SINGLETON = 19;
           
-          
-          //original node ordering taken from previous push
           PURPLE_SINGLETON = 0,
           PURPLE_WITH_ONLY_PURPLE = 1,             // FIRST THREE LINK GROUPS
           PURPLE_WITH_ONLY_BLUE = 2,
@@ -465,6 +438,28 @@ public class NetworkAlignmentLayout extends NodeLayout {
           RED_WITH_ORANGE_YELLOW = 18,
           RED_SINGLETON = 19;
   
+  private static final String[] NodeAnnotations = {
+          "(P:0)",
+          "(P:P)",            // 1
+          "(P:B)",
+          "(P:pRp)",
+          "(P:P/B)",
+          "(P:P/pRp",
+          "(P:B/pRp)",        // 6
+          "(P:P/B/pRp)",
+          "(P:pRr)",
+          "(P:P/pRr)",
+          "(P:B/pRr)",
+          "(P:pRp/pRr)",      // 11
+          "(P:P/B/pRr)",
+          "(P:P/pRp/pRr)",
+          "(P:B/pRp/pRr)",
+          "(P:P/B/pRp/pRr)",
+          "(R:pRr)",          // 16
+          "(R:rRr)",
+          "(R:pRr/rRr)",
+          "(R:0)"
+  };
   
   private static class NetAlignNodeGrouper {
     
@@ -952,6 +947,30 @@ public class NetworkAlignmentLayout extends NodeLayout {
   }
   
 }
+
+// from the second file NodeGroups-Order.txt
+//          PURPLE_SINGLETON = 0,
+//          PURPLE_WITH_ONLY_PURPLE = 1,            // PURPLE NODES IN LINK GROUP 1, 2, 3
+//          PURPLE_WITH_PURPLE_BLUE = 2,
+//          PURPLE_WITH_PURPLE_BLUE_RED = 3,
+//          PURPLE_WITH_PURPLE_RED = 4,
+//          PURPLE_WITH_ONLY_RED = 5,
+//          PURPLE_WITH_BLUE_RED = 6,
+//          PURPLE_WITH_ONLY_BLUE = 7,
+//
+//          PURPLE_WITH_BLUE_ORANGE = 8,            // PURPLE NODES IN LINK GROUP 4
+//          PURPLE_WITH_ONLY_ORANGE = 9,
+//          PURPLE_WITH_PURPLE_ORANGE = 10,
+//          PURPLE_WITH_PURPLE_BLUE_ORANGE = 11,
+//          PURPLE_WITH_PURPLE_BLUE_RED_ORANGE = 12,
+//          PURPLE_WITH_PURPLE_RED_ORANGE = 13,
+//          PURPLE_WITH_RED_ORANGE = 14,
+//          PURPLE_WITH_BLUE_RED_ORANGE = 15,
+//
+//          RED_WITH_ORANGE = 16,                   // RED NODES IN LINK GROUP 4
+//          RED_WITH_ORANGE_YELLOW = 17,
+//          RED_WITH_ONLY_YELLOW = 18,              // RED NODES IN LINK GROUP 5
+//          RED_SINGLETON = 19;
 
 //if (purpleSingleton(node)) {
 //        return PURPLE_SINGLETON;

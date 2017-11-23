@@ -254,10 +254,10 @@ public class NetworkAlignmentDialog extends JDialog {
     
     switch (mode) {
       case GRAPH_ONE_FILE:
-        file = cmd.getTheFile(".gw", null, "AttribDirectory", "filterName.gw");
+        file = cmd.getTheFile(".gw", ".sif", "AttribDirectory", "Graph Files (*.gw, *.sif)");
         break;
       case GRAPH_TWO_FILE:
-        file = cmd.getTheFile(".gw", null, "AttribDirectory", "filterName.gw");
+        file = cmd.getTheFile(".gw", ".sif", "AttribDirectory", "Graph Files (*.gw, *.sif)");
         break;
       case ALIGNMENT_FILE:
         file = cmd.getTheFile(".align", null, "AttribDirectory", "filterName.align");

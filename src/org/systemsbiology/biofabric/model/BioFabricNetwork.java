@@ -243,15 +243,16 @@ public class BioFabricNetwork {
         break;
       case BUILD_NETWORK_ALIGNMENT:
         NetworkAlignmentBuildData nad = (NetworkAlignmentBuildData) bd;
-        normalCols_ = new ColumnAssign();
-        shadowCols_ = new ColumnAssign();
-        rowToTargID_ = new HashMap<Integer, NID.WithName>();
-        fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
-        nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
-        nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
-        linkGrouping_ = new ArrayList<String>(nad.linkGroups);
-        colGen_ = nad.colGen;
-        layoutMode_ = nad.layoutMode;
+        this.normalCols_ = new ColumnAssign();
+        this.shadowCols_ = new ColumnAssign();
+        this.rowToTargID_ = new HashMap<Integer, NID.WithName>();
+        this.fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
+        this.nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
+        this.nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
+        this.linkGrouping_ = new ArrayList<String>(nad.linkGroups);
+        this.colGen_ = nad.colGen;
+        this.layoutMode_ = nad.layoutMode;
+        this.nodeAnnot_ = nad.nodeAnnots;
         processLinks(nad, monitor);
         break;
       case BUILD_FOR_SUBMODEL:
@@ -618,6 +619,9 @@ public class BioFabricNetwork {
     
     edgeLayout.layoutEdges(rbd, monitor);
     specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, false, monitor);
+    
+    UiUtil.fixMePrintout("Node Annotations for NetAlign in processLinks");
+    this.nodeAnnot_ = ((NetworkAlignmentBuildData) rbd).nodeAnnots;
 
     //
     // Determine the start & end of each target row needed to handle the incoming
@@ -2578,6 +2582,8 @@ public class BioFabricNetwork {
    */
   
   public static class NetworkAlignmentBuildData extends RelayoutBuildData {
+    
+    public AnnotationSet nodeAnnots;
   
     public NetworkAlignmentBuildData(UniqueLabeller idGen,
                                      Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
@@ -2585,8 +2591,12 @@ public class BioFabricNetwork {
                                      FabricColorGenerator colGen, BuildMode mode) {
       super(idGen, allLinks, loneNodeIDs, clustAssign, colGen, mode);
       this.layoutMode = LayoutMode.PER_NETWORK_MODE;
+      this.nodeAnnots = null;
     }
     
+    public void setNodeAnnots(AnnotationSet annots) {
+      this.nodeAnnots = annots;
+    }
 
     @Override
     public NodeLayout getNodeLayout() {

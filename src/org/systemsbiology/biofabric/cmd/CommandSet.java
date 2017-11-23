@@ -909,39 +909,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     return (true);
   }
   
-//  /***************************************************************************
-//   **
-//   ** Create individual networks from two .sif files and one .align file
-//   */
-//
-//  private boolean networkAlignmentFromSIFSources(NetworkAlignmentDialog.NetworkAlignmentDialogInfo nadi) {
-//
-//    if (true) {
-//      throw new IllegalStateException();
-//    }
-//
-//    UniqueLabeller idGen = new UniqueLabeller();
-//
-//    //
-//    // create the individual networks (links + lone nodes)
-//    //
-//
-//    ArrayList<FabricLink> linksGraphA = new ArrayList<FabricLink>();
-//    HashSet<NID.WithName> lonersGraphA = new HashSet<NID.WithName>();
-//
-//    loadFromSifSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
-//
-//    ArrayList<FabricLink> linksGraphB = new ArrayList<FabricLink>();
-//    HashSet<NID.WithName> lonersGraphB = new HashSet<NID.WithName>();
-//
-//    loadFromSifSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
-//
-//    return (networkAlignmentStepTwo(nadi, linksGraphA, lonersGraphA, linksGraphB, lonersGraphB, idGen));
-//  }
-  
   /***************************************************************************
    **
-   ** Create individual networks from two .gw files and one .align file
+   ** Create individual networks from two files (.gw or .sif) and one .align file
    */
   
   private boolean networkAlignmentFromSources(NetworkAlignmentDialog.NetworkAlignmentDialogInfo nadi) {
@@ -1561,7 +1531,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     // Possibly expensive network analysis preparation:
     BioFabricNetwork bfn = new BioFabricNetwork(bfnbd, monitor);
     // Possibly expensive display object creation:
-    bfp_.installModel(bfn, monitor); 
+    bfp_.installModel(bfn, monitor);
     // Very expensive display buffer creation:
     int[] preZooms = bfp_.calcZoomSettings(screenSize);
     BufferedImage topImage = null;
