@@ -420,7 +420,8 @@ public class PaintCacheSmall implements PaintCache {
   */
   
   public void buildObjCache(List<BioFabricNetwork.NodeInfo> targets, List<BioFabricNetwork.LinkInfo> links, 
-                            boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
+                            boolean shadeNodes, boolean showShadows, BioFabricNetwork.Extents ext, 
+                            Map<NID.WithName, Rectangle2D> nameMap, 
                             Map<NID.WithName, List<Rectangle2D>> drainMap, Rectangle2D worldRect,
                             AnnotationSet nodeAnnot, AnnotationSet linkAnnot,
                             BTProgressMonitor monitor) throws AsynchExitRequestException {
@@ -443,56 +444,29 @@ public class PaintCacheSmall implements PaintCache {
     FontRenderContext frc = new FontRenderContext(new AffineTransform(), true, true);
    
     int numLinks = links.size();
-    int maxCol = 0;
-    int minCol = Integer.MAX_VALUE;
-    
-    LoopReporter lr0 = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.calcLinkExtents");
-    
-    HashMap<Integer, MinMax> linkExtents = new HashMap<Integer, MinMax>();
-    for (int i = 0; i < numLinks; i++) {
-      BioFabricNetwork.LinkInfo link = links.get(i);
-      lr0.report();    
-      int num = link.getUseColumn(showShadows);
-      int sRow = link.topRow();
-      int eRow = link.bottomRow();
-      linkExtents.put(Integer.valueOf(num), new MinMax(sRow, eRow));
-      if (num > maxCol) {
-      	maxCol = num;
-      }
-      if (num < minCol) {
-      	minCol = num;
-      }
-    }
-    
-    linkIndex_ = new int[(numLinks == 0) ? 0 : maxCol + 1 - minCol];
-    indexOffset_ = minCol;  // In subviews, links do NOT start at column 0!
+    Map<Integer, MinMax> linkExtents = ext.allLinkExtents.get(Boolean.valueOf(showShadows));
+    MinMax linkCols = ext.allLinkFullRange.get(Boolean.valueOf(showShadows));
+     
+    linkIndex_ = new int[(numLinks == 0) ? 0 : linkCols.max + 1 - linkCols.min];
+    indexOffset_ = linkCols.min;  // In subviews, links do NOT start at column 0!
     // And in subviews with non-contiguous links, we need to skip non-link columns, so init with -1:
     Arrays.fill(linkIndex_, -1);
     linkRefs_ = links;
     
     int numNodes = targets.size();
-    int maxRow = 0;
-    int minRow = Integer.MAX_VALUE;
     
     LoopReporter lr = new LoopReporter(targets.size(), 20, monitor, 0.0, 1.0, "progress.buildNodeGraphics");
-    HashMap<Integer, MinMax> nodeExtents = new HashMap<Integer, MinMax>();
+    HashMap<Integer, MinMax> nodeExtents = ext.allNodeExtents.get(Boolean.valueOf(showShadows));
+    MinMax nodeRows = ext.allNodeFullRange.get(Boolean.valueOf(showShadows));
     for (int i = 0; i < numNodes; i++) {
       BioFabricNetwork.NodeInfo node = targets.get(i);
       int num = node.nodeRow;
       lr.report();
-      MinMax cols = node.getColRange(showShadows);
-      nodeExtents.put(Integer.valueOf(num), cols);
-      if (num > maxRow) {
-      	maxRow = num;
-      }
-      if (num < minRow) {
-      	minRow = num;
-      }
       buildNodeTextAndRect(node, frc, colGen_, linkExtents, shadeNodes, showShadows, nameMap, drainMap);
     }
     
-    nodeIndex_ = new int[(numNodes == 0) ? 0 : maxRow + 1 - minRow];
-    nodeIndexOffset_ = minRow;  // In subviews, links do NOT start at column 0!
+    nodeIndex_ = new int[(numNodes == 0) ? 0 : nodeRows.max + 1 - nodeRows.min];
+    nodeIndexOffset_ = nodeRows.min;  // In subviews, links do NOT start at column 0!
     // And in subviews with non-contiguous links, we need to skip non-link columns, so init with -1:
     Arrays.fill(nodeIndex_, -1);
     nodeRefs_ = targets;
@@ -775,7 +749,7 @@ public class PaintCacheSmall implements PaintCache {
   */
   
   private void buildAnAnnotationRect(MinMax dzmm, String name, Color col, boolean isHoriz, 
-                                     HashMap<Integer, MinMax> extents, FontRenderContext frc) {  
+                                     Map<Integer, MinMax> extents, FontRenderContext frc) {  
 
     
     int minExtent = Integer.MAX_VALUE;

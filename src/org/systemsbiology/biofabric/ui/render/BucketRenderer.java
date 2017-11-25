@@ -53,6 +53,7 @@ public class BucketRenderer implements BufBuildDrawer {
   
   private List<BioFabricNetwork.NodeInfo> targetList_;
   private List<BioFabricNetwork.LinkInfo> linkList_;
+  private BioFabricNetwork.Extents ext_;
   
   private Dimension screenDim_;
   private boolean showShadows_;
@@ -75,6 +76,7 @@ public class BucketRenderer implements BufBuildDrawer {
 
     targetList_ = new ArrayList<NodeInfo>();
     linkList_ = new ArrayList<LinkInfo>();
+    ext_ = new BioFabricNetwork.Extents();
     worldRect_ = new Rectangle2D.Double(0.0, 0.0, 100.0, 100.0);
     bis_ = null;
   }
@@ -102,10 +104,12 @@ public class BucketRenderer implements BufBuildDrawer {
   */
    
   public void buildBucketCache(List<BioFabricNetwork.NodeInfo> targets, 
-  		                         List<BioFabricNetwork.LinkInfo> links, boolean showShadows) { 
+  		                         List<BioFabricNetwork.LinkInfo> links, 
+  		                         BioFabricNetwork.Extents ext, boolean showShadows) { 
  
   	targetList_ = targets;
     linkList_ = links;
+    ext_ = ext;
     showShadows_ = showShadows;
     return;
   }
@@ -148,8 +152,7 @@ public class BucketRenderer implements BufBuildDrawer {
   	
   	return (true);
   }
-  
- 
+
   /***************************************************************************
   **
   ** Drawing core
@@ -157,44 +160,185 @@ public class BucketRenderer implements BufBuildDrawer {
   
   private boolean drawLinksForBuffer(BufferedImage bi, Rectangle2D clip, Dimension screenDim, Rectangle2D worldRec, int heightPad, double lpp) {
   	
-  	int imgHeight = bi.getHeight();
-    int imgWidth = bi.getWidth();
-	
- // 	System.out.println("Clip " + clip);
-    double zoomH = screenDim.getWidth() / worldRec.getWidth();
-    double zoomV = screenDim.getHeight() / worldRec.getHeight();
-    double zoom = Math.max(zoomH, zoomV);
-    Point2D centerW = new Point2D.Double(worldRec.getX() + (worldRec.getWidth() / 2.0), worldRec.getY() + (worldRec.getHeight() / 2.0));
-    AffineTransform transform = new AffineTransform();
-    transform.translate(screenDim.getWidth() / 2.0, screenDim.getHeight() / 2.0);
-    transform.scale(zoom, zoom);
-    transform.translate(-centerW.getX(), -centerW.getY());
-      
-    int scrnHeight = screenDim.height;
-    int scrnWidth = screenDim.width;
-     
-    int bufLen = scrnHeight * scrnWidth;
+    BufAndMeta bam = new BufAndMeta(bi, clip, screenDim, worldRec, heightPad, lpp, bis_);
     
-    Point2D newPoint = new Point2D.Double();
-   
-    int[] mybuf = bis_.fetchBuf(bufLen);
-    
-    Point pts = new Point();
-    Point pte = new Point();    
-    Point startPoint = new Point();
-	  Point endPoint = new Point();
-	  
-	  startPoint.setLocation(worldRec.getX(), worldRec.getY());
-	  Point ulInV = BasicZoomTargetSupport.pointToViewport(startPoint, transform, newPoint, pts);
-	  int bufOffset = (ulInV.x * scrnHeight) + ulInV.y;	  
+	  bam.startPoint.setLocation(worldRec.getX(), worldRec.getY());
+	  int bufOffset = (bam.ulInV.x * bam.scrnHeight) + bam.ulInV.y;	  
 	  
     for (BioFabricNetwork.LinkInfo lif : linkList_) {
 
-	    double yStrt = lif.topRow() * BioFabricPanel.GRID_SIZE;
-	    double yEnd = lif.bottomRow() * BioFabricPanel.GRID_SIZE;
-	    double x = lif.getUseColumn(showShadows_) * BioFabricPanel.GRID_SIZE;
-	    if ((x < clip.getX()) || (x > (clip.getX() + clip.getWidth()))) {
+	    bam.yStrt = lif.topRow() * BioFabricPanel.GRID_SIZE;
+	    bam.yEnd = lif.bottomRow() * BioFabricPanel.GRID_SIZE;
+	    bam.x = lif.getUseColumn(showShadows_) * BioFabricPanel.GRID_SIZE;
+	   	if (!bam.clipForLinks(clip)) {
 	    	continue;
+	    }
+	    int bufStart = (bam.startPtInV.x * bam.scrnHeight) + bam.startPtInV.y - bufOffset;
+	    int bufEnd = (bam.endPtInV.x * bam.scrnHeight) + bam.endPtInV.y - bufOffset;
+	    
+	    bam.transToBuf(bufStart, bufEnd);
+    }
+    
+     // link color: 130 122 128
+    
+    for (int i = 0; i < bam.bufLen; i++) {
+    	double val = bam.mybuf[i] / lpp;
+    	int red = 255 - Math.min(125, (int)Math.round(val * 125.0));
+    	int green = 255 - Math.min(133, (int)Math.round(val * 133.0));
+    	int blue = 255 - Math.min(127, (int)Math.round(val * 127.0));
+    	int grey = 255 - Math.min(255, (int)Math.round(val * 255.0));
+      int rgb = 128 << 24 | red << 16 | green << 8 | blue;
+      
+    	int xval = i / bam.scrnHeight;
+    	
+    	if (xval >= bam.imgWidth) {
+    		continue;
+    	}
+    	int yval = i % bam.scrnHeight;
+    	if (yval >= bam.imgHeight) {
+    		continue;
+    	}
+      bi.setRGB(xval, yval, rgb);
+	  }
+    
+    bis_.returnBuf(bam.mybuf);
+    return (true);
+  }
+ 
+  /***************************************************************************
+  **
+  ** Drawing core
+  */
+  
+  private boolean drawNodesForBuffer(BufferedImage bi, Rectangle2D clip, Dimension screenDim, Rectangle2D worldRec, int heightPad, double lpp) {
+  
+  	BufAndMeta bam = new BufAndMeta(bi, clip, screenDim, worldRec, heightPad, lpp, bis_);
+
+	  int bufOffset = (bam.ulInV.y * bam.scrnWidth) + bam.ulInV.x;	  
+	  
+    for (BioFabricNetwork.NodeInfo nif : targetList_) {
+
+	    MinMax colRange = nif.getColRange(showShadows_);	    				
+	    bam.xStrt = colRange.min * BioFabricPanel.GRID_SIZE;
+	    bam.xEnd = colRange.max * BioFabricPanel.GRID_SIZE;
+	    bam.y = nif.nodeRow * BioFabricPanel.GRID_SIZE;
+	    if (!bam.clipForNodes(clip)) {
+	    	continue;
+	    }
+	    int bufStart = (bam.startPtInV.y * bam.scrnWidth) + bam.startPtInV.x - bufOffset;
+	    int bufEnd = (bam.endPtInV.y * bam.scrnWidth) + bam.endPtInV.x - bufOffset;
+	       
+	    bam.transToBuf(bufStart, bufEnd);
+    }
+    
+    // Node color: 187 177 175
+    
+    for (int i = 0; i < bam.bufLen; i++) {
+    	double val = bam.mybuf[i] / lpp;
+    	int red = 255 - Math.min(68, (int)Math.round(val * 68.0));
+    	int green = 255 - Math.min(78, (int)Math.round(val * 78.0));
+    	int blue = 255 - Math.min(80, (int)Math.round(val * 80.0));
+    	
+    	
+    	int grey = 255 - Math.min(255, (int)Math.round(val * 255.0));
+      int rgb = 128 << 24 | red << 16 | green << 8 | blue;
+    //  mybuf[i] = rgb;
+    	int yval = i / bam.scrnWidth;
+    	
+    	if (yval >= bam.imgHeight) {
+    		continue;
+    	}
+    	int xval = i % bam.scrnWidth;
+    	if (xval >= bam.imgWidth) {
+    		continue;
+    	}
+      bi.setRGB(xval, yval, rgb);
+	  }
+    // Use this instead:
+    // int[] a = ((DataBufferInt)bi.getRaster().getDataBuffer()).getData();
+    // System.arraycopy(mybuf, 0, a, 0, Math.min(mybuf.length, a.length));
+    bis_.returnBuf(bam.mybuf);
+    return (true);
+  }
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PRIVATE INNER CLASSES
+  //
+  ////////////////////////////////////////////////////////////////////////////
+
+  private static class BufAndMeta {
+  	int imgHeight;
+    int imgWidth;
+
+    double zoomH;
+    double zoomV;
+    double zoom;
+    AffineTransform transform;
+     
+    int scrnHeight;
+    int scrnWidth;
+     
+    int bufLen;
+    
+    Point2D newPoint;
+  	int[] mybuf;
+	
+  	Point pts;
+    Point pte;    
+    Point startPoint;
+	  Point endPoint;
+	  Point ulInV;
+	  
+	  Point startPtInV;
+	  Point endPtInV;
+	  
+	  // For link drawing:
+	  double yStrt;
+	  double yEnd;
+	  double x;
+	  
+	  // for node drawing:
+	  double xStrt;
+	  double xEnd;
+	  double y;
+ 
+	  BufAndMeta(BufferedImage bi, Rectangle2D clip, Dimension screenDim, Rectangle2D worldRec, 
+	  		       int heightPad, double lpp, ImgAndBufPool bis) {
+  	
+	  	imgHeight = bi.getHeight();
+	    imgWidth = bi.getWidth();
+		
+	    zoomH = screenDim.getWidth() / worldRec.getWidth();
+	    zoomV = screenDim.getHeight() / worldRec.getHeight();
+	    zoom = Math.max(zoomH, zoomV);
+	    Point2D centerW = new Point2D.Double(worldRec.getX() + (worldRec.getWidth() / 2.0), worldRec.getY() + (worldRec.getHeight() / 2.0));
+	    transform = new AffineTransform();
+	    transform.translate(screenDim.getWidth() / 2.0, screenDim.getHeight() / 2.0);
+	    transform.scale(zoom, zoom);
+	    transform.translate(-centerW.getX(), -centerW.getY());
+	      
+	    scrnHeight = screenDim.height;
+	    scrnWidth = screenDim.width;
+	     
+	    bufLen = scrnHeight * scrnWidth;
+	    
+	    newPoint = new Point2D.Double();
+	   
+	    mybuf = bis.fetchBuf(bufLen);
+	    
+	    pts = new Point();
+	    pte = new Point();    
+	    startPoint = new Point();
+		  endPoint = new Point();
+		  
+		  startPoint.setLocation(worldRec.getX(), worldRec.getY());
+		  ulInV = BasicZoomTargetSupport.pointToViewport(startPoint, transform, newPoint,pts); 
+	  }
+	  
+	  boolean clipForLinks(Rectangle2D clip) {
+	  	if ((x < clip.getX()) || (x > (clip.getX() + clip.getWidth()))) {
+	    	return (false);
 	    }
 	    if (yStrt < clip.getY()) {
 	    	yStrt = clip.getY();
@@ -211,101 +355,16 @@ public class BucketRenderer implements BufBuildDrawer {
 	
 	    startPoint.setLocation(x, yStrt);
 	    endPoint.setLocation(x, yEnd);
-	    
-	    Point startPtInV = BasicZoomTargetSupport.pointToViewport(startPoint, transform, newPoint, pts);
-	    Point endPtInV = BasicZoomTargetSupport.pointToViewport(endPoint, transform, newPoint, pte);
-	
-	    int bufStart = (startPtInV.x * scrnHeight) + startPtInV.y - bufOffset;
-	    int bufEnd = (endPtInV.x * scrnHeight) + endPtInV.y - bufOffset;
+	        
+	    startPtInV = BasicZoomTargetSupport.pointToViewport(startPoint, transform, newPoint, pts);
+	    endPtInV = BasicZoomTargetSupport.pointToViewport(endPoint,transform, newPoint, pte);
 	       
-	    for (int i = bufStart; i < bufEnd; i++) {
-	    	int off = i;
-	    	if (off < 0) {
-	    		continue;
-	    	}
-	    	if (off >= mybuf.length) {
-          continue;	
-	    	}
-	    	mybuf[off] += 1;    	
-	    }
-    }
-    
-     // link color: 130 122 128
-    
-    for (int i = 0; i < bufLen; i++) {
-    	double val = mybuf[i] / lpp;
-    	int red = 255 - Math.min(125, (int)Math.round(val * 125.0));
-    	int green = 255 - Math.min(133, (int)Math.round(val * 133.0));
-    	int blue = 255 - Math.min(127, (int)Math.round(val * 127.0));
-    	int grey = 255 - Math.min(255, (int)Math.round(val * 255.0));
-      int rgb = 128 << 24 | red << 16 | green << 8 | blue;
-      
-    	int xval = i / scrnHeight;
-    	
-    	if (xval >= imgWidth) {
-    		continue;
-    	}
-    	int yval = i % scrnHeight;
-    	if (yval >= imgHeight) {
-    		continue;
-    	}
-      bi.setRGB(xval, yval, rgb);
-	  }
-    
-    bis_.returnBuf(mybuf);
-    return (true);
-  }
- 
-  /***************************************************************************
-  **
-  ** Drawing core
-  */
-  
-  private boolean drawNodesForBuffer(BufferedImage bi, Rectangle2D clip, Dimension screenDim, Rectangle2D worldRec, int heightPad, double lpp) {
-  
-  	int imgHeight = bi.getHeight();
-    int imgWidth = bi.getWidth();
-  	
-    double zoomH = screenDim.getWidth() / worldRec.getWidth();
-    double zoomV = screenDim.getHeight() / worldRec.getHeight();
-    double zoom = Math.max(zoomH, zoomV);
-    Point2D centerW = new Point2D.Double(worldRec.getX() + (worldRec.getWidth() / 2.0), worldRec.getY() + (worldRec.getHeight() / 2.0));
-    AffineTransform transform = new AffineTransform();
-    transform.translate(screenDim.getWidth() / 2.0, screenDim.getHeight() / 2.0);
-    transform.scale(zoom, zoom);
-    transform.translate(-centerW.getX(), -centerW.getY());
-    
-    double linksPerPix = 1.0 / (BioFabricPanel.GRID_SIZE * zoom);
-  //  System.out.println("lpp " + linksPerPix);
-     
-      
-    int scrnHeight = screenDim.height;
-    int scrnWidth = screenDim.width;
-     
-    int bufLen = scrnHeight * scrnWidth;
-    
-    Point2D newPoint = new Point2D.Double();
-    int[] mybuf = bis_.fetchBuf(bufLen);
-  //  System.out.println("mbl " + mybuf.length + " " + screenDim + " " + imgHeight + " " + imgWidth);
-    
-    Point pts = new Point();
-    Point pte = new Point();    
-    Point startPoint = new Point();
-	  Point endPoint = new Point();
+	    return (true);
+	  }  
 	  
-	  startPoint.setLocation(worldRec.getX(), worldRec.getY());
-	  Point ulInV = BasicZoomTargetSupport.pointToViewport(startPoint, transform, newPoint, pts);
-	  int bufOffset = (ulInV.y * scrnWidth) + ulInV.x;	  
-	  
-    for (BioFabricNetwork.NodeInfo nif : targetList_) {
-
-	    MinMax colRange = nif.getColRange(showShadows_);
-	    				
-	    double xStrt = colRange.min * BioFabricPanel.GRID_SIZE;
-	    double xEnd = colRange.max * BioFabricPanel.GRID_SIZE;
-	    double y = nif.nodeRow * BioFabricPanel.GRID_SIZE;
-	    if ((y < clip.getY()) || (y > (clip.getY() + clip.getHeight()))) {
-	    	continue;
+	  boolean clipForNodes(Rectangle2D clip) {
+	  	if ((y < clip.getY()) || (y > (clip.getY() + clip.getHeight()))) {
+	    	return (false);
 	    }
 	    if (xStrt < clip.getX()) {
 	    	xStrt = clip.getX();
@@ -318,18 +377,18 @@ public class BucketRenderer implements BufBuildDrawer {
 	    }
 	    if (xEnd > (clip.getX() + clip.getWidth())) {
 	    	xEnd = clip.getX() + clip.getWidth();
-	    }
-	
+	    }   
 	    startPoint.setLocation(xStrt, y);
 	    endPoint.setLocation(xEnd, y);
 	    
-	    Point startPtInV = BasicZoomTargetSupport.pointToViewport(startPoint, transform, newPoint, pts);
-	    Point endPtInV = BasicZoomTargetSupport.pointToViewport(endPoint, transform, newPoint, pte);
-	
-	    int bufStart = (startPtInV.y * scrnWidth) + startPtInV.x - bufOffset;
-	    int bufEnd = (endPtInV.y * scrnWidth) + endPtInV.x - bufOffset;
+	    startPtInV = BasicZoomTargetSupport.pointToViewport(startPoint, transform, newPoint, pts);
+	    endPtInV = BasicZoomTargetSupport.pointToViewport(endPoint,transform, newPoint, pte);
 	       
-	    for (int i = bufStart; i < bufEnd; i++) {
+	    return (true);
+	  } 
+	  
+	  void transToBuf(int bufStart, int bufEnd) {
+	  	for (int i = bufStart; i < bufEnd; i++) {
 	    	int off = i;
 	    	if (off < 0) {
 	    		continue;
@@ -339,42 +398,7 @@ public class BucketRenderer implements BufBuildDrawer {
 	    	}
 	    	mybuf[off] += 1;    	
 	    }
-    }
-    
-    // Node color: 187 177 175
-    
-    for (int i = 0; i < bufLen; i++) {
-    	double val = mybuf[i] / lpp;
-    	int red = 255 - Math.min(68, (int)Math.round(val * 68.0));
-    	int green = 255 - Math.min(78, (int)Math.round(val * 78.0));
-    	int blue = 255 - Math.min(80, (int)Math.round(val * 80.0));
-    	
-    	
-    	int grey = 255 - Math.min(255, (int)Math.round(val * 255.0));
-      int rgb = 128 << 24 | red << 16 | green << 8 | blue;
-    //  mybuf[i] = rgb;
-    	int yval = i / scrnWidth;
-    	
-    	if (yval >= imgHeight) {
-    		continue;
-    	}
-    	int xval = i % scrnWidth;
-    	if (xval >= imgWidth) {
-    		continue;
-    	}
-      bi.setRGB(xval, yval, rgb);
+	  	return;
 	  }
-    // Use this instead:
-    // int[] a = ((DataBufferInt)bi.getRaster().getDataBuffer()).getData();
-    // System.arraycopy(mybuf, 0, a, 0, Math.min(mybuf.length, a.length));
-    bis_.returnBuf(mybuf);
-    return (true);
-  }
-  
-  ////////////////////////////////////////////////////////////////////////////
-  //
-  // PUBLIC STATIC METHODS
-  //
-  ////////////////////////////////////////////////////////////////////////////
-
+  }  
 }
