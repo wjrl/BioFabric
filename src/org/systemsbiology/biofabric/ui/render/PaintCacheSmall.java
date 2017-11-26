@@ -159,7 +159,8 @@ public class PaintCacheSmall implements PaintCache {
    // annotGrays_[0] = new Color(127, 127, 127, 127);
    // annotGrays_[1] = new Color(194, 194, 194, 127);
   //  annotGrays_[2] = new Color(144, 144, 144, 127);
-    annotGrays_[0] = new Color(211, 211, 211, 127);
+    annotGrays_[0] = new Color(220, 220, 220, 127);
+   // annotGrays_[0] = new Color(211, 211, 211, 127);
   //  annotGrays_[4] = new Color(161, 161, 161, 127);
   //  annotGrays_[5] = new Color(228, 228, 228, 127);
   //  annotGrays_[6] = new Color(178, 178, 178, 127);

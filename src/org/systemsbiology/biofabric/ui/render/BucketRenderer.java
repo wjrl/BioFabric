@@ -64,8 +64,12 @@ public class BucketRenderer implements BufBuildDrawer {
   private ImgAndBufPool bis_;
   private Color[] annotColors_;
   private Color[] linkAnnotGrays_;
-
   
+  private static final int LINK_GRAY_ = 130;
+  private static final int LINK_MAX_ALPHA_ = 180;
+  private static final int NODE_GRAY_ = 200;
+  private static final int NODE_MAX_ALPHA_ = 180;
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTRUCTORS
@@ -219,20 +223,20 @@ public class BucketRenderer implements BufBuildDrawer {
     for (int i = 0; i < bam.bufLen; i++) {
     	int pix = bam.mybuf[i];
     	
-    	int red = 255;
-    	int green = 255;
-    	int blue = 255;
-    	int alpha = 75;
+    	int red = 0;
+    	int green = 0;
+    	int blue = 0;
+    	int alpha = 0;
     	
     	if (pix != 0) {
     	  double val = pix / lpp;
-    	  red = 255 - Math.min(125, (int)Math.round(val * 125.0));
-    	  green = 255 - Math.min(133, (int)Math.round(val * 133.0));
-    	  blue = 255 - Math.min(127, (int)Math.round(val * 127.0));
-    	  alpha = 75;
+ 
+    	  red = LINK_GRAY_;
+    	  green = LINK_GRAY_;
+    	  blue = LINK_GRAY_;
+    	  alpha = Math.min(LINK_MAX_ALPHA_, (int)Math.round(val * LINK_MAX_ALPHA_));
     	}
    
-    //	int grey = 255 - Math.min(255, (int)Math.round(val * 255.0));
       int rgb = alpha << 24 | red << 16 | green << 8 | blue;
       
     	int xval = i / bam.scrnHeight;
@@ -277,25 +281,22 @@ public class BucketRenderer implements BufBuildDrawer {
 	    bam.transToBuf(bufStart, bufEnd);
     }
     
-    // Node color: 187 177 175
-    
     for (int i = 0; i < bam.bufLen; i++) {
     	int pix = bam.mybuf[i];
     	
-      int red = 255;
-    	int green = 255;
-    	int blue = 255;
-    	int alpha = 75;
-    	
+    	int red = 0;
+    	int green = 0;
+    	int blue = 0;
+    	int alpha = 0;
+
     	if (pix != 0) {
-    	  double val = pix / lpp;
-    	  red = 255 - Math.min(68, (int)Math.round(val * 68.0));
-    	  green = 255 - Math.min(78, (int)Math.round(val * 78.0));
-    	  blue = 255 - Math.min(80, (int)Math.round(val * 80.0));
-    	  alpha = 75; //168; // Use 128 with no node annotations.
+    	  double val = pix / lpp;  	  
+    	  red = NODE_GRAY_;
+    	  green = NODE_GRAY_;
+    	  blue = NODE_GRAY_;
+    	  alpha = Math.min(NODE_MAX_ALPHA_, (int)Math.round(val * NODE_MAX_ALPHA_));
     	}
     	
-    //	int grey = 255 - Math.min(255, (int)Math.round(val * 255.0));
       int rgb = alpha << 24 | red << 16 | green << 8 | blue;
     //  mybuf[i] = rgb;
     	int yval = i / bam.scrnWidth;
