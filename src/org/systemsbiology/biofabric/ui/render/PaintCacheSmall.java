@@ -92,6 +92,7 @@ public class PaintCacheSmall implements PaintCache {
   private boolean nodesForShadow_;
   private QuadTree names_;
   private HashMap<String, BoxPath> nameKeyToPaintZero_;
+  private HashMap<String, BoxPath> nameKeyToPaintOneQuarter_;
   private HashMap<String, TextPath> nameKeyToPaintOneHalf_;
   private HashMap<String, BoxPath> nameKeyToPaintFirst_;
   private HashMap<String, TextPath> nameKeyToPaintSecond_;
@@ -134,6 +135,7 @@ public class PaintCacheSmall implements PaintCache {
     fonts_.put(TextPath.FontSizes.TINY, new Font("SansSerif", Font.PLAIN, 10));
   
     nameKeyToPaintZero_ = new HashMap<String, BoxPath>();
+    nameKeyToPaintOneQuarter_ = new HashMap<String, BoxPath>();
     nameKeyToPaintOneHalf_ = new HashMap<String, TextPath>();
     nameKeyToPaintFirst_ = new HashMap<String, BoxPath>();
     nameKeyToPaintSecond_ = new HashMap<String, TextPath>();
@@ -179,6 +181,7 @@ public class PaintCacheSmall implements PaintCache {
   
   public void clear() {
     nameKeyToPaintZero_.clear();
+    nameKeyToPaintOneQuarter_.clear();
     nameKeyToPaintOneHalf_.clear();
   	nameKeyToPaintFirst_.clear();
     nameKeyToPaintSecond_.clear();
@@ -211,7 +214,7 @@ public class PaintCacheSmall implements PaintCache {
     }
     
     //
-    // Zero pass is annotation rectangles, which are not drawn for selections:
+    // Zero pass is node annotation rectangles, which are not drawn for selections:
     //
     
     if (reduce == null) {
@@ -225,7 +228,21 @@ public class PaintCacheSmall implements PaintCache {
     }
     
     //
-    // Zero pass is annotation rectangles, which are not drawn for selections:
+    // Next pass is link annotation rectangles, which are not drawn for selections:
+    //
+    
+    if (reduce == null) {
+      for (String pkey : pKeys) {
+        BoxPath pp = nameKeyToPaintOneQuarter_.get(pkey);
+        if (pp != null) {
+          int result = pp.paint(g2, clip);
+          retval = retval || (result > 0);
+        }
+      }
+    }
+ 
+    //
+    // Next pass is annotation strings, which are not drawn for selections:
     //
     
     if (reduce == null) {
@@ -428,6 +445,7 @@ public class PaintCacheSmall implements PaintCache {
   	
   	
     nameKeyToPaintZero_.clear();
+    nameKeyToPaintOneQuarter_.clear();
     nameKeyToPaintOneHalf_.clear();
     nameKeyToPaintFirst_.clear();
     nameKeyToPaintSecond_.clear();
@@ -786,8 +804,11 @@ public class PaintCacheSmall implements PaintCache {
     String nkk = Integer.toString(nameKeyCount_++);
     QuadTree.Payload pay = new QuadTree.Payload(rect, nkk);
     names_.insertPayload(pay);
-    nameKeyToPaintZero_.put(nkk, npp);
-
+    if (isHoriz) {
+      nameKeyToPaintZero_.put(nkk, npp);
+    } else {
+      nameKeyToPaintOneQuarter_.put(nkk, npp);
+    }
     TextPath.FontSizes useFont = null;
     Rectangle2D useBounds = null;
     Rectangle2D bounds = null;
