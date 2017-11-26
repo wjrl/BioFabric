@@ -155,15 +155,15 @@ public class PaintCacheSmall implements PaintCache {
     annotColors_[6] = new Color(224, 243, 253, 255);
     annotColors_[7] = new Color(254, 246, 225, 255);
 
-    annotGrays_ = new Color[8];
-    annotGrays_[0] = new Color(127, 127, 127, 127);
-    annotGrays_[1] = new Color(194, 194, 194, 127);
-    annotGrays_[2] = new Color(144, 144, 144, 127);
-    annotGrays_[3] = new Color(211, 211, 211, 127);
-    annotGrays_[4] = new Color(161, 161, 161, 127);
-    annotGrays_[5] = new Color(228, 228, 228, 127);
-    annotGrays_[6] = new Color(178, 178, 178, 127);
-    annotGrays_[7] = new Color(245, 245, 245, 127);
+    annotGrays_ = new Color[2];
+   // annotGrays_[0] = new Color(127, 127, 127, 127);
+   // annotGrays_[1] = new Color(194, 194, 194, 127);
+  //  annotGrays_[2] = new Color(144, 144, 144, 127);
+    annotGrays_[0] = new Color(211, 211, 211, 127);
+  //  annotGrays_[4] = new Color(161, 161, 161, 127);
+  //  annotGrays_[5] = new Color(228, 228, 228, 127);
+  //  annotGrays_[6] = new Color(178, 178, 178, 127);
+    annotGrays_[1] = new Color(245, 245, 245, 127);
   }
   
   
@@ -174,6 +174,44 @@ public class PaintCacheSmall implements PaintCache {
   //
   ////////////////////////////////////////////////////////////////////////////
 
+  /***************************************************************************
+  **
+  ** Get number of annotation colors
+  */
+  
+  public int getAnnotColorCount() {
+    return (annotColors_.length);
+  }
+  
+  /***************************************************************************
+  **
+  ** Get number of link annotation colors
+  */
+  
+  public int getLinkAnnotGrayCount() {
+    return (annotGrays_.length);
+  }  
+  
+  /***************************************************************************
+  **
+  ** Get annotation color
+  */
+  
+  public Color getAnnotColor(int i) {
+    return (annotColors_[i]);
+  }
+  
+  /***************************************************************************
+  **
+  ** Get link annotation color
+  */
+  
+  public Color getLinkAnnotGray(int i) {
+    return (annotGrays_[i]);
+  }
+  
+  
+   
   /***************************************************************************
   **
   **  Dump used memory
@@ -516,7 +554,7 @@ public class PaintCacheSmall implements PaintCache {
     if (nodeAnnot != null) {
       for (AnnotationSet.Annot an : nodeAnnot) {
         Color col = annotColors_[annotCount++ % annotColors_.length];
-        buildAnAnnotationRect(an.getRange(), an.getName(), col, true, nodeExtents, frc);
+        buildAnAnnotationRect(an.getRange(), an.getName(), col, true, nodeExtents, frc, linkCols);
       }
     }
     
@@ -524,8 +562,8 @@ public class PaintCacheSmall implements PaintCache {
     Color[] useColors = (nodeAnnot != null) ? annotGrays_ : annotColors_;
     if (linkAnnot != null) {
       for (AnnotationSet.Annot an : linkAnnot) {
-        Color col = useColors[annotCount++ % annotColors_.length];
-        buildAnAnnotationRect(an.getRange(), an.getName(), col, false, linkExtents, frc);
+        Color col = useColors[annotCount++ % useColors.length];
+        buildAnAnnotationRect(an.getRange(), an.getName(), col, false, linkExtents, frc, nodeRows);
       }
     }
 
@@ -767,12 +805,12 @@ public class PaintCacheSmall implements PaintCache {
   */
   
   private void buildAnAnnotationRect(MinMax dzmm, String name, Color col, boolean isHoriz, 
-                                     Map<Integer, MinMax> extents, FontRenderContext frc) {  
+                                     Map<Integer, MinMax> extents, FontRenderContext frc, MinMax fullExtents) {  
 
     
-    int minExtent = Integer.MAX_VALUE;
-    int maxExtent = Integer.MIN_VALUE;
-    for (int chk = dzmm.min; chk <= dzmm.max; chk++) {
+    int minExtent = fullExtents.min; //Integer.MAX_VALUE;
+    int maxExtent = fullExtents.max; //Integer.MIN_VALUE;
+ /*   for (int chk = dzmm.min; chk <= dzmm.max; chk++) {
       MinMax extent = extents.get(Integer.valueOf(chk));
       if (minExtent > extent.min) {
         minExtent = extent.min;
@@ -780,7 +818,7 @@ public class PaintCacheSmall implements PaintCache {
       if (maxExtent < extent.max) {
         maxExtent = extent.max;
       }
-    }
+    }*/
       
     Rectangle rect;
     if (isHoriz) {

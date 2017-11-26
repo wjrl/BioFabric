@@ -1258,7 +1258,9 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
     		                   shadeNodes, showShadows, ext, nodeNameLocations_, 
     		                   drainNameLocations_, worldRectNetAR_, 
     		                   bfn_.getNodeAnnotations(), bfn_.getLinkAnnotations(Boolean.valueOf(showShadows)), monitor);
-    bucketRend_.buildBucketCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), ext, showShadows);
+    bucketRend_.buildBucketCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), 
+    		                         bfn_.getNodeAnnotations(), bfn_.getLinkAnnotations(Boolean.valueOf(showShadows)),
+    		                         ext, showShadows);
       
     LoopReporter lr = new LoopReporter(drainNameLocations_.size(), 20, monitor, 0.0, 1.0, "progress.drainsToQuad");
 
