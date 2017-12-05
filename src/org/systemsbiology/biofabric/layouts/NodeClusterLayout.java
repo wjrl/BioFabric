@@ -317,6 +317,7 @@ public class NodeClusterLayout extends NodeLayout {
     for (Integer row : invert.keySet()) {
       NID.WithName node = invert.get(row);
       String clust = params.getClusterForNode(node);
+      System.out.println("node " + node + " clust " + clust);
       if (currClust == null) {
         currClust = clust;
         startRow = row;
@@ -334,9 +335,18 @@ public class NodeClusterLayout extends NodeLayout {
           break;
         }
         continue;
-      }      
-      AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0);
-      retval.addAnnot(annot);
+      } else { 
+        // We have just entered a new cluster
+        AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue() - 1, 0);
+        retval.addAnnot(annot);
+        startRow = row;
+        currClust = clust;
+        if (row.equals(lastKey)) {
+          annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0);
+          retval.addAnnot(annot);
+          break;
+        }
+      }
     }
     
     return (retval);
@@ -347,8 +357,11 @@ public class NodeClusterLayout extends NodeLayout {
   ** Generate link annotations to tag each cluster and intercluster links
   */
     
-  private  Map<Boolean, AnnotationSet> generateLinkAnnotations() {   
-    return (new HashMap<Boolean, AnnotationSet>());
+  private Map<Boolean, AnnotationSet> generateLinkAnnotations() { 
+  	HashMap<Boolean, AnnotationSet> retval = new HashMap<Boolean, AnnotationSet>();
+  	retval.put(Boolean.TRUE, new AnnotationSet());
+  	retval.put(Boolean.FALSE, new AnnotationSet());
+    return (retval);
   }
    
   /***************************************************************************

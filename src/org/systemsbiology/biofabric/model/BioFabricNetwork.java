@@ -692,6 +692,13 @@ public class BioFabricNetwork {
     //
 
     loneNodesToLastColumn(rbd.loneNodeIDs, monitor);
+    
+    //
+    // If we have node/link annotations, install them
+    //
+      
+    nodeAnnot_ = rbd.nodeAnnotForLayout;
+    linkAnnots_ = rbd.linkAnnotsForLayout;
 
     return;
   }
