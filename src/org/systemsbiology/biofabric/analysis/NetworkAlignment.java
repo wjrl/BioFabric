@@ -83,12 +83,12 @@ public class NetworkAlignment {
   // G1 is the small (#nodes) network, G2 is the large network
   //
   
-  private Map<NID.WithName, NID.WithName> mapG1toG2_;
+  private Map<NID.WithName, NID.WithName> mapG1toG2_, perfectG1toG2_;
   private ArrayList<FabricLink> linksG1_;
   private HashSet<NID.WithName> lonersG1_;
   private ArrayList<FabricLink> linksG2_;
   private HashSet<NID.WithName> lonersG2_;
-  private boolean forClique_;
+  private boolean forOrphanEdges;
   private UniqueLabeller idGen_;
   private BTProgressMonitor monitor_;
   
@@ -102,6 +102,7 @@ public class NetworkAlignment {
   
   private ArrayList<FabricLink> mergedLinks_;
   private Set<NID.WithName> mergedLoners_;
+  private Map<NID.WithName, Boolean> mergedToCorrect_;
   
   private enum Graph {SMALL, LARGE}
   
@@ -113,22 +114,25 @@ public class NetworkAlignment {
   ////////////////////////////////////////////////////////////////////////////
   
   public NetworkAlignment(ArrayList<FabricLink> mergedLinks, Set<NID.WithName> mergedLoneNodeIDs,
-                          Map<NID.WithName, NID.WithName> mapG1toG2,
+                          Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2_,
                           ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
                           ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
-                          boolean forCliques, UniqueLabeller idGen, BTProgressMonitor monitor) {
+                          Map<NID.WithName, Boolean> mergedToCorrect,
+                          boolean forOrphanEdges, UniqueLabeller idGen, BTProgressMonitor monitor) {
     
     this.mapG1toG2_ = mapG1toG2;
+    this.perfectG1toG2_ = perfectG1toG2_;
     this.linksG1_ = linksG1;
     this.lonersG1_ = lonersG1;
     this.linksG2_ = linksG2;
     this.lonersG2_ = lonersG2;
-    this.forClique_ = forCliques;
+    this.forOrphanEdges = forOrphanEdges;
     this.idGen_ = idGen;
     this.monitor_ = monitor;
     
     this.mergedLinks_ = mergedLinks;
     this.mergedLoners_ = mergedLoneNodeIDs;
+    this.mergedToCorrect_ = mergedToCorrect;
   }
   
   /****************************************************************************
@@ -139,7 +143,7 @@ public class NetworkAlignment {
   public void mergeNetworks() throws AsynchExitRequestException {
     
     //
-    // Create merged nodes
+    // Create merged nodes and Correctness
     //
     
     createMergedNodes();
@@ -166,7 +170,11 @@ public class NetworkAlignment {
     
     finalizeLoneNodeIDs(newLonersG1, newLonersG2);
     
-    if (forClique_) {
+    //
+    // Orphan Edges: All unaligned edges; plus all of their endpoint nodes' edges
+    //
+    
+    if (forOrphanEdges) {
       (new CliqueMisalignment()).process(mergedLinks_, mergedLoners_, mergedIDToSmall_);
     }
     UiUtil.fixMePrintout("Should Clique Misalignment remain a postprocessing step");
@@ -215,6 +223,16 @@ public class NetworkAlignment {
       smallToMergedID_.put(smallNode, merged_node);
       largeToMergedID_.put(largeNode, merged_node);
       mergedIDToSmall_.put(merged_node, smallNode);
+      
+      //
+      // Nodes are correctly aligned map
+      //
+      
+      if (perfectG1toG2_ != null) { // perfect alignment must be provided
+        NID.WithName perfectLarge = perfectG1toG2_.get(smallNode);
+        boolean alignedCorrect = perfectLarge.equals(largeNode);
+        mergedToCorrect_.put(merged_node, alignedCorrect);
+      }
     }
     return;
   }
@@ -288,10 +306,9 @@ public class NetworkAlignment {
     
     long totalSize = newLinksG2.size() + newLinksG2.size();
     LoopReporter lr = new LoopReporter(totalSize, 20, monitor_, 0.0, 1.0, "progress.separatingLinks");
-    // SHOULD I HAVE TWO LOOP REPORTERS OR JUST ONE FOR BOTH LOOPS??
+
     NetAlignFabricLinkLocator comp = new NetAlignFabricLinkLocator();
     Collections.sort(newLinksG1, comp);
-    // SORTING TAKES A LONG TIME . . .(THIS IS W/O THE LOOP REPORTER
     
     for (FabricLink linkG2 : newLinksG2) {
       

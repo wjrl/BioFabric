@@ -2584,13 +2584,18 @@ public class BioFabricNetwork {
   public static class NetworkAlignmentBuildData extends RelayoutBuildData {
     
     public AnnotationSet nodeAnnots;
+    public Map<NID.WithName, Boolean> mergedToCorrect_;
+    public boolean forOrphans;
   
     public NetworkAlignmentBuildData(UniqueLabeller idGen,
                                      Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
-                                     Map<NID.WithName, String> clustAssign,
+                                     Map<NID.WithName, Boolean> mergedToCorrect,
+                                     Map<NID.WithName, String> clustAssign, boolean forOrphans,
                                      FabricColorGenerator colGen, BuildMode mode) {
       super(idGen, allLinks, loneNodeIDs, clustAssign, colGen, mode);
       this.layoutMode = LayoutMode.PER_NETWORK_MODE;
+      this.forOrphans = forOrphans;
+      this.mergedToCorrect_ = mergedToCorrect;
       this.nodeAnnots = null;
     }
     

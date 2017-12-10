@@ -19,7 +19,6 @@
 
 package org.systemsbiology.biofabric.layouts;
 
-import javax.xml.soap.Node;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
@@ -93,8 +92,15 @@ public class NetworkAlignmentLayout extends NodeLayout {
     BioFabricNetwork.NetworkAlignmentBuildData nabd = (BioFabricNetwork.NetworkAlignmentBuildData) rbd;
     
     UiUtil.fixMePrintout("Clique Misalignment needs Default layout not BFSNodeGroup");
-    List<NID.WithName> targetIDs = BFSNodeGroupByClass(nabd, monitor);
-//    List<NID.WithName> targetIDs = (new DefaultLayout()).defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs,null,monitor);
+  
+    List<NID.WithName> targetIDs;
+    
+    if (nabd.forOrphans) {
+      targetIDs = (new DefaultLayout()).defaultNodeOrder(nabd.allLinks, nabd.loneNodeIDs,null, monitor);
+    } else {
+      targetIDs = BFSNodeGroup(nabd, monitor);
+    }
+    
     installNodeOrder(targetIDs, nabd, monitor);
     return (new ArrayList<NID.WithName>(targetIDs));
   }
@@ -104,8 +110,8 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Breadth first search based on node groups
    */
   
-  public List<NID.WithName> BFSNodeGroupByClass(BioFabricNetwork.NetworkAlignmentBuildData nabd,
-                                                BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NID.WithName> BFSNodeGroup(BioFabricNetwork.NetworkAlignmentBuildData nabd,
+                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
     //
@@ -279,10 +285,6 @@ public class NetworkAlignmentLayout extends NodeLayout {
         
         int kidGroup = grouper.getNodeGroup(kid);
 
-//        if (kidGroup < currGroup) {
-//          throw new IllegalStateException("kid group less than current (parent) group");
-//        }
-        
         if (kidGroup == currGroup) {
           if (leftToGo.contains(kid)) {
             queue.add(kid);
@@ -294,9 +296,6 @@ public class NetworkAlignmentLayout extends NodeLayout {
             queuesGroup.get(kidGroup).add(kid); // if node from another group, put it in its queue
           }
         }
-//        if (queue.size() > classToGroup.get(currGroup).size()) {
-//          throw new IllegalStateException("queue bigger than node group");
-//        }
       }
     }
     lr.finish();
@@ -385,7 +384,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
         throw new IllegalStateException("Annotation min max error in NetAlign Layout");
       }
 
-      AnnotationSet.Annot annot = new AnnotationSet.Annot(NodeAnnotations[nodeGroup], min, max,0);
+      AnnotationSet.Annot annot = new AnnotationSet.Annot(NodeGroupOrder[nodeGroup], min, max,0);
       annots.addAnnot(annot);
     }
     nabd.setNodeAnnots(annots);
@@ -411,7 +410,16 @@ public class NetworkAlignmentLayout extends NodeLayout {
    **
    */
   
-  private static final int NUMBER_NODE_GROUPS = 19;
+  private static final int NUMBER_LINK_GROUPS = 5;   // 0..4
+  
+  private static final int
+          PURPLE_EDGES = 0,
+          BLUE_EDGES = 1,
+          RED_EDGES = 2,
+          ORANGE_EDGES = 3,
+          YELLOW_EDGES = 4;
+  
+  private static final int NUMBER_NODE_GROUPS = 19; // 0..19
   
   private static final int
           
@@ -438,7 +446,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
           RED_WITH_ORANGE_YELLOW = 18,
           RED_SINGLETON = 19;
   
-  private static final String[] NodeAnnotations = {
+  private static final String[] NodeGroupOrder = {
           "(P:0)",
           "(P:P)",            // 1
           "(P:B)",
@@ -460,6 +468,111 @@ public class NetworkAlignmentLayout extends NodeLayout {
           "(R:pRr/rRr)",
           "(R:0)"
   };
+  
+  /***************************************************************************
+   **
+   ** HashMap
+   */
+  
+  private static class NodeGroupStruct {
+  
+    private Map<NID.WithName, Set<FabricLink>> nodeToLinks_;
+    private Map<NID.WithName, Set<NID.WithName>> nodeToNeighbors_;
+    private Map<NID.WithName, Boolean> mergedToCorrect_;
+    
+    public NodeGroupStruct(BioFabricNetwork.NetworkAlignmentBuildData nabd) {
+      this(nabd.allLinks, nabd.loneNodeIDs, nabd.mergedToCorrect_);
+    }
+  
+    public NodeGroupStruct(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
+                           Map<NID.WithName, Boolean> mergedToCorrect) {
+    
+      nodeToLinks_ = new HashMap<NID.WithName, Set<FabricLink>>();
+      nodeToNeighbors_ = new HashMap<NID.WithName, Set<NID.WithName>>();
+      this.mergedToCorrect_ = mergedToCorrect;
+    
+      for (FabricLink link : allLinks) {
+        NID.WithName src = link.getSrcID(), trg = link.getTrgID();
+      
+        if (nodeToLinks_.get(src) == null) {
+          nodeToLinks_.put(src, new HashSet<FabricLink>());
+        }
+        if (nodeToLinks_.get(trg) == null) {
+          nodeToLinks_.put(trg, new HashSet<FabricLink>());
+        }
+        if (nodeToNeighbors_.get(src) == null) {
+          nodeToNeighbors_.put(src, new HashSet<NID.WithName>());
+        }
+        if (nodeToNeighbors_.get(trg) == null) {
+          nodeToNeighbors_.put(trg, new HashSet<NID.WithName>());
+        }
+      
+        nodeToLinks_.get(src).add(link);
+        nodeToLinks_.get(trg).add(link);
+        nodeToNeighbors_.get(src).add(trg);
+        nodeToNeighbors_.get(trg).add(src);
+      }
+    
+      for (NID.WithName node : loneNodeIDs) {
+        nodeToLinks_.put(node, new HashSet<FabricLink>());
+        nodeToNeighbors_.put(node, new HashSet<NID.WithName>());
+      }
+      return;
+    }
+  
+    private GroupID getID(NID.WithName node) {
+      StringBuilder sb = new StringBuilder(7);
+    
+      // aligned or unaligned node
+      sb.append(isPurple(node) ? 1 : 0);
+    
+      boolean[] inLG = new boolean[NUMBER_LINK_GROUPS];
+      for (FabricLink link : nodeToLinks_.get(node)) {
+      
+        for (int rel = 0; rel < inLG.length; rel++) {
+          if (link.getRelation().equals(inLG[rel])) {
+            inLG[rel] = true;
+          }
+        }
+      }
+      
+      sb.append((inLG[PURPLE_EDGES] ? "P"   : 0) + "/");
+      sb.append((inLG[BLUE_EDGES]   ? "B"   : 0) + "/");
+      sb.append((inLG[RED_EDGES]    ? "pRp" : 0) + "/");
+      sb.append((inLG[ORANGE_EDGES] ? "pRr" : 0) + "/");
+      sb.append((inLG[YELLOW_EDGES] ? "rRr" : 0) + "/");
+      
+      // aligned correctly
+      if (mergedToCorrect_ == null) {
+        sb.append(0);
+      } else {
+        sb.append((mergedToCorrect_.get(node)) ? 1 : 0);
+      }
+      UiUtil.fixMePrintout("GroupID correctly aligned");
+      
+      return (new GroupID(sb.toString()));
+    }
+    
+    /*******************************************************************
+     **
+     ** Identifies Aligned Nodes if they have a dash ('-') in name:
+     */
+  
+    boolean isPurple(NID.WithName node) {
+      UiUtil.fixMePrintout("FIX ME:find way to identify aligned nodes besides having dash in name");
+      return (node.getName().contains("-"));
+    }
+    
+    
+    
+    static class GroupID {
+      final String key;
+      GroupID(String key) {
+        this.key = key;
+      }
+    }
+    
+  }
   
   private static class NetAlignNodeGrouper {
     

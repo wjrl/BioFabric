@@ -28,7 +28,6 @@ import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 import javax.swing.Box;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -46,17 +45,18 @@ import java.io.File;
 public class NetworkAlignmentDialog extends JDialog {
   
   private enum FileIndex {
-    GRAPH_ONE_FILE, GRAPH_TWO_FILE, ALIGNMENT_FILE
+    GRAPH_ONE_FILE, GRAPH_TWO_FILE, ALIGNMENT_FILE, PERFECT_FILE
   }
   
+  private final boolean forOrphanEdge_;
   private JFrame parent_;
-  private JLabel graph1FileName_, graph2FileName_, alignFileName_;
-  private File graph1File_, graph2File_, alignmentFile_;
-  private boolean forClique_;
+  private JLabel graph1FileName_, graph2FileName_, alignFileName_, perfectFileName_;
+  private File graph1File_, graph2File_, alignmentFile_, perfectAlignFile_; // perfect Alignment is optional
   
-  public NetworkAlignmentDialog(JFrame parent) {
+  public NetworkAlignmentDialog(JFrame parent, boolean forOrphanEdges) {
     super(parent, ResourceManager.getManager().getString("networkAlignment.title"), true);
     this.parent_ = parent;
+    this.forOrphanEdge_ = forOrphanEdges;
     
     final ResourceManager rMan = ResourceManager.getManager();
     setSize(450, 400);
@@ -76,6 +76,7 @@ public class NetworkAlignmentDialog extends JDialog {
     graph1FileName_ = new JLabel();
     graph2FileName_ = new JLabel();
     alignFileName_ = new JLabel();
+    perfectFileName_ = new JLabel();
     
     graph1Button.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
@@ -129,27 +130,28 @@ public class NetworkAlignmentDialog extends JDialog {
     funcButtonBox.add(panG1);
     funcButtonBox.add(panG2);
     funcButtonBox.add(panAlign);
-    
+  
     //
     // Special layout buttons :: Cliques
     //
     
-    final JCheckBox clique = new JCheckBox(rMan.getString("networkAlignment.cliqueAnalysis"), false);
-    clique.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent e) {
-        try {
-          forClique_ = clique.isSelected();
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
+    if (!forOrphanEdges) { // add perfect alignment button
+      JButton perfectButton = new JButton(rMan.getString("networkAlignment.perfect"));
+      perfectButton.addActionListener(new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+          try {
+            loadFromFile(FileIndex.PERFECT_FILE);
+          } catch (Exception ex) {
+            ExceptionHandler.getHandler().displayException(ex);
+          }
         }
-      }
-    });
+      });
+      JPanel panPerfect = new JPanel(new FlowLayout(FlowLayout.LEFT));
+      panPerfect.add(perfectButton);
+      panPerfect.add(perfectFileName_);
+      funcButtonBox.add(panPerfect);
+    }
   
-    JPanel panClique = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    panClique.add(clique);
-    
-    funcButtonBox.add(panClique);
-    
     UiUtil.gbcSet(gbc, 0, 0, 5, 1, UiUtil.HOR, 0, 0,
             5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
     cp.add(funcButtonBox, gbc);
@@ -213,6 +215,7 @@ public class NetworkAlignmentDialog extends JDialog {
     graph1File_ = null;
     graph2File_ = null;
     alignmentFile_ = null;
+    perfectAlignFile_ = null;
     return;
   }
   
@@ -237,10 +240,10 @@ public class NetworkAlignmentDialog extends JDialog {
    */
   
   public NetworkAlignmentDialogInfo getNAInfo() {
-    if (graph1File_ == null || graph2File_ == null || alignmentFile_ == null) {
-      throw new IllegalArgumentException("One or more files missing");
+    if (graph1File_ == null || graph2File_ == null || alignmentFile_ == null) { // perfect alignment file is optional
+      throw new IllegalArgumentException("Graph file(s) or alignment file missing. Perfect alignment is optional.");
     }
-    return new NetworkAlignmentDialogInfo(graph1File_, graph2File_, alignmentFile_, forClique_);
+    return (new NetworkAlignmentDialogInfo(graph1File_, graph2File_, alignmentFile_, perfectAlignFile_, forOrphanEdge_));
   }
   
   /**
@@ -260,6 +263,9 @@ public class NetworkAlignmentDialog extends JDialog {
         file = cmd.getTheFile(".gw", ".sif", "AttribDirectory", "Graph Files (*.gw, *.sif)");
         break;
       case ALIGNMENT_FILE:
+        file = cmd.getTheFile(".align", null, "AttribDirectory", "filterName.align");
+        break;
+      case PERFECT_FILE:
         file = cmd.getTheFile(".align", null, "AttribDirectory", "filterName.align");
         break;
       default:
@@ -285,10 +291,13 @@ public class NetworkAlignmentDialog extends JDialog {
         alignFileName_.setText(file.getName());
         alignmentFile_ = file;
         break;
+      case PERFECT_FILE:
+        perfectFileName_.setText(file.getName());
+        perfectAlignFile_ = file;
+        break;
       default:
         throw new IllegalArgumentException();
     }
-    
     return;
   }
   
@@ -298,14 +307,15 @@ public class NetworkAlignmentDialog extends JDialog {
   
   public static class NetworkAlignmentDialogInfo {
     
-    public final File graphA, graphB, align; // graph1 and graph2 can be out of order (size), hence graphA and graphB
-    public final boolean forClique;
+    public final File graphA, graphB, align, perfect; // graph1 and graph2 can be out of order (size), hence graphA and graphB
+    public final boolean forOrphanEdge;
     
-    public NetworkAlignmentDialogInfo(File graph1, File graph2, File align, boolean forClique) {
+    public NetworkAlignmentDialogInfo(File graph1, File graph2, File align, File perfect, boolean forOrphanEdge) {
       this.graphA = graph1;
       this.graphB = graph2;
       this.align = align;
-      this.forClique = forClique;
+      this.perfect = perfect;
+      this.forOrphanEdge = forOrphanEdge;
     }
     
   }

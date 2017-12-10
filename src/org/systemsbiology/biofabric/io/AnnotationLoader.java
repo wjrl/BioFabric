@@ -396,7 +396,7 @@ public class AnnotationLoader {
 
   private int nameToRow(String nodeID, Map<NID.WithName, Integer> idToRow, 
                         Map<String, Set<NID.WithName>> nameToID, 
-                        ReadStats stats) throws IOException {  
+                        ReadStats stats) throws IOException {
   
     Set<NID.WithName> forID = nameToID.get(DataUtil.normKey(nodeID));
     if (forID == null) {
