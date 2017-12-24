@@ -692,6 +692,13 @@ public class BioFabricNetwork {
     //
 
     loneNodesToLastColumn(rbd.loneNodeIDs, monitor);
+    
+    //
+    // If we have node/link annotations, install them
+    //
+      
+    nodeAnnot_ = rbd.nodeAnnotForLayout;
+    linkAnnots_ = rbd.linkAnnotsForLayout;
 
     return;
   }
@@ -2387,7 +2394,10 @@ public class BioFabricNetwork {
     public List<String> fixedOrder; 
     public Map<String, Set<NID.WithName>> normNameToIDs;
     public Boolean pointUp;
-
+    
+    public AnnotationSet nodeAnnotForLayout;
+    public Map<Boolean, AnnotationSet> linkAnnotsForLayout;
+    
     public RelayoutBuildData(BioFabricNetwork fullNet, BuildMode mode, BTProgressMonitor monitor) throws AsynchExitRequestException {
       super(mode);
       this.bfn = fullNet;
@@ -2402,6 +2412,8 @@ public class BioFabricNetwork {
       this.clustAssign = (fullNet.nodeClustersAssigned()) ? fullNet.nodeClusterAssigment() : null;
       this.layoutMode = fullNet.getLayoutMode();
       this.idGen = fullNet.nodeIDGenerator_;
+      this.nodeAnnotForLayout = null;
+      this.linkAnnotsForLayout = null;
     }
     
     public RelayoutBuildData(UniqueLabeller idGen,
@@ -2421,6 +2433,8 @@ public class BioFabricNetwork {
       this.allNodeIDs = null;
       this.layoutMode = LayoutMode.PER_NODE_MODE;
       this.idGen = idGen;
+      this.nodeAnnotForLayout = null;
+      this.linkAnnotsForLayout = null;
     } 
 
     public Map<String, Set<NID.WithName>> genNormNameToID() {
@@ -2471,6 +2485,16 @@ public class BioFabricNetwork {
       return;
     }
     
+    public void setNodeAnnotations(AnnotationSet annots) {
+      this.nodeAnnotForLayout = annots;
+      return;
+    }
+    
+    public void setLinkAnnotations(Map<Boolean, AnnotationSet> annots) {
+      this.linkAnnotsForLayout = annots;
+      return;
+    }
+      
     public void setGroupOrderAndMode(List<String> groupOrder, LayoutMode mode) {
       this.linkGroups = groupOrder;
       this.layoutMode = mode;

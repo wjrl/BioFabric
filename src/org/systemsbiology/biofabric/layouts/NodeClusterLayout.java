@@ -36,6 +36,7 @@ import java.util.Vector;
 
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
 import org.systemsbiology.biofabric.io.AttributeLoader;
+import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
@@ -283,7 +284,84 @@ public class NodeClusterLayout extends NodeLayout {
     if (params.saveAssign) {
     	rbd.clustAssign = params.getClusterAssign(); 
     }
+    
+    AnnotationSet nAnnots = generateNodeAnnotations(rbd, params);
+    rbd.setNodeAnnotations(nAnnots);
+      
+    Map<Boolean, AnnotationSet> lAnnots = generateLinkAnnotations();
+    rbd.setLinkAnnotations(lAnnots);
+
     return (allTargets);
+  }
+   
+   
+  /***************************************************************************
+  **
+  ** Generate node annotations to tag each cluster
+  */
+    
+  private AnnotationSet generateNodeAnnotations(BioFabricNetwork.RelayoutBuildData rbd, ClusterParams params) {
+    
+    AnnotationSet retval = new AnnotationSet();
+  
+    
+    TreeMap<Integer, NID.WithName> invert = new TreeMap<Integer, NID.WithName>();
+    
+    for (NID.WithName node : rbd.nodeOrder.keySet()) {
+      invert.put(rbd.nodeOrder.get(node), node);
+    }
+     
+    String currClust = null;
+    Integer startRow = null;
+    Integer lastKey = invert.lastKey();
+    for (Integer row : invert.keySet()) {
+      NID.WithName node = invert.get(row);
+      String clust = params.getClusterForNode(node);
+      System.out.println("node " + node + " clust " + clust);
+      if (currClust == null) {
+        currClust = clust;
+        startRow = row;
+        if (row.equals(lastKey)) {
+          AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0);
+          retval.addAnnot(annot);
+          break;
+        }
+        continue;
+      }
+      if (currClust.equals(clust)) {
+        if (row.equals(lastKey)) {
+          AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0);
+          retval.addAnnot(annot);
+          break;
+        }
+        continue;
+      } else { 
+        // We have just entered a new cluster
+        AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue() - 1, 0);
+        retval.addAnnot(annot);
+        startRow = row;
+        currClust = clust;
+        if (row.equals(lastKey)) {
+          annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0);
+          retval.addAnnot(annot);
+          break;
+        }
+      }
+    }
+    
+    return (retval);
+  }
+  
+  /***************************************************************************
+  **
+  ** Generate link annotations to tag each cluster and intercluster links
+  */
+    
+  private Map<Boolean, AnnotationSet> generateLinkAnnotations() { 
+  	HashMap<Boolean, AnnotationSet> retval = new HashMap<Boolean, AnnotationSet>();
+  	retval.put(Boolean.TRUE, new AnnotationSet());
+  	retval.put(Boolean.FALSE, new AnnotationSet());
+    return (retval);
   }
    
   /***************************************************************************
