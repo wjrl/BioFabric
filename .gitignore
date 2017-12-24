@@ -7,3 +7,9 @@ BioFabric.iml
 .classpath
 .project
 
+out/artifacts/
+out/production/BioFabric/META-INF/
+out/production/BioFabric/org/systemsbiology/biofabric/layouts/NetworkAlignmentLayout$GroupID.class
+out/production/BioFabric/org/systemsbiology/biofabric/layouts/NetworkAlignmentLayout$NodeGroupMap$1.class
+out/production/BioFabric/org/systemsbiology/biofabric/layouts/NetworkAlignmentLayout$NodeGroupMap.class
+src/META-INF/
