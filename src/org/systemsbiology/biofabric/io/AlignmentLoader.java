@@ -19,7 +19,16 @@
 
 package org.systemsbiology.biofabric.io;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.StringTokenizer;
+import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 
@@ -28,12 +37,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.StringTokenizer;
 
 /****************************************************************************
  **
@@ -76,10 +79,16 @@ public class AlignmentLoader {
                               ArrayList<FabricLink> linksGraph1, HashSet<NID.WithName> loneNodesGraph1,
                               ArrayList<FabricLink> linksGraph2, HashSet<NID.WithName> loneNodesGraph2)
           throws IOException {
-    
-    Map<String, NID.WithName> G1nameToNID = makeStringMap(extractNodes(linksGraph1, loneNodesGraph1));
-    Map<String, NID.WithName> G2nameToNID = makeStringMap(extractNodes(linksGraph2, loneNodesGraph2));
-    
+  
+  
+    Map<String, NID.WithName> G1nameToNID, G2nameToNID;
+    try {
+      G1nameToNID = makeStringMap(BioFabricNetwork.extractNodes(linksGraph1, loneNodesGraph1, null));
+      G2nameToNID = makeStringMap(BioFabricNetwork.extractNodes(linksGraph2, loneNodesGraph2, null));
+    } catch (AsynchExitRequestException aere) {
+      throw new IllegalStateException();
+    }
+  
     BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(infile), "UTF-8"));
     
     String line = null;
@@ -100,24 +109,32 @@ public class AlignmentLoader {
       strNameG1 = strNameG1.replaceAll("-","_");
       strNameG2 = strNameG2.replaceAll("-","_");
       UiUtil.fixMePrintout("Auto-replacing dashes with underscores in .align files");
+  
+//      Set<String> notFiltered = new HashSet<String>();
+//      String[] nodesWithoutEntrezIDs = {
+//              "ATM1",
+//              "CTM1",
+//              "IMD1",
+//              "PHM8",
+//              "PUT1",
+//              "SBE2",
+//              "YAR075W",
+//              "YDL026W",
+//              "YDR133C",
+//              "YGR272C",
+//              "YNL276C",};
+//      Collections.addAll(notFiltered, nodesWithoutEntrezIDs);
+//      if (notFiltered.contains(strNameG1) || notFiltered.contains(strNameG2)) {
+//        continue;
+//      }
      
       boolean existsInG1 = G1nameToNID.containsKey(strNameG1),
               existsInG2 = G2nameToNID.containsKey(strNameG2);
-//      if (!existsInG1) {
-//        System.out.println("Not in G1 " + strNameG1);
-//      }
-//      if (!existsInG2) {
-//        System.out.println("Not in G2 " + strNameG2);
-//      }
       
       if (!(existsInG1 && existsInG2)) {
-        System.out.println("Load error: " + strNameG1 + " " + existsInG1 + "  " + strNameG2 + " "+ existsInG2);
+        System.out.println(G1nameToNID.size()+ "Load error: " + strNameG1 + " " + existsInG1 + "  " + strNameG2 + " "+ existsInG2);
         throw new IOException("Incorrect node names or nodes do not exist in graph files");
       }
-//      if (!(G1nameToNID.containsKey(strNameG1) && G2nameToNID.containsKey(strNameG2))) {
-//
-//        throw new IOException("Incorrect node(s) or node names");
-//      }
       
       NID.WithName nodeG1 = G1nameToNID.get(strNameG1), nodeG2 = G2nameToNID.get(strNameG2);
       
@@ -133,19 +150,8 @@ public class AlignmentLoader {
       }
     }
   
-//    System.out.println("size of map: " +mapG1ToG2.size() + "  size of G1: " + G1nameToNID.size());
-//
-//    Set<String> g1 = G1nameToNID.keySet(), map = new HashSet<String>();
-//
-//    for (NID.WithName n : mapG1ToG2.keySet()) {
-//      map.add(n.getName());
-//    }
-//
-//    g1.removeAll(map);
-//    System.out.println("G1 removed map: "+g1);
-    
-    
     if (mapG1ToG2.size() != G1nameToNID.size()) {
+      System.out.println(mapG1ToG2.size() + "  " + G1nameToNID.size());
       throw new IOException("Incomplete node mapping");
     }
   
@@ -167,30 +173,6 @@ public class AlignmentLoader {
     }
     return retval;
   }
-  
-  /***************************************************************************
-   **
-   ** Extract nodes into set from link list and loners
-   */
-  
-  private static Set<NID.WithName> extractNodes(ArrayList<FabricLink> links, HashSet<NID.WithName> loneNodeIDs) {
-    
-    Set<NID.WithName> retval;
-    
-    if (loneNodeIDs != null) {
-      retval = new HashSet<NID.WithName>(loneNodeIDs);
-    } else {
-      retval = new HashSet<NID.WithName>();
-    }
-  
-    for (FabricLink link : links) {
-      NID.WithName A = link.getSrcID(), B = link.getTrgID();
-      retval.add(A);
-      retval.add(B);
-    }
-    return retval;
-  }
-  
   
   public static class NetAlignStats {
     public ArrayList<String> dupLines;

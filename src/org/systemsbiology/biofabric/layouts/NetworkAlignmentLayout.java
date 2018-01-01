@@ -91,14 +91,12 @@ public class NetworkAlignmentLayout extends NodeLayout {
     
     BioFabricNetwork.NetworkAlignmentBuildData nabd = (BioFabricNetwork.NetworkAlignmentBuildData) rbd;
     
-    UiUtil.fixMePrintout("Clique Misalignment needs Default layout not BFSNodeGroup");
-  
     List<NID.WithName> targetIDs;
     
     if (nabd.forOrphans) {
       targetIDs = (new DefaultLayout()).defaultNodeOrder(nabd.allLinks, nabd.loneNodeIDs,null, monitor);
     } else {
-      targetIDs = BFSNodeGroup(nabd, monitor);
+      targetIDs = BFSNodeGroupLayout(nabd, monitor);
     }
     
     installNodeOrder(targetIDs, nabd, monitor);
@@ -110,8 +108,8 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Breadth first search based on node groups
    */
   
-  public List<NID.WithName> BFSNodeGroup(BioFabricNetwork.NetworkAlignmentBuildData nabd,
-                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NID.WithName> BFSNodeGroupLayout(BioFabricNetwork.NetworkAlignmentBuildData nabd,
+                                               BTProgressMonitor monitor) throws AsynchExitRequestException {
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
     //
@@ -165,7 +163,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
     // master list of nodes in each group
     SortedMap<Integer, List<NID.WithName>> classToGroup = new TreeMap<Integer, List<NID.WithName>>();
     
-    for (int i = 0; i <= NUMBER_NODE_GROUPS; i++) {
+    for (int i = 0; i <= NUMBER_NODE_GROUPS_MINUS1; i++) {
       classToGroup.put(i, new ArrayList<NID.WithName>());
     }
     
@@ -176,7 +174,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
     }
     
     for (List<NID.WithName> group : classToGroup.values()) { // sort by decreasing degree
-      grouper.sortByDegree(group);
+      grouper.sortByDecrDegree(group);
     }
     
     SortedMap<Integer, List<NID.WithName>> targetsGroup = new TreeMap<Integer, List<NID.WithName>>(),
@@ -184,7 +182,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
                                            targsLeftToGoGroup = new TreeMap<Integer, List<NID.WithName>>();
   
     // each node group (not singletons) gets queue and targets list
-    for (int i = 1; i < NUMBER_NODE_GROUPS; i++) {
+    for (int i = 1; i < NUMBER_NODE_GROUPS_MINUS1; i++) {
       targetsGroup.put(i, new ArrayList<NID.WithName>());
       queueGroup.put(i, new ArrayList<NID.WithName>());
       targsLeftToGoGroup.put(i, new ArrayList<NID.WithName>());
@@ -198,7 +196,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
     //
     
     int currGroup = 1;
-    while (currGroup < NUMBER_NODE_GROUPS) {
+    while (currGroup < NUMBER_NODE_GROUPS_MINUS1) {
       
       if (targsLeftToGoGroup.get(currGroup).isEmpty()) {
         currGroup++;
@@ -224,7 +222,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
     targetsGroup.get(RED_SINGLETON).addAll(classToGroup.get(RED_SINGLETON));
     
     List<NID.WithName> targets = new ArrayList<NID.WithName>();
-    for (int i = 0; i <= NUMBER_NODE_GROUPS; i++) {
+    for (int i = 0; i <= NUMBER_NODE_GROUPS_MINUS1; i++) {
       List<NID.WithName> group = targetsGroup.get(i);
       for (NID.WithName node : group) {
         targets.add(node);
@@ -232,7 +230,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
     }
     
     if (targets.size() != allNodes.size()) {
-      throw new IllegalStateException("target size not equal to all-nodes size");
+      throw new IllegalStateException("target numGroups not equal to all-nodes numGroups");
     }
     
     installAnnotations(nabd, targetsGroup, targets);
@@ -353,7 +351,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
   
     Map<Integer, List<NID.WithName>> layerZeroAnnot = new TreeMap<Integer, List<NID.WithName>>();
   
-    for (int i = 0; i <= NUMBER_NODE_GROUPS; i++) { // include singletons
+    for (int i = 0; i <= NUMBER_NODE_GROUPS_MINUS1; i++) { // include singletons
       List<NID.WithName> group = targetsGroup.get(i);
       if (group.isEmpty()) {
         continue;
@@ -410,7 +408,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
    **
    */
   
-  private static final int NUMBER_LINK_GROUPS = 5;   // 0..4
+  public static final int NUMBER_LINK_GROUPS = 5;   // 0..4
   
   private static final int
           PURPLE_EDGES = 0,
@@ -419,14 +417,14 @@ public class NetworkAlignmentLayout extends NodeLayout {
           ORANGE_EDGES = 3,
           YELLOW_EDGES = 4;
   
-  private static final int NUMBER_NODE_GROUPS = 19; // 0..19
+  private static final int NUMBER_NODE_GROUPS_MINUS1 = 19; // 0..19
   
   private static final int
           PURPLE_SINGLETON = 0,
           RED_SINGLETON = 19;
   
   
-  private static final String[] DefaultNodeGroupOrder = {
+  public static final String[] DefaultNodeGroupOrder = {
           "(P:0)",
           "(P:P)",            // FIRST THREE LINK GROUPS
           "(P:B)",
@@ -454,12 +452,13 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** HashMap based Data structure
    */
   
-  private static class NodeGroupMap {
+  public static class NodeGroupMap {
   
     private Map<NID.WithName, Set<FabricLink>> nodeToLinks_;
     private Map<NID.WithName, Set<NID.WithName>> nodeToNeighbors_;
     private Map<NID.WithName, Boolean> mergedToCorrect_;
     private Map<GroupID, Integer> groupIDtoIndex;
+    private final int numGroups;
     
     public NodeGroupMap(BioFabricNetwork.NetworkAlignmentBuildData nabd, String[] nodeGroupOrder) {
       this(nabd.allLinks, nabd.loneNodeIDs, nabd.mergedToCorrect_, nodeGroupOrder);
@@ -468,6 +467,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
     public NodeGroupMap(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
                         Map<NID.WithName, Boolean> mergedToCorrect, String[] nodeGroupOrder) {
       this.mergedToCorrect_ = mergedToCorrect;
+      this.numGroups = nodeGroupOrder.length;
       generateStructs(allLinks, loneNodeIDs);
       generateMap(nodeGroupOrder);
       return;
@@ -524,10 +524,14 @@ public class NetworkAlignmentLayout extends NodeLayout {
     public int getIndex(NID.WithName node) {
       GroupID groupID = generateID(node);
       if (groupIDtoIndex.get(groupID) == null) {
-        System.out.println(groupID + " null");
+//        System.out.println(groupID + " null");
         throw new IllegalStateException("GroupID not found in given order");
       }
       return (groupIDtoIndex.get(groupID));
+    }
+    
+    public int numGroups() {
+      return (numGroups);
     }
   
     /***************************************************************************
@@ -612,7 +616,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
      ** Sorts Node group on decreasing degree
      */
     
-    private void sortByDegree(List<NID.WithName> group) {
+    void sortByDecrDegree(List<NID.WithName> group) {
       Collections.sort(group, new Comparator<NID.WithName>() {
         public int compare(NID.WithName node1, NID.WithName node2) {
           int diffSize = nodeToNeighbors_.get(node2).size() - nodeToNeighbors_.get(node1).size();
@@ -890,9 +894,9 @@ public class NetworkAlignmentLayout extends NodeLayout {
 //        return RED_SINGLETON;
 //
 //      } else {
-////        System.out.println(node.getName() + "  " + nodeToLinks_.get(node).size());
+////        System.out.println(node.getName() + "  " + nodeToLinks_.get(node).numGroups());
 ////        return RED_SINGLETON;
-////        System.out.println(node + "  " + nodeToLinks_.get(node).size());
+////        System.out.println(node + "  " + nodeToLinks_.get(node).numGroups());
 //        throw new IllegalArgumentException("Node group not found");
 ////        return RED_SINGLETON;
 //      }
@@ -902,7 +906,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
 //
 //      Collections.sort(group, new Comparator<NID.WithName>() {
 //        public int compare(NID.WithName node1, NID.WithName node2) {
-//          int diffSize = nodeToNeighbors_.get(node2).size() - nodeToNeighbors_.get(node1).size();
+//          int diffSize = nodeToNeighbors_.get(node2).numGroups() - nodeToNeighbors_.get(node1).numGroups();
 //          return (diffSize != 0) ? diffSize : node1.getName().compareTo(node2.getName());
 //        }
 //      });
@@ -1250,7 +1254,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
 //        err.add(20);
 //      }
 //
-//      if (err.size() != 1) {
+//      if (err.numGroups() != 1) {
 //        System.out.println(node + "\nerror" + err + "\n\n\n\n\n\n");
 //      }
 //    }

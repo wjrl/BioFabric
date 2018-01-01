@@ -345,7 +345,7 @@ public class NodeSimilarityLayout extends NodeLayout {
   ** Per Wikipedia:
    * 
    * Jaccard coefficient measures similarity between sample sets, and is 
-   * defined as the size of the intersection divided by the size of the 
+   * defined as the size of the intersection divided by the size of the
    * union of the sample sets:
    * 
    * |A I B| / |A U B|

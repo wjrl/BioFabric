@@ -59,7 +59,7 @@ public class NetworkAlignmentDialog extends JDialog {
     this.forOrphanEdge_ = forOrphanEdges;
     
     final ResourceManager rMan = ResourceManager.getManager();
-    setSize(450, 400);
+    setSize(500, 400);
     JPanel cp = (JPanel) getContentPane();
     cp.setBorder(new EmptyBorder(20, 20, 20, 20));
     cp.setLayout(new GridBagLayout());

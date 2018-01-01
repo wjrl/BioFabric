@@ -163,6 +163,26 @@ public class NID implements Cloneable, Comparable<NID> {
 	    return (this.nid_.compareTo(other.nid_));
 	  }
   }
+	
+  /***************************************************************************
+   **
+   ** Wrapper class used for network alignments where nodes are aligned or unaligned
+   */
+  
+  public static class WithAlign extends WithName {
+  	
+  	private boolean isAligned;
+  	
+  	public WithAlign(NID id, String name, boolean isAligned) {
+  		super(id, name);
+  		this.isAligned = isAligned;
+	}
+	
+	public boolean isAligned() {
+  		return (isAligned);
+	}
+  
+  }
   
   public static Collection<WithName> addNames(Collection<NID> nids, Map<NID, String> idToName, Collection<WithName> target) {
   	for (NID nid : nids) {

@@ -55,22 +55,6 @@ public class NetworkAlignment {
           HALF_UNALIGNED_GRAPH2 = "G2B",    // G2 Edges w/ one aligned node and one unaligned node
           FULL_UNALIGNED_GRAPH2 = "G2C";    // G2 Edges w/ two unaligned nodes
   
-  public enum LinkGroup {
-    
-    COVERED_EDGE("G12"),
-    GRAPH1("G1A"),
-    INDUCED_GRAPH2("G2A"),
-    HALF_UNALIGNED_GRAPH2("G2B"),
-    FULL_UNALIGNED_GRAPH2("G2C");
-    
-    public final String rel;
-    
-    LinkGroup(String rel) {
-      this.rel = rel;
-    }
-    
-  }
-  
   private final String TEMPORARY = "TEMP";
   
   ////////////////////////////////////////////////////////////////////////////
@@ -99,6 +83,10 @@ public class NetworkAlignment {
   private Map<NID.WithName, NID.WithName> smallToMergedID_;
   private Map<NID.WithName, NID.WithName> largeToMergedID_;
   private Map<NID.WithName, NID.WithName> mergedIDToSmall_;
+  
+  //
+  // mergedToCorrect only has aligned nodes
+  //
   
   private ArrayList<FabricLink> mergedLinks_;
   private Set<NID.WithName> mergedLoners_;
@@ -175,7 +163,7 @@ public class NetworkAlignment {
     //
     
     if (forOrphanEdges) {
-      (new CliqueMisalignment()).process(mergedLinks_, mergedLoners_, mergedIDToSmall_);
+      (new OrphanEdgeLayout()).process(mergedLinks_, mergedLoners_, mergedIDToSmall_);
     }
     UiUtil.fixMePrintout("Should Clique Misalignment remain a postprocessing step");
     
@@ -183,7 +171,7 @@ public class NetworkAlignment {
     // Output calculated scores to console
     //
     
-    new NetworkAlignmentScorer(this).printScores();
+//    new NetworkAlignmentScorer(this).printScores();
     UiUtil.fixMePrintout("Need to add net-align scores to UI");
     
     return;
@@ -383,9 +371,9 @@ public class NetworkAlignment {
    ** All unaligned edges plus all of their endpoint nodes' edges
    */
   
-  private static class CliqueMisalignment {
+  private static class OrphanEdgeLayout {
     
-    private CliqueMisalignment() {
+    public OrphanEdgeLayout() {
     }
     
     private void process(List<FabricLink> mergedLinks, Set<NID.WithName> mergedLoneNodeIDs,
@@ -442,141 +430,7 @@ public class NetworkAlignment {
       mergedLoneNodeIDs.clear();
       mergedLinks.addAll(oldUnalignedEdgesG1);
       
-      //  GO BACK TO OLD NAMES and ADD SHADOWS BACK
-      UiUtil.fixMePrintout("FIX ME:Need to add back the nodes' old names and re-add shadow links");
-      return;
-    }
-    
-  }
-  
-  /****************************************************************************
-   **
-   ** Calculates (mainly) topological scores of network alignments
-   ** such as Edge Coverage (EC), Symmetric Substructure score (S3),
-   ** Induced Conserved Substructure (ICS);
-   **
-   ** Node Correctness (NC) is only for network aligned to itself (like yeasts)
-   ** or if we know the correct alignment (we use the assumption that node
-   ** names are equal)
-   */
-  
-  private static class NetworkAlignmentScorer {
-    
-    private Set<FabricLink> links_;
-    private double EC, S3, ICS, NC;
-    
-    public NetworkAlignmentScorer(NetworkAlignment netAlign) {
-      this.links_ = new HashSet<FabricLink>(netAlign.mergedLinks_);
-      removeDuplicateAndShadow();
-      calcTopologicalScores();
-      calcOtherScores();
-      return;
-    }
-    
-    private void calcTopologicalScores() {
-      int numCoveredEdge = 0, numGraph1 = 0, numInducedGraph2 = 0;
-      
-      for (FabricLink link : links_) {
-        if (link.getRelation().equals(COVERED_EDGE)) {
-          numCoveredEdge++;
-        } else if (link.getRelation().equals(GRAPH1)) {
-          numGraph1++;
-        } else if (link.getRelation().equals(INDUCED_GRAPH2)) {
-          numInducedGraph2++;
-        }
-      }
-      
-      if (numCoveredEdge == 0) {
-        return;
-      }
-      
-      try {
-        EC = ((double) numCoveredEdge) / (numCoveredEdge + numGraph1);
-        S3 = ((double) numCoveredEdge) / (numCoveredEdge + numGraph1 + numInducedGraph2);
-        ICS = ((double) numCoveredEdge) / (numCoveredEdge + numInducedGraph2); // this is correct right?
-      } catch (ArithmeticException ae) {
-        EC = -1;
-        S3 = -1;
-        ICS = -1; // add better error catching
-        UiUtil.fixMePrintout("Needs better Net-Align score calculator");
-      }
-      return;
-    }
-    
-    private void calcOtherScores() {
-      
-      //
-      // Lone Node IDs don't matter here; We are under the assumption
-      // that the network is aligned to itself here and the correct
-      // node alignment is that the names are equal. This is only
-      // practical for the yeast networks.
-      //
-      
-      Set<NID.WithName> nodes = new HashSet<NID.WithName>();
-      // I should use BioFabricNetwork.extractNodes but I will add Asynch error later
-      for (FabricLink link : links_) {
-        nodes.add(link.getSrcID());
-        nodes.add(link.getTrgID());
-      }
-      
-      int numNodesCorrect = 0;
-      for (NID.WithName node : nodes) {
-        if (!node.getName().contains("-")) {
-          NC = -1.0; // this isn't a network aligned to itself, so NC is not applicable
-          return;
-        } else {
-          String[] tok = node.getName().split("-");
-          if (tok[0].equals(tok[1])) { // assume node names must be equal
-            numNodesCorrect++;
-          }
-        }
-      }
-      
-      NC = ((double)numNodesCorrect) / (nodes.size());
-      return;
-    }
-    
-    void printScores() {
-      String scores = String.format("SCORES\nEC:%4.4f\nS3:%4.4f\nICS:%4.4f\nNC:%4.4f", EC, S3, ICS, NC);
-//      JOptionPane.showMessageDialog(null, scores);
-      System.out.println(scores);
-      return;
-    }
-    
-    private void removeDuplicateAndShadow() {
-      Set<FabricLink> nonShdwLinks = new HashSet<FabricLink>();
-      for (FabricLink link : links_) {
-        if (! link.isShadow()) { // remove shadow links
-          nonShdwLinks.add(link);
-        }
-      }
-      
-      //
-      // We have to remove synonymous links (a->b) same as (b->a), and keep one;
-      // Sort the names and concat into string (the key), so they are the same key in the map.
-      // This means (a->b) and (b->a) should make the same string key.
-      // If the key already has a value, we got a duplicate link.
-      //
-      
-      Map<String, FabricLink> map = new HashMap<String, FabricLink>();
-      for (FabricLink link : nonShdwLinks) {
-        
-        String[] arr1 = {link.getSrcID().getName(), link.getTrgID().getName()};
-        Arrays.sort(arr1);
-        String concat = String.format("%s___%s", arr1[0], arr1[1]);
-        
-        if (map.get(concat) != null) {
-          continue; // skip the duplicate
-        } else {
-          map.put(concat, link);
-        }
-      }
-      
-      links_.clear();
-      for (Map.Entry<String, FabricLink> entry : map.entrySet()) {
-        links_.add(entry.getValue());
-      }
-      
+      UiUtil.fixMePrintout("FIX ME:Graphs w/ different #nodes breaks orphan layout");
       return;
     }
     

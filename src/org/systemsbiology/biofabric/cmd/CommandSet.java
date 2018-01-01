@@ -86,6 +86,7 @@ import javax.swing.filechooser.FileFilter;
 //import org.freehep.graphicsio.pdf.PDFGraphics2D;
 //import org.freehep.graphicsio.ps.PSGraphics2D;
 import org.systemsbiology.biofabric.analysis.NetworkAlignment;
+import org.systemsbiology.biofabric.analysis.NetworkAlignmentScorer;
 import org.systemsbiology.biofabric.app.BioFabricApplication;
 import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.event.EventManager;
@@ -973,7 +974,6 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     HashSet<NID.WithName> lonersLarge = new HashSet<NID.WithName>();
   
     try {
-      // CAN I PUT NULL AS THE MONITOR??
       int numNodesA = BioFabricNetwork.extractNodes(linksGraphA, loneNodeIDsGraphA, null).size();
       int numNodesB = BioFabricNetwork.extractNodes(linksGraphB, loneNodeIDsGraphB, null).size();
       
@@ -1037,6 +1037,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     } catch (IOException ioex) {
       holdIt = null;
     }
+    
+    //
+    // First process the given (main) alignment
+    //
+    
     NetworkAlignmentBuilder nab = new NetworkAlignmentBuilder();
     
     ArrayList<FabricLink> mergedLinks = new ArrayList<FabricLink>();
@@ -1048,12 +1053,40 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     boolean finished = nab.processNetAlign(mergedLinks, mergedLoneNodeIDs, mapG1toG2, perfectG1toG2, mergedToCorrect,
             linksSmall, lonersSmall, linksLarge, lonersLarge, relMap, nadi.forOrphanEdge, idGen, holdIt);
   
-    if (finished) {
-      finished = networkAlignmentStepThree(mergedLinks, reducedLinks, mergedLoneNodeIDs, relMap, idGen, nadi.align, holdIt);
+    //
+    // Second process the perfect alignment (if given)
+    //
+    
+    nab = new NetworkAlignmentBuilder();
+    ArrayList<FabricLink> mergedLinksPerfect = new ArrayList<FabricLink>();
+    Set<NID.WithName> mergedLoneNodeIDsPerfect = new HashSet<NID.WithName>();
+    SortedMap<FabricLink.AugRelation, Boolean> relMapPerfect = new TreeMap<FabricLink.AugRelation, Boolean>();
+    Set<FabricLink> reducedLinksPerfect = new HashSet<FabricLink>();
+    
+    if (finished && perfectG1toG2 != null) {
+      //
+      // We now have to process the Perfect alignment so we can compare the links/nodes (topology, etc)
+      // between the given alignment and the perfect alignment. The added -'Perfect' on the variable names
+      // signifies it.
+      //
+      finished = nab.processNetAlign(mergedLinksPerfect, mergedLoneNodeIDsPerfect, perfectG1toG2, null, null,
+              linksSmall, lonersSmall, linksLarge, lonersLarge, relMapPerfect, false, idGen, holdIt);
     }
   
-    if (finished) {
-      networkAlignmentStepFour(reducedLinks, mergedLoneNodeIDs, mergedToCorrect, nadi.forOrphanEdge, idGen, nadi.align, holdIt);
+    if (finished) { // for main alignment
+      finished = networkAlignmentStepThree(mergedLinks, reducedLinks, mergedLoneNodeIDs, relMap, idGen, holdIt);
+    }
+    
+    if (finished && perfectG1toG2 != null) { // for perfect alignment
+      finished = networkAlignmentStepThree(mergedLinksPerfect, reducedLinksPerfect, mergedLoneNodeIDsPerfect, relMapPerfect, idGen, holdIt);
+    }
+    
+    if (finished) { // Score Report
+      finished = networkAlignmentStepFour(reducedLinks, mergedLoneNodeIDs, mergedToCorrect, reducedLinksPerfect, mergedLoneNodeIDsPerfect);
+    }
+  
+    if (finished) { // Load the alignments
+      networkAlignmentStepFive(reducedLinks, mergedLoneNodeIDs, mergedToCorrect, nadi.forOrphanEdge, idGen, nadi.align, holdIt);
     }
     return (true);
   }
@@ -1066,7 +1099,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   private boolean networkAlignmentStepThree(List<FabricLink> links, Set<FabricLink> reducedLinks,
                                             Set<NID.WithName> loneNodeIDs,
                                             SortedMap<FabricLink.AugRelation, Boolean> relMap,
-                                            UniqueLabeller idGen, File align, File holdIt) {
+                                            UniqueLabeller idGen, File holdIt) {
   
     try {
       ResourceManager rMan = ResourceManager.getManager();
@@ -1166,10 +1199,28 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
   /***************************************************************************
    **
-   ** Build the network alignment
+   ** Process NetAlign Score Reports
    */
   
   private boolean networkAlignmentStepFour(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
+                                           Map<NID.WithName, Boolean> mergedToCorrect, Set<FabricLink> reducedLinksPerfect,
+                                           Set<NID.WithName> loneNodeIDsPerfect) {
+  
+    NetworkAlignmentScorer scorer = new NetworkAlignmentScorer(reducedLinks, loneNodeIDs, mergedToCorrect,
+            reducedLinksPerfect, loneNodeIDsPerfect, null);
+  
+    NetworkAlignmentScorer.ScoreReport report = scorer.getReport();
+    report.toString();
+    
+    return (true);
+  }
+  
+  /***************************************************************************
+   **
+   ** Build the network alignment
+   */
+  
+  private boolean networkAlignmentStepFive(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
                                            Map<NID.WithName, Boolean> mergedToCorrect, boolean forOrphanEdge,
                                            UniqueLabeller idGen, File align, File holdIt) {
     try {
