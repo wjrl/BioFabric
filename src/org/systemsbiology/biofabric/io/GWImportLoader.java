@@ -60,7 +60,7 @@ public class GWImportLoader extends FabricImportLoader {
   private int lineToTokIndex_, consTokIndex_;
   private Integer numNodes_, numEdges_;
   private Map<Integer, String> indexToName_;
-  private Map<Integer, Boolean> indexToBeenUsed_;
+  private Map<Integer, Boolean> indexUsed_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -77,7 +77,7 @@ public class GWImportLoader extends FabricImportLoader {
     this.lineToTokIndex_ = 0; // counter while reading tokens
     this.consTokIndex_ = 0;   // counter while consuming tokens
     this.indexToName_ = new HashMap<Integer, String>();
-    this.indexToBeenUsed_ = new HashMap<Integer, Boolean>();
+    this.indexUsed_ = new HashMap<Integer, Boolean>();
   }
   
   /***************************************************************************
@@ -107,14 +107,14 @@ public class GWImportLoader extends FabricImportLoader {
       if (lineToTokIndex_ == HEADER_LINES) {
         try {
           numNodes_ = Integer.parseInt(tokens[0].trim());
-        } catch (Exception ex) {
+        } catch (NumberFormatException ex) {
           throw new IOException("We assume 4 header lines");
         }
       }
       if (numNodes_ != null && lineToTokIndex_ == HEADER_LINES + numNodes_ + 1) {
         try {
           numEdges_ = Integer.parseInt(tokens[0].trim());
-        } catch (Exception ex) {
+        } catch (NumberFormatException ex) {
           throw new IOException("We assume 4 header lines");
         }
       }
@@ -145,6 +145,7 @@ public class GWImportLoader extends FabricImportLoader {
         nodeName = stripBrackets(nodeName);
         
         indexToName_.put(index, nodeName);
+        indexUsed_.put(index, false);
       }
       
     } else if (tokens.length == 4) {
@@ -157,12 +158,12 @@ public class GWImportLoader extends FabricImportLoader {
       try {
         sourceIndex = Integer.parseInt(sourceIndexStr);
         targetIndex = Integer.parseInt(targetIndexStr);
-      } catch (Exception ex) {
+      } catch (NumberFormatException ex) {
         throw new IOException("Could not parse integer");
       }
       
-      indexToBeenUsed_.put(sourceIndex, true);
-      indexToBeenUsed_.put(targetIndex, true);
+      indexUsed_.put(sourceIndex, true);
+      indexUsed_.put(targetIndex, true);
       
       String sourceName = indexToName_.get(sourceIndex);
       String targetName = indexToName_.get(targetIndex);
@@ -172,6 +173,8 @@ public class GWImportLoader extends FabricImportLoader {
       
       sourceName = sourceName.replaceAll("-","_");
       targetName = targetName.replaceAll("-","_");
+      sourceName = sourceName.replaceAll(",","");
+      targetName = targetName.replaceAll(",","");
       UiUtil.fixMePrintout("Auto-replacing dashes with underscores in .gw files");
   
       NID.WithName srcID = nameToNode(sourceName, idGen, nameToID);
@@ -205,7 +208,7 @@ public class GWImportLoader extends FabricImportLoader {
   private void addLoneNodes(UniqueLabeller idGen, Set<NID.WithName> loneNodeIDs,
                             HashMap<String, NID.WithName> nameToID) {
     
-    for (Map.Entry<Integer, Boolean> entry : indexToBeenUsed_.entrySet()) {
+    for (Map.Entry<Integer, Boolean> entry : indexUsed_.entrySet()) {
       
       if (! entry.getValue()) {
         String loner = indexToName_.get(entry.getKey());

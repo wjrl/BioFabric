@@ -116,6 +116,8 @@ public class SIFImportLoader extends FabricImportLoader {
   
       source = source.replaceAll("-","_");
       target = target.replaceAll("-","_");
+      source = source.replaceAll(",","");
+      target = target.replaceAll(",","");
       UiUtil.fixMePrintout("Auto-replacing dashes with underscores in .sif files");
   
       //

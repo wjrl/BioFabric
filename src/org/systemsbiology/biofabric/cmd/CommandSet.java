@@ -1208,10 +1208,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
     NetworkAlignmentScorer scorer = new NetworkAlignmentScorer(reducedLinks, loneNodeIDs, mergedToCorrect,
             reducedLinksPerfect, loneNodeIDsPerfect, null);
-  
+
     NetworkAlignmentScorer.ScoreReport report = scorer.getReport();
-    report.toString();
-    
+    String scores = report.toString();
+
+    JOptionPane.showMessageDialog(null, scores);
+    System.out.println(scores);
     return (true);
   }
   

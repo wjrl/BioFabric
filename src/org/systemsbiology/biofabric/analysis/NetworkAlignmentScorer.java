@@ -222,7 +222,6 @@ public class NetworkAlignmentScorer {
       throw new IllegalStateException();
     }
     
-//    UiUtil.fixMePrintout("hard coded values for node group ratios");
     int[] groupCounter = new int[map.numGroups()];
     
     for (NID.WithName node : allNodes) {
@@ -233,7 +232,6 @@ public class NetworkAlignmentScorer {
     ScoreVector scoreNG = new ScoreVector(map.numGroups());
     for (int i = 0; i < groupCounter.length; i++) {
       scoreNG.values_[i] = ((double)groupCounter[i]) / ((double)allNodes.size());
-//      System.out.println(scoreNG.values_[i] + "  ng " + groupCounter[i]);
     }
     return (scoreNG);
   }
@@ -259,7 +257,6 @@ public class NetworkAlignmentScorer {
     
     for (int i = 0; i < counts.length; i++) {
       scoreLG.values_[i] = ((double)counts[i]) / ((double)links.size());
-//      System.out.println(scoreLG.values_[i] + "  lg  " + counts[i]);
     }
     return (scoreLG);
   }
@@ -293,8 +290,6 @@ public class NetworkAlignmentScorer {
     public String toString() {
       String scores = String.format("SCORES\nEC:%4.4f\nS3:%4.4f\nICS:%4.4f\nNC:%4.4f\nNGD:%4.4f\nLGD:%4.4f\nNGLGD:%4.4f",
               EC, S3, ICS, NC, NGDist, LGDist, NGLGDist);
-      JOptionPane.showMessageDialog(null, scores);
-      System.out.println(scores);
       return (scores);
     }
   }
@@ -321,11 +316,9 @@ public class NetworkAlignmentScorer {
       if (this.values_.length!= vector.values_.length) {
         throw new IllegalArgumentException("score vector length not equal");
       }
-      
       double ret = 0;
   
       for (int i = 0; i < values_.length; i++) {
-//        System.out.println(ret + " ret is here");
         ret += (this.values_[i] - vector.values_[i]) * (this.values_[i] - vector.values_[i]);
       }
       ret = Math.pow(ret, .5);

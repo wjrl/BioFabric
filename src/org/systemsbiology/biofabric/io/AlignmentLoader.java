@@ -108,6 +108,8 @@ public class AlignmentLoader {
   
       strNameG1 = strNameG1.replaceAll("-","_");
       strNameG2 = strNameG2.replaceAll("-","_");
+      strNameG1 = strNameG1.replaceAll(",","");
+      strNameG2 = strNameG2.replaceAll(",","");
       UiUtil.fixMePrintout("Auto-replacing dashes with underscores in .align files");
   
 //      Set<String> notFiltered = new HashSet<String>();
