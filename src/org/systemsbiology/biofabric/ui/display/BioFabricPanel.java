@@ -66,6 +66,7 @@ import org.systemsbiology.biofabric.cmd.ZoomCommandSupport;
 import org.systemsbiology.biofabric.cmd.ZoomTarget;
 import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
+import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.ui.BasicZoomTargetSupport;
@@ -2105,13 +2106,21 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   	public String zoneDesc;
   	public String linkSrcDesc;
   	public String linkTrgDesc;
+  	public ArrayList<String> nodeAnnotations;
+  	public ArrayList<String> linkAnnotations;
   	
-  	public MouseLocInfo(String nodeDesc, String linkDesc, String zoneDesc, String linkSrcDesc, String linkTrgDesc) {
+  	public MouseLocInfo(String nodeDesc, String linkDesc, String zoneDesc, 
+  	                    String linkSrcDesc, String linkTrgDesc, 
+  	                    String nodeAnnotation, String linkAnnotation) {
   		this.nodeDesc = nodeDesc;
   	  this.linkDesc = linkDesc;
   	  this.zoneDesc = zoneDesc;
   	  this.linkSrcDesc = linkSrcDesc;
   	  this.linkTrgDesc = linkTrgDesc;
+  	  this.nodeAnnotations = new ArrayList<String>();
+  	  this.nodeAnnotations.add(nodeAnnotation);
+  	  this.linkAnnotations = new ArrayList<String>();
+  	  this.linkAnnotations.add(linkAnnotation);
   	}
   	
   	public MouseLocInfo() {
@@ -2120,6 +2129,10 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   	  this.zoneDesc = "<none>";
   	  this.linkSrcDesc = "<none>";
   	  this.linkTrgDesc = "<none>";
+  	  this.nodeAnnotations = new ArrayList<String>();
+      this.nodeAnnotations.add("<none>");
+      this.linkAnnotations = new ArrayList<String>();
+      this.linkAnnotations.add("<none>");   
   	}  	
   }
   
@@ -2131,11 +2144,29 @@ public class BioFabricPanel extends JPanel implements ZoomTarget, ZoomPresentati
   MouseLocInfo buildMouseLocation(Point cprc) {
     MouseLocInfo retval = new MouseLocInfo();
     Integer colObj = Integer.valueOf(cprc.x);
-    NID.WithName target = bfn_.getNodeIDForRow(Integer.valueOf(cprc.y));
+    Integer rowObj = Integer.valueOf(cprc.y);
+    NID.WithName target = bfn_.getNodeIDForRow(rowObj);
     boolean showShadows = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getDisplayShadows();
     NID.WithName src = bfn_.getSourceIDForColumn(colObj, showShadows);
     NID.WithName trg = bfn_.getTargetIDForColumn(colObj, showShadows);
     NID.WithName drain = bfn_.getDrainForColumn(colObj, showShadows);
+
+    retval.nodeAnnotations.clear();
+    AnnotationSet ansn = bfn_.getNodeAnnotations();
+    if (ansn != null) {
+      AnnotationSet.AnnotsForPos a4pn = new AnnotationSet.AnnotsForPos(); // FIXME make an instance variable?
+      ansn.fillAnnots(a4pn, rowObj);
+      a4pn.displayStrings(retval.nodeAnnotations);
+    }
+    
+    retval.linkAnnotations.clear();
+    AnnotationSet ansl = bfn_.getLinkAnnotations(showShadows);
+    if (ansl != null) {
+      AnnotationSet.AnnotsForPos a4pl = new AnnotationSet.AnnotsForPos(); // FIXME make an instance variable?
+      ansl.fillAnnots(a4pl, colObj);
+      a4pl.displayStrings(retval.linkAnnotations);
+    }
+    
     int numRows = bfn_.getRowCount();
     if (target != null) {        
       BioFabricNetwork.NodeInfo ni = bfn_.getNodeDefinition(target);

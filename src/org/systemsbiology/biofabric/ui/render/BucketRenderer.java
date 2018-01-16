@@ -64,11 +64,12 @@ public class BucketRenderer implements BufBuildDrawer {
   private ImgAndBufPool bis_;
   private Color[] annotColors_;
   private Color[] linkAnnotGrays_;
+  private final Color[] nodeCycle_;
+  private final Color[] linkCycle_;
   
-  private static final int LINK_GRAY_ = 130;
   private static final int LINK_MAX_ALPHA_ = 180;
-  private static final int NODE_GRAY_ = 200;
   private static final int NODE_MAX_ALPHA_ = 180;
+
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -90,6 +91,82 @@ public class BucketRenderer implements BufBuildDrawer {
     nodeAnnot_ = new AnnotationSet();
     linkAnnot_ = new AnnotationSet();
     bis_ = null;
+    
+    //
+    // Node color cycle sampled off of screen capture from regular renderer. This gives
+    // regions of solid nodes a "cycling" pattern that has the same appearance of the
+    // regular renderer. Same thing below for link cycle.
+    //
+    
+    nodeCycle_ = new Color[] {
+      new Color(145,141,126),
+      new Color(194,201,213),
+      new Color(160,141,129),
+      new Color(177,191,189),
+      new Color(162,129,134),
+      new Color(189,166,148),
+      new Color(163,162,157),
+      new Color(148,163,165),
+      new Color(182,164,165),
+      new Color(144,155,140),
+      new Color(202,160,178),
+      new Color(133,144,129),
+      new Color(208,183,185),
+      new Color(153,142,127),
+      new Color(215,193,204),
+      new Color(145,141,125),
+      new Color(194,201,213),
+      new Color(160,141,129),
+      new Color(186,168,166),
+      new Color(164,147,137),
+      new Color(166,150,153),
+      new Color(175,168,152),
+      new Color(161,170,148),
+      new Color(184,166,159),
+      new Color(144,156,141),
+      new Color(202,160,178),
+      new Color(133,144,129),
+      new Color(209,190,194),
+      new Color(165,125,143),
+      new Color(219,200,203)
+    };
+
+    //
+    // Link color cycle sampled off of screen capture from regular renderer:
+    //
+    
+    linkCycle_ = new Color[] {
+      new Color(123,104,111),
+      new Color(92,92,90),
+      new Color(129,124,117),
+      new Color(99,95,93),
+      new Color(137,122,128),
+      new Color(109,106,84),
+      new Color(133,119,125),
+      new Color(103,95,101),
+      new Color(130,106,109),
+      new Color(106,100,96),
+      new Color(113,95,100),
+      new Color(109,108,102),
+      new Color(114,110,101),
+      new Color(115,103,108),
+      new Color(99,90,102),
+      new Color(124,114,116),
+      new Color(96,83,103),
+      new Color(130,126,123),
+      new Color(111,85,105),
+      new Color(139,125,129),
+      new Color(109,106,84),
+      new Color(117,114,121),
+      new Color(106,90,95),
+      new Color(126,104,98),
+      new Color(105,107,104),
+      new Color(102,105,112),
+      new Color(111,105,107),
+      new Color(102,98,112),
+      new Color(119,106,109),
+      new Color(99,90,102)
+    };
     
     PaintCacheSmall pcs = new PaintCacheSmall(null);
     int numCol = pcs.getAnnotColorCount();
@@ -217,30 +294,28 @@ public class BucketRenderer implements BufBuildDrawer {
 	    
 	    bam.transToBuf(bufStart, bufEnd);
     }
-    
-     // link color: 130 122 128
-    
+ 
     for (int i = 0; i < bam.bufLen; i++) {
     	int pix = bam.mybuf[i];
     	
     	int red = 0;
     	int green = 0;
     	int blue = 0;
-    	int alpha = 0;
+    	int alpha = 0; 	
     	
-    	if (pix != 0) {
-    	  double val = pix / lpp;
- 
-    	  red = LINK_GRAY_;
-    	  green = LINK_GRAY_;
-    	  blue = LINK_GRAY_;
-    	  alpha = Math.min(LINK_MAX_ALPHA_, (int)Math.round(val * LINK_MAX_ALPHA_));
-    	}
-   
+    	int xval = i / bam.scrnHeight;
+      
+      if (pix != 0) {
+        double val = pix / lpp; 
+        int index = xval % linkCycle_.length;       
+        red = linkCycle_[index].getRed();
+        green = linkCycle_[index].getGreen();
+        blue = linkCycle_[index].getBlue();
+        alpha = Math.min(LINK_MAX_ALPHA_, (int)Math.round(val * LINK_MAX_ALPHA_));
+      }
+    	
       int rgb = alpha << 24 | red << 16 | green << 8 | blue;
       
-    	int xval = i / bam.scrnHeight;
-    	
     	if (xval >= bam.imgWidth) {
     		continue;
     	}
@@ -288,18 +363,21 @@ public class BucketRenderer implements BufBuildDrawer {
     	int green = 0;
     	int blue = 0;
     	int alpha = 0;
-
+    	
+    	int yval = i / bam.scrnWidth;
+    	
     	if (pix != 0) {
-    	  double val = pix / lpp;  	  
-    	  red = NODE_GRAY_;
-    	  green = NODE_GRAY_;
-    	  blue = NODE_GRAY_;
+    	  double val = pix / lpp; 
+    	  int index = yval % nodeCycle_.length;    	  
+    	  red = nodeCycle_[index].getRed();
+    	  green = nodeCycle_[index].getGreen();
+    	  blue = nodeCycle_[index].getBlue();
     	  alpha = Math.min(NODE_MAX_ALPHA_, (int)Math.round(val * NODE_MAX_ALPHA_));
     	}
     	
       int rgb = alpha << 24 | red << 16 | green << 8 | blue;
     //  mybuf[i] = rgb;
-    	int yval = i / bam.scrnWidth;
+    	
     	
     	if (yval >= bam.imgHeight) {
     		continue;
