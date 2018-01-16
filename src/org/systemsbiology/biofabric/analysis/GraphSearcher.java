@@ -766,14 +766,9 @@ public class GraphSearcher {
           GraphSearcher.SourcedNodeGray node = dfit.next();
           if (!snSortSet.contains(node.getNodeID())) {
             retval.add(node.getNodeID());
-            System.out.println(node.gray_.toString(2));
           }
         } 
       }
-      
-      // Want reproducibility between VfA and Vfg layouts.  This is required.
-     // Collections.sort(listForLevel);
-     // retval.addAll(listForLevel);
     }
     return (retval);
   } 

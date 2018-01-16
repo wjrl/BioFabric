@@ -296,6 +296,12 @@ public class BasicZoomTargetSupport implements ZoomTarget {
     // If the viewport is larger than the preferred size, we center using that:
     //
   	
+  	UiUtil.fixMePrintout("READ ME");
+  	//
+  	// The viewport when the zoom button is clicked is checked for size. But if scrollbar is present, this
+  	// messes stuff up, as the wide view will have no scrollbars.
+  	//
+  	
     AffineTransform transform = new AffineTransform();
    
     int rectWidth = (int)(worldRect_.getWidth() * zoom); 
@@ -303,8 +309,6 @@ public class BasicZoomTargetSupport implements ZoomTarget {
     
     int useWidth = (rectWidth < viewportDim.width) ? viewportDim.width : rectWidth;
     int useHeight = (rectHeight < viewportDim.height) ? viewportDim.height : rectHeight;
-    System.out.println("GT4W " + rectWidth + " " + viewportDim.width + " " + useWidth);
-    System.out.println("GT4H " + rectHeight + " " + viewportDim.height + " " + useHeight);
     Point2D center = UiUtil.getRectCenter(worldRect_); 
     transform = new AffineTransform();    
     transform.translate((useWidth / 2.0), (useHeight / 2.0));
@@ -327,31 +331,16 @@ public class BasicZoomTargetSupport implements ZoomTarget {
     int rectHeight = (int)(worldRect_.getHeight() * zoom_);
     
     int useWidth = (rectWidth < viewportDim.width) ? viewportDim.width : rectWidth;
-    System.out.println("AWZA " + useWidth + " " + viewportDim.width + " " + rectWidth);
     int useHeight = (rectHeight < viewportDim.height) ? viewportDim.height : rectHeight;
-    System.out.println("AWZB " + useHeight + " " + viewportDim.height + " " + rectHeight);
     Point2D center = UiUtil.getRectCenter(worldRect_);
     
     transform_ = new AffineTransform();
-    System.out.println("AWZFS " + zoom_);
     transform_.translate((useWidth / 2.0), (useHeight / 2.0));
     transform_.scale(zoom_, zoom_);
     transform_.translate(-center.getX(), -center.getY());    
     return;
   }  
   
-  /***************************************************************************
-  **
-  ** Get the zoom level needed to show the workspace X
-  */
- 
-  public double getWorkspaceZoom(Dimension viewportDim, double percent) { 
-
-    double wZoom = viewportDim.width / worldRect_.getWidth();
-    double hZoom = viewportDim.height / worldRect_.getHeight();        
-    return (((wZoom > hZoom) ? hZoom : wZoom) * percent);
-  }    
-
   /***************************************************************************
   **
   ** Get the zoom
