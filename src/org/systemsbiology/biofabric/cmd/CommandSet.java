@@ -209,6 +209,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public static final int BUILD_SELECT        = 15;
   public static final int SET_DISPLAY_OPTIONS = 16;
   public static final int SET_LAYOUT          = 17;
+  public static final int TOGGLE_SHADOW_LINKS = 18;
   
   // Former Gaggle Commands 17-24 dropped
   
@@ -379,7 +380,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
 
     if (needRecolor && !needRebuild) {
-      NetworkRecolor nb = new NetworkRecolor(); 
+      NetworkRecolor nb = new NetworkRecolor();
+      System.out.println("Lotsa problems here (nulls) if non-main has never been launched");
       nb.doNetworkRecolor(isForMain_, holdIt);
     } else if (needRebuild) {
       BioFabricNetwork bfn = bfp_.getNetwork();
@@ -534,6 +536,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         case SET_LAYOUT:
           retval = new SetLayoutAction(withIcon); 
           break;
+        case TOGGLE_SHADOW_LINKS:
+          retval = new ToggleShadowLinks(withIcon); 
+          break;                  
         case RELAYOUT_USING_SHAPE_MATCH:
           retval = new LayoutViaShapeMatchAction(withIcon); 
           break;  
@@ -1569,7 +1574,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     screenSize.setSize((int)(screenSize.getWidth() * 0.8), (int)(screenSize.getHeight() * 0.4));
     colGen_.newColorModel();
     bfp_.changePaint(monitor);
-    int[] preZooms = bfp_.calcZoomSettings(screenSize);
+    int[] preZooms = bfp_.getZoomController().getZoomIndices();
     BufferedImage topImage = null;
     if (forMain) {
       BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
@@ -3170,6 +3175,58 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
  
   } 
+  
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+   
+  private class ToggleShadowLinks extends ChecksForEnabled {
+     
+    private static final long serialVersionUID = 1L;
+    
+    ToggleShadowLinks(boolean doIcon) {
+      ResourceManager rMan = ResourceManager.getManager(); 
+      putValue(Action.NAME, rMan.getString("command.ToggleShadowLinks"));
+      if (doIcon) {
+        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.ToggleShadowLinks"));        
+        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/S24.gif");  
+        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
+      } else {
+        char mnem = rMan.getChar("command.ToggleShadowLinksMnem"); 
+        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem)); 
+      }
+      showNav_ = true;
+    }
+    
+    public void actionPerformed(ActionEvent e) {
+    	 	
+    	if (bfp_.getNetwork().getLinkCount(false) > SIZE_TO_ASK_ABOUT_SHADOWS_) {
+	    	ResourceManager rMan = ResourceManager.getManager(); 
+	    	int keepGoing =
+		      JOptionPane.showConfirmDialog(topWindow_, rMan.getString("toggleShadow.bigFileLongTime"),
+		                                    rMan.getString("toggleShadow.bigFileLongTime"),
+		                                    JOptionPane.YES_NO_OPTION);        
+		    if (keepGoing != JOptionPane.YES_OPTION) {
+		    	return;
+		    }
+    	}
+
+    	FabricDisplayOptionsManager dopmgr = FabricDisplayOptionsManager.getMgr();
+    	FabricDisplayOptions dop = dopmgr.getDisplayOptions();
+    	FabricDisplayOptions newDop = dop.clone();
+    	newDop.setDisplayShadows(!dop.getDisplayShadows());
+      dopmgr.setDisplayOptions(newDop, true, false);
+      return;
+    }
+    
+    @Override
+    protected boolean checkGuts() {
+      return (bfp_.hasAModel() && (bfp_.getNetwork().getLinkCount(true) != 0));
+    }
+
+  } 
+  
   /***************************************************************************
   **
   ** Command

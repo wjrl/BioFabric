@@ -466,6 +466,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     actionMap_.put(Integer.valueOf(CommandSet.CLEAR_SELECTIONS), fc.getAction(CommandSet.CLEAR_SELECTIONS, true, null));
     actionMap_.put(Integer.valueOf(CommandSet.ZOOM_TO_MODEL), fc.getAction(CommandSet.ZOOM_TO_MODEL, true, null));
     actionMap_.put(Integer.valueOf(CommandSet.ZOOM_TO_RECT), fc.getAction(CommandSet.ZOOM_TO_RECT, true, null));
+    actionMap_.put(Integer.valueOf(CommandSet.TOGGLE_SHADOW_LINKS), fc.getAction(CommandSet.TOGGLE_SHADOW_LINKS, true, null));
     actionMap_.put(Integer.valueOf(CommandSet.CANCEL), fc.getAction(CommandSet.CANCEL, true, null));
     actionMap_.put(Integer.valueOf(CommandSet.ZOOM_TO_CURRENT_SELECTION), fc.getAction(CommandSet.ZOOM_TO_CURRENT_SELECTION, true, null));
     actionMap_.put(Integer.valueOf(CommandSet.CENTER_ON_NEXT_SELECTION), fc.getAction(CommandSet.CENTER_ON_NEXT_SELECTION, true, null));
@@ -499,6 +500,8 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.CANCEL)));
     toolBar.addSeparator();    
     toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.SEARCH)));
+    toolBar.addSeparator();    
+    toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.TOGGLE_SHADOW_LINKS)));
     if (isMain) {
       toolBar.addSeparator();  
       toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.PROPAGATE_DOWN)));

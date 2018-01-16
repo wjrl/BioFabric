@@ -90,6 +90,7 @@ public class ZoomCommandSupport {
   */
 
   public void setZoomPoints(double[] zoomVals) {
+  	System.out.println("Set zoom points " + zoomVals.length);
     zoomVals_ = zoomVals;
     currZoomIndex_ = 0;
     customZoom_ = 0.0;
@@ -97,6 +98,21 @@ public class ZoomCommandSupport {
     return;
   }
   
+  /***************************************************************************
+  **
+  ** Get zoom indices
+  */
+
+  public int[] getZoomIndices() {
+  	System.out.println("Get zoom indices " + zoomVals_);
+  	int len = (zoomVals_ == null) ? 0 : zoomVals_.length;
+  	int[] retval = new int[len];  	
+  	for (int i = 0; i < len; i++) {
+  		retval[i] = i;
+  	}
+    return (retval);
+  }
+
   /***************************************************************************
   **
   ** Register the scroll pane
@@ -340,7 +356,13 @@ public class ZoomCommandSupport {
       		setCurrentZoom(fullModelZoom_);
       	}
       } else if (currZoomIndex_ == 0) {
-       // ZoomResult zr = calcOptimalZoom(null, jsp_.getViewport().getExtentSize());
+  	    if (fullModelZoom_ == null) {
+  	    	System.out.println("Seeing this as null after recolor while zoomed!!");
+  	    	System.out.println("And zoom out ");
+  	    	Rectangle bounds = sup_.getCurrentBasicBounds();    
+          Dimension vDim = jsp_.getViewport().getExtentSize();
+          fullModelZoom_ = calcOptimalZoom(bounds, vDim);
+  	    }
         setCurrentZoom(fullModelZoom_);
       } else {
         setCurrentZoom(new ZoomResult(currZoomIndex_ - 1));
@@ -396,6 +418,7 @@ public class ZoomCommandSupport {
   */ 
     
   private void setCurrentZoom(ZoomResult zres) {
+  	System.out.println("Set current zoom to " + zres);
     if (zres.doCustom) {
       customZoom_ = zres.customZoom;
       currZoomIndex_ = -1;
