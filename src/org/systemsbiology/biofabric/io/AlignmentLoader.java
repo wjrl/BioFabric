@@ -106,35 +106,39 @@ public class AlignmentLoader {
   
       String strNameG1 = st.nextToken(), strNameG2 = st.nextToken();
   
-      strNameG1 = strNameG1.replaceAll("-","_");
-      strNameG2 = strNameG2.replaceAll("-","_");
+//      strNameG1 = strNameG1.replaceAll("-","_");
+//      strNameG2 = strNameG2.replaceAll("-","_");
       strNameG1 = strNameG1.replaceAll(",","");
       strNameG2 = strNameG2.replaceAll(",","");
       UiUtil.fixMePrintout("Auto-replacing dashes with underscores in .align files");
   
-//      Set<String> notFiltered = new HashSet<String>();
-//      String[] nodesWithoutEntrezIDs = {
-//              "ATM1",
-//              "CTM1",
-//              "IMD1",
-//              "PHM8",
-//              "PUT1",
-//              "SBE2",
-//              "YAR075W",
-//              "YDL026W",
-//              "YDR133C",
-//              "YGR272C",
-//              "YNL276C",};
-//      Collections.addAll(notFiltered, nodesWithoutEntrezIDs);
-//      if (notFiltered.contains(strNameG1) || notFiltered.contains(strNameG2)) {
-//        continue;
-//      }
+      {// displaying yeast2500-yeast5000 (SCerevisiae) files with perfect alignment
+        // but alignment was done with full yeast2500 file not Filtered file
+        // with entrezIDs only--- so we take out the nodes w/out entrez IDs
+        Set<String> notFiltered = new HashSet<String>();
+        String[] nodesWithoutEntrezIDs = {
+                "ATM1",
+                "CTM1",
+                "IMD1",
+                "PHM8",
+                "PUT1",
+                "SBE2",
+                "YAR075W",
+                "YDL026W",
+                "YDR133C",
+                "YGR272C",
+                "YNL276C",};
+        Collections.addAll(notFiltered, nodesWithoutEntrezIDs);
+        if (notFiltered.contains(strNameG1) || notFiltered.contains(strNameG2)) {
+//          continue;
+        }
+      }
      
       boolean existsInG1 = G1nameToNID.containsKey(strNameG1),
               existsInG2 = G2nameToNID.containsKey(strNameG2);
       
       if (!(existsInG1 && existsInG2)) {
-        System.out.println(G1nameToNID.size()+ "Load error: " + strNameG1 + " " + existsInG1 + "  " + strNameG2 + " "+ existsInG2);
+//        System.out.println(G1nameToNID.size()+ "Load error: " + strNameG1 + " " + existsInG1 + "  " + strNameG2 + " "+ existsInG2);
         throw new IOException("Incorrect node names or nodes do not exist in graph files");
       }
       
@@ -153,7 +157,7 @@ public class AlignmentLoader {
     }
   
     if (mapG1ToG2.size() != G1nameToNID.size()) {
-      System.out.println(mapG1ToG2.size() + "  " + G1nameToNID.size());
+//      System.out.println(mapG1ToG2.size() + "  " + G1nameToNID.size());
       throw new IOException("Incomplete node mapping");
     }
   

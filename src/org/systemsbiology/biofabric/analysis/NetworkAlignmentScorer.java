@@ -1,4 +1,7 @@
 /*
+**
+**    File created by Rishi Desai
+**
 **    Copyright (C) 2003-2017 Institute for Systems Biology
 **                            Seattle, Washington, USA.
 **
@@ -24,7 +27,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import javax.swing.JOptionPane;
 import org.systemsbiology.biofabric.layouts.NetworkAlignmentLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
@@ -63,34 +65,41 @@ public class NetworkAlignmentScorer {
   
   private Set<FabricLink> linksMain_, linksPerfect_;
   private Set<NID.WithName> loneNodeIDsMain_, loneNodeIDsPerfect_;
+  private Map<NID.WithName, Boolean> isAlignedNode_, isAlignedNodePerfect_;
   private Map<NID.WithName, Boolean> mergedToCorrect_;
   
-  private BTProgressMonitor monitor;
+  private BTProgressMonitor monitor_;
   
   private double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist;
-  private ScoreReport report;
+  private ScoreReport report_;
   
   public NetworkAlignmentScorer(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
-                                Map<NID.WithName, Boolean> mergedToCorrect, Set<FabricLink> linksPerfect,
-                                Set<NID.WithName> loneNodeIDsPerfect, BTProgressMonitor monitor) {
+                                Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
+                                Map<NID.WithName, Boolean> isAlignedNodePerfect,
+                                Set<FabricLink> linksPerfect, Set<NID.WithName> loneNodeIDsPerfect, BTProgressMonitor monitor) {
     this.linksMain_ = new HashSet<FabricLink>(reducedLinks);
     this.loneNodeIDsMain_ = new HashSet<NID.WithName>(loneNodeIDs);
     this.mergedToCorrect_ = mergedToCorrect;
     this.linksPerfect_ = linksPerfect;
     this.loneNodeIDsPerfect_ = loneNodeIDsPerfect;
-    this.monitor = monitor;
+    this.isAlignedNode_ = isAlignedNode;
+    this.isAlignedNodePerfect_ = isAlignedNodePerfect;
+    this.monitor_ = monitor;
     removeDuplicateAndShadow();
     calcScores();
-    this.report = new ScoreReport(EC, S3, ICS, NC, NGDist, LGDist, NGLGDist);
+    this.report_ = new ScoreReport(EC, S3, ICS, NC, NGDist, LGDist, NGLGDist);
     return;
   }
   
   private void calcScores() {
     calcTopologicalScores();
-    calcNodeCorrectness();
-    calcNodeGroupValues();
-    calcLinkGroupValues();
-    calcBothGroupValues();
+    
+    if (mergedToCorrect_ != null) { // must have perfect alignment for these measures
+      calcNodeCorrectness();
+      calcNodeGroupValues();
+      calcLinkGroupValues();
+      calcBothGroupValues();
+    }
   }
   
   private void calcTopologicalScores() {
@@ -140,28 +149,28 @@ public class NetworkAlignmentScorer {
   }
   
   private void calcNodeGroupValues() {
-    ScoreVector mainAlign = getNodeGroupRatios(linksMain_, loneNodeIDsMain_, mergedToCorrect_, monitor);
-    ScoreVector perfectAlign = getNodeGroupRatios(linksPerfect_, loneNodeIDsPerfect_, null, monitor);
+    ScoreVector mainAlign = getNodeGroupRatios(linksMain_, loneNodeIDsMain_, mergedToCorrect_, isAlignedNode_, monitor_);
+    ScoreVector perfectAlign = getNodeGroupRatios(linksPerfect_, loneNodeIDsPerfect_, null, isAlignedNodePerfect_, monitor_);
     
     NGDist = mainAlign.distance(perfectAlign);
     return;
   }
   
   private void calcLinkGroupValues() {
-    ScoreVector mainAlign = getLinkGroupRatios(linksMain_, monitor);
-    ScoreVector perfectAlign = getLinkGroupRatios(linksPerfect_, monitor);
+    ScoreVector mainAlign = getLinkGroupRatios(linksMain_, monitor_);
+    ScoreVector perfectAlign = getLinkGroupRatios(linksPerfect_, monitor_);
     
     LGDist = mainAlign.distance(perfectAlign);
     return;
   }
   
   private void calcBothGroupValues() {
-    ScoreVector mainNG = getNodeGroupRatios(linksMain_, loneNodeIDsMain_, mergedToCorrect_, monitor);
-    ScoreVector mainLG = getLinkGroupRatios(linksMain_, monitor);
+    ScoreVector mainNG = getNodeGroupRatios(linksMain_, loneNodeIDsMain_, mergedToCorrect_, isAlignedNode_, monitor_);
+    ScoreVector mainLG = getLinkGroupRatios(linksMain_, monitor_);
     mainNG.concat(mainLG);
   
-    ScoreVector perfectNG = getNodeGroupRatios(linksPerfect_, loneNodeIDsPerfect_, null, monitor);
-    ScoreVector perfectLG = getLinkGroupRatios(linksPerfect_, monitor);
+    ScoreVector perfectNG = getNodeGroupRatios(linksPerfect_, loneNodeIDsPerfect_, null, isAlignedNodePerfect_, monitor_);
+    ScoreVector perfectLG = getLinkGroupRatios(linksPerfect_, monitor_);
     perfectNG.concat(perfectLG);
     
     NGLGDist = mainNG.distance(perfectNG);
@@ -206,14 +215,14 @@ public class NetworkAlignmentScorer {
   }
   
   public ScoreReport getReport() {
-    return (report);
+    return (report_);
   }
   
   private static ScoreVector getNodeGroupRatios(Set<FabricLink> links, Set<NID.WithName> loneNodeIDs,
-                                                Map<NID.WithName, Boolean> mergedToCorrect,
+                                                Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
                                                 BTProgressMonitor monitor) {
     
-    NodeGroupMap map = new NodeGroupMap(links, loneNodeIDs, mergedToCorrect, NetworkAlignmentLayout.DefaultNodeGroupOrder);
+    NodeGroupMap map = new NodeGroupMap(links, loneNodeIDs, mergedToCorrect, isAlignedNode, NetworkAlignmentLayout.DefaultNGOrderWithoutCorrect);
     
     Set<NID.WithName> allNodes;
     try {

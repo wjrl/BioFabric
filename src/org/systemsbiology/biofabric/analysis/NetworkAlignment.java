@@ -1,4 +1,7 @@
 /*
+**
+**    File created by Rishi Desai
+**
 **    Copyright (C) 2003-2017 Institute for Systems Biology
 **                            Seattle, Washington, USA.
 **
@@ -31,6 +34,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
@@ -90,7 +94,7 @@ public class NetworkAlignment {
   
   private ArrayList<FabricLink> mergedLinks_;
   private Set<NID.WithName> mergedLoners_;
-  private Map<NID.WithName, Boolean> mergedToCorrect_;
+  private Map<NID.WithName, Boolean> mergedToCorrect_, isAlignedNode_;
   
   private enum Graph {SMALL, LARGE}
   
@@ -105,7 +109,7 @@ public class NetworkAlignment {
                           Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2_,
                           ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
                           ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
-                          Map<NID.WithName, Boolean> mergedToCorrect,
+                          Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
                           boolean forOrphanEdges, UniqueLabeller idGen, BTProgressMonitor monitor) {
     
     this.mapG1toG2_ = mapG1toG2;
@@ -121,6 +125,7 @@ public class NetworkAlignment {
     this.mergedLinks_ = mergedLinks;
     this.mergedLoners_ = mergedLoneNodeIDs;
     this.mergedToCorrect_ = mergedToCorrect;
+    this.isAlignedNode_ = isAlignedNode;
   }
   
   /****************************************************************************
@@ -159,20 +164,18 @@ public class NetworkAlignment {
     finalizeLoneNodeIDs(newLonersG1, newLonersG2);
     
     //
+    // POST processing
+    //
+    
+    createIsAlignedMap();
+    
+    //
     // Orphan Edges: All unaligned edges; plus all of their endpoint nodes' edges
     //
     
     if (forOrphanEdges) {
       (new OrphanEdgeLayout()).process(mergedLinks_, mergedLoners_, mergedIDToSmall_);
     }
-    UiUtil.fixMePrintout("Should Clique Misalignment remain a postprocessing step");
-    
-    //
-    // Output calculated scores to console
-    //
-    
-//    new NetworkAlignmentScorer(this).printScores();
-    UiUtil.fixMePrintout("Need to add net-align scores to UI");
     
     return;
   }
@@ -357,6 +360,25 @@ public class NetworkAlignment {
   private void finalizeLoneNodeIDs(Set<NID.WithName> newLonersG1, Set<NID.WithName> newLonersG2) {
     mergedLoners_.addAll(newLonersG1);
     mergedLoners_.addAll(newLonersG2);
+    return;
+  }
+  
+  /****************************************************************************
+   **
+   ** POST processing: Create isAlignedNode map
+   */
+  
+  private void createIsAlignedMap() throws AsynchExitRequestException {
+  
+    Set<NID.WithName> allNodes = BioFabricNetwork.extractNodes(mergedLinks_, mergedLoners_, monitor_);
+    for (NID.WithName node : allNodes) {
+      // here mergedIDToSmall_ is a tool: if node is in it, we know it is an aligned node
+      if (mergedIDToSmall_.get(node) != null) {
+        isAlignedNode_.put(node, true);
+      } else {
+        isAlignedNode_.put(node, false);
+      }
+    }
     return;
   }
   

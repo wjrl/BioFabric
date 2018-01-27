@@ -49,16 +49,8 @@ import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FabricFactory;
 
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
-import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
-import org.systemsbiology.biofabric.layouts.DefaultLayout;
-import org.systemsbiology.biofabric.layouts.EdgeLayout;
 import org.systemsbiology.biofabric.layouts.HierDAGLayout;
-import org.systemsbiology.biofabric.layouts.NetworkAlignmentLayout;
-import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
-import org.systemsbiology.biofabric.layouts.NodeLayout;
-import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.layouts.SetLayout;
-import org.systemsbiology.biofabric.layouts.WorldBankLayout;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout.CtrlMode;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout.TargMode;
 
@@ -2584,18 +2576,20 @@ public class BioFabricNetwork {
   public static class NetworkAlignmentBuildData extends RelayoutBuildData {
     
     public AnnotationSet nodeAnnots;
-    public Map<NID.WithName, Boolean> mergedToCorrect_;
+    public Map<NID.WithName, Boolean> mergedToCorrect_, isAlignedNode_;
     public boolean forOrphans;
   
     public NetworkAlignmentBuildData(UniqueLabeller idGen,
                                      Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
                                      Map<NID.WithName, Boolean> mergedToCorrect,
+                                     Map<NID.WithName, Boolean> isAlignedNode,
                                      Map<NID.WithName, String> clustAssign, boolean forOrphans,
                                      FabricColorGenerator colGen, BuildMode mode) {
       super(idGen, allLinks, loneNodeIDs, clustAssign, colGen, mode);
       this.layoutMode = LayoutMode.PER_NETWORK_MODE;
       this.forOrphans = forOrphans;
       this.mergedToCorrect_ = mergedToCorrect;
+      this.isAlignedNode_ = isAlignedNode;
       this.nodeAnnots = null;
     }
     

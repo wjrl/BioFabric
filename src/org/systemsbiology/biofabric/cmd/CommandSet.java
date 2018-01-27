@@ -1048,20 +1048,24 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     Set<NID.WithName> mergedLoneNodeIDs = new HashSet<NID.WithName>();
     SortedMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
     Set<FabricLink> reducedLinks = new HashSet<FabricLink>();
-    Map<NID.WithName, Boolean> mergedToCorrect = new HashMap<NID.WithName, Boolean>();
+    Map<NID.WithName, Boolean> mergedToCorrect = null, isAlignedNode = new HashMap<NID.WithName, Boolean>();
+    if (perfectG1toG2 != null) {
+      mergedToCorrect = new HashMap<NID.WithName, Boolean>();
+    }
   
     boolean finished = nab.processNetAlign(mergedLinks, mergedLoneNodeIDs, mapG1toG2, perfectG1toG2, mergedToCorrect,
-            linksSmall, lonersSmall, linksLarge, lonersLarge, relMap, nadi.forOrphanEdge, idGen, holdIt);
+            isAlignedNode, linksSmall, lonersSmall, linksLarge, lonersLarge, relMap, nadi.forOrphanEdge, idGen, holdIt);
   
     //
     // Second process the perfect alignment (if given)
     //
     
-    nab = new NetworkAlignmentBuilder();
-    ArrayList<FabricLink> mergedLinksPerfect = new ArrayList<FabricLink>();
-    Set<NID.WithName> mergedLoneNodeIDsPerfect = new HashSet<NID.WithName>();
-    SortedMap<FabricLink.AugRelation, Boolean> relMapPerfect = new TreeMap<FabricLink.AugRelation, Boolean>();
-    Set<FabricLink> reducedLinksPerfect = new HashSet<FabricLink>();
+    nab = null;
+    ArrayList<FabricLink> mergedLinksPerfect = null;
+    Set<NID.WithName> mergedLoneNodeIDsPerfect = null;
+    SortedMap<FabricLink.AugRelation, Boolean> relMapPerfect = null;
+    Set<FabricLink> reducedLinksPerfect = null;
+    Map<NID.WithName, Boolean> isAlignedNodePerfect = null;
     
     if (finished && perfectG1toG2 != null) {
       //
@@ -1069,8 +1073,15 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       // between the given alignment and the perfect alignment. The added -'Perfect' on the variable names
       // signifies it.
       //
+      nab = new NetworkAlignmentBuilder();
+      mergedLinksPerfect = new ArrayList<FabricLink>();
+      mergedLoneNodeIDsPerfect = new HashSet<NID.WithName>();
+      relMapPerfect = new TreeMap<FabricLink.AugRelation, Boolean>();
+      reducedLinksPerfect = new HashSet<FabricLink>();
+      isAlignedNodePerfect = new HashMap<NID.WithName, Boolean>();
+      
       finished = nab.processNetAlign(mergedLinksPerfect, mergedLoneNodeIDsPerfect, perfectG1toG2, null, null,
-              linksSmall, lonersSmall, linksLarge, lonersLarge, relMapPerfect, false, idGen, holdIt);
+              isAlignedNodePerfect, linksSmall, lonersSmall, linksLarge, lonersLarge, relMapPerfect, false, idGen, holdIt);
     }
   
     if (finished) { // for main alignment
@@ -1080,13 +1091,17 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     if (finished && perfectG1toG2 != null) { // for perfect alignment
       finished = networkAlignmentStepThree(mergedLinksPerfect, reducedLinksPerfect, mergedLoneNodeIDsPerfect, relMapPerfect, idGen, holdIt);
     }
-    
-    if (finished) { // Score Report
-      finished = networkAlignmentStepFour(reducedLinks, mergedLoneNodeIDs, mergedToCorrect, reducedLinksPerfect, mergedLoneNodeIDsPerfect);
-    }
   
+    System.out.println((isAlignedNode == null) + "   " + (isAlignedNodePerfect ==null));
+  
+  
+    if (finished) { // Score Report
+      finished = networkAlignmentStepFour(reducedLinks, mergedLoneNodeIDs, isAlignedNode, mergedToCorrect,
+              reducedLinksPerfect, mergedLoneNodeIDsPerfect, isAlignedNodePerfect);
+    }
+    
     if (finished) { // Load the alignments
-      networkAlignmentStepFive(reducedLinks, mergedLoneNodeIDs, mergedToCorrect, nadi.forOrphanEdge, idGen, nadi.align, holdIt);
+      networkAlignmentStepFive(reducedLinks, mergedLoneNodeIDs, mergedToCorrect, isAlignedNode, nadi.forOrphanEdge, idGen, nadi.align, holdIt);
     }
     return (true);
   }
@@ -1202,18 +1217,20 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
    ** Process NetAlign Score Reports
    */
   
-  private boolean networkAlignmentStepFour(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
+  private boolean networkAlignmentStepFour(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Boolean> isAlignedNode,
                                            Map<NID.WithName, Boolean> mergedToCorrect, Set<FabricLink> reducedLinksPerfect,
-                                           Set<NID.WithName> loneNodeIDsPerfect) {
+                                           Set<NID.WithName> loneNodeIDsPerfect, Map<NID.WithName, Boolean> isAlignedNodePerfect) {
   
     NetworkAlignmentScorer scorer = new NetworkAlignmentScorer(reducedLinks, loneNodeIDs, mergedToCorrect,
-            reducedLinksPerfect, loneNodeIDsPerfect, null);
+            isAlignedNode, isAlignedNodePerfect, reducedLinksPerfect, loneNodeIDsPerfect, null);
 
     NetworkAlignmentScorer.ScoreReport report = scorer.getReport();
     String scores = report.toString();
 
-    JOptionPane.showMessageDialog(null, scores);
-    System.out.println(scores);
+//    JOptionPane.showMessageDialog(null, scores);
+//    System.out.println(scores);
+    UiUtil.fixMePrintout("Need to add net-align scores to UI");
+  
     return (true);
   }
   
@@ -1223,11 +1240,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
    */
   
   private boolean networkAlignmentStepFive(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
-                                           Map<NID.WithName, Boolean> mergedToCorrect, boolean forOrphanEdge,
-                                           UniqueLabeller idGen, File align, File holdIt) {
+                                           Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
+                                           boolean forOrphanEdge, UniqueLabeller idGen, File align, File holdIt) {
     try {
       NetworkBuilder nb = new NetworkBuilder(true, holdIt);
-      nb.setForNetAlignBuild(idGen, reducedLinks, loneNodeIDs, mergedToCorrect, forOrphanEdge,
+      nb.setForNetAlignBuild(idGen, reducedLinks, loneNodeIDs, mergedToCorrect, isAlignedNode, forOrphanEdge,
               BioFabricNetwork.BuildMode.BUILD_NETWORK_ALIGNMENT);
       nb.doNetworkBuild();
     } catch (OutOfMemoryError oom) {
@@ -4693,12 +4710,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   	}
   	
   	void setForNetAlignBuild(UniqueLabeller idGen, Set<FabricLink> links, Set<NID.WithName> loneNodeIDs,
-                             Map<NID.WithName, Boolean> mergedToCorrect, boolean forOrphanEdges,
-                             BioFabricNetwork.BuildMode bMode) {
+                             Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
+                             boolean forOrphanEdges, BioFabricNetwork.BuildMode bMode) {
   	  if (bMode != BioFabricNetwork.BuildMode.BUILD_NETWORK_ALIGNMENT) {
   	    throw new IllegalArgumentException();
       }
-      runner_.setBuildDataForNetAlign(idGen, links, loneNodeIDs, mergedToCorrect, forOrphanEdges, bMode); // SHOULD THIS BE CHANGED?
+      runner_.setBuildDataForNetAlign(idGen, links, loneNodeIDs, mergedToCorrect, isAlignedNode, forOrphanEdges, bMode);
   	  return;
     }
   	
@@ -4887,6 +4904,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                                    Map<NID.WithName, NID.WithName> mapG1toG2,
                                    Map<NID.WithName, NID.WithName> perfectG1toG2,
                                    Map<NID.WithName, Boolean> mergedToCorrect,
+                                   Map<NID.WithName, Boolean> isAlignedNode,
                                    ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
                                    ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
                                    SortedMap<FabricLink.AugRelation, Boolean> relMap,
@@ -4895,7 +4913,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       holdIt_ = holdIt;
       try {
         NetworkAlignmentRunner runner = new NetworkAlignmentRunner(mergedLinks, mergedLoneNodeIDs, mapG1toG2, perfectG1toG2,
-                mergedToCorrect, linksG1, lonersG1, linksG2, lonersG2, relMap, forClique, idGen);
+                mergedToCorrect, isAlignedNode, linksG1, lonersG1, linksG2, lonersG2, relMap, forClique, idGen);
         
         BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_,
                 "fileLoad.waitTitle", "fileLoad.wait", true);
@@ -5239,7 +5257,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private ArrayList<FabricLink> mergedLinks_;
     private Set<NID.WithName> mergedLoneNodeIDs_;
     private Map<NID.WithName, NID.WithName> mapG1toG2_, perfectG1toG2_;
-    private Map<NID.WithName, Boolean> mergedToCorrect_;
+    private Map<NID.WithName, Boolean> mergedToCorrect_, isAlignedNode_;
     private ArrayList<FabricLink> linksG1_, linksG2_;
     private HashSet<NID.WithName> lonersG1_, lonersG2_;
     private SortedMap<FabricLink.AugRelation, Boolean> relMap_;
@@ -5250,6 +5268,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                                   Map<NID.WithName, NID.WithName> mapG1toG2,
                                   Map<NID.WithName, NID.WithName> perfectG1toG2,
                                   Map<NID.WithName, Boolean> mergedToCorrect,
+                                  Map<NID.WithName, Boolean> isAlignedNode,
                                   ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
                                   ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
                                   SortedMap<FabricLink.AugRelation, Boolean> relMap,
@@ -5261,6 +5280,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       this.mapG1toG2_ = mapG1toG2;
       this.perfectG1toG2_ = perfectG1toG2;
       this.mergedToCorrect_ = mergedToCorrect;
+      this.isAlignedNode_ = isAlignedNode;
       this.linksG1_ = linksG1;
       this.lonersG1_ = lonersG1;
       this.linksG2_ = linksG2;
@@ -5273,7 +5293,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     public Object runCore() throws AsynchExitRequestException {
       
       NetworkAlignment netAlign = new NetworkAlignment(mergedLinks_, mergedLoneNodeIDs_, mapG1toG2_, perfectG1toG2_,
-              linksG1_, lonersG1_, linksG2_, lonersG2_, mergedToCorrect_, forOrphanEdge_, idGen_, this);
+              linksG1_, lonersG1_, linksG2_, lonersG2_, mergedToCorrect_, isAlignedNode_, forOrphanEdge_, idGen_, this);
       
       netAlign.mergeNetworks();
       BioFabricNetwork.extractRelations(mergedLinks_, relMap_, this);
@@ -5302,7 +5322,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private long linkCount_;
     // Network Alignment specific fields below
     private Boolean forOrphanEdge_;
-    private Map<NID.WithName, Boolean> mergedToCorrect_;
+    private Map<NID.WithName, Boolean> mergedToCorrect_, isAlignedNode_;
 
     public NewNetworkRunner(boolean forMain, File holdIt) {
       super(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB));      
@@ -5321,8 +5341,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     void setBuildDataForNetAlign(UniqueLabeller idGen, Set<FabricLink> links, Set<NID.WithName> loneNodeIDs,
-                                 Map<NID.WithName, Boolean> mergedToCorrect, boolean forOrphanEdge,
-                                 BioFabricNetwork.BuildMode bMode) {
+                                 Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
+                                 boolean forOrphanEdge, BioFabricNetwork.BuildMode bMode) {
       idGen_ = idGen;
       links_ = links;
       loneNodeIDs_ = loneNodeIDs;
@@ -5330,6 +5350,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       linkCount_ = links.size();
       this.forOrphanEdge_ = forOrphanEdge;
       this.mergedToCorrect_ = mergedToCorrect;
+      this.isAlignedNode_ = isAlignedNode;
     }
     
     void setBuildDataForOptionChange(BioFabricNetwork bfn, BioFabricNetwork.BuildMode bMode) {
@@ -5354,7 +5375,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
             case BUILD_NETWORK_ALIGNMENT:
               HashMap<NID.WithName, String> emptyClustMap = new HashMap<NID.WithName, String>();
               return (new BioFabricNetwork.NetworkAlignmentBuildData(idGen_, links_, loneNodeIDs_, mergedToCorrect_,
-                      emptyClustMap, forOrphanEdge_, colGen_, bMode_));
+                      isAlignedNode_, emptyClustMap, forOrphanEdge_, colGen_, bMode_));
 	    	case SHADOW_LINK_CHANGE:
 	    	case BUILD_FROM_XML:
 	    		return (new BioFabricNetwork.PreBuiltBuildData(bfn_, bMode_));		

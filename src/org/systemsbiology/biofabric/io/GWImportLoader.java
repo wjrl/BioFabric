@@ -171,8 +171,8 @@ public class GWImportLoader extends FabricImportLoader {
       sourceName = stripBrackets(sourceName);
       targetName = stripBrackets(targetName);
       
-      sourceName = sourceName.replaceAll("-","_");
-      targetName = targetName.replaceAll("-","_");
+//      sourceName = sourceName.replaceAll("-","_");
+//      targetName = targetName.replaceAll("-","_");
       sourceName = sourceName.replaceAll(",","");
       targetName = targetName.replaceAll(",","");
       UiUtil.fixMePrintout("Auto-replacing dashes with underscores in .gw files");
