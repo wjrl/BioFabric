@@ -227,7 +227,6 @@ public class GWImportLoader extends FabricImportLoader {
    */
   
   public static boolean isGWFile(File file) {
-    UiUtil.fixMePrintout("Sketchy way to check if file is .gw");
     try {
       BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
   

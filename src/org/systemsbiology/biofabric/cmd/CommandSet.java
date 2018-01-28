@@ -931,8 +931,6 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     ArrayList<FabricLink> linksGraphA = new ArrayList<FabricLink>();
     HashSet<NID.WithName> lonersGraphA = new HashSet<NID.WithName>();
     
-    UiUtil.fixMePrintout("distinguish .gw from .sif files");
-    
     if (GWImportLoader.isGWFile(nadi.graphA)) {
       loadFromGWSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
     } else {

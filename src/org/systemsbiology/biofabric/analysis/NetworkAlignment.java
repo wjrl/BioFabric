@@ -174,7 +174,7 @@ public class NetworkAlignment {
     //
     
     if (forOrphanEdges) {
-      (new OrphanEdgeLayout()).process(mergedLinks_, mergedLoners_, mergedIDToSmall_);
+      (new OrphanEdgeLayout()).process(mergedLinks_, mergedLoners_, mergedIDToSmall_, monitor_);
     }
     
     return;
@@ -399,7 +399,7 @@ public class NetworkAlignment {
     }
     
     private void process(List<FabricLink> mergedLinks, Set<NID.WithName> mergedLoneNodeIDs,
-                         Map<NID.WithName, NID.WithName> mergedIDToSmall)
+                         Map<NID.WithName, NID.WithName> mergedIDToSmall, BTProgressMonitor monitor)
             throws AsynchExitRequestException {
       
       List<FabricLink> nonShdwMergedLinks = new ArrayList<FabricLink>();
@@ -437,6 +437,13 @@ public class NetworkAlignment {
         NID.WithName srcNew = link.getSrcID(), trgNew = link.getTrgID();
         NID.WithName srcOld = mergedIDToSmall.get(srcNew), trgOld = mergedIDToSmall.get(trgNew);
         
+        if (srcOld == null) { // this is an unaligned node so it stays the same
+          srcOld = srcNew;
+        }
+        if (trgOld == null) { // same here
+          trgOld = trgNew;
+        }
+        
         FabricLink linkOldName = new FabricLink(srcOld, trgOld, GRAPH1, false, null);
         FabricLink linkOldNameShdw = new FabricLink(srcOld, trgOld, GRAPH1, true, null);
         
@@ -452,7 +459,6 @@ public class NetworkAlignment {
       mergedLoneNodeIDs.clear();
       mergedLinks.addAll(oldUnalignedEdgesG1);
       
-      UiUtil.fixMePrintout("FIX ME:Graphs w/ different #nodes breaks orphan layout");
       return;
     }
     
@@ -490,7 +496,11 @@ public class NetworkAlignment {
       String concat1 = String.format("%s___%s", arr1[0], arr1[1]);
       String concat2 = String.format("%s___%s", arr2[0], arr2[1]);
       
-      // THIS IS COMPLETELY TEMPORARY - RISHI DESAI 7/16/17
+      //
+      // Meant to be temporary (7/16/17) but will stay (1/27/18)
+      // It cuts the merge lists algorithm to O(nlogn) because I can use
+      // binary search
+      //
       
       return concat1.compareTo(concat2);
     }
