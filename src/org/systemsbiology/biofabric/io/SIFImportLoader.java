@@ -114,12 +114,6 @@ public class SIFImportLoader extends FabricImportLoader {
       String target = tokens[2].trim();
       target = stripQuotes(target);
   
-//      source = source.replaceAll("-","_");
-//      target = target.replaceAll("-","_");
-      source = source.replaceAll(",","");
-      target = target.replaceAll(",","");
-      UiUtil.fixMePrintout("Auto-replacing dashes with underscores in .sif files");
-  
       //
       // This name map is for the load SIF with node attributes feature:
       //

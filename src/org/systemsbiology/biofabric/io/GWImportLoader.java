@@ -1,4 +1,6 @@
 /*
+**    File created by Rishi Desai
+**
 **    Copyright (C) 2003-2017 Institute for Systems Biology
 **                            Seattle, Washington, USA.
 **
@@ -171,12 +173,6 @@ public class GWImportLoader extends FabricImportLoader {
       sourceName = stripBrackets(sourceName);
       targetName = stripBrackets(targetName);
       
-//      sourceName = sourceName.replaceAll("-","_");
-//      targetName = targetName.replaceAll("-","_");
-      sourceName = sourceName.replaceAll(",","");
-      targetName = targetName.replaceAll(",","");
-      UiUtil.fixMePrintout("Auto-replacing dashes with underscores in .gw files");
-  
       NID.WithName srcID = nameToNode(sourceName, idGen, nameToID);
       NID.WithName trgID = nameToNode(targetName, idGen, nameToID);
   

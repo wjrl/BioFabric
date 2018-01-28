@@ -1,4 +1,6 @@
 /*
+**    File created by Rishi Desai
+**
 **    Copyright (C) 2003-2014 Institute for Systems Biology
 **                            Seattle, Washington, USA.
 **
@@ -106,16 +108,9 @@ public class AlignmentLoader {
   
       String strNameG1 = st.nextToken(), strNameG2 = st.nextToken();
   
-//      strNameG1 = strNameG1.replaceAll("-","_");
-//      strNameG2 = strNameG2.replaceAll("-","_");
-      strNameG1 = strNameG1.replaceAll(",","");
-      strNameG2 = strNameG2.replaceAll(",","");
-      UiUtil.fixMePrintout("Auto-replacing dashes with underscores in .align files");
-  
       {// displaying yeast2500-yeast5000 (SCerevisiae) files with perfect alignment
         // but alignment was done with full yeast2500 file not Filtered file
         // with entrezIDs only--- so we take out the nodes w/out entrez IDs
-        Set<String> notFiltered = new HashSet<String>();
         String[] nodesWithoutEntrezIDs = {
                 "ATM1",
                 "CTM1",
@@ -128,6 +123,7 @@ public class AlignmentLoader {
                 "YDR133C",
                 "YGR272C",
                 "YNL276C",};
+        Set<String> notFiltered = new HashSet<String>();
         Collections.addAll(notFiltered, nodesWithoutEntrezIDs);
         if (notFiltered.contains(strNameG1) || notFiltered.contains(strNameG2)) {
 //          continue;
@@ -137,9 +133,18 @@ public class AlignmentLoader {
       boolean existsInG1 = G1nameToNID.containsKey(strNameG1),
               existsInG2 = G2nameToNID.containsKey(strNameG2);
       
-      if (!(existsInG1 && existsInG2)) {
-//        System.out.println(G1nameToNID.size()+ "Load error: " + strNameG1 + " " + existsInG1 + "  " + strNameG2 + " "+ existsInG2);
-        throw new IOException("Incorrect node names or nodes do not exist in graph files");
+      String msg = "";
+      if (!existsInG1) {
+        msg += "Alignment file's node \"" + strNameG1 + "\" not found in smaller graph";
+      }
+      if (!existsInG2) {
+        if (!msg.isEmpty()) {
+          msg += "\n";
+        }
+        msg += "Alignment file's node \"" + strNameG2 + "\" not found in larger graph";
+      }
+      if (!msg.isEmpty()) {
+        throw new IOException("Load Error: " + msg);
       }
       
       NID.WithName nodeG1 = G1nameToNID.get(strNameG1), nodeG2 = G2nameToNID.get(strNameG2);
@@ -147,7 +152,7 @@ public class AlignmentLoader {
       if (mapG1ToG2.containsKey(nodeG1)) {
         
         if (! mapG1ToG2.get(nodeG1).equals(nodeG2)) {
-          throw new IOException("Node mapping must be one-to-one");
+          throw new IOException("Node mapping must be one-to-one: \"" + strNameG1 + "\" is not");
         } else {
           stats.dupLines.add(line);
         }
@@ -157,8 +162,9 @@ public class AlignmentLoader {
     }
   
     if (mapG1ToG2.size() != G1nameToNID.size()) {
-//      System.out.println(mapG1ToG2.size() + "  " + G1nameToNID.size());
-      throw new IOException("Incomplete node mapping");
+      String msg = "size of alignment map: " + mapG1ToG2.size() +
+              "; size of smaller graph: " + G1nameToNID.size() + "; sizes not equal";
+      throw new IOException("Incomplete node mapping: " + msg);
     }
   
     in.close();

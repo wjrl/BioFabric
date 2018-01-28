@@ -1,4 +1,6 @@
 /*
+**    File created by Rishi Desai
+**
 **    Copyright (C) 2003-2017 Institute for Systems Biology
 **                            Seattle, Washington, USA.
 **
@@ -644,17 +646,6 @@ public class NetworkAlignmentLayout extends NodeLayout {
       UiUtil.fixMePrintout("Manage whether to see if correctly aligned or not");
       return (new GroupID(sb.toString()));
     }
-    
-//    /*******************************************************************
-//     **
-//     ** Identifies Aligned Nodes if they have a dash ('-') in name:
-//     */
-//
-//    private boolean isAligned(NID.WithName node) {
-//      UiUtil.fixMePrintout("FIX ME:find way to identify aligned nodes besides having dash in name");
-//      return (node.getName().contains("-"));
-//      return (isAlignedNode_.get(node));
-//    }
     
     Comparator<NID.WithName> sortDecrDegree() {
       return (new Comparator<NID.WithName>() {

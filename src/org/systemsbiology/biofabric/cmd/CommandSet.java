@@ -1092,9 +1092,6 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       finished = networkAlignmentStepThree(mergedLinksPerfect, reducedLinksPerfect, mergedLoneNodeIDsPerfect, relMapPerfect, idGen, holdIt);
     }
   
-    System.out.println((isAlignedNode == null) + "   " + (isAlignedNodePerfect ==null));
-  
-  
     if (finished) { // Score Report
       finished = networkAlignmentStepFour(reducedLinks, mergedLoneNodeIDs, isAlignedNode, mergedToCorrect,
               reducedLinksPerfect, mergedLoneNodeIDsPerfect, isAlignedNodePerfect);
