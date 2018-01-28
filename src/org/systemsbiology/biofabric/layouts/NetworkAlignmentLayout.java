@@ -378,7 +378,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       AnnotationSet.Annot annot = new AnnotationSet.Annot(grouper.getKey(nodeGroup), min, max, 0);
       annots.addAnnot(annot);
     }
-    nabd.setNodeAnnots(annots);
+    nabd.setNodeAnnotations(annots);
     return;
   }
   
@@ -488,7 +488,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
     private final int numGroups_;
     
     public NodeGroupMap(BioFabricNetwork.NetworkAlignmentBuildData nabd, String[] nodeGroupOrder) {
-      this(nabd.allLinks, nabd.loneNodeIDs, nabd.mergedToCorrect_, nabd.isAlignedNode_, nodeGroupOrder);
+      this(nabd.allLinks, nabd.loneNodeIDs, nabd.mergedToCorrect, nabd.isAlignedNode, nodeGroupOrder);
     }
     
     public NodeGroupMap(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,

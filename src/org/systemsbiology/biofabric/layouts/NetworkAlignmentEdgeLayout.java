@@ -21,19 +21,21 @@
 
 package org.systemsbiology.biofabric.layouts;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.systemsbiology.biofabric.analysis.NetworkAlignment;
+import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.LoopReporter;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
   
@@ -68,10 +70,18 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
    ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
    */
   
+  @Override
   public void preProcessEdges(BioFabricNetwork.RelayoutBuildData rbd,
                               BTProgressMonitor monitor) throws AsynchExitRequestException {
     installLinkGroups(rbd, monitor);
     return;
+  }
+  
+  @Override
+  public void layoutEdges(BioFabricNetwork.RelayoutBuildData rbd,
+                          BTProgressMonitor monitor) throws AsynchExitRequestException {
+    super.layoutEdges(rbd, monitor);
+    this.installLinkAnnotations(rbd, monitor);
   }
   
   /***************************************************************************
@@ -100,6 +110,76 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
     rbd.setGroupOrderAndMode(groupOrder, BioFabricNetwork.LayoutMode.PER_NETWORK_MODE);
   
     return;
+  }
+  
+  /***************************************************************************
+   **
+   ** Install Link Annotations (link order must be calculated prior to this)
+   */
+  
+  private void installLinkAnnotations(BioFabricNetwork.RelayoutBuildData rbd, BTProgressMonitor monitor)
+    throws AsynchExitRequestException {
+  
+    LoopReporter lr = new LoopReporter(rbd.linkOrder.size(), 20, monitor, 0, .25, "progress.linkAnnotationSifting");
+  
+    List<FabricLink> nonShdw = new ArrayList<FabricLink>(), withShdw = new ArrayList<FabricLink>();
+  
+    for (Map.Entry<Integer, FabricLink> entry : rbd.linkOrder.entrySet()) {
+      FabricLink link = entry.getValue();
+      if (!link.isShadow()) {
+        nonShdw.add(link);
+      }
+      withShdw.add(link);
+      lr.report();
+    }
+    
+    AnnotationSet nonShdwAnnots = findLinkGroupIntervals(nonShdw, monitor);
+    AnnotationSet withShdwAnnots = findLinkGroupIntervals(withShdw, monitor);
+    
+    Map<Boolean, AnnotationSet> linkAnnots = new HashMap<Boolean, AnnotationSet>();
+    linkAnnots.put(true, withShdwAnnots);
+    linkAnnots.put(false, nonShdwAnnots);
+    
+    rbd.setLinkAnnotations(linkAnnots);
+    return;
+  }
+  
+  /***************************************************************************
+   **
+   ** Find link group intervals (same algorithm as Drain Zone calculator
+   */
+  
+  private AnnotationSet findLinkGroupIntervals(List<FabricLink> linkSet, BTProgressMonitor monitor)
+    throws AsynchExitRequestException {
+  
+    LoopReporter lr = new LoopReporter(linkSet.size(), 20, monitor, 0, .25, "progress.linkAnnotations");
+  
+    AnnotationSet annots = new AnnotationSet(); // same as multiple drain zone algorithm
+  
+    int startIdx = 0;
+    String currentRel = linkSet.get(startIdx).getRelation(); // these keep track of start of interval and interval's relation
+  
+    for (int index = 0; index <= linkSet.size(); index++) {
+      lr.report();
+      if (index == linkSet.size()) {
+      
+        int endIdx = linkSet.size() - 1;
+      
+        AnnotationSet.Annot annot = new AnnotationSet.Annot(currentRel, startIdx, endIdx, 0);
+        annots.addAnnot(annot);
+        
+      } else if (! linkSet.get(index).getRelation().equals(currentRel)) {
+      
+        int endIdx = index - 1;  // backtrack one position
+  
+        AnnotationSet.Annot annot = new AnnotationSet.Annot(currentRel, startIdx, endIdx, 0);
+        annots.addAnnot(annot);
+      
+        startIdx = index;                              // update the start index
+        currentRel = linkSet.get(index).getRelation(); // update the current relation whose interval we're calculating
+      }
+    }
+    return (annots);
   }
   
   /***************************************************************************

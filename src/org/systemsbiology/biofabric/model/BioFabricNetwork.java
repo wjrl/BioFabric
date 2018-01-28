@@ -244,7 +244,8 @@ public class BioFabricNetwork {
         this.linkGrouping_ = new ArrayList<String>(nad.linkGroups);
         this.colGen_ = nad.colGen;
         this.layoutMode_ = nad.layoutMode;
-        this.nodeAnnot_ = nad.nodeAnnots;
+        this.nodeAnnot_ = nad.nodeAnnotForLayout;
+        this.linkAnnots_ = nad.linkAnnotsForLayout;
         processLinks(nad, monitor);
         break;
       case BUILD_FOR_SUBMODEL:
@@ -613,7 +614,8 @@ public class BioFabricNetwork {
     specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, false, monitor);
     
     UiUtil.fixMePrintout("Node Annotations for NetAlign in processLinks");
-    this.nodeAnnot_ = ((NetworkAlignmentBuildData) rbd).nodeAnnots;
+    this.nodeAnnot_ = rbd.nodeAnnotForLayout;
+    this.linkAnnots_ = rbd.linkAnnotsForLayout;
 
     //
     // Determine the start & end of each target row needed to handle the incoming
@@ -2599,8 +2601,7 @@ public class BioFabricNetwork {
   
   public static class NetworkAlignmentBuildData extends RelayoutBuildData {
     
-    public AnnotationSet nodeAnnots;
-    public Map<NID.WithName, Boolean> mergedToCorrect_, isAlignedNode_;
+    public Map<NID.WithName, Boolean> mergedToCorrect, isAlignedNode;
     public boolean forOrphans;
   
     public NetworkAlignmentBuildData(UniqueLabeller idGen,
@@ -2612,20 +2613,16 @@ public class BioFabricNetwork {
       super(idGen, allLinks, loneNodeIDs, clustAssign, colGen, mode);
       this.layoutMode = LayoutMode.PER_NETWORK_MODE;
       this.forOrphans = forOrphans;
-      this.mergedToCorrect_ = mergedToCorrect;
-      this.isAlignedNode_ = isAlignedNode;
-      this.nodeAnnots = null;
-    }
-    
-    public void setNodeAnnots(AnnotationSet annots) {
-      this.nodeAnnots = annots;
+      this.mergedToCorrect = mergedToCorrect;
+      this.isAlignedNode = isAlignedNode;
     }
 
     @Override
     public NodeLayout getNodeLayout() {
     	return (new NetworkAlignmentLayout());	
     }
-    
+  
+    @Override
     public EdgeLayout getEdgeLayout() {
     	return (new NetworkAlignmentEdgeLayout());
     }
