@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -57,7 +57,7 @@ import javax.swing.ListSelectionModel;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
-import org.systemsbiology.biofabric.ui.render.PaintCache;
+import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
 import org.systemsbiology.biofabric.util.ColorListRenderer;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.MinMax;
@@ -184,7 +184,7 @@ public class FabricMagnifyingTool extends JPanel {
   ** Set selections
   */
 
-  public void setSelections(PaintCache.Reduction selections) {
+  public void setSelections(PaintCacheSmall.Reduction selections) {
   	myMag_.setSelections(selections);
     return;
   }    
@@ -214,7 +214,7 @@ public class FabricMagnifyingTool extends JPanel {
   ** Set the current floater
   */
 
-  public void setCurrentFloater(PaintCache.FloaterSet floaters) {
+  public void setCurrentFloater(PaintCacheSmall.FloaterSet floaters) {
     myMag_.setCurrentFloater(floaters);
     return;
   }  
@@ -491,7 +491,7 @@ public class FabricMagnifyingTool extends JPanel {
   **
   */
 
-  public void setPainters(PaintCache painter, PaintCache selectionPainter) {
+  public void setPainters(PaintCacheSmall painter, PaintCacheSmall selectionPainter) {
     myMag_.setPainters(painter, selectionPainter);
     return;
   }

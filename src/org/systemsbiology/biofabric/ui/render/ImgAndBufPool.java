@@ -19,6 +19,8 @@
 
 package org.systemsbiology.biofabric.ui.render;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -115,9 +117,14 @@ public class ImgAndBufPool {
   	  System.out.println("BIyt " +  bi.getNumYTiles());
   	 */
     } else {
+    	// WJRL 11/25/17: Gotta blank out the image! Otherwise we get stuff that was drawn in last time.
       bi = stack.remove(stack.size() - 1);
+      Graphics2D graphics = bi.createGraphics();
+      graphics.setPaint(new Color(255, 255, 255));
+      graphics.fillRect (0, 0, bi.getWidth(), bi.getHeight());
     }
  //  	System.out.println("fetching BI : size = " + stack.size() + " " +  + bi.hashCode());
+   	
     return (bi);
   }
 
@@ -143,6 +150,7 @@ public class ImgAndBufPool {
   	  retval = stack.remove(stack.size() - 1);
   	  Arrays.fill(retval, 0);
   	}
+  	//System.out.println("fetch buf " + retval);
     return (retval);
   }
 
@@ -209,7 +217,7 @@ public class ImgAndBufPool {
   		stack = new ArrayList<BufferedImage>();
   		biStack_.put(new StackKey(imgWidth, imgHeight, type), stack);		
   	}
-   Iterator<BufferedImage> stit = stack.iterator();
+    Iterator<BufferedImage> stit = stack.iterator();
   	while (stit.hasNext()) {
   		BufferedImage sk = stit.next();
   		if (sk.hashCode() == bi.hashCode()) {
@@ -242,6 +250,7 @@ public class ImgAndBufPool {
   	
   	stack.add(buf);
   //	System.out.println("Returning buf: size = " + stack.size());
+  	//System.out.println("returned buf " + buf);
     return;
   }
  

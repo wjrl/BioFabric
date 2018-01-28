@@ -36,11 +36,13 @@ import java.util.Vector;
 
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
 import org.systemsbiology.biofabric.io.AttributeLoader;
+import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.DataUtil;
+import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.TrueObjChoiceContent;
@@ -215,10 +217,20 @@ public class NodeClusterLayout extends NodeLayout {
     interNodesOnly.removeAll(allTargets);
     allTargets.addAll(interNodesOnly);
     
+    //
+    // We are done getting nodes ordered. Install this:
+    //
+    
     installNodeOrder(allTargets, rbd, monitor);
     
+    //
+    // We lay out the edges using default layout. Then, if we want edges to be positioned
+    // between clusters, we move them:
+    //
+   
     (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
-    
+   
+    UiUtil.fixMePrintout("How does this interact with network-wide link groups??");
     if (params.iLink == ClusterParams.InterLink.BETWEEN) {
     	int origNum = rbd.linkOrder.size();
     	TreeMap<Integer, FabricLink> newOrder = new TreeMap<Integer, FabricLink>();
@@ -280,12 +292,154 @@ public class NodeClusterLayout extends NodeLayout {
     	}
     	rbd.setLinkOrder(newOrder);
     }
+    
+    //
+    // Did we ask to save cluster assignment? If so, do it now. The NodeInfo has a field to store this
+    // information
+    //
+    
     if (params.saveAssign) {
     	rbd.clustAssign = params.getClusterAssign(); 
     }
+    
+    AnnotationSet nAnnots = generateNodeAnnotations(rbd, params);
+    rbd.setNodeAnnotations(nAnnots);
+      
+    Map<Boolean, AnnotationSet> lAnnots = generateLinkAnnotations(rbd, params);
+    rbd.setLinkAnnotations(lAnnots);
+
     return (allTargets);
   }
    
+   
+  /***************************************************************************
+  **
+  ** Generate node annotations to tag each cluster
+  */
+    
+  private AnnotationSet generateNodeAnnotations(BioFabricNetwork.RelayoutBuildData rbd, ClusterParams params) {
+    
+    AnnotationSet retval = new AnnotationSet();  
+    
+    TreeMap<Integer, NID.WithName> invert = new TreeMap<Integer, NID.WithName>();
+    
+    for (NID.WithName node : rbd.nodeOrder.keySet()) {
+      invert.put(rbd.nodeOrder.get(node), node);
+    }
+     
+    String currClust = null;
+    Integer startRow = null;
+    Integer lastKey = invert.lastKey();
+    for (Integer row : invert.keySet()) {
+      NID.WithName node = invert.get(row);
+      String clust = params.getClusterForNode(node);
+      if (currClust == null) {
+        currClust = clust;
+        startRow = row;
+        if (row.equals(lastKey)) {
+          AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0);
+          retval.addAnnot(annot);
+          break;
+        }
+        continue;
+      }
+      if (currClust.equals(clust)) {
+        if (row.equals(lastKey)) {
+          AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0);
+          retval.addAnnot(annot);
+          break;
+        }
+        continue;
+      } else { 
+        // We have just entered a new cluster
+        AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue() - 1, 0);
+        retval.addAnnot(annot);
+        startRow = row;
+        currClust = clust;
+        if (row.equals(lastKey)) {
+          annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0);
+          retval.addAnnot(annot);
+          break;
+        }
+      }
+    }
+    
+    return (retval);
+  }
+  
+  /***************************************************************************
+  **
+  ** Generate link annotations to tag each cluster and intercluster links
+  */
+    
+  private Map<Boolean, AnnotationSet> generateLinkAnnotations(BioFabricNetwork.RelayoutBuildData rbd, ClusterParams params) { 
+  	HashMap<Boolean, AnnotationSet> retval = new HashMap<Boolean, AnnotationSet>();
+    
+  	HashMap<String, MinMax> clustRanges = new HashMap<String, MinMax>();
+  	List<FabricLink> noShadows = new ArrayList<FabricLink>();
+  	List<FabricLink> withShadows = new ArrayList<FabricLink>();
+  	for (Integer col : rbd.linkOrder.keySet()) {
+  		FabricLink fl = rbd.linkOrder.get(col);
+  		withShadows.add(fl);
+  		if (!fl.isShadow()) {
+  			noShadows.add(fl);
+  		}
+  	}
+
+  	retval.put(Boolean.FALSE, generateLinkAnnotationsForSet(noShadows, params));
+  	retval.put(Boolean.TRUE, generateLinkAnnotationsForSet(withShadows, params));
+  	
+    return (retval);
+  }
+   
+  /***************************************************************************
+  **
+  ** Generate link annotations to tag each cluster and intercluster links
+  */
+    
+  private AnnotationSet generateLinkAnnotationsForSet(List<FabricLink> linkList, ClusterParams params) { 
+    
+  	HashMap<String, MinMax> clustRanges = new HashMap<String, MinMax>();
+  	 	
+  	for (int i = 0; i < linkList.size() ; i++) {
+  		FabricLink fl = linkList.get(i);
+  
+  		String srcClust = params.getClusterForNode(fl.getSrcID());
+      String trgClust = params.getClusterForNode(fl.getTrgID());
+  		if (srcClust.equals(trgClust)) {
+  			MinMax mmc = clustRanges.get(srcClust);
+  			if (mmc == null) {
+  				mmc = new MinMax(i);
+  				clustRanges.put(srcClust, mmc);
+  			}
+  			mmc.update(i);
+  		} else {
+  			String combo = (srcClust.compareTo(trgClust) < 0) ? srcClust + "-" + trgClust : trgClust + "-" + srcClust;
+   			MinMax mmc = clustRanges.get(combo);
+  			if (mmc == null) {
+  				mmc = new MinMax(i);
+  				clustRanges.put(combo, mmc);
+  			}
+  			mmc.update(i);
+  		}
+  	}
+  	
+  	AnnotationSet afns = new AnnotationSet();
+  	TreeMap<Integer, String> ord = new TreeMap<Integer, String>();
+  	for (String aName : clustRanges.keySet()) {
+  		MinMax mm = clustRanges.get(aName);
+  		ord.put(Integer.valueOf(mm.min), aName);		
+  	}
+  	
+    for (String aName : ord.values()) {
+  		MinMax mm = clustRanges.get(aName);
+  		AnnotationSet.Annot annot = new AnnotationSet.Annot(aName, mm.min, mm.max, 0);
+  		afns.addAnnot(annot);
+  	}
+  
+    return (afns);
+  }
+  
   /***************************************************************************
   **
   ** Helper

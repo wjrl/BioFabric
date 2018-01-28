@@ -21,7 +21,10 @@ package org.systemsbiology.biofabric.ui.display;
 
 import java.awt.Color;
 import java.awt.GridLayout;
+import java.util.Iterator;
+import java.util.List;
 
+import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 
 import org.systemsbiology.biofabric.util.UiUtil;
@@ -56,6 +59,9 @@ public class FabricLocation extends JPanel {
   private InfoPanel nodePanel_;
   private InfoPanel linkPanel_;
   private InfoPanel linkZonePanel_;
+  private InfoPanel nodeAnnotPanel_;
+  private InfoPanel linkAnnotPanel_;
+  private StringBuffer scratch_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -70,21 +76,36 @@ public class FabricLocation extends JPanel {
 
   public FabricLocation() {
     setBackground(Color.WHITE);
-  	setLayout(new GridLayout(1, 3));
-    nodePanel_ = new InfoPanel(false, 15, 150, false);  
-    linkPanel_ = new InfoPanel(false, 15, 150, false);
-    UiUtil.fixMePrintout("Create some separation! This doesn't do it!");
-   // linkPanel_.setBorder(BorderFactory.createEmptyBorder(0, 100, 0, 100));
-    linkPanel_.setBackground(Color.BLUE);
-    linkZonePanel_ = new InfoPanel(false, 15, 150, false);
+  	setLayout(new GridLayout(2, 1));
+  	JPanel topPanel = new JPanel();
+  	JPanel botPanel = new JPanel();
+  	topPanel.setLayout(new GridLayout(1, 2));
+  	topPanel.setBackground(Color.WHITE);
+  	botPanel.setLayout(new GridLayout(1, 3));
+  	botPanel.setBackground(Color.WHITE);
+  	add(topPanel);
+  	add(botPanel);
+  	
+    nodePanel_ = new InfoPanel(false, 15, 150, false, true);  
+    linkPanel_ = new InfoPanel(false, 15, 150, false, true);
+    linkZonePanel_ = new InfoPanel(false, 15, 150, false, true);
+    
+    nodeAnnotPanel_ = new InfoPanel(false, 15, 300, false, true);  
+    linkAnnotPanel_ = new InfoPanel(false, 15, 300, false, true);
     
     nodePanel_.installName("Mouse Over Node Row: <none>");
     linkPanel_.installName("Mouse Over Link: <none>");
     linkZonePanel_.installName("Mouse Over Node Link Zone: <none>");
-   
-    add(nodePanel_);
-    add(linkPanel_);
-    add(linkZonePanel_);
+    nodeAnnotPanel_.installName("Mouse Over Node Annotations: <none>");
+    linkAnnotPanel_.installName("Mouse Over Link Annotations: <none>");
+
+    topPanel.add(nodeAnnotPanel_);
+    topPanel.add(linkAnnotPanel_);
+     
+    botPanel.add(nodePanel_);
+    botPanel.add(linkPanel_);
+    botPanel.add(linkZonePanel_);
+    scratch_ = new StringBuffer();
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -95,14 +116,35 @@ public class FabricLocation extends JPanel {
   
   /***************************************************************************
   **
-  ** Drawing routine
+  ** Set the values
   */
 
   public void setNodeAndLink(BioFabricPanel.MouseLocInfo mlo) {
      nodePanel_.installName("Mouse Over Node Row: " + mlo.nodeDesc);
 	   linkPanel_.installName("Mouse Over Link: " + mlo.linkDesc);
 	   linkZonePanel_.installName("Mouse Over Node Link Zone: " + mlo.zoneDesc);
+	   nodeAnnotPanel_.installName("Mouse Over Node Annotations: " + displayString(scratch_, mlo.nodeAnnotations));
+	   linkAnnotPanel_.installName("Mouse Over Link Annotations: " + displayString(scratch_, mlo.linkAnnotations));
+	   
      repaint();   
     return;
-  }   
+  } 
+  
+  /***************************************************************************
+  **
+  ** Glue names together
+  */
+  
+  private String displayString(StringBuffer buf, List<String> vals) {
+    buf.setLength(0);
+    Iterator<String> fli = vals.iterator();
+    while (fli.hasNext()) {
+      buf.append(fli.next());
+      if (fli.hasNext()) {
+        buf.append(", ");
+      }
+    }
+    return (buf.toString());
+  }
+
 }

@@ -212,7 +212,6 @@ public class SUParser extends DefaultHandler {
 	  	double prog = pfis_.getProgress();
 	  	Double step = Double.valueOf(Math.floor(prog * 20.0));
 	  	if (!seen_.contains(step)) {
-	  		System.out.println("Seen " + step);
 	  		seen_.add(step);
 	  		try {
 	  		  lr_.report();

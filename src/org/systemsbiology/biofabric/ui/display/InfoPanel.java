@@ -53,6 +53,7 @@ public class InfoPanel extends JPanel {
   private int minHeight_;
   private int minWidth_;
   private boolean centered_;
+  private boolean pad_;
 	
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -65,7 +66,7 @@ public class InfoPanel extends JPanel {
   ** Constructor
   */
   
-  public InfoPanel(boolean twoLines, int minHeight, int minWidth, boolean centered) {
+  public InfoPanel(boolean twoLines, int minHeight, int minWidth, boolean centered, boolean pad) {
     setBackground(new Color(255, 255, 255));
     myFont_ = new Font("SansSerif", Font.BOLD, 12);
     twoLines_ = twoLines;
@@ -76,6 +77,7 @@ public class InfoPanel extends JPanel {
     minHeight_ = minHeight;
     minWidth_ = minWidth;
     centered_ = centered;
+    pad_ = pad;
   }
  
   ////////////////////////////////////////////////////////////////////////////
@@ -163,10 +165,16 @@ public class InfoPanel extends JPanel {
     Rectangle2D boundsL = null;
     
     Rectangle2D boundsN = myFont_.getStringBounds(text1_, frc);
+    if (pad_) {
+      boundsN.setRect(boundsN.getX(), boundsN.getY(), boundsN.getWidth() + 16, boundsN.getHeight()); 
+    }
     double reduceN = boundsN.getWidth() / this.getWidth();
     
     if (twoLines_) {
 	    boundsL = myFont_.getStringBounds(text2_, frc);
+	    if (pad_) {
+	      boundsL.setRect(boundsL.getX(), boundsL.getY(), boundsL.getWidth() + 16, boundsL.getHeight()); 
+	    }
 	    double reduceL = boundsL.getWidth() / this.getWidth();
 	    maxFactor = Math.max(reduceN, reduceL);
     } else {

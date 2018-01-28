@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
@@ -41,17 +42,19 @@ import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.DoubMinMax;
 import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.QuadTree;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
 ** This is the cache of simple paint objects.
 */
 
-public class PaintCacheSmall implements PaintCache {
+public class PaintCacheSmall {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -73,7 +76,9 @@ public class PaintCacheSmall implements PaintCache {
   // PUBLIC CONSTANTS
   //
   //////////////////////////////////////////////////////////////////////////// 
-
+  
+  public final static int STROKE_SIZE = 3;
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE INSTANCE MEMBERS
@@ -92,6 +97,7 @@ public class PaintCacheSmall implements PaintCache {
   private boolean nodesForShadow_;
   private QuadTree names_;
   private HashMap<String, BoxPath> nameKeyToPaintZero_;
+  private HashMap<String, BoxPath> nameKeyToPaintOneQuarter_;
   private HashMap<String, TextPath> nameKeyToPaintOneHalf_;
   private HashMap<String, BoxPath> nameKeyToPaintFirst_;
   private HashMap<String, TextPath> nameKeyToPaintSecond_;
@@ -103,6 +109,7 @@ public class PaintCacheSmall implements PaintCache {
   private Color superLightPink_;
   private Color superLightBlue_;
   private Color[] annotColors_;
+  private Color[] annotGrays_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -133,6 +140,7 @@ public class PaintCacheSmall implements PaintCache {
     fonts_.put(TextPath.FontSizes.TINY, new Font("SansSerif", Font.PLAIN, 10));
   
     nameKeyToPaintZero_ = new HashMap<String, BoxPath>();
+    nameKeyToPaintOneQuarter_ = new HashMap<String, BoxPath>();
     nameKeyToPaintOneHalf_ = new HashMap<String, TextPath>();
     nameKeyToPaintFirst_ = new HashMap<String, BoxPath>();
     nameKeyToPaintSecond_ = new HashMap<String, TextPath>();
@@ -151,7 +159,20 @@ public class PaintCacheSmall implements PaintCache {
     annotColors_[5] = new Color(253, 224, 235, 255);
     annotColors_[6] = new Color(224, 243, 253, 255);
     annotColors_[7] = new Color(254, 246, 225, 255);
+
+    annotGrays_ = new Color[2];
+   // annotGrays_[0] = new Color(127, 127, 127, 127);
+   // annotGrays_[1] = new Color(194, 194, 194, 127);
+  //  annotGrays_[2] = new Color(144, 144, 144, 127);
+    annotGrays_[0] = new Color(220, 220, 220, 127);
+   // annotGrays_[0] = new Color(211, 211, 211, 127);
+  //  annotGrays_[4] = new Color(161, 161, 161, 127);
+  //  annotGrays_[5] = new Color(228, 228, 228, 127);
+  //  annotGrays_[6] = new Color(178, 178, 178, 127);
+    annotGrays_[1] = new Color(245, 245, 245, 127);
   }
+  
+  
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -161,11 +182,50 @@ public class PaintCacheSmall implements PaintCache {
 
   /***************************************************************************
   **
+  ** Get number of annotation colors
+  */
+  
+  public int getAnnotColorCount() {
+    return (annotColors_.length);
+  }
+  
+  /***************************************************************************
+  **
+  ** Get number of link annotation colors
+  */
+  
+  public int getLinkAnnotGrayCount() {
+    return (annotGrays_.length);
+  }  
+  
+  /***************************************************************************
+  **
+  ** Get annotation color
+  */
+  
+  public Color getAnnotColor(int i) {
+    return (annotColors_[i]);
+  }
+  
+  /***************************************************************************
+  **
+  ** Get link annotation color
+  */
+  
+  public Color getLinkAnnotGray(int i) {
+    return (annotGrays_[i]);
+  }
+  
+  
+   
+  /***************************************************************************
+  **
   **  Dump used memory
   */
   
   public void clear() {
     nameKeyToPaintZero_.clear();
+    nameKeyToPaintOneQuarter_.clear();
     nameKeyToPaintOneHalf_.clear();
   	nameKeyToPaintFirst_.clear();
     nameKeyToPaintSecond_.clear();
@@ -198,21 +258,35 @@ public class PaintCacheSmall implements PaintCache {
     }
     
     //
-    // Zero pass is annotation rectangles, which are not drawn for selections:
+    // Zero pass is node annotation rectangles, which are not drawn for selections:
     //
     
     if (reduce == null) {
       for (String pkey : pKeys) {
         BoxPath pp = nameKeyToPaintZero_.get(pkey);
         if (pp != null) {
-          int result = pp.paint(g2);
+          int result = pp.paint(g2, clip);
           retval = retval || (result > 0);
         }
       }
     }
     
     //
-    // Zero pass is annotation rectangles, which are not drawn for selections:
+    // Next pass is link annotation rectangles, which are not drawn for selections:
+    //
+    
+    if (reduce == null) {
+      for (String pkey : pKeys) {
+        BoxPath pp = nameKeyToPaintOneQuarter_.get(pkey);
+        if (pp != null) {
+          int result = pp.paint(g2, clip);
+          retval = retval || (result > 0);
+        }
+      }
+    }
+ 
+    //
+    // Next pass is annotation strings, which are not drawn for selections:
     //
     
     if (reduce == null) {
@@ -233,7 +307,7 @@ public class PaintCacheSmall implements PaintCache {
 	    for (String pkey : pKeys) {
 	      BoxPath pp = nameKeyToPaintFirst_.get(pkey);
 	    	if (pp != null) {
-	        int result = pp.paint(g2);
+	        int result = pp.paint(g2, clip);
 	        retval = retval || (result > 0);
 	    	}
 	    }
@@ -406,20 +480,28 @@ public class PaintCacheSmall implements PaintCache {
   ** Build objcache
   */
   
-  public void buildObjCache(List<BioFabricNetwork.NodeInfo> targets, List<BioFabricNetwork.LinkInfo> links, 
-                            boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
-                            Map<NID.WithName, List<Rectangle2D>> drainMap, Rectangle2D worldRect,
-                            AnnotationSet nodeAnnot, AnnotationSet linkAnnot,
-                            BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public Rectangle2D buildObjCache(List<BioFabricNetwork.NodeInfo> targets, List<BioFabricNetwork.LinkInfo> links, 
+				                           boolean shadeNodes, boolean showShadows, BioFabricNetwork.Extents ext, 
+				                           Map<NID.WithName, Rectangle2D> nameMap, 
+				                           Map<NID.WithName, List<Rectangle2D>> drainMap, Rectangle2D netBounds,
+				                           AnnotationSet nodeAnnot, AnnotationSet linkAnnot, 
+				                           BTProgressMonitor monitor) throws AsynchExitRequestException {
   	
   	
     nameKeyToPaintZero_.clear();
+    nameKeyToPaintOneQuarter_.clear();
     nameKeyToPaintOneHalf_.clear();
     nameKeyToPaintFirst_.clear();
     nameKeyToPaintSecond_.clear();
     nameKeyToPaintThird_.clear();
-    names_ = new QuadTree(worldRect, 5);
+
     nameKeyCount_ = 0;
+    
+    //
+    // Build the quad tree after we know the extents it has to cover:
+    //
+    
+    ArrayList<QuadTree.Payload> qtpc = new ArrayList<QuadTree.Payload>();
     
     //
     // Need to find the maximum column in use for the links, depending on shadow display or not:
@@ -430,56 +512,29 @@ public class PaintCacheSmall implements PaintCache {
     FontRenderContext frc = new FontRenderContext(new AffineTransform(), true, true);
    
     int numLinks = links.size();
-    int maxCol = 0;
-    int minCol = Integer.MAX_VALUE;
-    
-    LoopReporter lr0 = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.calcLinkExtents");
-    
-    HashMap<Integer, MinMax> linkExtents = new HashMap<Integer, MinMax>();
-    for (int i = 0; i < numLinks; i++) {
-      BioFabricNetwork.LinkInfo link = links.get(i);
-      lr0.report();    
-      int num = link.getUseColumn(showShadows);
-      int sRow = link.topRow();
-      int eRow = link.bottomRow();
-      linkExtents.put(Integer.valueOf(num), new MinMax(sRow, eRow));
-      if (num > maxCol) {
-      	maxCol = num;
-      }
-      if (num < minCol) {
-      	minCol = num;
-      }
-    }
-    
-    linkIndex_ = new int[(numLinks == 0) ? 0 : maxCol + 1 - minCol];
-    indexOffset_ = minCol;  // In subviews, links do NOT start at column 0!
+    Map<Integer, MinMax> linkExtents = ext.allLinkExtents.get(Boolean.valueOf(showShadows));
+    MinMax linkCols = ext.allLinkFullRange.get(Boolean.valueOf(showShadows));
+     
+    linkIndex_ = new int[(numLinks == 0) ? 0 : linkCols.max + 1 - linkCols.min];
+    indexOffset_ = linkCols.min;  // In subviews, links do NOT start at column 0!
     // And in subviews with non-contiguous links, we need to skip non-link columns, so init with -1:
     Arrays.fill(linkIndex_, -1);
     linkRefs_ = links;
     
     int numNodes = targets.size();
-    int maxRow = 0;
-    int minRow = Integer.MAX_VALUE;
     
     LoopReporter lr = new LoopReporter(targets.size(), 20, monitor, 0.0, 1.0, "progress.buildNodeGraphics");
-    HashMap<Integer, MinMax> nodeExtents = new HashMap<Integer, MinMax>();
+    HashMap<Integer, MinMax> nodeExtents = ext.allNodeExtents.get(Boolean.valueOf(showShadows));
+    MinMax nodeRows = ext.allNodeFullRange.get(Boolean.valueOf(showShadows));
     for (int i = 0; i < numNodes; i++) {
       BioFabricNetwork.NodeInfo node = targets.get(i);
       int num = node.nodeRow;
       lr.report();
-      MinMax cols = node.getColRange(showShadows);
-      nodeExtents.put(Integer.valueOf(num), cols);
-      if (num > maxRow) {
-      	maxRow = num;
-      }
-      if (num < minRow) {
-      	minRow = num;
-      }
-      buildNodeTextAndRect(node, frc, colGen_, linkExtents, shadeNodes, showShadows, nameMap, drainMap);
+      buildNodeTextAndRect(node, frc, colGen_, linkExtents, shadeNodes, showShadows, nameMap, drainMap, qtpc);
     }
     
-    nodeIndex_ = new int[(numNodes == 0) ? 0 : maxRow + 1 - minRow];
-    nodeIndexOffset_ = minRow;  // In subviews, links do NOT start at column 0!
+    nodeIndex_ = new int[(numNodes == 0) ? 0 : nodeRows.max + 1 - nodeRows.min];
+    nodeIndexOffset_ = nodeRows.min;  // In subviews, links do NOT start at column 0!
     // And in subviews with non-contiguous links, we need to skip non-link columns, so init with -1:
     Arrays.fill(nodeIndex_, -1);
     nodeRefs_ = targets;
@@ -507,23 +562,52 @@ public class PaintCacheSmall implements PaintCache {
       nodeIndex_[node.nodeRow - nodeIndexOffset_] = i;
     }
     
+    
+    
     int annotCount = 0;
     if (nodeAnnot != null) {
+    	LoopReporter lr4 = new LoopReporter(nodeAnnot.size(), 20, monitor, 0.0, 1.0, "progress.buildNodeAnnots");
       for (AnnotationSet.Annot an : nodeAnnot) {
         Color col = annotColors_[annotCount++ % annotColors_.length];
-        buildAnAnnotationRect(an.getRange(), an.getName(), col, true, nodeExtents, frc);
+        lr4.report();
+        buildAnAnnotationRect(an.getRange(), an.getName(), col, true, nodeExtents, frc, linkCols, qtpc);
       }
     }
     
     annotCount = 0;
+    Color[] useColors = (nodeAnnot != null) ? annotGrays_ : annotColors_;
     if (linkAnnot != null) {
+    	LoopReporter lr5 = new LoopReporter(linkAnnot.size(), 20, monitor, 0.0, 1.0, "progress.buildLinkAnnots");
       for (AnnotationSet.Annot an : linkAnnot) {
-        Color col = annotColors_[annotCount++ % annotColors_.length];
-        buildAnAnnotationRect(an.getRange(), an.getName(), col, false, linkExtents, frc);
+        Color col = useColors[annotCount++ % useColors.length];
+        lr5.report();
+        buildAnAnnotationRect(an.getRange(), an.getName(), col, false, linkExtents, frc, nodeRows, qtpc);
       }
     }
-
-    return;
+    
+    //
+    // Now that we have built everything that is going into the quadTree, we can build it:
+    //
+    
+    DoubMinMax dmmw = new DoubMinMax(netBounds.getMinX(), netBounds.getMaxX());
+    DoubMinMax dmmh = new DoubMinMax(netBounds.getMinY(), netBounds.getMaxY());
+  
+    for (QuadTree.Payload qtp : qtpc) {
+    	Rectangle2D qtpr = qtp.getRect();
+    	dmmw.update(qtpr.getMinX());
+    	dmmw.update(qtpr.getMaxX());
+    	dmmh.update(qtpr.getMinY());
+    	dmmh.update(qtpr.getMaxY());
+    }
+    
+    Rectangle2D worldRect = new Rectangle2D.Double(dmmw.min, dmmh.min, dmmw.max - dmmw.min, dmmh.max - dmmh.min);
+    names_ = new QuadTree(worldRect, 5);
+    
+    for (QuadTree.Payload qtp : qtpc) {   	
+    	names_.insertPayload(qtp);
+    }
+    qtpc.clear();
+    return (worldRect);
   }
  
   /***************************************************************************
@@ -553,7 +637,7 @@ public class PaintCacheSmall implements PaintCache {
                                     FontRenderContext frc, 
                                     FabricColorGenerator colGen, Map<Integer, MinMax> linkExtents, 
                                     boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
-                                    Map<NID.WithName, List<Rectangle2D>> drainMap) {
+                                    Map<NID.WithName, List<Rectangle2D>> drainMap, ArrayList<QuadTree.Payload> payloadCache) {
  
     //
     // Left end node label sizing and Y:
@@ -575,7 +659,7 @@ public class PaintCacheSmall implements PaintCache {
     TextPath npp = new TextPath(Color.BLACK, target.getNodeName(), namex, namey, labelBounds, false, TextPath.FontSizes.TINY);
     String nkk = Integer.toString(nameKeyCount_++);
     QuadTree.Payload pay = new QuadTree.Payload(labelBounds, nkk);
-    names_.insertPayload(pay);
+    payloadCache.add(pay);
     nameKeyToPaintSecond_.put(nkk, npp);
     nameKeyToNodeID_.put(nkk, target.getNodeID());
     
@@ -641,7 +725,7 @@ public class PaintCacheSmall implements PaintCache {
 	      
 	      if (shadeNodes) {
 	      	Color col = ((target.nodeRow % 2) == 0) ? superLightBlue_ : superLightPink_;
-	        buildANodeShadeRect(curr.dzmm, linkExtents, curr.dumpRect, col);
+	        buildANodeShadeRect(curr.dzmm, linkExtents, curr.dumpRect, col, payloadCache);
 	      }
 	      
 	    }
@@ -654,7 +738,7 @@ public class PaintCacheSmall implements PaintCache {
 	                                  curr.dumpRect, curr.doRotateName, curr.font);
 	    nkk = Integer.toString(nameKeyCount_++);
 	    pay = new QuadTree.Payload(curr.dumpRect, nkk);
-	    names_.insertPayload(pay);
+	    payloadCache.add(pay);
 	    if (curr.font == TextPath.FontSizes.TINY) {  
 	    	nameKeyToPaintThird_.put(nkk, drain);
 	    	nameKeyToNodeID_.put(nkk, target.getNodeID());
@@ -725,7 +809,7 @@ public class PaintCacheSmall implements PaintCache {
   */
   
   private void buildANodeShadeRect(MinMax dzmm, Map<Integer, MinMax> linkExtents, 
-  		                             Rectangle2D dumpRect, Color col) {  
+  		                             Rectangle2D dumpRect, Color col, ArrayList<QuadTree.Payload> payloadCache) {  
     int minRow = Integer.MAX_VALUE;
     int maxRow = Integer.MIN_VALUE;       
     for (int i = dzmm.min; i <= dzmm.max; i++) {
@@ -750,7 +834,7 @@ public class PaintCacheSmall implements PaintCache {
     BoxPath npp = new BoxPath(col, rect);
     String nkk = Integer.toString(nameKeyCount_++);
     QuadTree.Payload pay = new QuadTree.Payload(rect, nkk);
-    names_.insertPayload(pay);
+    payloadCache.add(pay);
     nameKeyToPaintFirst_.put(nkk, npp);
     return;
   }
@@ -761,77 +845,167 @@ public class PaintCacheSmall implements PaintCache {
   */
   
   private void buildAnAnnotationRect(MinMax dzmm, String name, Color col, boolean isHoriz, 
-                                     HashMap<Integer, MinMax> extents, FontRenderContext frc) {  
+                                     Map<Integer, MinMax> extents, FontRenderContext frc, 
+                                     MinMax fullExtents, ArrayList<QuadTree.Payload> payloadCache) {  
 
     
-    int minExtent = Integer.MAX_VALUE;
-    int maxExtent = Integer.MIN_VALUE;
-    for (int chk = dzmm.min; chk <= dzmm.max; chk++) {
-      MinMax extent = extents.get(Integer.valueOf(chk));
-      if (minExtent > extent.min) {
-        minExtent = extent.min;
-      }
-      if (maxExtent < extent.max) {
-        maxExtent = extent.max;
-      }
-    }
+    int minExtent = fullExtents.min; //Integer.MAX_VALUE;
+    int maxExtent = fullExtents.max; //Integer.MIN_VALUE;
+    int diff = maxExtent - minExtent;
+    int pad = (int)(diff * BioFabricPanel.GRID_SIZE * 0.05);
+    pad = UiUtil.forceToGridValueInt(Math.max(pad, 200), BioFabricPanel.GRID_SIZE); 
       
-    Rectangle rect;
+    int rectLeft;
+    int rectRight;
+    int rectTop;
+    int rectBot;
+    
     if (isHoriz) {
-      int rectLeft = -100 * BioFabricPanel.GRID_SIZE;
-      int rectRight = maxExtent * BioFabricPanel.GRID_SIZE;
-      int rectTop = (dzmm.min * BioFabricPanel.GRID_SIZE) - (BioFabricPanel.GRID_SIZE / 2);
-      int rectBot = (dzmm.max * BioFabricPanel.GRID_SIZE) + (BioFabricPanel.GRID_SIZE / 2);
-      int rectWidth = rectRight - rectLeft;
-      int rectHeight = rectBot - rectTop;
-      rect = new Rectangle(rectLeft, rectTop, rectWidth, rectHeight);
+      rectLeft = (minExtent * BioFabricPanel.GRID_SIZE) - pad;
+      rectRight = (maxExtent * BioFabricPanel.GRID_SIZE) + (BioFabricPanel.GRID_SIZE / 2);
+      rectTop = (dzmm.min * BioFabricPanel.GRID_SIZE) - (BioFabricPanel.GRID_SIZE / 2);
+      rectBot = (dzmm.max * BioFabricPanel.GRID_SIZE) + (BioFabricPanel.GRID_SIZE / 2);
     } else {
-      int rectLeft = dzmm.min * BioFabricPanel.GRID_SIZE;
-      int rectRight = dzmm.max * BioFabricPanel.GRID_SIZE;
-      int rectTop = -1000;
-      int rectBot = maxExtent * BioFabricPanel.GRID_SIZE;
-      int rectWidth = rectRight - rectLeft;
-      int rectHeight = rectBot - rectTop;
-      rect = new Rectangle(rectLeft, rectTop, rectWidth, rectHeight);
+      rectLeft = (dzmm.min * BioFabricPanel.GRID_SIZE) - (BioFabricPanel.GRID_SIZE / 2);
+      rectRight = (dzmm.max * BioFabricPanel.GRID_SIZE) + (BioFabricPanel.GRID_SIZE / 2);
+      rectTop = (minExtent * BioFabricPanel.GRID_SIZE) - pad;
+      rectBot = (maxExtent * BioFabricPanel.GRID_SIZE) + (BioFabricPanel.GRID_SIZE / 2);
     }
+    int rectWidth = rectRight - rectLeft;
+    int rectHeight = rectBot - rectTop;
+    Rectangle rect = new Rectangle(rectLeft, rectTop, rectWidth, rectHeight);
+    
     BoxPath npp = new BoxPath(col, rect);
     String nkk = Integer.toString(nameKeyCount_++);
     QuadTree.Payload pay = new QuadTree.Payload(rect, nkk);
-    names_.insertPayload(pay);
-    nameKeyToPaintZero_.put(nkk, npp);
-
+    payloadCache.add(pay);
+    if (isHoriz) {
+      nameKeyToPaintZero_.put(nkk, npp);
+    } else {
+      nameKeyToPaintOneQuarter_.put(nkk, npp);
+    }
+     
     TextPath.FontSizes useFont = null;
     Rectangle2D useBounds = null;
     Rectangle2D bounds = null;
+    boolean rotate = false;
     for (TextPath.FontSizes size : bigToLittle_) {  
       bounds = fonts_.get(size).getStringBounds(name, frc);
-      if (bounds.getHeight() <= rect.getHeight()) {
-        useFont = size;
-        useBounds = bounds;
-        break;
+      double h = bounds.getHeight();
+      double w = bounds.getWidth();
+      
+      
+      if (isHoriz) {
+      	if ((h < rect.getHeight()) && (w < pad)) {
+          useFont = size;
+          useBounds = bounds;
+          break;
+      	}
+      } else {
+        if ((w < rect.getWidth()) && (h < pad)) {
+          useFont = size;
+          useBounds = bounds;
+          break;
+      	}
       }
     }
        
     if (useBounds == null) {
       useFont = TextPath.FontSizes.TINY;
       useBounds = bounds;
+      rotate = true;
     }
-  
-    double scaleHeight = useBounds.getHeight();
-    double namey = rect.getCenterY() + (0.5 * useBounds.getHeight());
-    double namex = rect.getX();      
-    useBounds.setRect(namex, namey - scaleHeight, useBounds.getWidth(), scaleHeight);
+    
+    double namey;
+	  double namex;
+	  double scaleHeight = useBounds.getHeight();
+	  double scaleWidth = useBounds.getWidth();
+	  
+    if (isHoriz) {
+	    namey = rect.getCenterY() + (0.5 * scaleHeight);
+	    namex = rect.getX();      
+    } else {
+    	if (rotate) {
+    		namey = rect.getY() + (0.5 * pad) + (0.5 * scaleWidth);
+	      namex = rect.getCenterX() + (0.5 * scaleHeight);
+	      double hold = scaleHeight;
+	      scaleHeight = scaleWidth;
+	      scaleWidth = hold;
+    	} else {
+	      namey = rect.getY() + (0.5 * pad) + (0.5 * scaleHeight);
+	      namex = rect.getCenterX() - (0.5 * scaleWidth);
+    	}
+    }
+    useBounds.setRect(namex, namey, scaleWidth, scaleHeight);
     
     //
     // Get the name bounds into the map and the extents into the QuadTree:
     //
     
-    TextPath tpp = new TextPath(Color.BLACK, name, namex, namey, useBounds, false, useFont);
+    TextPath tpp = new TextPath(Color.BLACK, name, namex, namey, useBounds, rotate, useFont);
     String tkk = Integer.toString(nameKeyCount_++);
     QuadTree.Payload textPay = new QuadTree.Payload(useBounds, tkk);
-    names_.insertPayload(textPay);
+    payloadCache.add(textPay);
     nameKeyToPaintOneHalf_.put(nkk, tpp);
     
     return;
   }
+  
+    ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC INNER CLASSES
+  //
+  ////////////////////////////////////////////////////////////////////////////
+
+  /***************************************************************************
+  **
+  ** Floaters
+  */  
+  
+  public static class FloaterSet {
+    public Rectangle floater;
+    public Rectangle tourRect;
+    public Rectangle currSelRect;
+    
+    public FloaterSet(Rectangle floater, Rectangle tourRect, Rectangle currSelRect) {
+      this.floater = floater;
+      this.tourRect = tourRect;
+      this.currSelRect = currSelRect;    
+    }
+    
+    public void clear() {
+      floater = null;
+      tourRect = null;
+      currSelRect = null;
+      return;
+    }
+    
+    public boolean isEmpty() {
+      return ((floater == null) &&
+              (tourRect == null) &&
+              (currSelRect == null));
+    }   
+  } 
+  
+  /***************************************************************************
+  **
+  ** Used to reduce painting to a limited selection
+  */  
+  
+  public static class Reduction {
+    Set<Integer> paintRows;
+    Set<Integer> paintCols;
+    Set<NID> paintNames;
+    
+    public Reduction(Set<Integer> rows, Set<Integer> cols, Set<NID> names) {
+      this.paintRows = rows;
+      this.paintCols = cols;
+      this.paintNames = names;    
+    }
+    
+    public boolean somethingToPaint() {
+    	return (!paintRows.isEmpty() || !paintCols.isEmpty() || !paintNames.isEmpty());	
+    }
+    
+  } 
 }

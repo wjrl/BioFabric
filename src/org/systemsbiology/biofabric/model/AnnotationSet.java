@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -21,7 +21,11 @@ package org.systemsbiology.biofabric.model;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.io.FabricFactory;
@@ -31,6 +35,7 @@ import org.systemsbiology.biofabric.util.AttributeExtractor;
 import org.systemsbiology.biofabric.util.CharacterEntityMapper;
 import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.MinMax;
+
 import org.xml.sax.Attributes;
 
 /****************************************************************************
@@ -71,7 +76,58 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
     annots_.add(an);
     return;
   }
+  
+  public void fillAnnots(AnnotsForPos fillIt, Integer whereObj) {
+    for (Annot an : annots_) {
+      if (an.range_.contained(whereObj)) {
+        fillIt.addAnnot(an);
+      }
+    }
+    return;
+  }
  
+  /***************************************************************************
+  **
+  ** Class to hold all the annotations relevant for a given position (row or column)
+  */  
+  
+  public static class AnnotsForPos {
+    private TreeMap<Integer, SortedSet<Annot>> perLayers_;
+ 
+    public AnnotsForPos() {
+      perLayers_ = new TreeMap<Integer, SortedSet<Annot>>(Collections.reverseOrder());
+      perLayers_.put(Integer.valueOf(0), new TreeSet<Annot>());
+    }
+    
+    public void addAnnot(Annot toAdd) {
+      int layer = toAdd.getLayer();
+      SortedSet<Annot> forLayer = perLayers_.get(Integer.valueOf(layer));
+      if (forLayer == null) {
+        forLayer = new TreeSet<Annot>();
+        perLayers_.put(Integer.valueOf(layer), forLayer);
+      }
+      forLayer.add(toAdd);
+      return;
+    }
+
+    public void clear() {
+      for (Integer layer : perLayers_.keySet()) {
+        perLayers_.get(layer).clear();
+      }
+      return;
+    }
+    
+    public void displayStrings(List<String> fill) {
+      for (Integer layer : perLayers_.keySet()) {
+        SortedSet<Annot> forLay = perLayers_.get(layer);
+        for (Annot ant : forLay) {
+          fill.add(ant.getName());
+        }
+      }
+      return;
+    }
+  }
+  
   /***************************************************************************
   **
   ** Class to hold a single annotation

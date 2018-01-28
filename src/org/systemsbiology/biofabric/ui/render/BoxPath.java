@@ -38,6 +38,7 @@ public class BoxPath {
   
   private Color col;
   private Rectangle nodeShadeRect;
+  private Rectangle scratchRect;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -53,6 +54,7 @@ public class BoxPath {
   public BoxPath(Color col, Rectangle rect) {
     this.col = col;
     this.nodeShadeRect = rect;
+    this.scratchRect = new Rectangle();
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -66,9 +68,35 @@ public class BoxPath {
   **  Draw it:
   */
  
-  public int paint(Graphics2D g2) {
+  public int paint(Graphics2D g2, Rectangle bounds) {
     g2.setPaint(col);
-    g2.fill(nodeShadeRect);
+    // No bounds? Rectangle fully in bounds? Just draw the actual rectangle!
+    if ((bounds == null) || bounds.contains(nodeShadeRect)) {
+      scratchRect.setRect(nodeShadeRect);
+    } else {
+      // Nothing to draw:
+      if (!bounds.intersects(nodeShadeRect)) {
+        return (0);
+      } 
+      // With very huge boxes (e.g. 100,000 units) we see fragmented draws on Mac. Make tiny:
+      double xMinN = nodeShadeRect.getMinX();
+      double xMaxN = nodeShadeRect.getMaxX();
+      double yMinN = nodeShadeRect.getMinY();
+      double yMaxN = nodeShadeRect.getMaxY();
+      
+      double xMinB = bounds.getMinX();
+      double xMaxB = bounds.getMaxX();
+      double yMinB = bounds.getMinY();
+      double yMaxB = bounds.getMaxY();
+      
+      double xMinUse = (xMinN < xMinB) ? xMinB - 1000.0 : xMinN; 
+      double xMaxUse = (xMaxN > xMaxB) ? xMaxB + 1000.0 : xMaxN; 
+      double yMinUse = (yMinN < yMinB) ? yMinB - 1000.0 : yMinN; 
+      double yMaxUse = (yMaxN > yMaxB) ? yMaxB + 1000.0 : yMaxN; 
+      
+      scratchRect.setRect(xMinUse, yMinUse, xMaxUse - xMinUse, yMaxUse - yMinUse);
+    } 
+    g2.fill(scratchRect);
     return (1);
   } 
 } 

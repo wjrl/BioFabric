@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -204,6 +204,12 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     cp_.setBackground(Color.white);
     
     JScrollPane jsp = new JScrollPane(cp_);
+    //
+    // "Zoom to full model" has problems if scrollbars come and go, since we check viewport
+    // size to calculate the zoom:
+    //
+    jsp.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+    jsp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
     cp_.setScroll(jsp);
     // GOTTA USE THIS ON MY LINUX BOX, BUT NOWHERE ELSE!!!!
     //jsp.getViewport().setScrollMode(JViewport.BACKINGSTORE_SCROLL_MODE);
@@ -227,7 +233,6 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     sp_.setDividerLocation((int)(dim.height * 0.50));
     sp_.setResizeWeight(1.0);
 
-
     cpane.add(sp_, BorderLayout.CENTER);    
    // cpane.add(nac_, BorderLayout.SOUTH);
            
@@ -235,6 +240,8 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     setIconImage(new ImageIcon(ugif).getImage());
     setResizable(true);
     fc.checkForChanges();
+    // Zoom buttons need to be inactive with no model:
+    fc.handleZoomButtons();
     return;
   } 
 
@@ -463,8 +470,8 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     actionMap_.put(Integer.valueOf(CommandSet.ADD_FIRST_NEIGHBORS), fc.getAction(CommandSet.ADD_FIRST_NEIGHBORS, true, null));
     actionMap_.put(Integer.valueOf(CommandSet.CLEAR_SELECTIONS), fc.getAction(CommandSet.CLEAR_SELECTIONS, true, null));
     actionMap_.put(Integer.valueOf(CommandSet.ZOOM_TO_MODEL), fc.getAction(CommandSet.ZOOM_TO_MODEL, true, null));
-    actionMap_.put(Integer.valueOf(CommandSet.ZOOM_TO_SELECTIONS), fc.getAction(CommandSet.ZOOM_TO_SELECTIONS, true, null));
     actionMap_.put(Integer.valueOf(CommandSet.ZOOM_TO_RECT), fc.getAction(CommandSet.ZOOM_TO_RECT, true, null));
+    actionMap_.put(Integer.valueOf(CommandSet.TOGGLE_SHADOW_LINKS), fc.getAction(CommandSet.TOGGLE_SHADOW_LINKS, true, null));
     actionMap_.put(Integer.valueOf(CommandSet.CANCEL), fc.getAction(CommandSet.CANCEL, true, null));
     actionMap_.put(Integer.valueOf(CommandSet.ZOOM_TO_CURRENT_SELECTION), fc.getAction(CommandSet.ZOOM_TO_CURRENT_SELECTION, true, null));
     actionMap_.put(Integer.valueOf(CommandSet.CENTER_ON_NEXT_SELECTION), fc.getAction(CommandSet.CENTER_ON_NEXT_SELECTION, true, null));
@@ -486,8 +493,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.ZOOM_OUT)));
     toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.ZOOM_IN)));
     toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.ZOOM_TO_MODEL)));
-    toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.ZOOM_TO_RECT)));    
-    toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.ZOOM_TO_SELECTIONS)));
+    toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.ZOOM_TO_RECT)));
     toolBar.addSeparator();
     toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.CENTER_ON_PREVIOUS_SELECTION)));
     toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.ZOOM_TO_CURRENT_SELECTION)));
@@ -499,6 +505,8 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.CANCEL)));
     toolBar.addSeparator();    
     toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.SEARCH)));
+    toolBar.addSeparator();    
+    toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.TOGGLE_SHADOW_LINKS)));
     if (isMain) {
       toolBar.addSeparator();  
       toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.PROPAGATE_DOWN)));

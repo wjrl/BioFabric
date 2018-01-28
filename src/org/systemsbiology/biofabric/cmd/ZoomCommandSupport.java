@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -30,7 +30,6 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
 import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
 
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -57,6 +56,7 @@ public class ZoomCommandSupport {
   private double[] zoomVals_;
   private int currZoomIndex_;
   private double customZoom_;
+  private ZoomResult fullModelZoom_;
   
   private Dimension currViewSize_;
   private double currViewXFrac_;
@@ -90,12 +90,29 @@ public class ZoomCommandSupport {
   */
 
   public void setZoomPoints(double[] zoomVals) {
+  	System.out.println("Set zoom points " + zoomVals.length);
     zoomVals_ = zoomVals;
     currZoomIndex_ = 0;
     customZoom_ = 0.0;
+    fullModelZoom_ = null;
     return;
   }
   
+  /***************************************************************************
+  **
+  ** Get zoom indices
+  */
+
+  public int[] getZoomIndices() {
+  	System.out.println("Get zoom indices " + zoomVals_);
+  	int len = (zoomVals_ == null) ? 0 : zoomVals_.length;
+  	int[] retval = new int[len];  	
+  	for (int i = 0; i < len; i++) {
+  		retval[i] = i;
+  	}
+    return (retval);
+  }
+
   /***************************************************************************
   **
   ** Register the scroll pane
@@ -174,24 +191,26 @@ public class ZoomCommandSupport {
     
     int vIndex = -1;
     int hIndex = -1;
-    for (int i = 0; i < zoomVals_.length; i++) {
-      double zoom = zoomVals_[i];
-      double modelHeight = dim.height * zoom;
-      if (modelHeight <= allDim.height) {
-        vIndex++;
-      } else {
-        break;
-      }
+    if (zoomVals_ != null) { // Used before this is set for full model zoom calc
+	    for (int i = 0; i < zoomVals_.length; i++) {
+	      double zoom = zoomVals_[i];
+	      double modelHeight = dim.height * zoom;
+	      if (modelHeight <= allDim.height) {
+	        vIndex++;
+	      } else {
+	        break;
+	      }
+	    }
+	    for (int i = 0; i < zoomVals_.length; i++) {
+	      double zoom = zoomVals_[i];
+	      double modelWidth = dim.width * zoom;
+	      if (modelWidth <= allDim.width) {
+	        hIndex++;
+	      } else {
+	        break;
+	      }
+	    }
     }
-    for (int i = 0; i < zoomVals_.length; i++) {
-      double zoom = zoomVals_[i];
-      double modelWidth = dim.width * zoom;
-      if (modelWidth <= allDim.width) {
-        hIndex++;
-      } else {
-        break;
-      }
-    } 
     int retval = (vIndex < hIndex) ? vIndex : hIndex;
     if (retval == -1) {
       double vZoom = (double)allDim.height / (double)dim.height;
@@ -201,7 +220,6 @@ public class ZoomCommandSupport {
     }
    
     retval = (retval > zoomVals_.length - 1) ? zoomVals_.length - 1 : retval;
-    System.out.println("STD ZOOM " + retval);
     return (new ZoomResult(retval));
   }  
 
@@ -292,6 +310,7 @@ public class ZoomCommandSupport {
     //
     // Enable/disable zoom actions based on zoom limits:
     //
+
     if (tracker_ != null) tracker_.zoomStateChanged(false);
     doZoom(newZoomVal);
     return;
@@ -320,7 +339,7 @@ public class ZoomCommandSupport {
     
   private void bumpZoom(char direction) {
     // Sanity check:
-    if ((currZoomIndex_ < -1) || (currZoomIndex_ >= zoomVals_.length)) {
+    if ((currZoomIndex_ < -1) || (zoomVals_ == null) || (currZoomIndex_ >= zoomVals_.length)) {
       return;
     }
     if (direction == '+') {
@@ -332,11 +351,19 @@ public class ZoomCommandSupport {
         setCurrentZoom(new ZoomResult(currZoomIndex_ + 1));
       }
     } else {
-      if (currZoomIndex_ == -1) {  // Safety net; should not happen
-        return;
+      if (currZoomIndex_ == -1) {
+      	if (customZoom_ > fullModelZoom_.customZoom) {
+      		setCurrentZoom(fullModelZoom_);
+      	}
       } else if (currZoomIndex_ == 0) {
-        ZoomResult zr = calcOptimalZoom(null, jsp_.getViewport().getExtentSize());
-        setCurrentZoom(zr);
+  	    if (fullModelZoom_ == null) {
+  	    	System.out.println("Seeing this as null after recolor while zoomed!!");
+  	    	System.out.println("And zoom out ");
+  	    	Rectangle bounds = sup_.getCurrentBasicBounds();    
+          Dimension vDim = jsp_.getViewport().getExtentSize();
+          fullModelZoom_ = calcOptimalZoom(bounds, vDim);
+  	    }
+        setCurrentZoom(fullModelZoom_);
       } else {
         setCurrentZoom(new ZoomResult(currZoomIndex_ - 1));
       }      
@@ -361,6 +388,29 @@ public class ZoomCommandSupport {
     return (currZoomIndex_ == (zoomVals_.length - 1));
   }    
 
+  /***************************************************************************
+  **
+  ** Ask if we can still zoom out:
+  */ 
+    
+  public boolean canZoomOut() { 
+  	if (currZoomIndex_ > 0) {
+  		return (true); // Easy case!
+  	}
+  	//
+  	// We can still zoom out even if we are *at* zero index if the full model zoom is less than index zero:
+  	//
+  	if ((currZoomIndex_ == 0) && (zoomVals_ != null) && (zoomVals_.length > 0) && (fullModelZoom_.customZoom < zoomVals_[0])) {
+  		return (true);
+  	}
+  	//
+  	// We can still zoom out if we are on a custom zoom, if the fullModelZoom is less than the current custom zoom:
+  	//
+  	if ((currZoomIndex_ == -1) && (fullModelZoom_.customZoom < customZoom_)) {
+  		return (true);
+  	}
+  	return (false);
+  }  
  
   /***************************************************************************
   **
@@ -368,6 +418,7 @@ public class ZoomCommandSupport {
   */ 
     
   private void setCurrentZoom(ZoomResult zres) {
+  	System.out.println("Set current zoom to " + zres);
     if (zres.doCustom) {
       customZoom_ = zres.customZoom;
       currZoomIndex_ = -1;
@@ -427,7 +478,7 @@ public class ZoomCommandSupport {
     
   private void zoomToSelectedGutsGuts(Rectangle bounds, boolean doZoom) {
     if (bounds == null) {
-      zoomToModel();
+      zoomToModel(false);
       return;
     }
     Rectangle wsBounds = sup_.getWorldRect();
@@ -525,20 +576,13 @@ public class ZoomCommandSupport {
   ** Zoom to show current model.
   */ 
 
-  public void zoomToModel() {
-    Rectangle bounds = sup_.getCurrentBasicBounds();
-    System.out.println("z2mb " + bounds);
- //   Rectangle wsBounds = sup_.getWorkspaceBounds();
-  //  Rectangle union = wsBounds.union(bounds);
-  //  if (!union.equals(wsBounds)) { // i.e. part of model outside of workspace: we will center on workspace
-  //    Point2D cent = sup_.getRawCenterPoint();
-  //    bounds = centeredUnion(union, cent);
- //   }
-    
+  public void zoomToModel(boolean force) {
+  	Rectangle bounds = sup_.getCurrentBasicBounds();    
     Dimension vDim = jsp_.getViewport().getExtentSize();
-    ZoomResult zres = calcOptimalZoom(bounds, vDim);  
-    System.out.println("ZoomToModel viewport " + vDim);
-    setCurrentZoom(zres);    
+  	if ((fullModelZoom_ == null) || force) {
+      fullModelZoom_ = calcOptimalZoom(bounds, vDim);
+  	}
+    setCurrentZoom(fullModelZoom_);    
     sup_.setZoomFactor(getCurrentZoom(), vDim);
     ((BioFabricPanel)sup_).setFullModelViewPos(jsp_.getViewport().getViewPosition());
     ((BioFabricPanel)sup_).setFullModelExtent(vDim);
@@ -547,7 +591,6 @@ public class ZoomCommandSupport {
     int y = bounds.y + (bounds.height / 2);    
     Point pt = new Point(x, y);
     pt = sup_.pointToViewport(pt);
-    System.out.println("pt2v " + pt);
     viewportUpdate(pt, vDim);
     sup_.repaint();
     if (tracker_ != null) tracker_.zoomStateChanged(false);
@@ -564,6 +607,10 @@ public class ZoomCommandSupport {
     JViewport view = jsp_.getViewport();     
     Dimension viewExtent = view.getExtentSize();
     Dimension viewSize = view.getViewSize(); 
+    
+    // Keep track of what the full model zoom is at all times:
+    Rectangle bounds = sup_.getCurrentBasicBounds();    
+    fullModelZoom_ = calcOptimalZoom(bounds, viewExtent);
 
     int currX = (int)Math.round((currViewXFrac_ * viewSize.width) - (viewExtent.width / 2.0));
     int currY = (int)Math.round((currViewYFrac_ * viewSize.height) - (viewExtent.height / 2.0));

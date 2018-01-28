@@ -700,6 +700,13 @@ public class BioFabricNetwork {
     //
 
     loneNodesToLastColumn(rbd.loneNodeIDs, monitor);
+    
+    //
+    // If we have node/link annotations, install them
+    //
+      
+    nodeAnnot_ = rbd.nodeAnnotForLayout;
+    linkAnnots_ = rbd.linkAnnotsForLayout;
 
     return;
   }
@@ -2395,7 +2402,10 @@ public class BioFabricNetwork {
     public List<String> fixedOrder; 
     public Map<String, Set<NID.WithName>> normNameToIDs;
     public Boolean pointUp;
-
+    
+    public AnnotationSet nodeAnnotForLayout;
+    public Map<Boolean, AnnotationSet> linkAnnotsForLayout;
+    
     public RelayoutBuildData(BioFabricNetwork fullNet, BuildMode mode, BTProgressMonitor monitor) throws AsynchExitRequestException {
       super(mode);
       this.bfn = fullNet;
@@ -2410,6 +2420,8 @@ public class BioFabricNetwork {
       this.clustAssign = (fullNet.nodeClustersAssigned()) ? fullNet.nodeClusterAssigment() : null;
       this.layoutMode = fullNet.getLayoutMode();
       this.idGen = fullNet.nodeIDGenerator_;
+      this.nodeAnnotForLayout = null;
+      this.linkAnnotsForLayout = null;
     }
     
     public RelayoutBuildData(UniqueLabeller idGen,
@@ -2429,6 +2441,8 @@ public class BioFabricNetwork {
       this.allNodeIDs = null;
       this.layoutMode = LayoutMode.PER_NODE_MODE;
       this.idGen = idGen;
+      this.nodeAnnotForLayout = null;
+      this.linkAnnotsForLayout = null;
     } 
 
     public Map<String, Set<NID.WithName>> genNormNameToID() {
@@ -2479,6 +2493,16 @@ public class BioFabricNetwork {
       return;
     }
     
+    public void setNodeAnnotations(AnnotationSet annots) {
+      this.nodeAnnotForLayout = annots;
+      return;
+    }
+    
+    public void setLinkAnnotations(Map<Boolean, AnnotationSet> annots) {
+      this.linkAnnotsForLayout = annots;
+      return;
+    }
+      
     public void setGroupOrderAndMode(List<String> groupOrder, LayoutMode mode) {
       this.linkGroups = groupOrder;
       this.layoutMode = mode;
@@ -3199,5 +3223,80 @@ public class BioFabricNetwork {
       }
       return (retval);
     }
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Build extents, used for node shading, node annotations, link annotations
+  */
+
+  public static class Extents {
+  	public HashMap<Boolean, HashMap<Integer, MinMax>> allLinkExtents;
+  	public HashMap<Boolean, HashMap<Integer, MinMax>> allNodeExtents;
+  	public HashMap<Boolean, MinMax> allLinkFullRange;
+  	public HashMap<Boolean, MinMax> allNodeFullRange;
+  		
+  	public Extents() { 
+  		allLinkExtents = new HashMap<Boolean, HashMap<Integer, MinMax>>();
+  	  allNodeExtents = new HashMap<Boolean, HashMap<Integer, MinMax>>();
+  	  allLinkFullRange = new HashMap<Boolean, MinMax>();
+  	  allNodeFullRange = new HashMap<Boolean, MinMax>();
+  	  boolean[] builds = new boolean[] {true, false};
+  	  for (boolean build : builds) {
+    	  MinMax linkFullRange = new MinMax();
+    	  HashMap<Integer, MinMax> linkExtents = new HashMap<Integer, MinMax>();
+    	  allLinkExtents.put(Boolean.valueOf(build), linkExtents);
+    	  allLinkFullRange.put(Boolean.valueOf(build), linkFullRange);
+    	  MinMax nodeFullRange = new MinMax();
+    	  HashMap<Integer, MinMax> nodeExtents = new HashMap<Integer, MinMax>();
+    	  allNodeExtents.put(Boolean.valueOf(build), nodeExtents);
+    	  allNodeFullRange.put(Boolean.valueOf(build), nodeFullRange); 
+  	  }
+  	}
+  	
+  	public Extents(BioFabricNetwork bfn, BTProgressMonitor monitor) throws AsynchExitRequestException { 
+  		this();
+    	boolean[] builds = new boolean[] {true, false};
+    	for (boolean build : builds) {
+    	  MinMax linkFullRange = allLinkFullRange.get(Boolean.valueOf(build)).init();
+    	  HashMap<Integer, MinMax> linkExtents = allLinkExtents.get(Boolean.valueOf(build));
+    	
+		    List<BioFabricNetwork.LinkInfo> links = bfn.getLinkDefList(build);
+		    int numLinks = links.size();
+		    String tag = (build) ? "WithShadows" : "NoShadows";
+	    	LoopReporter lr0 = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.buildLinkExtents" + tag);
+    
+		    for (int i = 0; i < numLinks; i++) {
+		      BioFabricNetwork.LinkInfo link = links.get(i);
+		      lr0.report();    
+		      int num = link.getUseColumn(build);
+		      int sRow = link.topRow();
+		      int eRow = link.bottomRow();
+		      linkExtents.put(Integer.valueOf(num), new MinMax(sRow, eRow));
+		      linkFullRange.update(num);
+		    }
+		    lr0.finish();
+    	}
+	    
+      for (boolean build : builds) {
+      	MinMax nodeFullRange = allNodeFullRange.get(Boolean.valueOf(build)).init();
+    	  HashMap<Integer, MinMax> nodeExtents = allNodeExtents.get(Boolean.valueOf(build));
+  
+	    	List<BioFabricNetwork.NodeInfo> targets = bfn.getNodeDefList();
+	      int numNodes = targets.size();
+	      String tag = (build) ? "WithShadows" : "NoShadows";
+	    
+	      LoopReporter lr = new LoopReporter(targets.size(), 20, monitor, 0.0, 1.0, "progress.buildNodeExtents" + tag);
+		    for (int i = 0; i < numNodes; i++) {
+		      BioFabricNetwork.NodeInfo node = targets.get(i);
+		      int num = node.nodeRow;
+		      lr.report();
+		      MinMax cols = node.getColRange(build);
+		      nodeExtents.put(Integer.valueOf(num), cols);
+		      nodeFullRange.update(num);
+		    }
+		    lr.finish();
+    	}
+	  }
   }
 }

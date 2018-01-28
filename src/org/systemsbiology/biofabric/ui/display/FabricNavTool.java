@@ -462,7 +462,7 @@ public class FabricNavTool extends JPanel {
        
     Box infoPanel = Box.createHorizontalBox();
     infoPanel.add(Box.createHorizontalStrut(5));
-    infoPanel_[i] = new InfoPanel(true, 50, 100, true);
+    infoPanel_[i] = new InfoPanel(true, 50, 100, true, false);
     infoPanel.add(infoPanel_[i]);
     infoPanel.add(Box.createHorizontalStrut(5));
 
