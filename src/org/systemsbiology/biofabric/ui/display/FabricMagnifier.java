@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -36,7 +36,6 @@ import javax.swing.JPanel;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
-import org.systemsbiology.biofabric.ui.render.PaintCache;
 import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
 import org.systemsbiology.biofabric.util.UiUtil;
 
@@ -66,9 +65,9 @@ public class FabricMagnifier extends JPanel {
    
   private int miniSize_;
   private boolean needInit_;
-  private PaintCache painter_;
-  private PaintCache selectionPainter_;
-  private PaintCache.Reduction selections_;
+  private PaintCacheSmall painter_;
+  private PaintCacheSmall selectionPainter_;
+  private PaintCacheSmall.Reduction selections_;
   private AffineTransform miniTrans_;
   private Rectangle worldRec_;
   private Rectangle clipRec_;
@@ -79,7 +78,7 @@ public class FabricMagnifier extends JPanel {
   private boolean byTour_;
   private BioFabricOverview bfo_;
   private BufferedImage bim_;
-  private PaintCache.FloaterSet floaters_;
+  private PaintCacheSmall.FloaterSet floaters_;
   private int currSize_;
   private static final long serialVersionUID = 1L;
 
@@ -123,7 +122,7 @@ public class FabricMagnifier extends JPanel {
   ** Set current selections
   */
 
-  public void setSelections(PaintCache.Reduction selections) {
+  public void setSelections(PaintCacheSmall.Reduction selections) {
     selections_ = selections;
     return;
   } 
@@ -133,7 +132,7 @@ public class FabricMagnifier extends JPanel {
   ** Set the current floater
   */
 
-  public void setCurrentFloater(PaintCache.FloaterSet floaters) {
+  public void setCurrentFloater(PaintCacheSmall.FloaterSet floaters) {
     floaters_ = floaters;
     return;
   } 
@@ -402,7 +401,7 @@ public class FabricMagnifier extends JPanel {
   ** Set painters
   */
 
-  public void setPainters(PaintCache painter, PaintCache selectionPainter) {
+  public void setPainters(PaintCacheSmall painter, PaintCacheSmall selectionPainter) {
     painter_ = painter;
     selectionPainter_ = selectionPainter;
     repaint();
@@ -426,7 +425,7 @@ public class FabricMagnifier extends JPanel {
     g2.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
     AffineTransform saveTrans = g2.getTransform();    
     g2.transform(miniTrans_);
-    BasicStroke selectedStroke = new BasicStroke(PaintCache.STROKE_SIZE, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
+    BasicStroke selectedStroke = new BasicStroke(PaintCacheSmall.STROKE_SIZE, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
     g2.setStroke(selectedStroke);
     painter_.paintIt(g2, clipRec_, null);
     g2.setTransform(saveTrans);
@@ -462,7 +461,7 @@ public class FabricMagnifier extends JPanel {
     ig2.clearRect(0, 0, viewDim.width, viewDim.height);
     ig2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
     ig2.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-    BasicStroke selectedStroke = new BasicStroke(PaintCache.STROKE_SIZE, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
+    BasicStroke selectedStroke = new BasicStroke(PaintCacheSmall.STROKE_SIZE, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_MITER);    
     ig2.setStroke(selectedStroke);
     ig2.setTransform(miniTrans_);
     ig2.setComposite(AlphaComposite.Src);
