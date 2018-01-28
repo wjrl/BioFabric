@@ -385,13 +385,25 @@ public class NodeClusterLayout extends NodeLayout {
   			noShadows.add(fl);
   		}
   	}
-  	
-  	
-  	for (int i = 0; i < noShadows.size() ; i++) {
-  		FabricLink fl = noShadows.get(i);
-  	
-  	  UiUtil.fixMePrintout("Not working for shadows!");
 
+  	retval.put(Boolean.FALSE, generateLinkAnnotationsForSet(noShadows, params));
+  	retval.put(Boolean.TRUE, generateLinkAnnotationsForSet(withShadows, params));
+  	
+    return (retval);
+  }
+   
+  /***************************************************************************
+  **
+  ** Generate link annotations to tag each cluster and intercluster links
+  */
+    
+  private AnnotationSet generateLinkAnnotationsForSet(List<FabricLink> linkList, ClusterParams params) { 
+    
+  	HashMap<String, MinMax> clustRanges = new HashMap<String, MinMax>();
+  	 	
+  	for (int i = 0; i < linkList.size() ; i++) {
+  		FabricLink fl = linkList.get(i);
+  
   		String srcClust = params.getClusterForNode(fl.getSrcID());
       String trgClust = params.getClusterForNode(fl.getTrgID());
   		if (srcClust.equals(trgClust)) {
@@ -413,9 +425,6 @@ public class NodeClusterLayout extends NodeLayout {
   	}
   	
   	AnnotationSet afns = new AnnotationSet();
-  	retval.put(Boolean.FALSE, afns);
-  	retval.put(Boolean.TRUE, new AnnotationSet());
-  	
   	TreeMap<Integer, String> ord = new TreeMap<Integer, String>();
   	for (String aName : clustRanges.keySet()) {
   		MinMax mm = clustRanges.get(aName);
@@ -428,9 +437,9 @@ public class NodeClusterLayout extends NodeLayout {
   		afns.addAnnot(annot);
   	}
   
-    return (retval);
+    return (afns);
   }
-   
+  
   /***************************************************************************
   **
   ** Helper
