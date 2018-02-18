@@ -35,12 +35,6 @@ import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 
-import static org.systemsbiology.biofabric.layouts.NetworkAlignmentLayout.NodeGroupMap;
-import static org.systemsbiology.biofabric.analysis.NetworkAlignment.COVERED_EDGE;
-import static org.systemsbiology.biofabric.analysis.NetworkAlignment.GRAPH1;
-import static org.systemsbiology.biofabric.analysis.NetworkAlignment.INDUCED_GRAPH2;
-import static org.systemsbiology.biofabric.analysis.NetworkAlignment.HALF_UNALIGNED_GRAPH2;
-import static org.systemsbiology.biofabric.analysis.NetworkAlignment.FULL_UNALIGNED_GRAPH2;
 
 /****************************************************************************
  **
@@ -70,8 +64,8 @@ public class NetworkAlignmentScorer {
   
   private BTProgressMonitor monitor_;
   
-  private double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist;
-  private ScoreReport report_;
+  private double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccardSim;
+  private NetAlignStats netAlignStats_;
   
   public NetworkAlignmentScorer(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
                                 Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
@@ -87,7 +81,7 @@ public class NetworkAlignmentScorer {
     this.monitor_ = monitor;
     removeDuplicateAndShadow();
     calcScores();
-    this.report_ = new ScoreReport(EC, S3, ICS, NC, NGDist, LGDist, NGLGDist);
+    this.netAlignStats_ = new NetAlignStats(EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccardSim);
     return;
   }
   
@@ -99,6 +93,7 @@ public class NetworkAlignmentScorer {
       calcNodeGroupValues();
       calcLinkGroupValues();
       calcBothGroupValues();
+      calcJaccardSimilarity();
     }
   }
   
@@ -106,11 +101,11 @@ public class NetworkAlignmentScorer {
     int numCoveredEdge = 0, numGraph1 = 0, numInducedGraph2 = 0;
     
     for (FabricLink link : linksMain_) {
-      if (link.getRelation().equals(COVERED_EDGE)) {
+      if (link.getRelation().equals(NetworkAlignment.COVERED_EDGE)) {
         numCoveredEdge++;
-      } else if (link.getRelation().equals(GRAPH1)) {
+      } else if (link.getRelation().equals(NetworkAlignment.GRAPH1)) {
         numGraph1++;
-      } else if (link.getRelation().equals(INDUCED_GRAPH2)) {
+      } else if (link.getRelation().equals(NetworkAlignment.INDUCED_GRAPH2)) {
         numInducedGraph2++;
       }
     }
@@ -214,15 +209,15 @@ public class NetworkAlignmentScorer {
     return;
   }
   
-  public ScoreReport getReport() {
-    return (report_);
+  public NetAlignStats getNetAlignStats() {
+    return (netAlignStats_);
   }
   
   private static ScoreVector getNodeGroupRatios(Set<FabricLink> links, Set<NID.WithName> loneNodeIDs,
                                                 Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
                                                 BTProgressMonitor monitor) {
     
-    NodeGroupMap map = new NodeGroupMap(links, loneNodeIDs, mergedToCorrect, isAlignedNode, NetworkAlignmentLayout.DefaultNGOrderWithoutCorrect);
+    NetworkAlignmentLayout.NodeGroupMap map = new NetworkAlignmentLayout.NodeGroupMap(links, loneNodeIDs, mergedToCorrect, isAlignedNode, NetworkAlignmentLayout.DefaultNGOrderWithoutCorrect);
     
     Set<NID.WithName> allNodes;
     try {
@@ -249,15 +244,15 @@ public class NetworkAlignmentScorer {
     int[] counts = new int[NetworkAlignmentLayout.NUMBER_LINK_GROUPS];
     
     for (FabricLink link : links) {
-      if (link.getRelation().equals(COVERED_EDGE)) {
+      if (link.getRelation().equals(NetworkAlignment.COVERED_EDGE)) {
         counts[0]++;
-      } else if (link.getRelation().equals(GRAPH1)) {
+      } else if (link.getRelation().equals(NetworkAlignment.GRAPH1)) {
         counts[1]++;
-      } else if (link.getRelation().equals(INDUCED_GRAPH2)) {
+      } else if (link.getRelation().equals(NetworkAlignment.INDUCED_GRAPH2)) {
         counts[2]++;
-      } else if (link.getRelation().equals(HALF_UNALIGNED_GRAPH2)) {
+      } else if (link.getRelation().equals(NetworkAlignment.HALF_UNALIGNED_GRAPH2)) {
         counts[3]++;
-      } else if (link.getRelation().equals(FULL_UNALIGNED_GRAPH2)) {
+      } else if (link.getRelation().equals(NetworkAlignment.FULL_UNALIGNED_GRAPH2)) {
         counts[4]++;
       }
     }
@@ -268,6 +263,10 @@ public class NetworkAlignmentScorer {
       scoreLG.values_[i] = ((double)counts[i]) / ((double)links.size());
     }
     return (scoreLG);
+  }
+  
+  private  void calcJaccardSimilarity() {
+  // will be filled in later
   }
   
   ////////////////////////////////////////////////////////////////////////////
@@ -281,11 +280,14 @@ public class NetworkAlignmentScorer {
    ** Contains common network alignment scores
    */
   
-  public static class ScoreReport {
+  public static class NetAlignStats {
     
-    public final double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist;
+    public double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccardSim;
     
-    public ScoreReport(double EC, double S3, double ICS, double NC, double NGDist, double LGDist, double NGLGDist) {
+    public NetAlignStats() {}
+    
+    public NetAlignStats(double EC, double S3, double ICS, double NC, double NGDist, double LGDist, double NGLGDist,
+                         double JaccardSim) {
       this.EC = EC;
       this.S3 = S3;
       this.ICS = ICS;
@@ -293,13 +295,25 @@ public class NetworkAlignmentScorer {
       this.NGDist = NGDist;
       this.LGDist = LGDist;
       this.NGLGDist = NGLGDist;
+      this.JaccardSim = JaccardSim;
     }
   
     @Override
     public String toString() {
-      String scores = String.format("SCORES\nEC:%4.4f\nS3:%4.4f\nICS:%4.4f\nNC:%4.4f\nNGD:%4.4f\nLGD:%4.4f\nNGLGD:%4.4f",
-              EC, S3, ICS, NC, NGDist, LGDist, NGLGDist);
+      String scores = String.format("SCORES\nEC:%4.4f\nS3:%4.4f\nICS:%4.4f\nNC:%4.4f\nNGD:%4.4f\nLGD:%4.4f\nNGLGD:%4.4f\nJS:%4.4f",
+              EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccardSim);
       return (scores);
+    }
+    
+    public void replaceValuesTo(NetAlignStats other) {
+      EC = other.EC;
+      S3 = other.S3;
+      ICS = other.ICS;
+      NC = other.NC;
+      NGDist = other.NGDist;
+      LGDist = other.LGDist;
+      NGLGDist = other.NGLGDist;
+      JaccardSim = other.JaccardSim;
     }
   }
   

@@ -33,6 +33,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.Collection;
 
+import org.systemsbiology.biofabric.analysis.NetworkAlignmentScorer;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.EdgeLayout;
@@ -187,6 +188,8 @@ public class BioFabricNetwork {
   private AnnotationSet nodeAnnot_;
   private Map<Boolean, AnnotationSet> linkAnnots_;
   
+  public NetworkAlignmentScorer.NetAlignStats netAlignStats_;
+  
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -246,6 +249,7 @@ public class BioFabricNetwork {
         this.layoutMode_ = nad.layoutMode;
         this.nodeAnnot_ = nad.nodeAnnotForLayout;
         this.linkAnnots_ = nad.linkAnnotsForLayout;
+        this.netAlignStats_ = nad.netAlignStats;
         processLinks(nad, monitor);
         break;
       case BUILD_FOR_SUBMODEL:
@@ -2602,12 +2606,14 @@ public class BioFabricNetwork {
   public static class NetworkAlignmentBuildData extends RelayoutBuildData {
     
     public Map<NID.WithName, Boolean> mergedToCorrect, isAlignedNode;
+    public NetworkAlignmentScorer.NetAlignStats netAlignStats;
     public boolean forOrphans;
   
     public NetworkAlignmentBuildData(UniqueLabeller idGen,
                                      Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
                                      Map<NID.WithName, Boolean> mergedToCorrect,
                                      Map<NID.WithName, Boolean> isAlignedNode,
+                                     NetworkAlignmentScorer.NetAlignStats netAlignStats,
                                      Map<NID.WithName, String> clustAssign, boolean forOrphans,
                                      FabricColorGenerator colGen, BuildMode mode) {
       super(idGen, allLinks, loneNodeIDs, clustAssign, colGen, mode);
@@ -2615,6 +2621,7 @@ public class BioFabricNetwork {
       this.forOrphans = forOrphans;
       this.mergedToCorrect = mergedToCorrect;
       this.isAlignedNode = isAlignedNode;
+      this.netAlignStats = netAlignStats;
     }
 
     @Override

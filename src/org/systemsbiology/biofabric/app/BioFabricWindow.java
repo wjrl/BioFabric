@@ -413,6 +413,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     menuBar.add(sMenu);
     sMenu.add(fc.getAction(CommandSet.SEARCH, false, null));
     sMenu.add(fc.getAction(CommandSet.COMPARE_NODES, false, null));
+    sMenu.add(fc.getAction(CommandSet.NET_ALIGN_SCORES, false, null));
     
     //
     // Layout Menu
