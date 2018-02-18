@@ -280,7 +280,7 @@ public class NetworkAlignmentScorer {
    ** Contains common network alignment scores
    */
   
-  public static class NetAlignStats {
+  public static class NetAlignStats implements BioFabricNetwork.PluginData {
     
     public double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccardSim;
     

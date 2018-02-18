@@ -617,9 +617,10 @@ public class BioFabricNetwork {
     edgeLayout.layoutEdges(rbd, monitor);
     specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, false, monitor);
     
-    UiUtil.fixMePrintout("Node Annotations for NetAlign in processLinks");
+    UiUtil.fixMePrintout("Node Annotations and Link Grouping for NetAlign in processLinks");
     this.nodeAnnot_ = rbd.nodeAnnotForLayout;
     this.linkAnnots_ = rbd.linkAnnotsForLayout;
+    this.linkGrouping_ = rbd.linkGroups;
 
     //
     // Determine the start & end of each target row needed to handle the incoming
@@ -2686,6 +2687,52 @@ public class BioFabricNetwork {
       this.columnToTarget = new HashMap<Integer, NID.WithName>();
       this.columnCount = 0;
     } 
+  }
+  
+  /***************************************************************************
+   **
+   **
+   */
+  
+  public interface PluginData {}
+  
+  /***************************************************************************
+   **
+   **
+   */
+  
+  public interface PluginDataOwner {
+  
+    void writePluginData(PluginData data);
+    
+    void readPluginData(PluginData data);
+    
+  }
+  
+  /***************************************************************************
+   **
+   **
+   */
+  
+  public class NetAlignPluginDataOwner implements PluginDataOwner {
+    
+    private Map<String, PluginData> map;
+    
+    public NetAlignPluginDataOwner() {
+      map = new HashMap<String, PluginData>();
+    }
+  
+    @Override
+    public void writePluginData(PluginData data) {
+    }
+  
+    @Override
+    public void readPluginData(PluginData data) {
+    }
+  }
+  
+  public void storePluginData(String keyword, PluginData data, PluginDataOwner owner) {
+    
   }
  
   ////////////////////////////////////////////////////////////////////////////
