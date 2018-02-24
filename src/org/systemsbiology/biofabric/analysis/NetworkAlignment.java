@@ -2,7 +2,7 @@
 **
 **    File created by Rishi Desai
 **
-**    Copyright (C) 2003-2017 Institute for Systems Biology
+**    Copyright (C) 2003-2018 Institute for Systems Biology
 **                            Seattle, Washington, USA.
 **
 **    This library is free software; you can redistribute it and/or
@@ -402,63 +402,27 @@ public class NetworkAlignment {
                          Map<NID.WithName, NID.WithName> mergedIDToSmall, BTProgressMonitor monitor)
             throws AsynchExitRequestException {
       
-      List<FabricLink> nonShdwMergedLinks = new ArrayList<FabricLink>();
-      for (FabricLink link : mergedLinks) {
-        if (! link.isShadow()) {
-          nonShdwMergedLinks.add(link);
-        }
-      }
-      
       Set<NID.WithName> unalignedNodesG1 = new TreeSet<NID.WithName>();
-      for (FabricLink link : nonShdwMergedLinks) { // find the nodes of interest
+      for (FabricLink link : mergedLinks) { // find the nodes of interest
         if (link.getRelation().equals(GRAPH1)) {
-          unalignedNodesG1.add(link.getSrcID());
+          unalignedNodesG1.add(link.getSrcID()); // it's a set- so with shadows no duplicates
           unalignedNodesG1.add(link.getTrgID());
         }
       }
       
-      List<FabricLink> unalignedEdgesG1 = new ArrayList<FabricLink>();
-      for (FabricLink link : nonShdwMergedLinks) { // add the edges connecting to the nodes of interest (one hop away)
+      List<FabricLink> blueEdgesPlusContext = new ArrayList<FabricLink>();
+      for (FabricLink link : mergedLinks) { // add the edges connecting to the nodes of interest (one hop away)
         
         NID.WithName src = link.getSrcID(), trg = link.getTrgID();
         
         if (unalignedNodesG1.contains(src) || unalignedNodesG1.contains(trg)) {
-          unalignedEdgesG1.add(link);
+          blueEdgesPlusContext.add(link);
         }
       }
-      
-      //
-      // Go back to old G1 names
-      //
-      
-      List<FabricLink> oldUnalignedEdgesG1 = new ArrayList<FabricLink>();
-      for (FabricLink link : unalignedEdgesG1) {
-        
-        NID.WithName srcNew = link.getSrcID(), trgNew = link.getTrgID();
-        NID.WithName srcOld = mergedIDToSmall.get(srcNew), trgOld = mergedIDToSmall.get(trgNew);
-        
-        if (srcOld == null) { // this is an unaligned node so it stays the same
-          srcOld = srcNew;
-        }
-        if (trgOld == null) { // same here
-          trgOld = trgNew;
-        }
-        
-        FabricLink linkOldName = new FabricLink(srcOld, trgOld, GRAPH1, false, null);
-        FabricLink linkOldNameShdw = new FabricLink(srcOld, trgOld, GRAPH1, true, null);
-        
-        oldUnalignedEdgesG1.add(linkOldName);
-        oldUnalignedEdgesG1.add(linkOldNameShdw);
-      }
-  
-      //
-      // Change the final link-lists
-      //
   
       mergedLinks.clear();
       mergedLoneNodeIDs.clear();
-      mergedLinks.addAll(oldUnalignedEdgesG1);
-      
+      mergedLinks.addAll(blueEdgesPlusContext);
       return;
     }
     
@@ -507,3 +471,68 @@ public class NetworkAlignment {
   }
   
 }
+
+//  private void process(List<FabricLink> mergedLinks, Set<NID.WithName> mergedLoneNodeIDs,
+//                       Map<NID.WithName, NID.WithName> mergedIDToSmall, BTProgressMonitor monitor)
+//          throws AsynchExitRequestException {
+//
+//    List<FabricLink> nonShdwMergedLinks = new ArrayList<FabricLink>();
+//    for (FabricLink link : mergedLinks) {
+//      if (! link.isShadow()) {
+//        nonShdwMergedLinks.add(link);
+//      }
+//    }
+//
+//    Set<NID.WithName> unalignedNodesG1 = new TreeSet<NID.WithName>();
+//    for (FabricLink link : nonShdwMergedLinks) { // find the nodes of interest
+//      if (link.getRelation().equals(GRAPH1)) {
+//        unalignedNodesG1.add(link.getSrcID());
+//        unalignedNodesG1.add(link.getTrgID());
+//      }
+//    }
+//
+//    List<FabricLink> unalignedEdgesG1 = new ArrayList<FabricLink>();
+//    for (FabricLink link : nonShdwMergedLinks) { // add the edges connecting to the nodes of interest (one hop away)
+//
+//      NID.WithName src = link.getSrcID(), trg = link.getTrgID();
+//
+//      if (unalignedNodesG1.contains(src) || unalignedNodesG1.contains(trg)) {
+//        unalignedEdgesG1.add(link);
+//      }
+//    }
+//
+//    //
+//    // Go back to old G1 names
+//    //
+//
+//    List<FabricLink> oldUnalignedEdgesG1 = new ArrayList<FabricLink>();
+//    for (FabricLink link : unalignedEdgesG1) {
+//
+//      NID.WithName srcNew = link.getSrcID(), trgNew = link.getTrgID();
+//      NID.WithName srcOld = mergedIDToSmall.get(srcNew), trgOld = mergedIDToSmall.get(trgNew);
+//
+//      if (srcOld == null) { // this is an unaligned node so it stays the same
+//        srcOld = srcNew;
+//      }
+//      if (trgOld == null) { // same here
+//        trgOld = trgNew;
+//      }
+//
+//      FabricLink linkOldName = new FabricLink(srcOld, trgOld, GRAPH1, false, null);
+//      FabricLink linkOldNameShdw = new FabricLink(srcOld, trgOld, GRAPH1, true, null);
+//
+//      oldUnalignedEdgesG1.add(linkOldName);
+//      oldUnalignedEdgesG1.add(linkOldNameShdw);
+//    }
+//
+//    //
+//    // Change the final link-lists
+//    //
+//
+//    mergedLinks.clear();
+//    mergedLoneNodeIDs.clear();
+//    mergedLinks.addAll(oldUnalignedEdgesG1);
+//
+//    return;
+//  }
+

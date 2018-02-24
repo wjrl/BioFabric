@@ -57,12 +57,19 @@ public class NetworkAlignmentScorer {
   //
   ////////////////////////////////////////////////////////////////////////////
   
+  //
+  // Keep track of both the main alignment and perfect alignment's info
+  //
+  
   private Set<FabricLink> linksMain_, linksPerfect_;
   private Set<NID.WithName> loneNodeIDsMain_, loneNodeIDsPerfect_;
-  private Map<NID.WithName, Boolean> isAlignedNode_, isAlignedNodePerfect_;
+  private Map<NID.WithName, Boolean> isAlignedNodeMain_, isAlignedNodePerfect_;
   private Map<NID.WithName, Boolean> mergedToCorrect_;
   
   private BTProgressMonitor monitor_;
+  
+  private Map<NID.WithName, Set<FabricLink>> nodeToLinksMain_, nodeToLinksPerfect_;
+  private Map<NID.WithName, Set<NID.WithName>> nodeToNeighborsMain_, nodeToNeighborsPerfect_;
   
   private double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccardSim;
   private NetAlignStats netAlignStats_;
@@ -76,12 +83,52 @@ public class NetworkAlignmentScorer {
     this.mergedToCorrect_ = mergedToCorrect;
     this.linksPerfect_ = linksPerfect;
     this.loneNodeIDsPerfect_ = loneNodeIDsPerfect;
-    this.isAlignedNode_ = isAlignedNode;
+    this.isAlignedNodeMain_ = isAlignedNode;
     this.isAlignedNodePerfect_ = isAlignedNodePerfect;
     this.monitor_ = monitor;
+    this.nodeToLinksMain_ = new HashMap<NID.WithName, Set<FabricLink>>();
+    this.nodeToNeighborsMain_ = new HashMap<NID.WithName, Set<NID.WithName>>();
+    this.nodeToLinksPerfect_ = new HashMap<NID.WithName, Set<FabricLink>>();
+    this.nodeToNeighborsPerfect_ = new HashMap<NID.WithName, Set<NID.WithName>>();
+    
     removeDuplicateAndShadow();
+    generateStructs(reducedLinks, loneNodeIDs, nodeToLinksMain_, nodeToNeighborsMain_);
+    if (mergedToCorrect != null) {
+      generateStructs(linksPerfect, loneNodeIDsPerfect, nodeToLinksPerfect_, nodeToNeighborsPerfect_);
+    }
     calcScores();
     this.netAlignStats_ = new NetAlignStats(EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccardSim);
+    return;
+  }
+  
+  private void generateStructs(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Set<FabricLink>> nodeToLinks_, Map<NID.WithName, Set<NID.WithName>> nodeToNeighbors_) {
+    
+    for (FabricLink link : allLinks) {
+      NID.WithName src = link.getSrcID(), trg = link.getTrgID();
+      
+      if (nodeToLinks_.get(src) == null) {
+        nodeToLinks_.put(src, new HashSet<FabricLink>());
+      }
+      if (nodeToLinks_.get(trg) == null) {
+        nodeToLinks_.put(trg, new HashSet<FabricLink>());
+      }
+      if (nodeToNeighbors_.get(src) == null) {
+        nodeToNeighbors_.put(src, new HashSet<NID.WithName>());
+      }
+      if (nodeToNeighbors_.get(trg) == null) {
+        nodeToNeighbors_.put(trg, new HashSet<NID.WithName>());
+      }
+      
+      nodeToLinks_.get(src).add(link);
+      nodeToLinks_.get(trg).add(link);
+      nodeToNeighbors_.get(src).add(trg);
+      nodeToNeighbors_.get(trg).add(src);
+    }
+    
+    for (NID.WithName node : loneNodeIDs) {
+      nodeToLinks_.put(node, new HashSet<FabricLink>());
+      nodeToNeighbors_.put(node, new HashSet<NID.WithName>());
+    }
     return;
   }
   
@@ -144,7 +191,7 @@ public class NetworkAlignmentScorer {
   }
   
   private void calcNodeGroupValues() {
-    ScoreVector mainAlign = getNodeGroupRatios(linksMain_, loneNodeIDsMain_, mergedToCorrect_, isAlignedNode_, monitor_);
+    ScoreVector mainAlign = getNodeGroupRatios(linksMain_, loneNodeIDsMain_, mergedToCorrect_, isAlignedNodeMain_, monitor_);
     ScoreVector perfectAlign = getNodeGroupRatios(linksPerfect_, loneNodeIDsPerfect_, null, isAlignedNodePerfect_, monitor_);
     
     NGDist = mainAlign.distance(perfectAlign);
@@ -160,7 +207,7 @@ public class NetworkAlignmentScorer {
   }
   
   private void calcBothGroupValues() {
-    ScoreVector mainNG = getNodeGroupRatios(linksMain_, loneNodeIDsMain_, mergedToCorrect_, isAlignedNode_, monitor_);
+    ScoreVector mainNG = getNodeGroupRatios(linksMain_, loneNodeIDsMain_, mergedToCorrect_, isAlignedNodeMain_, monitor_);
     ScoreVector mainLG = getLinkGroupRatios(linksMain_, monitor_);
     mainNG.concat(mainLG);
   
@@ -267,6 +314,10 @@ public class NetworkAlignmentScorer {
   
   private  void calcJaccardSimilarity() {
   // will be filled in later
+  
+//    for (NID.WithName nodeA : )
+  
+  
   }
   
   ////////////////////////////////////////////////////////////////////////////
@@ -373,6 +424,3 @@ public class NetworkAlignmentScorer {
   }
 
 }
-
-
-

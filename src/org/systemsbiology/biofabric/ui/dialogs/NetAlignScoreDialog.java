@@ -55,14 +55,14 @@ public class NetAlignScoreDialog extends JDialog {
     GridBagConstraints gbc = new GridBagConstraints();
   
     JLabel[] labels = {
-            new JLabel("EC: "         + stats.EC),
-            new JLabel("S3: "         + stats.S3),
-            new JLabel("ICS: "        + stats.ICS),
-            new JLabel("NC: "         + stats.NC),
-            new JLabel("NGDist: "     + stats.NGDist),
-            new JLabel("LGDist: "     + stats.LGDist),
-            new JLabel("NGLGDist: "   + stats.NGLGDist),
-            new JLabel("JaccardSim: " + stats.JaccardSim)
+            new JLabel(String.format("EC: %4.4f", stats.EC)),
+            new JLabel(String.format("S3: %4.4f", stats.S3)),
+            new JLabel(String.format("ICS: %4.4f", stats.ICS)),
+            new JLabel(String.format("NC: %4.4f", stats.NC)),
+            new JLabel(String.format("NGDist: %4.4f", stats.NGDist)),
+            new JLabel(String.format("LGDist: %4.4f", stats.LGDist)),
+            new JLabel(String.format("NGLGDist: %4.4f", stats.NGLGDist)),
+            new JLabel(String.format("JaccSim: %4.4f", stats.JaccardSim)),
     };
     
     Box scoreBox = Box.createVerticalBox();
