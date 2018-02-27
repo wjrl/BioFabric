@@ -337,7 +337,7 @@ public class NodeClusterLayout extends NodeLayout {
         currClust = clust;
         startRow = row;
         if (row.equals(lastKey)) {
-          AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0);
+          AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0, null);
           retval.addAnnot(annot);
           break;
         }
@@ -345,19 +345,19 @@ public class NodeClusterLayout extends NodeLayout {
       }
       if (currClust.equals(clust)) {
         if (row.equals(lastKey)) {
-          AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0);
+          AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0, null);
           retval.addAnnot(annot);
           break;
         }
         continue;
       } else { 
         // We have just entered a new cluster
-        AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue() - 1, 0);
+        AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue() - 1, 0, null);
         retval.addAnnot(annot);
         startRow = row;
         currClust = clust;
         if (row.equals(lastKey)) {
-          annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0);
+          annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0, null);
           retval.addAnnot(annot);
           break;
         }
@@ -433,7 +433,7 @@ public class NodeClusterLayout extends NodeLayout {
   	
     for (String aName : ord.values()) {
   		MinMax mm = clustRanges.get(aName);
-  		AnnotationSet.Annot annot = new AnnotationSet.Annot(aName, mm.min, mm.max, 0);
+  		AnnotationSet.Annot annot = new AnnotationSet.Annot(aName, mm.min, mm.max, 0, null);
   		afns.addAnnot(annot);
   	}
   
