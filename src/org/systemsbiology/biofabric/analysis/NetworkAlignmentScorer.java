@@ -265,7 +265,8 @@ public class NetworkAlignmentScorer {
                                                 Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
                                                 BTProgressMonitor monitor) {
     
-    NetworkAlignmentLayout.NodeGroupMap map = new NetworkAlignmentLayout.NodeGroupMap(links, loneNodeIDs, mergedToCorrect, isAlignedNode, NetworkAlignmentLayout.DefaultNGOrderWithoutCorrect);
+    NetworkAlignmentLayout.NodeGroupMap map = new NetworkAlignmentLayout.NodeGroupMap(links, loneNodeIDs, mergedToCorrect, isAlignedNode,
+            NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
     
     Set<NID.WithName> allNodes;
     try {

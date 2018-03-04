@@ -21,6 +21,7 @@
 
 package org.systemsbiology.biofabric.layouts;
 
+import java.security.acl.Group;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -154,7 +155,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
     // Initialize data structures for layout
     //
     
-    NodeGroupMap grouper = new NodeGroupMap(nabd, DefaultNGOrderWithoutCorrect);
+    NodeGroupMap grouper = new NodeGroupMap(nabd, defaultNGOrderWithoutCorrect, ngAnnotColorsWithoutCorrect);
     
     // master list of nodes in each group
     SortedMap<Integer, List<NID.WithName>> classToGroup = new TreeMap<Integer, List<NID.WithName>>();
@@ -370,12 +371,10 @@ public class NetworkAlignmentLayout extends NodeLayout {
         }
       }
       if (min > max || min < 0) {
-//        System.out.println(min + "  " + max +"  NG:" + nodeGroup);
         throw new IllegalStateException("Annotation min max error in NetAlign Layout");
       }
       
-//      AnnotationSet.Annot annot = new AnnotationSet.Annot(DefaultNGOrderWithoutCorrect[nodeGroup], min, max, 0);
-      AnnotationSet.Annot annot = new AnnotationSet.Annot(grouper.getKey(nodeGroup), min, max, 0, null);
+      AnnotationSet.Annot annot = new AnnotationSet.Annot(grouper.getKey(nodeGroup), min, max, 0, grouper.getColor(nodeGroup));
       annots.addAnnot(annot);
     }
     nabd.setNodeAnnotations(annots);
@@ -411,7 +410,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
           YELLOW_EDGES = 4;
 
   
-  public static final String[] DefaultNGOrderWithoutCorrect = {
+  public static final String[] defaultNGOrderWithoutCorrect = {
           "(P:0)",
           "(P:P)",            // FIRST THREE LINK GROUPS
           "(P:B)",
@@ -434,7 +433,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
           "(R:0)"
   };
   
-  public static final String[] DefaultNGOrderWithCorrect = {
+  public static final String[] defaultNGOrderWithCorrect = {
           "(P:0/1)",
           "(P:0/0)",
           "(P:P/1)",
@@ -473,6 +472,30 @@ public class NetworkAlignmentLayout extends NodeLayout {
           "(R:0/0)"
   };
   
+  public static final String[][] ngAnnotColorsWithoutCorrect = {
+          {"(P:0)",           "GrayBlue"},
+          {"(P:P)",           "Orange"},        // FIRST THREE LINK GROUPS
+          {"(P:B)",           "Yellow"},
+          {"(P:pRp)",         "Green"},
+          {"(P:P/B)",         "Purple"},
+          {"(P:P/pRp)",       "Pink"},
+          {"(P:B/pRp)",       "PowderBlue"},
+          {"(P:P/B/pRp)",     "Peach"},
+          {"(P:pRr)",         "GrayBlue"},      // PURPLE NODES IN LINK GROUP 3
+          {"(P:P/pRr)",       "Orange"},
+          {"(P:B/pRr)",       "Yellow"},
+          {"(P:pRp/pRr)",     "Green"},
+          {"(P:P/B/pRr)",     "Purple"},
+          {"(P:P/pRp/pRr)",   "Pink"},
+          {"(P:B/pRp/pRr)",   "PowderBlue"},
+          {"(P:P/B/pRp/pRr)", "Peach"},
+          {"(R:pRr)",         "GrayBlue"},      // RED NODES IN LINK GROUP 5
+          {"(R:rRr)",         "Orange"},
+          {"(R:pRr/rRr)",     "Yellow"},
+          {"(R:0)",           "Green"}
+          
+  };
+  
   /***************************************************************************
    **
    ** HashMap based Data structure
@@ -485,20 +508,22 @@ public class NetworkAlignmentLayout extends NodeLayout {
     private Map<NID.WithName, Boolean> mergedToCorrect_, isAlignedNode_;
     private Map<GroupID, Integer> groupIDtoIndex_;
     private Map<Integer, GroupID> indexToGroupID_;
+    private Map<GroupID, String> groupIDtoColor_;
     private final int numGroups_;
     
-    public NodeGroupMap(BioFabricNetwork.NetworkAlignmentBuildData nabd, String[] nodeGroupOrder) {
-      this(nabd.allLinks, nabd.loneNodeIDs, nabd.mergedToCorrect, nabd.isAlignedNode, nodeGroupOrder);
+    public NodeGroupMap(BioFabricNetwork.NetworkAlignmentBuildData nabd, String[] nodeGroupOrder, String[][] colorMap) {
+      this(nabd.allLinks, nabd.loneNodeIDs, nabd.mergedToCorrect, nabd.isAlignedNode, nodeGroupOrder, colorMap);
     }
     
     public NodeGroupMap(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
                         Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
-                        String[] nodeGroupOrder) {
+                        String[] nodeGroupOrder, String[][] colorMap) {
       this.mergedToCorrect_ = mergedToCorrect;
       this.isAlignedNode_ = isAlignedNode;
       this.numGroups_ = nodeGroupOrder.length;
       generateStructs(allLinks, loneNodeIDs);
       generateMap(nodeGroupOrder);
+      generateColorMap(colorMap);
       return;
     }
     
@@ -547,6 +572,17 @@ public class NetworkAlignmentLayout extends NodeLayout {
       return;
     }
     
+    private void generateColorMap(String[][] colorMap) {
+      groupIDtoColor_ = new HashMap<GroupID, String>();
+      
+      for (String[] ngCol : colorMap) {
+        GroupID groupID = new GroupID(ngCol[0]);
+        String color = ngCol[1];
+        groupIDtoColor_.put(groupID, color);
+      }
+      return;
+    }
+    
     /***************************************************************************
      **
      ** Return the index from the given node group ordering
@@ -570,6 +606,16 @@ public class NetworkAlignmentLayout extends NodeLayout {
         throw new IllegalArgumentException("Index not found in given order list");
       }
       return (indexToGroupID_.get(index).getKey());
+    }
+   
+    /***************************************************************************
+     **
+     ** Return the Annot Color for index of NG label
+     */
+    
+    public String getColor(Integer index) {
+      GroupID groupID = indexToGroupID_.get(index);
+      return (groupIDtoColor_.get(groupID));
     }
     
     public int numGroups() {
@@ -622,9 +668,9 @@ public class NetworkAlignmentLayout extends NodeLayout {
       sb.append("(");
       sb.append(isAlignedNode_.get(node) ? "P" : "R");  // aligned/unaligned node
       sb.append(":");
-      
-      for (int i = 0; i < tags.size(); i++) {  // link group tags
-        sb.append(tags.get(i));
+  
+      for (String tag : tags) {  // link group tags
+        sb.append(tag);
         sb.append("/");
       }
       
@@ -647,7 +693,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       return (new GroupID(sb.toString()));
     }
     
-    Comparator<NID.WithName> sortDecrDegree() {
+    private Comparator<NID.WithName> sortDecrDegree() {
       return (new Comparator<NID.WithName>() {
         @Override
         public int compare(NID.WithName node1, NID.WithName node2) {
