@@ -71,13 +71,14 @@ public class NetworkAlignmentScorer {
   private Map<NID.WithName, Set<FabricLink>> nodeToLinksMain_, nodeToLinksPerfect_;
   private Map<NID.WithName, Set<NID.WithName>> nodeToNeighborsMain_, nodeToNeighborsPerfect_;
   
-  private double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccardSim;
+  private double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccSim;
   private NetAlignStats netAlignStats_;
   
   public NetworkAlignmentScorer(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
                                 Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
                                 Map<NID.WithName, Boolean> isAlignedNodePerfect,
-                                Set<FabricLink> linksPerfect, Set<NID.WithName> loneNodeIDsPerfect, BTProgressMonitor monitor) {
+                                Set<FabricLink> linksPerfect, Set<NID.WithName> loneNodeIDsPerfect,
+                                BTProgressMonitor monitor) {
     this.linksMain_ = new HashSet<FabricLink>(reducedLinks);
     this.loneNodeIDsMain_ = new HashSet<NID.WithName>(loneNodeIDs);
     this.mergedToCorrect_ = mergedToCorrect;
@@ -97,7 +98,7 @@ public class NetworkAlignmentScorer {
       generateStructs(linksPerfect, loneNodeIDsPerfect, nodeToLinksPerfect_, nodeToNeighborsPerfect_);
     }
     calcScores();
-    this.netAlignStats_ = new NetAlignStats(EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccardSim);
+    this.netAlignStats_ = new NetAlignStats(EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccSim);
     return;
   }
   
@@ -134,13 +135,13 @@ public class NetworkAlignmentScorer {
   
   private void calcScores() {
     calcTopologicalScores();
-    
+//    calcJaccardSimilarity();
+  
     if (mergedToCorrect_ != null) { // must have perfect alignment for these measures
       calcNodeCorrectness();
       calcNodeGroupValues();
       calcLinkGroupValues();
       calcBothGroupValues();
-      calcJaccardSimilarity();
     }
   }
   
@@ -313,11 +314,8 @@ public class NetworkAlignmentScorer {
   }
   
   private  void calcJaccardSimilarity() {
-  // will be filled in later
-  
-//    for (NID.WithName nodeA : )
-  
-  
+    this.JaccSim = new JaccardSimilarity().calcScore(isAlignedNodeMain_.keySet(), nodeToLinksMain_);
+    return;
   }
   
   ////////////////////////////////////////////////////////////////////////////
@@ -337,8 +335,8 @@ public class NetworkAlignmentScorer {
     
     public NetAlignStats() {}
     
-    public NetAlignStats(double EC, double S3, double ICS, double NC, double NGDist, double LGDist, double NGLGDist,
-                         double JaccardSim) {
+    public NetAlignStats(double EC, double S3, double ICS, double NC, double NGDist, double LGDist,
+                         double NGLGDist, double JaccardSim) {
       this.EC = EC;
       this.S3 = S3;
       this.ICS = ICS;
@@ -351,7 +349,8 @@ public class NetworkAlignmentScorer {
   
     @Override
     public String toString() {
-      String scores = String.format("SCORES\nEC:%4.4f\nS3:%4.4f\nICS:%4.4f\nNC:%4.4f\nNGD:%4.4f\nLGD:%4.4f\nNGLGD:%4.4f\nJS:%4.4f",
+      String scores = String.format("SCORES\nEC:%4.4f\nS3:%4.4f\nICS:%4.4f\nNC:%4.4" +
+                      "f\nNGD:%4.4f\nLGD:%4.4f\nNGLGD:%4.4f\nJS:%4.4f",
               EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccardSim);
       return (scores);
     }
@@ -419,6 +418,109 @@ public class NetworkAlignmentScorer {
       }
       this.values_ = concated;
       return;
+    }
+    
+  }
+  
+  /****************************************************************************
+   **
+   ** Jaccard Similarity- currently WRONG- need to fix
+   */
+  
+  private static class JaccardSimilarity {
+  
+    /***************************************************************************
+     **
+     ** Calc the score; Adapted from NodeEQC.java
+     */
+  
+    public double calcScore(Set<NID.WithName> alignedNodes, Map<NID.WithName, Set<FabricLink>> nodeToLinks) {
+    
+      // For alignment, figure Jaccard
+    
+      HashSet<NID.WithName> union = new HashSet<NID.WithName>();
+      HashSet<NID.WithName> intersect = new HashSet<NID.WithName>();
+      HashSet<NID.WithName> scratchNode = new HashSet<NID.WithName>();
+      HashSet<NID.WithName> scratchMatch = new HashSet<NID.WithName>();
+      double totJ = 0.0;
+      int numEnt = 0;
+    
+      for (NID.WithName node : alignedNodes) {
+        int lenAdjust = 0;
+        Set<NID.WithName> neighOfNode = neighborsOfLG(node, new String[]{NetworkAlignment.COVERED_EDGE, NetworkAlignment.GRAPH1}, nodeToLinks);
+
+        Set<NID.WithName> neighOfMatch = neighborsOfLG(node, new String[]{NetworkAlignment.COVERED_EDGE, NetworkAlignment.INDUCED_GRAPH2,
+                NetworkAlignment.HALF_UNALIGNED_GRAPH2, NetworkAlignment.FULL_UNALIGNED_GRAPH2}, nodeToLinks);
+        
+        scratchNode.clear();
+        scratchNode.addAll(neighOfNode);
+        scratchMatch.clear();
+        scratchMatch.addAll(neighOfMatch);
+        if (scratchNode.contains(node)) {
+          scratchNode.remove(node);
+          scratchMatch.remove(node);
+          lenAdjust = 1;
+        }
+        union.clear();
+        union(scratchNode, scratchMatch, union);
+        intersect.clear();
+        intersection(scratchNode, scratchMatch, intersect);
+        int uSize = union.size() + lenAdjust;
+        int iSize = intersect.size() + lenAdjust;
+        double jaccard = (double)(iSize) / (double)uSize;
+        totJ += jaccard;
+        numEnt++;
+      }
+      double score = totJ / numEnt;
+    
+      return (score);
+    }
+    
+    private Set<NID.WithName> neighborsOfLG(NID.WithName node, String[] lgAllowed, Map<NID.WithName, Set<FabricLink>> nodeToLinks) {
+
+      Set<NID.WithName> nebrs = new HashSet<NID.WithName>();
+      
+      for (FabricLink link : nodeToLinks.get(node)) {
+        boolean ok = false;
+        for (String rel : lgAllowed) { // make sure this link is in specified link groups
+          if (link.getRelation().equals(rel)) {
+            ok = true;
+          }
+        }
+        if (!ok) {
+          continue;
+        }
+        nebrs.add(link.getSrcID()); // yes I am adding the main 'node' again every time
+        nebrs.add(link.getTrgID()); // but this is a set so it doesn't matter
+      }
+      
+      nebrs.remove(node); // remove main 'node'
+      
+      return (nebrs);
+    }
+  
+    /***************************************************************************
+     **
+     ** Set intersection helper
+     */
+  
+    private  <T> Set<T> intersection(Set<T> one, Set<T> two, Set<T> result) {
+      result.clear();
+      result.addAll(one);
+      result.retainAll(two);
+      return (result);
+    }
+  
+    /***************************************************************************
+     **
+     ** Set union helper
+     */
+  
+    private  <T> Set<T> union(Set<T> one, Set<T> two, Set<T> result) {
+      result.clear();
+      result.addAll(one);
+      result.addAll(two);
+      return (result);
     }
     
   }

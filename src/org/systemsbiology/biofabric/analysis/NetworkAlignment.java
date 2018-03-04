@@ -174,7 +174,7 @@ public class NetworkAlignment {
     //
     
     if (forOrphanEdges) {
-      (new OrphanEdgeLayout()).process(mergedLinks_, mergedLoners_, mergedIDToSmall_, monitor_);
+      (new OrphanEdgeLayout()).process(mergedLinks_, mergedLoners_, monitor_);
     }
     
     return;
@@ -203,10 +203,10 @@ public class NetworkAlignment {
       String smallName = smallNode.getName(), largeName = largeNode.getName();
       
       //
-      // Aligned nodes merge name in the form large-small
+      // Aligned nodes merge name in the form small::large
       //
       
-      String mergedName = String.format("%s-%s", largeName, smallName);
+      String mergedName = String.format("%s::%s", smallName, largeName);
       
       NID nid = idGen_.getNextOID();
       NID.WithName merged_node = new NID.WithName(nid, mergedName);
@@ -256,6 +256,7 @@ public class NetworkAlignment {
     }
     
     LoopReporter lr = new LoopReporter(oldLinks.size(), 20, monitor_, 0.0, 1.0, "progress.mergingLinks");
+    Set<FabricLink> newLinkSet = new HashSet<FabricLink>();
     
     for (FabricLink oldLink : oldLinks) {
       
@@ -271,11 +272,10 @@ public class NetworkAlignment {
       
       FabricLink newLink = new FabricLink(newA, newB, TEMPORARY, false, false);
       // 'directed' must be false
-      
-      newLinks.add(newLink);
+      newLinkSet.add(newLink);
       lr.report();
     }
-    
+    newLinks.addAll(newLinkSet);
     lr.finish();
     
     for (NID.WithName oldLoner : oldLoners) {
@@ -295,11 +295,10 @@ public class NetworkAlignment {
   private void createMergedLinkList(List<FabricLink> newLinksG1, List<FabricLink> newLinksG2)
           throws AsynchExitRequestException {
     
-    long totalSize = newLinksG2.size() + newLinksG2.size();
-    LoopReporter lr = new LoopReporter(totalSize, 20, monitor_, 0.0, 1.0, "progress.separatingLinks");
+    LoopReporter lr = new LoopReporter(newLinksG2.size(), 20, monitor_, 0.0, 1.0, "progress.separatingLinksA");
 
     NetAlignFabricLinkLocator comp = new NetAlignFabricLinkLocator();
-    Collections.sort(newLinksG1, comp);
+    sortLinks(newLinksG1);
     
     for (FabricLink linkG2 : newLinksG2) {
       
@@ -323,9 +322,9 @@ public class NetworkAlignment {
       }
       lr.report();
     }
-    
-    Collections.sort(newLinksG2, comp);
-    
+    lr = new LoopReporter(newLinksG1.size(), 20, monitor_, 0.0, 1.0, "progress.separatingLinksB");
+    sortLinks(newLinksG2);
+  
     for (FabricLink linkG1 : newLinksG1) {
       
       int index = Collections.binarySearch(newLinksG2, linkG1, comp);
@@ -335,7 +334,6 @@ public class NetworkAlignment {
       }
       lr.report();
     }
-    lr.finish();
     return; // This method is not ideal. . .
   }
   
@@ -382,6 +380,25 @@ public class NetworkAlignment {
     return;
   }
   
+  /****************************************************************************
+   **
+   ** Sort list of FabricLinks
+   */
+  
+  private void sortLinks(List<FabricLink> newLinks) throws AsynchExitRequestException {
+    NetAlignFabricLinkLocator comp = new NetAlignFabricLinkLocator();
+    Set<FabricLink> sorted = new TreeSet<FabricLink>(comp);
+    LoopReporter lr = new LoopReporter(newLinks.size(), 20, monitor_, 0.0, 1.0, "progress.sortingLinks");
+  
+    for (FabricLink link : newLinks) {
+      sorted.add(link);
+      lr.report();
+    }
+    newLinks.clear();
+    newLinks.addAll(sorted);  // assume to have no loop reporter here
+    return;
+  }
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // INNER CLASSES
@@ -399,25 +416,33 @@ public class NetworkAlignment {
     }
     
     private void process(List<FabricLink> mergedLinks, Set<NID.WithName> mergedLoneNodeIDs,
-                         Map<NID.WithName, NID.WithName> mergedIDToSmall, BTProgressMonitor monitor)
+                         BTProgressMonitor monitor)
             throws AsynchExitRequestException {
       
-      Set<NID.WithName> unalignedNodesG1 = new TreeSet<NID.WithName>();
+      LoopReporter reporter = new LoopReporter(mergedLinks.size(), 20, monitor, 0.0, 1.0,
+              "progress.findingOrphanEdges");
+      
+      Set<NID.WithName> blueNodesG1 = new TreeSet<NID.WithName>();
       for (FabricLink link : mergedLinks) { // find the nodes of interest
         if (link.getRelation().equals(GRAPH1)) {
-          unalignedNodesG1.add(link.getSrcID()); // it's a set- so with shadows no duplicates
-          unalignedNodesG1.add(link.getTrgID());
+          blueNodesG1.add(link.getSrcID()); // it's a set- so with shadows no duplicates
+          blueNodesG1.add(link.getTrgID());
         }
+        reporter.report();
       }
+      
+      reporter = new LoopReporter(mergedLinks.size(), 20, monitor, 0.0, 1.0,
+              "progress.orphanEdgesContext");
       
       List<FabricLink> blueEdgesPlusContext = new ArrayList<FabricLink>();
       for (FabricLink link : mergedLinks) { // add the edges connecting to the nodes of interest (one hop away)
         
         NID.WithName src = link.getSrcID(), trg = link.getTrgID();
         
-        if (unalignedNodesG1.contains(src) || unalignedNodesG1.contains(trg)) {
+        if (blueNodesG1.contains(src) || blueNodesG1.contains(trg)) {
           blueEdgesPlusContext.add(link);
         }
+        reporter.report();
       }
   
       mergedLinks.clear();
@@ -471,68 +496,3 @@ public class NetworkAlignment {
   }
   
 }
-
-//  private void process(List<FabricLink> mergedLinks, Set<NID.WithName> mergedLoneNodeIDs,
-//                       Map<NID.WithName, NID.WithName> mergedIDToSmall, BTProgressMonitor monitor)
-//          throws AsynchExitRequestException {
-//
-//    List<FabricLink> nonShdwMergedLinks = new ArrayList<FabricLink>();
-//    for (FabricLink link : mergedLinks) {
-//      if (! link.isShadow()) {
-//        nonShdwMergedLinks.add(link);
-//      }
-//    }
-//
-//    Set<NID.WithName> unalignedNodesG1 = new TreeSet<NID.WithName>();
-//    for (FabricLink link : nonShdwMergedLinks) { // find the nodes of interest
-//      if (link.getRelation().equals(GRAPH1)) {
-//        unalignedNodesG1.add(link.getSrcID());
-//        unalignedNodesG1.add(link.getTrgID());
-//      }
-//    }
-//
-//    List<FabricLink> unalignedEdgesG1 = new ArrayList<FabricLink>();
-//    for (FabricLink link : nonShdwMergedLinks) { // add the edges connecting to the nodes of interest (one hop away)
-//
-//      NID.WithName src = link.getSrcID(), trg = link.getTrgID();
-//
-//      if (unalignedNodesG1.contains(src) || unalignedNodesG1.contains(trg)) {
-//        unalignedEdgesG1.add(link);
-//      }
-//    }
-//
-//    //
-//    // Go back to old G1 names
-//    //
-//
-//    List<FabricLink> oldUnalignedEdgesG1 = new ArrayList<FabricLink>();
-//    for (FabricLink link : unalignedEdgesG1) {
-//
-//      NID.WithName srcNew = link.getSrcID(), trgNew = link.getTrgID();
-//      NID.WithName srcOld = mergedIDToSmall.get(srcNew), trgOld = mergedIDToSmall.get(trgNew);
-//
-//      if (srcOld == null) { // this is an unaligned node so it stays the same
-//        srcOld = srcNew;
-//      }
-//      if (trgOld == null) { // same here
-//        trgOld = trgNew;
-//      }
-//
-//      FabricLink linkOldName = new FabricLink(srcOld, trgOld, GRAPH1, false, null);
-//      FabricLink linkOldNameShdw = new FabricLink(srcOld, trgOld, GRAPH1, true, null);
-//
-//      oldUnalignedEdgesG1.add(linkOldName);
-//      oldUnalignedEdgesG1.add(linkOldNameShdw);
-//    }
-//
-//    //
-//    // Change the final link-lists
-//    //
-//
-//    mergedLinks.clear();
-//    mergedLoneNodeIDs.clear();
-//    mergedLinks.addAll(oldUnalignedEdgesG1);
-//
-//    return;
-//  }
-
