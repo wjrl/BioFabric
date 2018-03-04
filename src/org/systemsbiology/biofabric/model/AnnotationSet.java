@@ -131,48 +131,6 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
   
   /***************************************************************************
   **
-  ** Class to hold all the annotations relevant for a given position (row or column)
-  */  
-  
-  public static class AnnotsForPos {
-    private TreeMap<Integer, SortedSet<Annot>> perLayers_;
- 
-    public AnnotsForPos() {
-      perLayers_ = new TreeMap<Integer, SortedSet<Annot>>(Collections.reverseOrder());
-      perLayers_.put(Integer.valueOf(0), new TreeSet<Annot>());
-    }
-    
-    public void addAnnot(Annot toAdd) {
-      int layer = toAdd.getLayer();
-      SortedSet<Annot> forLayer = perLayers_.get(Integer.valueOf(layer));
-      if (forLayer == null) {
-        forLayer = new TreeSet<Annot>();
-        perLayers_.put(Integer.valueOf(layer), forLayer);
-      }
-      forLayer.add(toAdd);
-      return;
-    }
-
-    public void clear() {
-      for (Integer layer : perLayers_.keySet()) {
-        perLayers_.get(layer).clear();
-      }
-      return;
-    }
-    
-    public void displayStrings(List<String> fill) {
-      for (Integer layer : perLayers_.keySet()) {
-        SortedSet<Annot> forLay = perLayers_.get(layer);
-        for (Annot ant : forLay) {
-          fill.add(ant.getName());
-        }
-      }
-      return;
-    }
-  }
-  
-  /***************************************************************************
-  **
   ** Class to hold a single annotation
   */  
   

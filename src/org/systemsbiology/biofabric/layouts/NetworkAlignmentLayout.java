@@ -375,7 +375,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       }
       
 //      AnnotationSet.Annot annot = new AnnotationSet.Annot(DefaultNGOrderWithoutCorrect[nodeGroup], min, max, 0);
-      AnnotationSet.Annot annot = new AnnotationSet.Annot(grouper.getKey(nodeGroup), min, max, 0);
+      AnnotationSet.Annot annot = new AnnotationSet.Annot(grouper.getKey(nodeGroup), min, max, 0, null);
       annots.addAnnot(annot);
     }
     nabd.setNodeAnnotations(annots);

@@ -165,14 +165,14 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
       
         int endIdx = linkSet.size() - 1;
       
-        AnnotationSet.Annot annot = new AnnotationSet.Annot(currentRel, startIdx, endIdx, 0);
+        AnnotationSet.Annot annot = new AnnotationSet.Annot(currentRel, startIdx, endIdx, 0, null);
         annots.addAnnot(annot);
         
       } else if (! linkSet.get(index).getRelation().equals(currentRel)) {
       
         int endIdx = index - 1;  // backtrack one position
   
-        AnnotationSet.Annot annot = new AnnotationSet.Annot(currentRel, startIdx, endIdx, 0);
+        AnnotationSet.Annot annot = new AnnotationSet.Annot(currentRel, startIdx, endIdx, 0, null);
         annots.addAnnot(annot);
       
         startIdx = index;                              // update the start index

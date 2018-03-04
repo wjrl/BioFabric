@@ -605,7 +605,6 @@ public class PaintCacheSmall {
     }
     
     annotCount = 0;
-    Color[] useColors = (nodeAnnot != null) ? annotGrays_ : annotColors_;
     if (linkAnnot != null) {
     	LoopReporter lr5 = new LoopReporter(linkAnnot.size(), 20, monitor, 0.0, 1.0, "progress.buildLinkAnnots");
       for (AnnotationSet.Annot an : linkAnnot) {
