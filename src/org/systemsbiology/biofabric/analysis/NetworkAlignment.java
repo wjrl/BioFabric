@@ -300,6 +300,9 @@ public class NetworkAlignment {
     NetAlignFabricLinkLocator comp = new NetAlignFabricLinkLocator();
     sortLinks(newLinksG1);
     
+    SortedSet<NID.WithName> alignedNodesG2 = new TreeSet<NID.WithName>(largeToMergedID_.values());
+    // contains all aligned nodes; contains() works in O(log(n))
+  
     for (FabricLink linkG2 : newLinksG2) {
       
       int index = Collections.binarySearch(newLinksG1, linkG2, comp);
@@ -309,12 +312,10 @@ public class NetworkAlignment {
       if (index >= 0) {
         addMergedLink(src, trg, COVERED_EDGE);
       } else {
-        // contains all alinged nodes; contains() works in O(log(n))
-        SortedSet<NID.WithName> alignedNodesG2 = new TreeSet<NID.WithName>(largeToMergedID_.values());
-        
-        if (alignedNodesG2.contains(src) && alignedNodesG2.contains(trg)) {
+        boolean containsSRC = alignedNodesG2.contains(src), containsTRG = alignedNodesG2.contains(trg);
+        if (containsSRC && containsTRG) {
           addMergedLink(src, trg, INDUCED_GRAPH2);
-        } else if (alignedNodesG2.contains(src) || alignedNodesG2.contains(trg)) {
+        } else if (containsSRC || containsTRG) {
           addMergedLink(src, trg, HALF_UNALIGNED_GRAPH2);
         } else {
           addMergedLink(src, trg, FULL_UNALIGNED_GRAPH2);
