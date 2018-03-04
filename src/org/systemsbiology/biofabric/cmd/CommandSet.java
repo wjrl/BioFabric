@@ -1568,7 +1568,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     Map<NID.WithName, NID.WithName> mapG1toG2 = new HashMap<NID.WithName, NID.WithName>();
     try {
   
-      AlignmentLoader.NetAlignStats stats = new AlignmentLoader.NetAlignStats();
+      AlignmentLoader.NetAlignFileStats stats = new AlignmentLoader.NetAlignFileStats();
       AlignmentLoader alod = new AlignmentLoader();
       
       alod.readAlignment(file, mapG1toG2, stats, linksGraph1, loneNodesGraph1, linksGraph2, loneNodesGraph2);

@@ -22,7 +22,6 @@
 package org.systemsbiology.biofabric.io;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -32,7 +31,6 @@ import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.NID;
-import org.systemsbiology.biofabric.util.UiUtil;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -77,11 +75,10 @@ public class AlignmentLoader {
    ** Process an alignment (.align) file
    */
   
-  public String readAlignment(File infile, Map<NID.WithName, NID.WithName> mapG1ToG2, AlignmentLoader.NetAlignStats stats,
+  public String readAlignment(File infile, Map<NID.WithName, NID.WithName> mapG1ToG2, NetAlignFileStats stats,
                               ArrayList<FabricLink> linksGraph1, HashSet<NID.WithName> loneNodesGraph1,
                               ArrayList<FabricLink> linksGraph2, HashSet<NID.WithName> loneNodesGraph2)
           throws IOException {
-  
   
     Map<String, NID.WithName> G1nameToNID, G2nameToNID;
     try {
@@ -107,28 +104,6 @@ public class AlignmentLoader {
       //
   
       String strNameG1 = st.nextToken(), strNameG2 = st.nextToken();
-  
-      {// displaying yeast2500-yeast5000 (SCerevisiae) files with perfect alignment
-        // but alignment was done with full yeast2500 file not Filtered file
-        // with entrezIDs only--- so we take out the nodes w/out entrez IDs
-        String[] nodesWithoutEntrezIDs = {
-                "ATM1",
-                "CTM1",
-                "IMD1",
-                "PHM8",
-                "PUT1",
-                "SBE2",
-                "YAR075W",
-                "YDL026W",
-                "YDR133C",
-                "YGR272C",
-                "YNL276C",};
-        Set<String> notFiltered = new HashSet<String>();
-        Collections.addAll(notFiltered, nodesWithoutEntrezIDs);
-        if (notFiltered.contains(strNameG1) || notFiltered.contains(strNameG2)) {
-//          continue;
-        }
-      }
      
       boolean existsInG1 = G1nameToNID.containsKey(strNameG1),
               existsInG2 = G2nameToNID.containsKey(strNameG2);
@@ -164,11 +139,11 @@ public class AlignmentLoader {
     if (mapG1ToG2.size() != G1nameToNID.size()) {
       String msg = "size of alignment map: " + mapG1ToG2.size() +
               "; size of smaller graph: " + G1nameToNID.size() + "; sizes not equal";
-      throw new IOException("Incomplete node mapping: " + msg);
+      throw (new IOException("Incomplete node mapping: " + msg));
     }
   
     in.close();
-    return null;
+    return (null);
   }
   
   /***************************************************************************
@@ -186,11 +161,11 @@ public class AlignmentLoader {
     return retval;
   }
   
-  public static class NetAlignStats {
+  public static class NetAlignFileStats {
     public ArrayList<String> dupLines;
     public ArrayList<String> badLines;
     
-    public NetAlignStats() {
+    public NetAlignFileStats() {
       badLines = new ArrayList<String>();
       dupLines = new ArrayList<String>();
     }
