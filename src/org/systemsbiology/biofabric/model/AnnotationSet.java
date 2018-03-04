@@ -31,6 +31,7 @@ import java.util.TreeSet;
 import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
+import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
 import org.systemsbiology.biofabric.util.AttributeExtractor;
 import org.systemsbiology.biofabric.util.CharacterEntityMapper;
 import org.systemsbiology.biofabric.util.Indenter;
@@ -130,6 +131,48 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
   
   /***************************************************************************
   **
+  ** Class to hold all the annotations relevant for a given position (row or column)
+  */  
+  
+  public static class AnnotsForPos {
+    private TreeMap<Integer, SortedSet<Annot>> perLayers_;
+ 
+    public AnnotsForPos() {
+      perLayers_ = new TreeMap<Integer, SortedSet<Annot>>(Collections.reverseOrder());
+      perLayers_.put(Integer.valueOf(0), new TreeSet<Annot>());
+    }
+    
+    public void addAnnot(Annot toAdd) {
+      int layer = toAdd.getLayer();
+      SortedSet<Annot> forLayer = perLayers_.get(Integer.valueOf(layer));
+      if (forLayer == null) {
+        forLayer = new TreeSet<Annot>();
+        perLayers_.put(Integer.valueOf(layer), forLayer);
+      }
+      forLayer.add(toAdd);
+      return;
+    }
+
+    public void clear() {
+      for (Integer layer : perLayers_.keySet()) {
+        perLayers_.get(layer).clear();
+      }
+      return;
+    }
+    
+    public void displayStrings(List<String> fill) {
+      for (Integer layer : perLayers_.keySet()) {
+        SortedSet<Annot> forLay = perLayers_.get(layer);
+        for (Annot ant : forLay) {
+          fill.add(ant.getName());
+        }
+      }
+      return;
+    }
+  }
+  
+  /***************************************************************************
+  **
   ** Class to hold a single annotation
   */  
   
@@ -137,8 +180,9 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
     private String tag_;
     private MinMax range_;
     private int layer_;
+    private PaintCacheSmall.AnnotColor color_;
    
-    public Annot(String tag, int startPos, int endPos, int layer) {
+    public Annot(String tag, int startPos, int endPos, int layer, String colorName) {
       if ((startPos > endPos) || (layer < 0)) {
         System.err.println(tag + " start after end "  + startPos + " " + endPos);
         throw new IllegalArgumentException();
@@ -146,6 +190,7 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
       tag_ = tag;
       range_ = new MinMax(startPos, endPos);
       layer_ = layer;
+      color_ = (colorName == null) ? null : PaintCacheSmall.AnnotColor.getColor(colorName);
     }
     
     @Override
@@ -171,6 +216,11 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
       return (layer_);
     } 
     
+    // May be null if user wants automatic cycling:
+    public PaintCacheSmall.AnnotColor getColor() {
+      return (color_);
+    } 
+
     @Override
     public int hashCode() {
       return (tag_.hashCode() + range_.hashCode() + layer_);
@@ -178,7 +228,8 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
 
     @Override
     public String toString() {
-      return ("Annot name = " + tag_ + " range = " + range_ + " layer = " + layer_);
+      String retval = "Annot name = " + tag_ + " range = " + range_ + " layer = " + layer_;
+      return ((color_ == null) ? retval : retval + "color = " + color_);
     }
      
     @Override
@@ -201,6 +252,19 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
         return (false);
       }
       
+      if (this.color_ == null) {
+        if (otherAnnot.color_ != null) {
+          return (false);
+        }
+      } else {
+        if (otherAnnot.color_ == null) {
+          return (false);
+        } else {
+          if (!this.color_.equals(otherAnnot.color_)) {
+            return (false);
+          }
+        }
+      }
       return (this.layer_ == otherAnnot.layer_);
     }  
 
@@ -223,6 +287,22 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
       if (layerDiff != 0) {
         return (layerDiff);
       }
+      
+      if (this.color_ == null) {
+        if (otherAnnot.color_ != null) {
+          return (-1);
+        }
+      } else {
+        if (otherAnnot.color_ == null) {
+          return (1);
+        } else {
+          int compval = this.color_.compareTo(otherAnnot.color_);
+          if (compval != 0) {
+            return (compval);
+          }
+        }
+      }
+       
       return (this.tag_.compareToIgnoreCase(otherAnnot.tag_));
     }
     
@@ -240,7 +320,11 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
       out.print("\" end=\"");
       out.print(range_.max); 
       out.print("\" layer=\"");
-      out.print(layer_); 
+      out.print(layer_);
+      if (color_ != null) {
+        out.print("\" color=\"");
+        out.print(color_.getName());
+      }
       out.println("\" />");
       return;
     }
@@ -297,13 +381,14 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
       String minStr = AttributeExtractor.extractAttribute(elemName, attrs, "annot", "start", true);
       String maxStr = AttributeExtractor.extractAttribute(elemName, attrs, "annot", "end", true);
       String layerStr = AttributeExtractor.extractAttribute(elemName, attrs, "annot", "layer", true);
+      String colorStr = AttributeExtractor.extractAttribute(elemName, attrs, "annot", "color", false);
    
       name = CharacterEntityMapper.unmapEntities(name, false);
       try {
         int min = Integer.valueOf(minStr).intValue();
         int max = Integer.valueOf(maxStr).intValue();
         int layer = Integer.valueOf(layerStr).intValue();
-        Annot retval = new Annot(name, min, max, layer);
+        Annot retval = new Annot(name, min, max, layer, colorStr);
         return (retval);
       } catch (NumberFormatException nfex) {
         throw new IOException();
