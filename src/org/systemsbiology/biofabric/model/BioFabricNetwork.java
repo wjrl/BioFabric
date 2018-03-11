@@ -838,7 +838,7 @@ public class BioFabricNetwork {
         int endIdx = links.size() - 1;
   
         MinMax mm = new MinMax(startIdx, endIdx);
-        NID.WithName name = findZoneNode(mm, forShadow, links);
+        NID.WithName name = findZoneNode(mm, links);
   
         if (nodeToZones.get(name) == null) {
           nodeToZones.put(name, new ArrayList<DrainZone>());
@@ -850,7 +850,7 @@ public class BioFabricNetwork {
         int last = index - 1;  // backtrack one position
   
         MinMax mm = new MinMax(startIdx, last);
-        NID.WithName name = findZoneNode(mm, forShadow, links);
+        NID.WithName name = findZoneNode(mm, links);
   
         if (nodeToZones.get(name) == null) {
           nodeToZones.put(name, new ArrayList<DrainZone>());
@@ -872,7 +872,7 @@ public class BioFabricNetwork {
   }
   
   /***************************************************************************
-   ** Returns true if two links are part of the same drain zone
+   ** Returns true if two contiguous links are part of the same drain zone
    **
    */
   
@@ -899,14 +899,14 @@ public class BioFabricNetwork {
    * finds the node of the drain zone with bounds = MinMax([A,B])
    */
   
-  private NID.WithName findZoneNode(MinMax mm, boolean forShadow, List<LinkInfo> links) {
+  private NID.WithName findZoneNode(MinMax mm, List<LinkInfo> links) {
     
     LinkInfo li = links.get(mm.min);  // checking the minimum of the minmax is enough...?
 
-    if (forShadow) {
-      return getNodeIDForRow(li.bottomRow());
+    if (li.isShadow()) {
+      return (getNodeIDForRow(li.bottomRow()));
     } else {
-      return getNodeIDForRow(li.topRow());
+      return (getNodeIDForRow(li.topRow()));
     }
   }
    
