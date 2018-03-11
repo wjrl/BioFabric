@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -194,7 +194,8 @@ public class AnnotationLoader {
   */
 
   protected String[] lineToToks(String line, ReadStats stats, boolean forNodes) throws IOException {
-    int expected = (forNodes) ? 4 : 5;
+    int expectedMin = (forNodes) ? 4 : 5;
+    int expectedMax = (forNodes) ? 5 : 6;
   	if (line.trim().equals("")) {
   		return (null);
   	}
@@ -205,7 +206,7 @@ public class AnnotationLoader {
     
     if (tokens.length == 0) {
       return (null);
-    } else if (tokens.length != expected) {
+    } else if ((tokens.length < expectedMin) || (tokens.length > expectedMax)) {
       stats.badLine = line;
       stats.errStr = "annotLoad.incorrectTokenCount";
       throw new IOException();
@@ -268,12 +269,17 @@ public class AnnotationLoader {
     
     int min = minCol.intValue();
     int max = maxCol.intValue();
-   
+    
+    String colorName = (tokens.length == 5) ? null : tokens[5];
+    
     try {
-      AnnotationSet.Annot annot = new AnnotationSet.Annot(name, min, max, layer);
+      AnnotationSet.Annot annot = new AnnotationSet.Annot(name, min, max, layer, colorName);
       aSets.get(Boolean.valueOf(isShadow)).addAnnot(annot);
     } catch (IllegalArgumentException iaex) {
       stats.badTok = tokens[1] + " " + tokens[2] + " " + tokens[3];
+      if (tokens.length == 6) {
+        stats.badTok += " " + tokens[5];
+      }
       stats.errStr = "annotLoad.badAnnotDefinition";
       throw new IOException();
     }
@@ -378,11 +384,16 @@ public class AnnotationLoader {
     int min = nameToRow(startNode, idToRow, nameToID, stats);  
     int max = nameToRow(endNode, idToRow, nameToID, stats);
    
+    String colorName = (tokens.length == 4) ? null : tokens[4];
+     
     try {
-      AnnotationSet.Annot annot = new AnnotationSet.Annot(name, min, max, layer);
+      AnnotationSet.Annot annot = new AnnotationSet.Annot(name, min, max, layer, colorName);
       aSet.addAnnot(annot);
     } catch (IllegalArgumentException iaex) {
       stats.badTok = tokens[1] + " " + tokens[2] + " " + tokens[3];
+      if (tokens.length == 5) {
+        stats.badTok += " " + tokens[4];
+      }
       stats.errStr = "annotLoad.badAnnotDefinition";
       throw new IOException();
     }
@@ -396,7 +407,7 @@ public class AnnotationLoader {
 
   private int nameToRow(String nodeID, Map<NID.WithName, Integer> idToRow, 
                         Map<String, Set<NID.WithName>> nameToID, 
-                        ReadStats stats) throws IOException {  
+                        ReadStats stats) throws IOException {
   
     Set<NID.WithName> forID = nameToID.get(DataUtil.normKey(nodeID));
     if (forID == null) {

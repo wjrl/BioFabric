@@ -172,7 +172,7 @@ public class BucketRenderer implements BufBuildDrawer {
     int numCol = pcs.getAnnotColorCount();
     annotColors_ = new Color[numCol];
     for (int i = 0; i < numCol; i++) {
-    	annotColors_[i] = pcs.getAnnotColor(i);
+    	annotColors_[i] = pcs.getAnnotColor(i).getColor();
     }
     int numGray = pcs.getLinkAnnotGrayCount();
     linkAnnotGrays_ = new Color[numGray];

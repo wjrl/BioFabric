@@ -79,6 +79,43 @@ public class PaintCacheSmall {
   
   public final static int STROKE_SIZE = 3;
   
+  public enum AnnotColor {
+    GRAY_BLUE("GrayBlue", new Color(228, 236, 248, 255)),
+    ORANGE("Orange", new Color(253, 222, 195, 255)),
+    YELLOW("Yellow", new Color(255, 252, 203, 255)),
+    GREEN("Green", new Color(227, 253, 230, 255)),
+    PURPLE("Purple", new Color(227, 224, 253, 255)),
+    PINK("Pink", new Color(253, 224, 235, 255)),
+    POWDER_BLUE("PowderBlue", new Color(224, 243, 253, 255)),
+    PEACH("Peach", new Color(254, 246, 225, 255));
+
+    private final String name_;
+    private final Color col_;
+   
+    private AnnotColor(String name, Color col) {
+      this.name_ = name;  
+      this.col_ = col;
+    }
+    
+    public Color getColor() {
+      return (col_);
+    }
+    
+    public String getName() {
+      return (name_);
+    }
+        
+    public static AnnotColor getColor(String name) {
+      String collapseName = name.replaceAll(" ", "");
+      for (AnnotColor ac : AnnotColor.values()) {
+        if (ac.name_.equalsIgnoreCase(collapseName)) {
+          return (ac);
+        }
+      }
+      throw new IllegalArgumentException(); 
+    }  
+  }
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE INSTANCE MEMBERS
@@ -108,7 +145,7 @@ public class PaintCacheSmall {
   private FabricColorGenerator colGen_;
   private Color superLightPink_;
   private Color superLightBlue_;
-  private Color[] annotColors_;
+  private AnnotColor[] annotColors_;
   private Color[] annotGrays_;
   
   ////////////////////////////////////////////////////////////////////////////
@@ -150,30 +187,22 @@ public class PaintCacheSmall {
     colGen_ = colGen;
     superLightPink_ = new Color(255, 244, 244);
     superLightBlue_ = new Color(244, 244, 255);
-    annotColors_ = new Color[8];
-    annotColors_[0] = new Color(228, 236, 248, 255);
-    annotColors_[1] = new Color(253, 222, 195, 255);
-    annotColors_[2] = new Color(255, 252, 203, 255);
-    annotColors_[3] = new Color(227, 253, 230, 255);
-    annotColors_[4] = new Color(227, 224, 253, 255);
-    annotColors_[5] = new Color(253, 224, 235, 255);
-    annotColors_[6] = new Color(224, 243, 253, 255);
-    annotColors_[7] = new Color(254, 246, 225, 255);
+      
+    annotColors_ = new AnnotColor[8];
+    annotColors_[0] = AnnotColor.GRAY_BLUE;
+    annotColors_[1] = AnnotColor.ORANGE;
+    annotColors_[2] = AnnotColor.YELLOW;
+    annotColors_[3] = AnnotColor.GREEN;
+    annotColors_[4] = AnnotColor.PURPLE;
+    annotColors_[5] = AnnotColor.PINK;
+    annotColors_[6] = AnnotColor.POWDER_BLUE;
+    annotColors_[7] = AnnotColor.PEACH;
 
     annotGrays_ = new Color[2];
-   // annotGrays_[0] = new Color(127, 127, 127, 127);
-   // annotGrays_[1] = new Color(194, 194, 194, 127);
-  //  annotGrays_[2] = new Color(144, 144, 144, 127);
     annotGrays_[0] = new Color(220, 220, 220, 127);
-   // annotGrays_[0] = new Color(211, 211, 211, 127);
-  //  annotGrays_[4] = new Color(161, 161, 161, 127);
-  //  annotGrays_[5] = new Color(228, 228, 228, 127);
-  //  annotGrays_[6] = new Color(178, 178, 178, 127);
     annotGrays_[1] = new Color(245, 245, 245, 127);
   }
   
-  
-
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
@@ -203,7 +232,7 @@ public class PaintCacheSmall {
   ** Get annotation color
   */
   
-  public Color getAnnotColor(int i) {
+  public AnnotColor getAnnotColor(int i) {
     return (annotColors_[i]);
   }
   
@@ -568,18 +597,24 @@ public class PaintCacheSmall {
     if (nodeAnnot != null) {
     	LoopReporter lr4 = new LoopReporter(nodeAnnot.size(), 20, monitor, 0.0, 1.0, "progress.buildNodeAnnots");
       for (AnnotationSet.Annot an : nodeAnnot) {
-        Color col = annotColors_[annotCount++ % annotColors_.length];
+        AnnotColor acol = an.getColor();
+        AnnotColor col = (acol == null) ? annotColors_[annotCount++ % annotColors_.length] : acol;
         lr4.report();
-        buildAnAnnotationRect(an.getRange(), an.getName(), col, true, nodeExtents, frc, linkCols, qtpc);
+        buildAnAnnotationRect(an.getRange(), an.getName(), col.getColor(), true, nodeExtents, frc, linkCols, qtpc);
       }
     }
     
     annotCount = 0;
-    Color[] useColors = (nodeAnnot != null) ? annotGrays_ : annotColors_;
     if (linkAnnot != null) {
     	LoopReporter lr5 = new LoopReporter(linkAnnot.size(), 20, monitor, 0.0, 1.0, "progress.buildLinkAnnots");
       for (AnnotationSet.Annot an : linkAnnot) {
-        Color col = useColors[annotCount++ % useColors.length];
+        Color col;
+        if (nodeAnnot != null) {
+          col = annotGrays_[annotCount++ % annotGrays_.length];
+        } else {
+          AnnotColor acol = an.getColor();
+          col = (acol == null) ? annotColors_[annotCount++ % annotColors_.length].getColor() : acol.getColor();
+        }  
         lr5.report();
         buildAnAnnotationRect(an.getRange(), an.getName(), col, false, linkExtents, frc, nodeRows, qtpc);
       }
