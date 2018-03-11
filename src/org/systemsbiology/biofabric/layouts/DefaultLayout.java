@@ -80,8 +80,8 @@ public class DefaultLayout extends NodeLayout {
   public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, 
   		                                   Params params,
   		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
-  
-    List<NID.WithName> startNodeIDs = (params == null) ? null : ((DefaultParams)params).startNodes;   
+      
+    List<NID.WithName> startNodeIDs = (params == null) ? null : ((DefaultParams)params).startNodes;
     List<NID.WithName> targetIDs = defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs, startNodeIDs, monitor);
 
     //

@@ -31,25 +31,30 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.Collection;
 
+import org.systemsbiology.biofabric.analysis.NetworkAlignmentScorer;
+import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
+import org.systemsbiology.biofabric.layouts.DefaultLayout;
+import org.systemsbiology.biofabric.layouts.EdgeLayout;
+import org.systemsbiology.biofabric.layouts.NetworkAlignmentEdgeLayout;
+import org.systemsbiology.biofabric.layouts.NetworkAlignmentLayout;
+import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
+import org.systemsbiology.biofabric.layouts.NodeLayout;
+import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
+import org.systemsbiology.biofabric.layouts.WorldBankLayout;
 import org.xml.sax.Attributes;
 
 import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FabricFactory;
+
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
-import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
-import org.systemsbiology.biofabric.layouts.DefaultLayout;
-import org.systemsbiology.biofabric.layouts.EdgeLayout;
 import org.systemsbiology.biofabric.layouts.HierDAGLayout;
-import org.systemsbiology.biofabric.layouts.NetworkAlignmentLayout;
-import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
-import org.systemsbiology.biofabric.layouts.NodeLayout;
-import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.layouts.SetLayout;
-import org.systemsbiology.biofabric.layouts.WorldBankLayout;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout.CtrlMode;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout.TargMode;
+
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -183,6 +188,8 @@ public class BioFabricNetwork {
   private AnnotationSet nodeAnnot_;
   private Map<Boolean, AnnotationSet> linkAnnots_;
   
+  public NetworkAlignmentScorer.NetAlignStats netAlignStats_;
+  
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -231,15 +238,18 @@ public class BioFabricNetwork {
         break;
       case BUILD_NETWORK_ALIGNMENT:
         NetworkAlignmentBuildData nad = (NetworkAlignmentBuildData) bd;
-        normalCols_ = new ColumnAssign();
-        shadowCols_ = new ColumnAssign();
-        rowToTargID_ = new HashMap<Integer, NID.WithName>();
-        fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
-        nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
-        nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
-        linkGrouping_ = new ArrayList<String>(nad.linkGroups);
-        colGen_ = nad.colGen;
-        layoutMode_ = nad.layoutMode;
+        this.normalCols_ = new ColumnAssign();
+        this.shadowCols_ = new ColumnAssign();
+        this.rowToTargID_ = new HashMap<Integer, NID.WithName>();
+        this.fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
+        this.nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
+        this.nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
+        this.linkGrouping_ = new ArrayList<String>(nad.linkGroups);
+        this.colGen_ = nad.colGen;
+        this.layoutMode_ = nad.layoutMode;
+        this.nodeAnnot_ = nad.nodeAnnotForLayout;
+        this.linkAnnots_ = nad.linkAnnotsForLayout;
+        this.netAlignStats_ = nad.netAlignStats;
         processLinks(nad, monitor);
         break;
       case BUILD_FOR_SUBMODEL:
@@ -606,6 +616,11 @@ public class BioFabricNetwork {
     
     edgeLayout.layoutEdges(rbd, monitor);
     specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, false, monitor);
+    
+    UiUtil.fixMePrintout("Node Annotations and Link Grouping for NetAlign in processLinks");
+    this.nodeAnnot_ = rbd.nodeAnnotForLayout;
+    this.linkAnnots_ = rbd.linkAnnotsForLayout;
+    this.linkGrouping_ = rbd.linkGroups;
 
     //
     // Determine the start & end of each target row needed to handle the incoming
@@ -823,7 +838,7 @@ public class BioFabricNetwork {
         int endIdx = links.size() - 1;
   
         MinMax mm = new MinMax(startIdx, endIdx);
-        NID.WithName name = findZoneNode(mm, forShadow, links);
+        NID.WithName name = findZoneNode(mm, links);
   
         if (nodeToZones.get(name) == null) {
           nodeToZones.put(name, new ArrayList<DrainZone>());
@@ -835,7 +850,7 @@ public class BioFabricNetwork {
         int last = index - 1;  // backtrack one position
   
         MinMax mm = new MinMax(startIdx, last);
-        NID.WithName name = findZoneNode(mm, forShadow, links);
+        NID.WithName name = findZoneNode(mm, links);
   
         if (nodeToZones.get(name) == null) {
           nodeToZones.put(name, new ArrayList<DrainZone>());
@@ -857,7 +872,7 @@ public class BioFabricNetwork {
   }
   
   /***************************************************************************
-   ** Returns true if two links are part of the same drain zone
+   ** Returns true if two contiguous links are part of the same drain zone
    **
    */
   
@@ -884,14 +899,14 @@ public class BioFabricNetwork {
    * finds the node of the drain zone with bounds = MinMax([A,B])
    */
   
-  private NID.WithName findZoneNode(MinMax mm, boolean forShadow, List<LinkInfo> links) {
+  private NID.WithName findZoneNode(MinMax mm, List<LinkInfo> links) {
     
     LinkInfo li = links.get(mm.min);  // checking the minimum of the minmax is enough...?
 
-    if (forShadow) {
-      return getNodeIDForRow(li.bottomRow());
+    if (li.isShadow()) {
+      return (getNodeIDForRow(li.bottomRow()));
     } else {
-      return getNodeIDForRow(li.topRow());
+      return (getNodeIDForRow(li.topRow()));
     }
   }
    
@@ -2590,23 +2605,34 @@ public class BioFabricNetwork {
    */
   
   public static class NetworkAlignmentBuildData extends RelayoutBuildData {
+    
+    public Map<NID.WithName, Boolean> mergedToCorrect, isAlignedNode;
+    public NetworkAlignmentScorer.NetAlignStats netAlignStats;
+    public boolean forOrphans;
   
     public NetworkAlignmentBuildData(UniqueLabeller idGen,
                                      Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
-                                     Map<NID.WithName, String> clustAssign,
+                                     Map<NID.WithName, Boolean> mergedToCorrect,
+                                     Map<NID.WithName, Boolean> isAlignedNode,
+                                     NetworkAlignmentScorer.NetAlignStats netAlignStats,
+                                     Map<NID.WithName, String> clustAssign, boolean forOrphans,
                                      FabricColorGenerator colGen, BuildMode mode) {
       super(idGen, allLinks, loneNodeIDs, clustAssign, colGen, mode);
       this.layoutMode = LayoutMode.PER_NETWORK_MODE;
+      this.forOrphans = forOrphans;
+      this.mergedToCorrect = mergedToCorrect;
+      this.isAlignedNode = isAlignedNode;
+      this.netAlignStats = netAlignStats;
     }
-    
+
     @Override
     public NodeLayout getNodeLayout() {
     	return (new NetworkAlignmentLayout());	
     }
-    
+  
     @Override
     public EdgeLayout getEdgeLayout() {
-    	return (new DefaultEdgeLayout());	// Replace with NetworkAlignmentEdgeLayout, which can be derived from DefaultEdgeLayout
+    	return (new NetworkAlignmentEdgeLayout());
     }
 
   }
@@ -2662,6 +2688,52 @@ public class BioFabricNetwork {
       this.columnCount = 0;
     } 
   }
+  
+  /***************************************************************************
+   **
+   **
+   */
+  
+  public interface PluginData {}
+  
+  /***************************************************************************
+   **
+   **
+   */
+  
+  public interface PluginDataOwner {
+  
+    void writePluginData(PluginData data);
+    
+    void readPluginData(PluginData data);
+    
+  }
+  
+  /***************************************************************************
+   **
+   **
+   */
+  
+  public class NetAlignPluginDataOwner implements PluginDataOwner {
+    
+    private Map<String, PluginData> map;
+    
+    public NetAlignPluginDataOwner() {
+      map = new HashMap<String, PluginData>();
+    }
+  
+    @Override
+    public void writePluginData(PluginData data) {
+    }
+  
+    @Override
+    public void readPluginData(PluginData data) {
+    }
+  }
+  
+  public void storePluginData(String keyword, PluginData data, PluginDataOwner owner) {
+    
+  }
  
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -2674,7 +2746,7 @@ public class BioFabricNetwork {
    ** Extract nodes
    */
   
-  public static Set<NID.WithName> extractNodes(List<FabricLink> allLinks, HashSet<NID.WithName> loneNodeIDs,
+  public static Set<NID.WithName> extractNodes(Collection<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
                                                BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     Set<NID.WithName> retval = new HashSet<NID.WithName>(loneNodeIDs);

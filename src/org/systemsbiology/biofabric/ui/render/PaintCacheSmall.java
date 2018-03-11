@@ -115,7 +115,7 @@ public class PaintCacheSmall {
       throw new IllegalArgumentException(); 
     }  
   }
-  
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE INSTANCE MEMBERS
@@ -187,6 +187,7 @@ public class PaintCacheSmall {
     colGen_ = colGen;
     superLightPink_ = new Color(255, 244, 244);
     superLightBlue_ = new Color(244, 244, 255);
+      
     annotColors_ = new AnnotColor[8];
     annotColors_[0] = AnnotColor.GRAY_BLUE;
     annotColors_[1] = AnnotColor.ORANGE;

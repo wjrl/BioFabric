@@ -353,11 +353,13 @@ public class NodeClusterLayout extends NodeLayout {
       } else { 
         // We have just entered a new cluster
         AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue() - 1, 0, null);
+
         retval.addAnnot(annot);
         startRow = row;
         currClust = clust;
         if (row.equals(lastKey)) {
           annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0, null);
+
           retval.addAnnot(annot);
           break;
         }
