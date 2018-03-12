@@ -608,7 +608,7 @@ public class PaintCacheSmall {
     	LoopReporter lr5 = new LoopReporter(linkAnnot.size(), 20, monitor, 0.0, 1.0, "progress.buildLinkAnnots");
       for (AnnotationSet.Annot an : linkAnnot) {
         Color col;
-        if (nodeAnnot != null) {
+        if ((nodeAnnot != null) && (nodeAnnot.size() > 0)) {
           col = annotGrays_[annotCount++ % annotGrays_.length];
         } else {
           AnnotColor acol = an.getColor();
