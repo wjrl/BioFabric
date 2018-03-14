@@ -38,6 +38,7 @@ import org.systemsbiology.biofabric.ui.BasicZoomTargetSupport;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.util.MinMax;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -193,6 +194,7 @@ public class BucketRenderer implements BufBuildDrawer {
   */
   
    public void dimsForBuf(Dimension screenDim, Rectangle2D worldRect) {
+  	 UiUtil.fixMePrintout("Seeing NPE here during recolor");
      screenDim.setSize(screenDim_);
      worldRect.setRect(worldRect_);    
      return;
