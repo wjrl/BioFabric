@@ -54,6 +54,7 @@ public class NetworkAlignmentDialog extends JDialog {
   private JFrame parent_;
   private JLabel graph1FileName_, graph2FileName_, alignFileName_, perfectFileName_;
   private File graph1File_, graph2File_, alignmentFile_, perfectAlignFile_; // perfect Alignment is optional
+  private FixedJButton buttonO;
   
   public NetworkAlignmentDialog(JFrame parent, boolean forOrphanEdges) {
     super(parent, ResourceManager.getManager().getString("networkAlignment.title"), true);
@@ -61,7 +62,7 @@ public class NetworkAlignmentDialog extends JDialog {
     this.forOrphanEdge_ = forOrphanEdges;
     
     final ResourceManager rMan = ResourceManager.getManager();
-    setSize(500, 400);
+    setSize(600, 400);
     JPanel cp = (JPanel) getContentPane();
     cp.setBorder(new EmptyBorder(20, 20, 20, 20));
     cp.setLayout(new GridBagLayout());
@@ -162,18 +163,13 @@ public class NetworkAlignmentDialog extends JDialog {
     // OK and Cancel buttons
     //
     
-    FixedJButton buttonO = new FixedJButton(rMan.getString("networkAlignment.ok"));
+    buttonO = new FixedJButton(rMan.getString("networkAlignment.ok"));
+    buttonO.setEnabled(false);
     buttonO.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent ev) {
+      public void actionPerformed(ActionEvent ev) { // button enabled iff files extracted
         try {
-          if (filesAreExtracted()) {
-            NetworkAlignmentDialog.this.setVisible(false);
-            NetworkAlignmentDialog.this.dispose();
-          } else {
-            JOptionPane.showMessageDialog(parent_, rMan.getString("networkAlignment.missingFiles"),
-                    rMan.getString("networkAlignment.missingFilesTitle"),
-                    JOptionPane.WARNING_MESSAGE);
-          }
+          NetworkAlignmentDialog.this.setVisible(false);
+          NetworkAlignmentDialog.this.dispose();
         } catch (Exception ex) {
           ExceptionHandler.getHandler().displayException(ex);
         }
@@ -299,6 +295,10 @@ public class NetworkAlignmentDialog extends JDialog {
         break;
       default:
         throw new IllegalArgumentException();
+    }
+    
+    if (filesAreExtracted()) { // enable OK button
+      buttonO.setEnabled(true);
     }
     return;
   }

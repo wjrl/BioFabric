@@ -172,3 +172,24 @@ public class AlignmentLoader {
   }
   
 }
+
+//{// displaying yeast2500-yeast5000 (SCerevisiae) files with perfect alignment
+//        // but alignment was done with full yeast2500 file not Filtered file
+//        // with entrezIDs only--- so we take out the nodes w/out entrez IDs
+//        String[] nodesWithoutEntrezIDs = {
+//        "ATM1",
+//        "CTM1", "IMD1",
+//        "PHM8",
+//        "PUT1",
+//        "SBE2",
+//        "YAR075W",
+//        "YDL026W",
+//        "YDR133C",
+//        "YGR272C",
+//        "YNL276C",};
+//        Set<String> notFiltered = new HashSet<String>();
+//        Collections.addAll(notFiltered, nodesWithoutEntrezIDs);
+//        if (notFiltered.contains(strNameG1) || notFiltered.contains(strNameG2)) {
+////                  continue;
+//        }
+//        }
