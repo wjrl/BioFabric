@@ -21,30 +21,37 @@
 
 package org.systemsbiology.biofabric.ui.dialogs;
 
-import org.systemsbiology.biofabric.cmd.CommandSet;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
-import org.systemsbiology.biofabric.util.FixedJButton;
-import org.systemsbiology.biofabric.util.ResourceManager;
-import org.systemsbiology.biofabric.util.UiUtil;
-import org.systemsbiology.biotapestry.biofabric.FabricCommands;
-
-import javax.swing.Box;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagLayout;
+import java.awt.Label;
 import javax.swing.JButton;
-import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
+import org.systemsbiology.biofabric.cmd.CommandSet;
+import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
+import org.systemsbiology.biofabric.util.ExceptionHandler;
+import org.systemsbiology.biofabric.util.FixedJButton;
+import org.systemsbiology.biofabric.util.ResourceManager;
+import org.systemsbiology.biotapestry.biofabric.FabricCommands;
+
 import javax.swing.border.EmptyBorder;
-import java.awt.FlowLayout;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Label;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 
-public class NetworkAlignmentDialog extends JDialog {
+public class NetworkAlignmentDialog
+//        extends JDialog
+        extends BTStashResultsDialog
+{
+  
+  @Override
+  protected boolean stashForOK() {
+    return false;
+  }
   
   private enum FileIndex {
     GRAPH_ONE_FILE, GRAPH_TWO_FILE, ALIGNMENT_FILE, PERFECT_FILE
@@ -52,36 +59,51 @@ public class NetworkAlignmentDialog extends JDialog {
   
   private final boolean forOrphanEdge_;
   private JFrame parent_;
-  private JLabel graph1FileName_, graph2FileName_, alignFileName_, perfectFileName_;
+  private JTextField graph1Field_, graph2Field_, alignField_, perfectField_;
   private File graph1File_, graph2File_, alignmentFile_, perfectAlignFile_; // perfect Alignment is optional
-  private FixedJButton buttonO;
+  private FixedJButton buttonO_;
   
   public NetworkAlignmentDialog(JFrame parent, boolean forOrphanEdges) {
-    super(parent, ResourceManager.getManager().getString("networkAlignment.title"), true);
+//    super(parent, ResourceManager.getManager().getString("networkAlignment.title"), true);
+    super(parent, ResourceManager.getManager().getString("networkAlignment.title"), new Dimension(600, 300), 3);
     this.parent_ = parent;
     this.forOrphanEdge_ = forOrphanEdges;
     
     final ResourceManager rMan = ResourceManager.getManager();
-    setSize(600, 400);
+    setSize(600, 300);
     JPanel cp = (JPanel) getContentPane();
     cp.setBorder(new EmptyBorder(20, 20, 20, 20));
     cp.setLayout(new GridBagLayout());
-    GridBagConstraints gbc = new GridBagConstraints();
     
     //
     // File Buttons and File Labels
     //
     
-    JButton graph1Button = new JButton(rMan.getString("networkAlignment.graph1"));
-    JButton graph2Button = new JButton(rMan.getString("networkAlignment.graph2"));
-    JButton alignmentButton = new JButton(rMan.getString("networkAlignment.alignment"));
+    JButton graph1Browse = new JButton(rMan.getString("networkAlignment.browse"));
+    JButton graph2Browse = new JButton(rMan.getString("networkAlignment.browse"));
+    JButton alignmentBrowse = new JButton(rMan.getString("networkAlignment.browse"));
+    JButton perfectBrowse = new JButton(rMan.getString("networkAlignment.browse"));
+  
+    JLabel graph1FileName_, graph2FileName_, alignFileName_, perfectFileName_;
+    graph1FileName_ = new JLabel(rMan.getString("networkAlignment.graph1"));
+    graph2FileName_ = new JLabel(rMan.getString("networkAlignment.graph2"));
+    alignFileName_ = new JLabel(rMan.getString("networkAlignment.alignment"));
+    perfectFileName_ = new JLabel(rMan.getString("networkAlignment.perfect"));
     
-    graph1FileName_ = new JLabel();
-    graph2FileName_ = new JLabel();
-    alignFileName_ = new JLabel();
-    perfectFileName_ = new JLabel();
+    graph1Field_ = new JTextField(25);
+    graph2Field_= new JTextField(25);
+    alignField_ = new JTextField(25);
+    perfectField_ = new JTextField(25);
+  
+    graph1Field_.setEnabled(false);
+    graph2Field_.setEnabled(false);
+    alignField_.setEnabled(false);
+    perfectField_.setEnabled(false);
     
-    graph1Button.addActionListener(new ActionListener() {
+    
+//    graph1Field_.set
+  
+    graph1Browse.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
         try {
           loadFromFile(FileIndex.GRAPH_ONE_FILE);
@@ -91,7 +113,7 @@ public class NetworkAlignmentDialog extends JDialog {
       }
     });
     
-    graph2Button.addActionListener(new ActionListener() {
+    graph2Browse.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
         try {
           loadFromFile(FileIndex.GRAPH_TWO_FILE);
@@ -101,7 +123,7 @@ public class NetworkAlignmentDialog extends JDialog {
       }
     });
     
-    alignmentButton.addActionListener(new ActionListener() {
+    alignmentBrowse.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
         try {
           loadFromFile(FileIndex.ALIGNMENT_FILE);
@@ -110,62 +132,73 @@ public class NetworkAlignmentDialog extends JDialog {
         }
       }
     });
-    
-    Box funcButtonBox = Box.createVerticalBox();
-    funcButtonBox.add(Box.createVerticalGlue());
+  
+    perfectBrowse.addActionListener(new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+        try {
+          loadFromFile(FileIndex.PERFECT_FILE);
+        } catch (Exception ex) {
+          ExceptionHandler.getHandler().displayException(ex);
+        }
+      }
+    });
     
     JPanel panGraphInfo = new JPanel(new FlowLayout(FlowLayout.LEFT));
     panGraphInfo.add(new Label(rMan.getString("networkAlignment.graphsEitherOrder"))); // ADD TO PROPS
     
     JPanel panG1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    panG1.add(graph1Button);
     panG1.add(graph1FileName_);
+    panG1.add(graph1Field_);
+    panG1.add(graph1Browse);
   
     JPanel panG2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    panG2.add(graph2Button);
     panG2.add(graph2FileName_);
+    panG2.add(graph2Field_);
+    panG2.add(graph2Browse);
   
     JPanel panAlign = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    panAlign.add(alignmentButton);
     panAlign.add(alignFileName_);
+    panAlign.add(alignField_);
+    panAlign.add(alignmentBrowse);
+  
+    JPanel panPerfect = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    panPerfect.add(perfectFileName_);
+    panPerfect.add(perfectField_);
+    panPerfect.add(perfectBrowse);
+   
+//    Box funcButtonBox = Box.createVerticalBox();
+//    funcButtonBox.add(Box.createVerticalGlue());
+//    funcButtonBox.add(panGraphInfo);
+//    funcButtonBox.add(panG1);
+//    funcButtonBox.add(panG2);
+//    funcButtonBox.add(panAlign);
     
-    funcButtonBox.add(panGraphInfo);
-    funcButtonBox.add(panG1);
-    funcButtonBox.add(panG2);
-    funcButtonBox.add(panAlign);
+    addWidgetFullRow(panGraphInfo, true);
+    addWidgetFullRow(panG1, true);
+    addWidgetFullRow(panG2, true);
+    addWidgetFullRow(panAlign, true);
+    addWidgetFullRow(panPerfect, true);
   
     //
     // Special layout buttons :: Cliques
     //
     
     if (!forOrphanEdges) { // add perfect alignment button
-      JButton perfectButton = new JButton(rMan.getString("networkAlignment.perfect"));
-      perfectButton.addActionListener(new ActionListener() {
-        public void actionPerformed(ActionEvent e) {
-          try {
-            loadFromFile(FileIndex.PERFECT_FILE);
-          } catch (Exception ex) {
-            ExceptionHandler.getHandler().displayException(ex);
-          }
-        }
-      });
-      JPanel panPerfect = new JPanel(new FlowLayout(FlowLayout.LEFT));
-      panPerfect.add(perfectButton);
-      panPerfect.add(perfectFileName_);
-      funcButtonBox.add(panPerfect);
+//      funcButtonBox.add(panPerfect);
     }
-  
-    UiUtil.gbcSet(gbc, 0, 0, 5, 1, UiUtil.HOR, 0, 0,
-            5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
-    cp.add(funcButtonBox, gbc);
+    
+//    GridBagConstraints gbc = new GridBagConstraints();
+//    UiUtil.gbcSet(gbc, 0, 0, 5, 1, UiUtil.HOR, 0, 0,
+//            5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
+//    cp.add(funcButtonBox, gbc);
     
     //
     // OK and Cancel buttons
     //
     
-    buttonO = new FixedJButton(rMan.getString("networkAlignment.ok"));
-    buttonO.setEnabled(false);
-    buttonO.addActionListener(new ActionListener() {
+    buttonO_ = new FixedJButton(rMan.getString("networkAlignment.ok"));
+    buttonO_.setEnabled(false);
+    buttonO_.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent ev) { // button enabled iff files extracted
         try {
           NetworkAlignmentDialog.this.setVisible(false);
@@ -176,33 +209,67 @@ public class NetworkAlignmentDialog extends JDialog {
       }
     });
     
-    FixedJButton buttonC = new FixedJButton(rMan.getString("networkAlignment.cancel"));
-    buttonC.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent ev) {
-        try {
-          nullifyFiles();
-          NetworkAlignmentDialog.this.setVisible(false);
-          NetworkAlignmentDialog.this.dispose();
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
-        }
-      }
-    });
-  
-    JPanel panOptions = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    
-    panOptions.add(buttonO);
-    panOptions.add(Box.createHorizontalStrut(10));
-    panOptions.add(buttonC);
-    
-    Box optButtonBox = Box.createHorizontalBox();
-    optButtonBox.add(panOptions);
-    
-    UiUtil.gbcSet(gbc, 0, 1, 5, 1, UiUtil.HOR, 0, 0,
-            5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
-    cp.add(optButtonBox, gbc);
-    
+//    FixedJButton buttonC = new FixedJButton(rMan.getString("networkAlignment.cancel"));
+//    buttonC.addActionListener(new ActionListener() {
+//      public void actionPerformed(ActionEvent ev) {
+//        try {
+//          nullifyFiles();
+//          NetworkAlignmentDialog.this.setVisible(false);
+//          NetworkAlignmentDialog.this.dispose();
+//        } catch (Exception ex) {
+//          ExceptionHandler.getHandler().displayException(ex);
+//        }
+//      }
+//    });
+//
+//    List<JButton> list = new ArrayList<JButton>();
+//    list.add(buttonC);
+//    list.add(buttonO_);
     setLocationRelativeTo(parent);
+  
+    finishConstruction();
+  
+//    JPanel panOptions = new JPanel(new FlowLayout(FlowLayout.LEFT));
+//
+//    panOptions.add(buttonO_);
+//    panOptions.add(Box.createHorizontalStrut(10));
+//    panOptions.add(buttonC);
+//
+//    Box optButtonBox = Box.createHorizontalBox();
+//    optButtonBox.add(panOptions);
+//
+//    UiUtil.gbcSet(gbc, 0, 1, 5, 1, UiUtil.HOR, 0, 0,
+//            5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
+//    cp.add(optButtonBox, gbc);
+    
+  }
+  
+  @Override
+  public void okAction() {
+    if (filesAreExtracted()) {
+      try {
+        NetworkAlignmentDialog.this.setVisible(false);
+        NetworkAlignmentDialog.this.dispose();
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }
+    } else {
+      ResourceManager rMan = ResourceManager.getManager();
+      JOptionPane.showMessageDialog(parent_, rMan.getString("networkAlignment.missingFiles"),
+                                  rMan.getString("networkAlignment.missingFilesTitle"),
+                                  JOptionPane.WARNING_MESSAGE);
+    }
+  }
+  
+  @Override
+  public void closeAction() {
+    try {
+      nullifyFiles();
+      NetworkAlignmentDialog.this.setVisible(false);
+      NetworkAlignmentDialog.this.dispose();
+    } catch (Exception ex) {
+      ExceptionHandler.getHandler().displayException(ex);
+    }
   }
   
   /**
@@ -278,19 +345,19 @@ public class NetworkAlignmentDialog extends JDialog {
     
     switch (mode) {
       case GRAPH_ONE_FILE:
-        graph1FileName_.setText(file.getName());
+        graph1Field_.setText(file.getAbsolutePath());
         graph1File_ = file;
         break;
       case GRAPH_TWO_FILE:
-        graph2FileName_.setText(file.getName());
+        graph2Field_.setText(file.getAbsolutePath());
         graph2File_ = file;
         break;
       case ALIGNMENT_FILE:
-        alignFileName_.setText(file.getName());
+        alignField_.setText(file.getAbsolutePath());
         alignmentFile_ = file;
         break;
       case PERFECT_FILE:
-        perfectFileName_.setText(file.getName());
+        perfectField_.setText(file.getAbsolutePath());
         perfectAlignFile_ = file;
         break;
       default:
@@ -298,7 +365,7 @@ public class NetworkAlignmentDialog extends JDialog {
     }
     
     if (filesAreExtracted()) { // enable OK button
-      buttonO.setEnabled(true);
+      buttonO_.setEnabled(true);
     }
     return;
   }
@@ -323,3 +390,152 @@ public class NetworkAlignmentDialog extends JDialog {
   }
   
 }
+
+//  public NetworkAlignmentDialog(JFrame parent, boolean forOrphanEdges) {
+//    super(parent, ResourceManager.getManager().getString("networkAlignment.title"), true);
+//    this.parent_ = parent;
+//    this.forOrphanEdge_ = forOrphanEdges;
+//
+//    final ResourceManager rMan = ResourceManager.getManager();
+//    setSize(600, 400);
+//    JPanel cp = (JPanel) getContentPane();
+//    cp.setBorder(new EmptyBorder(20, 20, 20, 20));
+//    cp.setLayout(new GridBagLayout());
+//    GridBagConstraints gbc = new GridBagConstraints();
+//
+//    //
+//    // File Buttons and File Labels
+//    //
+//
+//    JButton graph1Button = new JButton(rMan.getString("networkAlignment.graph1"));
+//    JButton graph2Button = new JButton(rMan.getString("networkAlignment.graph2"));
+//    JButton alignmentButton = new JButton(rMan.getString("networkAlignment.alignment"));
+//
+//    graph1FileName_ = new JLabel();
+//    graph2FileName_ = new JLabel();
+//    alignFileName_ = new JLabel();
+//    perfectFileName_ = new JLabel();
+//
+//    graph1Button.addActionListener(new ActionListener() {
+//      public void actionPerformed(ActionEvent e) {
+//        try {
+//          loadFromFile(FileIndex.GRAPH_ONE_FILE);
+//        } catch (Exception ex) {
+//          ExceptionHandler.getHandler().displayException(ex);
+//        }
+//      }
+//    });
+//
+//    graph2Button.addActionListener(new ActionListener() {
+//      public void actionPerformed(ActionEvent e) {
+//        try {
+//          loadFromFile(FileIndex.GRAPH_TWO_FILE);
+//        } catch (Exception ex) {
+//          ExceptionHandler.getHandler().displayException(ex);
+//        }
+//      }
+//    });
+//
+//    alignmentButton.addActionListener(new ActionListener() {
+//      public void actionPerformed(ActionEvent e) {
+//        try {
+//          loadFromFile(FileIndex.ALIGNMENT_FILE);
+//        } catch (Exception ex) {
+//          ExceptionHandler.getHandler().displayException(ex);
+//        }
+//      }
+//    });
+//
+//    Box funcButtonBox = Box.createVerticalBox();
+//    funcButtonBox.add(Box.createVerticalGlue());
+//
+//    JPanel panGraphInfo = new JPanel(new FlowLayout(FlowLayout.LEFT));
+//    panGraphInfo.add(new Label(rMan.getString("networkAlignment.graphsEitherOrder"))); // ADD TO PROPS
+//
+//    JPanel panG1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
+//    panG1.add(graph1Button);
+//    panG1.add(graph1FileName_);
+//
+//    JPanel panG2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
+//    panG2.add(graph2Button);
+//    panG2.add(graph2FileName_);
+//
+//    JPanel panAlign = new JPanel(new FlowLayout(FlowLayout.LEFT));
+//    panAlign.add(alignmentButton);
+//    panAlign.add(alignFileName_);
+//
+//    funcButtonBox.add(panGraphInfo);
+//    funcButtonBox.add(panG1);
+//    funcButtonBox.add(panG2);
+//    funcButtonBox.add(panAlign);
+//
+//    //
+//    // Special layout buttons :: Cliques
+//    //
+//
+//    if (!forOrphanEdges) { // add perfect alignment button
+//      JButton perfectButton = new JButton(rMan.getString("networkAlignment.perfect"));
+//      perfectButton.addActionListener(new ActionListener() {
+//        public void actionPerformed(ActionEvent e) {
+//          try {
+//            loadFromFile(FileIndex.PERFECT_FILE);
+//          } catch (Exception ex) {
+//            ExceptionHandler.getHandler().displayException(ex);
+//          }
+//        }
+//      });
+//      JPanel panPerfect = new JPanel(new FlowLayout(FlowLayout.LEFT));
+//      panPerfect.add(perfectButton);
+//      panPerfect.add(perfectFileName_);
+//      funcButtonBox.add(panPerfect);
+//    }
+//
+//    UiUtil.gbcSet(gbc, 0, 0, 5, 1, UiUtil.HOR, 0, 0,
+//            5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
+//    cp.add(funcButtonBox, gbc);
+//
+//    //
+//    // OK and Cancel buttons
+//    //
+//
+//    buttonO_ = new FixedJButton(rMan.getString("networkAlignment.ok"));
+//    buttonO_.setEnabled(false);
+//    buttonO_.addActionListener(new ActionListener() {
+//      public void actionPerformed(ActionEvent ev) { // button enabled iff files extracted
+//        try {
+//          NetworkAlignmentDialog.this.setVisible(false);
+//          NetworkAlignmentDialog.this.dispose();
+//        } catch (Exception ex) {
+//          ExceptionHandler.getHandler().displayException(ex);
+//        }
+//      }
+//    });
+//
+//    FixedJButton buttonC = new FixedJButton(rMan.getString("networkAlignment.cancel"));
+//    buttonC.addActionListener(new ActionListener() {
+//      public void actionPerformed(ActionEvent ev) {
+//        try {
+//          nullifyFiles();
+//          NetworkAlignmentDialog.this.setVisible(false);
+//          NetworkAlignmentDialog.this.dispose();
+//        } catch (Exception ex) {
+//          ExceptionHandler.getHandler().displayException(ex);
+//        }
+//      }
+//    });
+//
+//    JPanel panOptions = new JPanel(new FlowLayout(FlowLayout.LEFT));
+//
+//    panOptions.add(buttonO_);
+//    panOptions.add(Box.createHorizontalStrut(10));
+//    panOptions.add(buttonC);
+//
+//    Box optButtonBox = Box.createHorizontalBox();
+//    optButtonBox.add(panOptions);
+//
+//    UiUtil.gbcSet(gbc, 0, 1, 5, 1, UiUtil.HOR, 0, 0,
+//            5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
+//    cp.add(optButtonBox, gbc);
+//
+//    setLocationRelativeTo(parent);
+//  }
