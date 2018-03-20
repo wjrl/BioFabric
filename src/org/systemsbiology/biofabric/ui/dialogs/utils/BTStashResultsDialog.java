@@ -217,10 +217,10 @@ public abstract class BTStashResultsDialog extends JDialog implements DialogSupp
   ** Finish building
   */ 
   
-  protected void finishConstruction() {      
-    ds_.buildAndInstallButtonBox(cp_, rowNum_, columns_, false, true);
+  protected DialogSupport.Buttons finishConstruction() {      
+    DialogSupport.Buttons but = ds_.buildAndInstallButtonBox(cp_, rowNum_, columns_, false, true);
     setLocationRelativeTo(parent_);
-    return;
+    return (but);
   } 
   
   /***************************************************************************

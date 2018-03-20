@@ -377,7 +377,6 @@ public class NodeClusterLayout extends NodeLayout {
   private Map<Boolean, AnnotationSet> generateLinkAnnotations(BioFabricNetwork.RelayoutBuildData rbd, ClusterParams params) { 
   	HashMap<Boolean, AnnotationSet> retval = new HashMap<Boolean, AnnotationSet>();
     
-  	HashMap<String, MinMax> clustRanges = new HashMap<String, MinMax>();
   	List<FabricLink> noShadows = new ArrayList<FabricLink>();
   	List<FabricLink> withShadows = new ArrayList<FabricLink>();
   	for (Integer col : rbd.linkOrder.keySet()) {

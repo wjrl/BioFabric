@@ -128,18 +128,36 @@ public class DialogSupport {
   public GridBagConstraints getGbc() {
     return (gbc_); 
   }
+ 
+  /***************************************************************************
+  **
+  ** Use to hand back buttons
+  */ 
+
+  public static class Buttons {
+    public FixedJButton applyButton;
+    public FixedJButton okButton;
+    public FixedJButton cancelButton;  
+  }
   
+  public static class ButtonsAndBox {
+    public Buttons buttons;
+    public Box buttonBox;
+  }
+
   /***************************************************************************
   **
   ** Build a button panel
   */ 
 
-  public Box buildButtonBox(boolean doApply, boolean showAsCancel, boolean doCentering) {       
+  public ButtonsAndBox buildButtonBox(boolean doApply, boolean showAsCancel, boolean doCentering) {       
  
-    FixedJButton buttonA = null;
+    Buttons myButtons = new Buttons();
+    
+    myButtons.applyButton = null;
     if (doApply) {
-      buttonA = new FixedJButton(rMan_.getString("dialogs.apply"));
-      buttonA.addActionListener(new ActionListener() {
+      myButtons.applyButton = new FixedJButton(rMan_.getString("dialogs.apply"));
+      myButtons.applyButton.addActionListener(new ActionListener() {
         public void actionPerformed(ActionEvent ev) {
           try {
             dsClient_.applyAction();
@@ -151,8 +169,8 @@ public class DialogSupport {
         }
       });
     }
-    FixedJButton buttonO = new FixedJButton(rMan_.getString("dialogs.ok"));
-    buttonO.addActionListener(new ActionListener() {
+    myButtons.okButton = new FixedJButton(rMan_.getString("dialogs.ok"));
+    myButtons.okButton.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent ev) {
         try {
           dsClient_.okAction();
@@ -163,8 +181,8 @@ public class DialogSupport {
         }
       }
     });     
-    FixedJButton buttonC = new FixedJButton(rMan_.getString((showAsCancel) ? "dialogs.cancel" : "dialogs.close"));
-    buttonC.addActionListener(new ActionListener() {
+    myButtons.cancelButton = new FixedJButton(rMan_.getString((showAsCancel) ? "dialogs.cancel" : "dialogs.close"));
+    myButtons.cancelButton.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent ev) {
         try {
           dsClient_.closeAction();
@@ -179,16 +197,19 @@ public class DialogSupport {
     Box buttonPanel = Box.createHorizontalBox();
     buttonPanel.add(Box.createHorizontalGlue());
     if (doApply) {
-      buttonPanel.add(buttonA);
+      buttonPanel.add(myButtons.applyButton);
       buttonPanel.add(Box.createHorizontalStrut(10));
     }
-    buttonPanel.add(buttonO);
+    buttonPanel.add(myButtons.okButton);
     buttonPanel.add(Box.createHorizontalStrut(10));    
-    buttonPanel.add(buttonC);
+    buttonPanel.add(myButtons.cancelButton);
     if (doCentering) {
       buttonPanel.add(Box.createHorizontalGlue());
     }
-    return (buttonPanel);
+    ButtonsAndBox retval = new ButtonsAndBox();
+    retval.buttonBox = buttonPanel;
+    retval.buttons = myButtons;
+    return (retval);
   }
  
   /***************************************************************************
@@ -196,14 +217,14 @@ public class DialogSupport {
   ** Build and install buttons
   */ 
 
-  public void buildAndInstallButtonBox(JPanel cp, int rowNum, int colWidth, boolean doApply, boolean showAsCancel, Border border) { 
-    Box bBox = buildButtonBox(doApply, showAsCancel, false);
+  public Buttons buildAndInstallButtonBox(JPanel cp, int rowNum, int colWidth, boolean doApply, boolean showAsCancel, Border border) { 
+    ButtonsAndBox bAndBox = buildButtonBox(doApply, showAsCancel, false);
     if (border != null) {
-      bBox.setBorder(border);
+      bAndBox.buttonBox.setBorder(border);
     } 
     UiUtil.gbcSet(gbc_, 0, rowNum, colWidth, 1, UiUtil.HOR, 0, 0, 5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
-    cp.add(bBox, gbc_);
-    return;
+    cp.add(bAndBox.buttonBox, gbc_);
+    return (bAndBox.buttons);
   }
   
   /***************************************************************************
@@ -211,11 +232,11 @@ public class DialogSupport {
   ** Build and install buttons
   */ 
 
-  public void buildAndInstallCenteredButtonBox(JPanel cp, int rowNum, int colWidth, boolean doApply, boolean showAsCancel) { 
-    Box bBox = buildButtonBox(doApply, showAsCancel, true);
+  public Buttons buildAndInstallCenteredButtonBox(JPanel cp, int rowNum, int colWidth, boolean doApply, boolean showAsCancel) { 
+    ButtonsAndBox bAndBox = buildButtonBox(doApply, showAsCancel, true);
     UiUtil.gbcSet(gbc_, 0, rowNum, colWidth, 1, UiUtil.HOR, 0, 0, 5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
-    cp.add(bBox, gbc_);
-    return;
+    cp.add(bAndBox.buttonBox, gbc_);
+    return (bAndBox.buttons);
   } 
   
   /***************************************************************************
@@ -223,9 +244,9 @@ public class DialogSupport {
   ** Build and install buttons
   */ 
 
-  public void buildAndInstallButtonBox(JPanel cp, int rowNum, int colWidth, boolean doApply, boolean showAsCancel) { 
-    buildAndInstallButtonBox(cp, rowNum, colWidth, doApply, showAsCancel, null);
-    return;
+  public Buttons buildAndInstallButtonBox(JPanel cp, int rowNum, int colWidth, boolean doApply, boolean showAsCancel) { 
+    Buttons retval = buildAndInstallButtonBox(cp, rowNum, colWidth, doApply, showAsCancel, null);
+    return (retval);
   }
     
   /***************************************************************************
