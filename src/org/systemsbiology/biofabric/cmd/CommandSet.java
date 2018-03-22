@@ -3662,7 +3662,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topWindow_, false);
       nad.setVisible(true);
       
-      if(!nad.hasFiles()) {
+      if(!nad.filesExtracted()) {
         return (false);
       }
   
@@ -3728,7 +3728,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topWindow_, true);
       nad.setVisible(true);
       
-      if(!nad.hasFiles()) {
+      if(!nad.filesExtracted()) {
         return (false);
       }
       
