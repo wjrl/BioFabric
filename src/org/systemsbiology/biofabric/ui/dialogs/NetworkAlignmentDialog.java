@@ -35,6 +35,7 @@ import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
+import org.systemsbiology.biofabric.util.MatchingJLabel;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
@@ -43,15 +44,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 
-public class NetworkAlignmentDialog
-//        extends JDialog
-        extends BTStashResultsDialog
-{
-  
-  @Override
-  protected boolean stashForOK() {
-    return false;
-  }
+public class NetworkAlignmentDialog extends BTStashResultsDialog {
   
   private enum FileIndex {
     GRAPH_ONE_FILE, GRAPH_TWO_FILE, ALIGNMENT_FILE, PERFECT_FILE
@@ -61,16 +54,15 @@ public class NetworkAlignmentDialog
   private JFrame parent_;
   private JTextField graph1Field_, graph2Field_, alignField_, perfectField_;
   private File graph1File_, graph2File_, alignmentFile_, perfectAlignFile_; // perfect Alignment is optional
-  private FixedJButton buttonO_;
+  private FixedJButton buttonOK_;
   
   public NetworkAlignmentDialog(JFrame parent, boolean forOrphanEdges) {
-//    super(parent, ResourceManager.getManager().getString("networkAlignment.title"), true);
     super(parent, ResourceManager.getManager().getString("networkAlignment.title"), new Dimension(600, 300), 3);
     this.parent_ = parent;
     this.forOrphanEdge_ = forOrphanEdges;
     
     final ResourceManager rMan = ResourceManager.getManager();
-    setSize(600, 300);
+//    setSize(600, 300);
     JPanel cp = (JPanel) getContentPane();
     cp.setBorder(new EmptyBorder(20, 20, 20, 20));
     cp.setLayout(new GridBagLayout());
@@ -84,11 +76,11 @@ public class NetworkAlignmentDialog
     JButton alignmentBrowse = new JButton(rMan.getString("networkAlignment.browse"));
     JButton perfectBrowse = new JButton(rMan.getString("networkAlignment.browse"));
   
-    JLabel graph1FileName_, graph2FileName_, alignFileName_, perfectFileName_;
-    graph1FileName_ = new JLabel(rMan.getString("networkAlignment.graph1"));
-    graph2FileName_ = new JLabel(rMan.getString("networkAlignment.graph2"));
-    alignFileName_ = new JLabel(rMan.getString("networkAlignment.alignment"));
-    perfectFileName_ = new JLabel(rMan.getString("networkAlignment.perfect"));
+//    JLabel graph1FileName_, graph2FileName_, alignFileName_, perfectFileName_;
+//    graph1FileName_ = new JLabel(rMan.getString("networkAlignment.graph1"));
+//    graph2FileName_ = new JLabel(rMan.getString("networkAlignment.graph2"));
+//    alignFileName_ = new JLabel(rMan.getString("networkAlignment.alignment"));
+//    perfectFileName_ = new JLabel(rMan.getString("networkAlignment.perfect"));
     
     graph1Field_ = new JTextField(25);
     graph2Field_= new JTextField(25);
@@ -99,10 +91,32 @@ public class NetworkAlignmentDialog
     graph2Field_.setEnabled(false);
     alignField_.setEnabled(false);
     perfectField_.setEnabled(false);
-    
-    
-//    graph1Field_.set
   
+//    MatchingJLabel graph1FileMatch, graph2FileMatch, alignFileMatch, perfectFileMatch;
+//    graph1FileMatch = new MatchingJLabel(graph1FileName_.getText(), perfectFileName_);
+//    graph2FileMatch = new MatchingJLabel(graph2FileName_.getText(), perfectFileName_);
+//    alignFileMatch = new MatchingJLabel(alignFileName_.getText(), perfectFileName_);
+//    perfectFileMatch = new MatchingJLabel(perfectFileName_.getText(), perfectFileName_);
+    
+    MatchingJLabel graph1FileMatch, graph2FileMatch, alignFileMatch, perfectFileMatch;
+    JLabel perfectFileName = new JLabel(rMan.getString("networkAlignment.perfect")); // only to use as a reference, not in dialog
+    perfectFileMatch = new MatchingJLabel(rMan.getString("networkAlignment.perfect"), perfectFileName);
+    graph1FileMatch = new MatchingJLabel(rMan.getString("networkAlignment.graph1"), perfectFileName);
+    graph2FileMatch = new MatchingJLabel(rMan.getString("networkAlignment.graph2"), perfectFileName);
+    alignFileMatch = new MatchingJLabel(rMan.getString("networkAlignment.alignment"), perfectFileName);
+
+//    graph1FileMatch = new MatchingJLabel(graph1FileName_.getText(), graph1FileName_);
+//    graph2FileMatch = new MatchingJLabel(graph2FileName_.getText(), graph2FileName_);
+//    alignFileMatch = new MatchingJLabel(alignFileName_.getText(), alignFileName_);
+//    perfectFileMatch = new MatchingJLabel(perfectFileName_.getText(), perfectFileName_);
+//    perfectFileMatch.setPreferredSize(new Dimension(30, perfectFileName_.getHeight()));
+//    perfectFileMatch.getPreferredSize();
+//    alignFileMatch.getPreferredSize();
+//
+//    graph1FileMatch.getPreferredSize();
+//    graph2FileMatch.getPreferredSize();
+    
+    
     graph1Browse.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
         try {
@@ -144,25 +158,29 @@ public class NetworkAlignmentDialog
     });
     
     JPanel panGraphInfo = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    panGraphInfo.add(new Label(rMan.getString("networkAlignment.graphsEitherOrder"))); // ADD TO PROPS
+    panGraphInfo.add(new Label(rMan.getString("networkAlignment.message")));
     
     JPanel panG1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    panG1.add(graph1FileName_);
+    panG1.add(graph1FileMatch);
+//    panG1.add(graph1FileName_);
     panG1.add(graph1Field_);
     panG1.add(graph1Browse);
   
     JPanel panG2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    panG2.add(graph2FileName_);
+    panG2.add(graph2FileMatch);
+//    panG2.add(graph2FileName_);
     panG2.add(graph2Field_);
     panG2.add(graph2Browse);
   
     JPanel panAlign = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    panAlign.add(alignFileName_);
+    panAlign.add(alignFileMatch);
+//    panAlign.add(alignFileName_);
     panAlign.add(alignField_);
     panAlign.add(alignmentBrowse);
   
     JPanel panPerfect = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    panPerfect.add(perfectFileName_);
+    panPerfect.add(perfectFileMatch);
+//    panPerfect.add(perfectFileName_);
     panPerfect.add(perfectField_);
     panPerfect.add(perfectBrowse);
    
@@ -177,7 +195,6 @@ public class NetworkAlignmentDialog
     addWidgetFullRow(panG1, true);
     addWidgetFullRow(panG2, true);
     addWidgetFullRow(panAlign, true);
-    addWidgetFullRow(panPerfect, true);
   
     //
     // Special layout buttons :: Cliques
@@ -185,6 +202,7 @@ public class NetworkAlignmentDialog
     
     if (!forOrphanEdges) { // add perfect alignment button
 //      funcButtonBox.add(panPerfect);
+      addWidgetFullRow(panPerfect, true);
     }
     
 //    GridBagConstraints gbc = new GridBagConstraints();
@@ -196,9 +214,11 @@ public class NetworkAlignmentDialog
     // OK and Cancel buttons
     //
     
-    buttonO_ = new FixedJButton(rMan.getString("networkAlignment.ok"));
-    buttonO_.setEnabled(false);
-    buttonO_.addActionListener(new ActionListener() {
+//    buttonO_ = new FixedJButton(rMan.getString("networkAlignment.ok"));
+    
+    buttonOK_ = finishConstruction().okButton;
+    buttonOK_.setEnabled(false);
+    buttonOK_.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent ev) { // button enabled iff files extracted
         try {
           NetworkAlignmentDialog.this.setVisible(false);
@@ -227,7 +247,7 @@ public class NetworkAlignmentDialog
 //    list.add(buttonO_);
     setLocationRelativeTo(parent);
   
-    finishConstruction();
+//    finishConstruction();
   
 //    JPanel panOptions = new JPanel(new FlowLayout(FlowLayout.LEFT));
 //
@@ -253,7 +273,7 @@ public class NetworkAlignmentDialog
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
-    } else {
+    } else { // should never happen because OK button is disabled.
       ResourceManager rMan = ResourceManager.getManager();
       JOptionPane.showMessageDialog(parent_, rMan.getString("networkAlignment.missingFiles"),
                                   rMan.getString("networkAlignment.missingFilesTitle"),
@@ -270,6 +290,11 @@ public class NetworkAlignmentDialog
     } catch (Exception ex) {
       ExceptionHandler.getHandler().displayException(ex);
     }
+  }
+  
+  @Override
+  protected boolean stashForOK() {
+    return false;
   }
   
   /**
@@ -365,7 +390,7 @@ public class NetworkAlignmentDialog
     }
     
     if (filesAreExtracted()) { // enable OK button
-      buttonO_.setEnabled(true);
+      buttonOK_.setEnabled(true);
     }
     return;
   }
