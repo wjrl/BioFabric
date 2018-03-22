@@ -33,6 +33,7 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
+import org.systemsbiology.biofabric.ui.dialogs.utils.DialogSupport;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.MatchingJLabel;
@@ -92,10 +93,10 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     graph2FileMatch = new MatchingJLabel(rMan.getString("networkAlignment.graph2"), perfectFileName);
     alignFileMatch = new MatchingJLabel(rMan.getString("networkAlignment.alignment"), perfectFileName);
     
-    graph1FileMatch.setHorizontalAlignment(SwingConstants.RIGHT);
-    graph2FileMatch.setHorizontalAlignment(SwingConstants.RIGHT);
-    alignFileMatch.setHorizontalAlignment(SwingConstants.RIGHT);
-    perfectFileMatch.setHorizontalAlignment(SwingConstants.RIGHT);
+    graph1FileMatch.setHorizontalAlignment(SwingConstants.CENTER);
+    graph2FileMatch.setHorizontalAlignment(SwingConstants.CENTER);
+    alignFileMatch.setHorizontalAlignment(SwingConstants.CENTER);
+    perfectFileMatch.setHorizontalAlignment(SwingConstants.CENTER);
   
     graph1Browse.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
@@ -166,7 +167,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     addWidgetFullRow(panAlign, true);
   
     //
-    // Special layout buttons :: Cliques
+    // No Perfect Alignment for Orphan Layout
     //
     
     if (!forOrphanEdges) { // add perfect alignment button
@@ -174,21 +175,13 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     }
     
     //
-    // OK buttons
+    // OK button
     //
     
-    buttonOK_ = finishConstruction().okButton;
+    DialogSupport.Buttons buttons = finishConstruction();
+    
+    buttonOK_ = buttons.okButton;
     buttonOK_.setEnabled(false);
-    buttonOK_.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent ev) { // button enabled iff files extracted
-        try {
-          NetworkAlignmentDialog.this.setVisible(false);
-          NetworkAlignmentDialog.this.dispose();
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
-        }
-      }
-    });
     
     setLocationRelativeTo(parent);
   }
@@ -210,6 +203,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   @Override
   public void closeAction() {
     try {
+      nullifyFiles();
       NetworkAlignmentDialog.this.setVisible(false);
       NetworkAlignmentDialog.this.dispose();
     } catch (Exception ex) {
@@ -294,6 +288,17 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
       buttonOK_.setEnabled(true);
     }
     return;
+  }
+  
+  /**
+   *  'fixes' this bug: when all four files entered, cancel button would act as ok button.
+   */
+  
+  private void nullifyFiles() {
+    graph1File_ = null;
+    graph2File_ = null;
+    alignmentFile_ = null;
+    perfectAlignFile_ = null;
   }
   
   /**
