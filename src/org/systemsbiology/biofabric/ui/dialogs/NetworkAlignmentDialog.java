@@ -1,7 +1,7 @@
 /*
 **    File created by Rishi Desai
 **
-**    Copyright (C) 2003-2014 Institute for Systems Biology
+**    Copyright (C) 2003-2018 Institute for Systems Biology
 **                            Seattle, Washington, USA.
 **
 **    This library is free software; you can redistribute it and/or
@@ -188,24 +188,19 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   
   @Override
   public void okAction() {
-    if (filesExtracted()) {
-      try {
-        NetworkAlignmentDialog.this.setVisible(false);
-        NetworkAlignmentDialog.this.dispose();
-      } catch (Exception ex) {
-        ExceptionHandler.getHandler().displayException(ex);
-      }
-    } else { // should never happen because OK button is disabled.
-      throw new IllegalStateException("NetAlign Dialog OK button error");
+    try {
+      super.okAction();
+    } catch (Exception ex) {
+      // should never happen because OK button is disabled without correct files.
+      ExceptionHandler.getHandler().displayException(ex);
     }
+    return;
   }
   
   @Override
   public void closeAction() {
     try {
-      nullifyFiles();
-      NetworkAlignmentDialog.this.setVisible(false);
-      NetworkAlignmentDialog.this.dispose();
+      super.closeAction();
     } catch (Exception ex) {
       ExceptionHandler.getHandler().displayException(ex);
     }
@@ -213,19 +208,19 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   
   @Override
   protected boolean stashForOK() {
-    return (false);
+    return (hasRequiredFiles());
   }
   
   /**
    * If user entered in minimum required files
    */
   
-  public boolean filesExtracted() {
+  private boolean hasRequiredFiles() {
     return (graph1File_ != null) && (graph2File_ != null) && (alignmentFile_ != null);
   }
   
   public NetworkAlignmentDialogInfo getNAInfo() {
-    if (!filesExtracted()) { // perfect alignment file is optional
+    if (! hasRequiredFiles()) { // perfect alignment file is optional
       throw new IllegalStateException("Graph file(s) or alignment file missing.");
     }
     return (new NetworkAlignmentDialogInfo(graph1File_, graph2File_, alignmentFile_, perfectAlignFile_, forOrphanEdge_));
@@ -284,21 +279,10 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
         throw new IllegalArgumentException();
     }
     
-    if (filesExtracted()) { // enable OK button
+    if (hasRequiredFiles()) { // enable OK button
       buttonOK_.setEnabled(true);
     }
     return;
-  }
-  
-  /**
-   *  'fixes' this bug: when all four files entered, cancel button would act as ok button.
-   */
-  
-  private void nullifyFiles() {
-    graph1File_ = null;
-    graph2File_ = null;
-    alignmentFile_ = null;
-    perfectAlignFile_ = null;
   }
   
   /**
