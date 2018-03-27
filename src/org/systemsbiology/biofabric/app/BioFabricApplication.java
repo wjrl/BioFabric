@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,7 +17,6 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-
 package org.systemsbiology.biofabric.app;
 
 import java.awt.Dimension;
@@ -30,6 +29,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 
 import org.systemsbiology.biofabric.cmd.CommandSet;
+import org.systemsbiology.biofabric.plugin.PlugInManager;
 import org.systemsbiology.biofabric.ui.dialogs.UpdateJavaDialog;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.ResourceManager;
@@ -57,6 +57,7 @@ public class BioFabricApplication {
   private boolean forCyto_;
   private BioFabricWindow bfw_;
   private BioFabricWindow selectionWindow_;
+  private PlugInManager plum_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -69,8 +70,13 @@ public class BioFabricApplication {
   ** Now supporting Cytoscape App usage
   */
   
-  public BioFabricApplication(boolean forCyto) { 
+  public BioFabricApplication(boolean forCyto, Map<String, Object> args) { 
     forCyto_ = forCyto;
+    plum_ = new PlugInManager();
+    boolean ok = plum_.loadPlugIns(args);   
+    if (!ok) {
+      System.err.println("Problems loading plugins");
+    }
   }
   
   ////////////////////////////////////////////////////////////////////////////
@@ -86,9 +92,9 @@ public class BioFabricApplication {
   
   public void shutdownFabric() {
     bfw_.stopBufferBuilding();
-    bfw_.dispose();
+    bfw_.getWindow().dispose();
     if (selectionWindow_ != null) {
-      selectionWindow_.dispose();
+      selectionWindow_.getWindow().dispose();
     }
     if (!forCyto_) {
       System.exit(0);
@@ -102,7 +108,7 @@ public class BioFabricApplication {
   
   public void closeSelection() {
     bfw_.getFabricPanel().setSelectionPanel(null);
-    selectionWindow_.setVisible(false);
+    selectionWindow_.getWindow().setVisible(false);
     return;
   }
         
@@ -113,8 +119,9 @@ public class BioFabricApplication {
      
   public BioFabricWindow launchSelection() {
     bfw_.getFabricPanel().setSelectionPanel(selectionWindow_.getFabricPanel());
-    selectionWindow_.setSize((int)(bfw_.getWidth() * .80), (int)(bfw_.getHeight() * .80));
-    selectionWindow_.setVisible(true);
+    selectionWindow_.getWindow().setSize((int)(bfw_.getWindow().getWidth() * .80), 
+                                         (int)(bfw_.getWindow().getHeight() * .80));
+    selectionWindow_.getWindow().setVisible(true);
     raiseSelection();
    // selectionWindow_.show();
     return (selectionWindow_);
@@ -126,12 +133,12 @@ public class BioFabricApplication {
   */
      
   public void raiseSelection() {
-    selectionWindow_.setExtendedState(JFrame.NORMAL);
-    selectionWindow_.toFront();
+    selectionWindow_.getWindow().setExtendedState(JFrame.NORMAL);
+    selectionWindow_.getWindow().toFront();
     return;
   }
 
-    /***************************************************************************
+  /***************************************************************************
   **
   ** Launch operations. Now public to support Cytoscape App usage
   */
@@ -145,22 +152,22 @@ public class BioFabricApplication {
         ujw.setVisible(true);
         if (!ujw.keepGoingAnyway()) {
           return (null);
-       } 
-       }
+        } 
+      }
     }
     ResourceManager.initManager("org.systemsbiology.biofabric.props.BioFabric");
-    bfw_ = new BioFabricWindow(args, this, true);
-    ExceptionHandler.getHandler().initialize(bfw_);
-    Dimension cbf = UiUtil.centerBigFrame(bfw_, 1600, 1200, 1.0, 0);
-    bfw_.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);   
-    bfw_.addWindowListener(new WindowAdapter() {
+    bfw_ = new BioFabricWindow(args, this, true, false);
+    ExceptionHandler.getHandler().initialize(bfw_.getWindow());
+    Dimension cbf = UiUtil.centerBigFrame(bfw_.getWindow(), 1600, 1200, 1.0, 0);
+    bfw_.getWindow().setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);   
+    bfw_.getWindow().addWindowListener(new WindowAdapter() {
       public void windowClosing(WindowEvent e) {
         shutdownFabric();
       }
     });
-    CommandSet.initCmds("mainWindow", this, bfw_, true);
+    CommandSet.initCmds("mainWindow", this, bfw_, true, plum_, null);
     bfw_.initWindow(cbf);
-    bfw_.setVisible(true);
+    bfw_.getWindow().setVisible(true);
     initSelection();  
     return (bfw_);
   }
@@ -177,14 +184,17 @@ public class BioFabricApplication {
   */
 
   public static void main(String argv[]) {
-    final HashMap<String, Object> args = new HashMap<String, Object>();
-    if ((argv.length > 0) && argv[0].equalsIgnoreCase("-gaggle")) {
-      args.put("doGaggle", new Boolean(true));
-    }    
-    final BioFabricApplication su = new BioFabricApplication(false);    
+    ArgParser ap = new ArgParser(); 
+    final Map<String, Object> argMap = ap.parse(ArgParser.AppType.VIEWER, argv);
+    if (argMap == null) {
+      System.err.print(ap.getUsage(ArgParser.AppType.VIEWER));
+      System.exit(0);
+    }
+
+    final BioFabricApplication su = new BioFabricApplication(false, argMap);    
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {    
-        su.launch(args);
+        su.launch(argMap);
       }
     });
   }
@@ -201,17 +211,17 @@ public class BioFabricApplication {
   */
      
   private void initSelection() {  
-    selectionWindow_ = new BioFabricWindow(new HashMap<String, Object>(), this, false);
-    Dimension swDim = new Dimension((int)(bfw_.getWidth() * .80), (int)(bfw_.getHeight() * .80));
-    selectionWindow_.setSize(swDim.width, swDim.height);
-    selectionWindow_.setLocationRelativeTo(bfw_);
-    selectionWindow_.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);   
-    selectionWindow_.addWindowListener(new WindowAdapter() {
+    selectionWindow_ = new BioFabricWindow(new HashMap<String, Object>(), this, false, false);
+    Dimension swDim = new Dimension((int)(bfw_.getWindow().getWidth() * .80), (int)(bfw_.getWindow().getHeight() * .80));
+    selectionWindow_.getWindow().setSize(swDim.width, swDim.height);
+    selectionWindow_.getWindow().setLocationRelativeTo(bfw_.getWindow());
+    selectionWindow_.getWindow().setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);   
+    selectionWindow_.getWindow().addWindowListener(new WindowAdapter() {
       public void windowClosing(WindowEvent e) {
         closeSelection();
       }
     });
-    CommandSet.initCmds("selectionWindow", this, selectionWindow_, false);
+    CommandSet.initCmds("selectionWindow", this, selectionWindow_, false, plum_, null);
     selectionWindow_.initWindow(swDim);
     return;
   }

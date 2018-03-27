@@ -30,6 +30,7 @@ import java.util.Set;
 import org.systemsbiology.biofabric.layouts.NetworkAlignmentLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.NID;
@@ -330,7 +331,7 @@ public class NetworkAlignmentScorer {
    ** Contains common network alignment scores
    */
   
-  public static class NetAlignStats implements BioFabricNetwork.PluginData {
+  public static class NetAlignStats implements BioFabricToolPlugInData {
     
     public double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccardSim;
     

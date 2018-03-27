@@ -40,7 +40,7 @@ import javax.swing.JPanel;
 ** This is the display panel
 */
 
-public class BioFabricOverview extends JPanel {
+public class BioFabricOverview {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -63,7 +63,8 @@ public class BioFabricOverview extends JPanel {
   // PRIVATE INSTANCE MEMBERS
   //
   ////////////////////////////////////////////////////////////////////////////
-   
+  
+  private JPanel myPanel_;
   private Dimension currSize_;
   private BufferedImage img_;
   private BufferedImage scaledImg_;
@@ -81,8 +82,6 @@ public class BioFabricOverview extends JPanel {
   private CardLayout myCard_;
   private PaintPanel pPan_;
   
-  private static final long serialVersionUID = 1L;
-  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTRUCTORS
@@ -94,8 +93,12 @@ public class BioFabricOverview extends JPanel {
   ** Constructor
   */
 
-  public BioFabricOverview() {
-    setBackground(Color.white);
+  public BioFabricOverview(boolean isHeadless) {
+    if (isHeadless) {
+      return;
+    }
+    myPanel_ = new MyOverPanel();
+    myPanel_.setBackground(Color.white);
     scaledImg_ = null;
     img_ = null;
     navFocus_ = new Point(0, 0);
@@ -109,13 +112,13 @@ public class BioFabricOverview extends JPanel {
     magInWorld_ = new Rectangle();
     
     myCard_ = new CardLayout();
-    setLayout(myCard_);
+    myPanel_.setLayout(myCard_);
     
     pPan_ = new PaintPanel();
-    add(pPan_, "theView");
+    myPanel_.add(pPan_, "theView");
     JPanel blankPanel = new JPanel();
     blankPanel.setBackground(Color.white);
-    add(blankPanel, "Hiding");   
+    myPanel_.add(blankPanel, "Hiding");   
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -125,38 +128,15 @@ public class BioFabricOverview extends JPanel {
   ////////////////////////////////////////////////////////////////////////////
 
   /***************************************************************************
-  **
-  ** Sizing
+  ** 
+  ** Get the panel
   */
 
-  @Override
-  public Dimension getPreferredSize() {
-    return (new Dimension(800, 100));    
+  public JPanel getPanel() { 
+    return (myPanel_);
   }
-  
-  @Override
-  public Dimension getMinimumSize() {
-    return (new Dimension(10, 10));    
-  }
-  
-  @Override
-  public Dimension getMaximumSize() {
-    return (new Dimension(4000, 340));    
-  }
-    
-  /***************************************************************************
-  **
-  ** Handle size change
-  */
 
-  @Override
-  public void setBounds(int x, int y, int width, int height) {
-    super.setBounds(x, y, width, height);
-    currSize_ = new Dimension(width, height);
-    resizeImage();
-    repaint();
-    return;
-  } 
+
   
   /***************************************************************************
   **
@@ -164,7 +144,7 @@ public class BioFabricOverview extends JPanel {
   */
 
   public void showView(boolean enabled) {
-    myCard_.show(this, (enabled) ? "theView" : "Hiding"); 
+    myCard_.show(myPanel_, (enabled) ? "theView" : "Hiding"); 
     return;
   }
   
@@ -177,7 +157,7 @@ public class BioFabricOverview extends JPanel {
     navFocus_ = cprc;
     mousePoint_.setLocation(center);
     mouseIn_ = true;
-    repaint();
+    myPanel_.repaint();
     return;
   }
   
@@ -188,7 +168,7 @@ public class BioFabricOverview extends JPanel {
 
   public void setViewInWorld(Rectangle2D viewInWorld) {
     viewInWorld_.setFrame(viewInWorld);
-    repaint();
+    myPanel_.repaint();
     return;
   }
   
@@ -199,7 +179,7 @@ public class BioFabricOverview extends JPanel {
 
   public void setMagnifyView(Rectangle magInWorld) {
     magInWorld_.setBounds(magInWorld);
-    repaint();
+    myPanel_.repaint();
     return;
   }
     
@@ -211,7 +191,7 @@ public class BioFabricOverview extends JPanel {
   public void setMouseIn(boolean isIn, boolean magIgnoring) {
     mouseIn_ = isIn;
     hideMag_ = (!isIn && !magIgnoring);
-    repaint();
+    myPanel_.repaint();
     return;
   }
   
@@ -225,7 +205,7 @@ public class BioFabricOverview extends JPanel {
     scaledImg_ = null;
     worldRect_.setBounds(worldRect);
     resizeImage();
-    repaint();
+    myPanel_.repaint();
     return;
   }
   
@@ -239,7 +219,7 @@ public class BioFabricOverview extends JPanel {
       return;
     }
     if (currSize_ == null) {
-      currSize_ = getSize();
+      currSize_ = myPanel_.getSize();
     }
     //
     // Don't do this step if the overview is not currently bring displayed
@@ -420,4 +400,48 @@ public class BioFabricOverview extends JPanel {
       return;
     }
   }
+  
+  /***************************************************************************
+  **
+  ** Now the actual panel to use
+  */  
+      
+  public class MyOverPanel extends JPanel {
+    
+    private static final long serialVersionUID = 1L;
+    
+    /***************************************************************************
+    **
+    ** Sizing
+    */
+
+    @Override
+    public Dimension getPreferredSize() {
+      return (new Dimension(800, 100));    
+    }
+     
+    @Override
+    public Dimension getMinimumSize() {
+      return (new Dimension(10, 10));    
+    }
+     
+    @Override
+    public Dimension getMaximumSize() {
+      return (new Dimension(4000, 340));    
+    }
+       
+    /***************************************************************************
+    **
+    ** Handle size change
+    */
+
+    @Override
+    public void setBounds(int x, int y, int width, int height) {
+      super.setBounds(x, y, width, height);
+      currSize_ = new Dimension(width, height);
+      resizeImage();
+      repaint();
+      return;
+    } 
+  } 
 }

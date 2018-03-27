@@ -57,6 +57,8 @@ import org.systemsbiology.biofabric.layouts.ControlTopLayout.TargMode;
 
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
+import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
@@ -77,7 +79,7 @@ import org.systemsbiology.biofabric.util.UniqueLabeller;
 ** This is the Network model.
 */
 
-public class BioFabricNetwork {
+public class BioFabricNetwork implements PlugInNetworkModelAPI {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -1219,13 +1221,40 @@ public class BioFabricNetwork {
   
   /***************************************************************************
   ** 
+  ** Get node count
+  */
+
+  public int getNodeCount() {
+    return (rowCount_);
+  } 
+  
+  /***************************************************************************
+  ** 
   ** Get Row Count
   */
 
   public int getRowCount() {
     return (rowCount_);
-  } 
-   
+  }
+  
+  /***************************************************************************
+  **
+  ** Stash plugin data for extraction
+  */
+  
+  public void stashPluginData(String keyword, BioFabricToolPlugInData data) {
+    
+  }
+
+  /***************************************************************************
+  **
+  ** Pull plugin data for extraction
+  */
+  
+  public BioFabricToolPlugInData providePluginData(String keyword) {
+     return (null);
+  }
+
   /***************************************************************************
   ** 
   ** Get node defs
@@ -2690,50 +2719,13 @@ public class BioFabricNetwork {
   }
   
   /***************************************************************************
-   **
-   **
-   */
+  **
+  ** For storing plugin data
+  */  
   
-  public interface PluginData {}
-  
-  /***************************************************************************
-   **
-   **
-   */
-  
-  public interface PluginDataOwner {
-  
-    void writePluginData(PluginData data);
+ // public void storePluginData(String keyword, PluginData data, PluginDataOwner owner) {
     
-    void readPluginData(PluginData data);
-    
-  }
-  
-  /***************************************************************************
-   **
-   **
-   */
-  
-  public class NetAlignPluginDataOwner implements PluginDataOwner {
-    
-    private Map<String, PluginData> map;
-    
-    public NetAlignPluginDataOwner() {
-      map = new HashMap<String, PluginData>();
-    }
-  
-    @Override
-    public void writePluginData(PluginData data) {
-    }
-  
-    @Override
-    public void readPluginData(PluginData data) {
-    }
-  }
-  
-  public void storePluginData(String keyword, PluginData data, PluginDataOwner owner) {
-    
-  }
+ // }
  
   ////////////////////////////////////////////////////////////////////////////
   //

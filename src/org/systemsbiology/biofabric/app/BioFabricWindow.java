@@ -26,6 +26,7 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -43,6 +44,7 @@ import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 
 import org.systemsbiology.biofabric.cmd.CommandSet;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.ui.display.BioFabricNavAndControl;
 import org.systemsbiology.biofabric.ui.display.BioFabricOverview;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
@@ -57,7 +59,7 @@ import org.systemsbiology.biofabric.util.ResourceManager;
 ** This is the BioFabric Window!
 */
 
-public class BioFabricWindow extends JFrame implements BackgroundWorkerControlManager {
+public class BioFabricWindow implements BackgroundWorkerControlManager {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -65,6 +67,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
   //
   //////////////////////////////////////////////////////////////////////////// 
    
+  private MyTopWindow myWindow_;
   private BioFabricPanel cp_;
   private BioFabricApplication bfa_;
   private FabricMagnifyingTool fmt_;
@@ -75,7 +78,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
   private CardLayout myCard_;
   private JSplitPane sp_;
   private double savedSplitFrac_;
-  private static final long serialVersionUID = 1L;
+  private boolean isHeadless_;
    
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -88,8 +91,12 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
   ** Constructor
   */
 
-  public BioFabricWindow(Map<String, Object> args, BioFabricApplication bfa, boolean isMain) {
-    super((isMain) ? "BioFabric" : "BioFabric: Selected Submodel View");
+  public BioFabricWindow(Map<String, Object> args, BioFabricApplication bfa, 
+                         boolean isMain, boolean isHeadless) {
+    isHeadless_ = isHeadless;
+    if (!isHeadless) {
+      myWindow_ = new MyTopWindow(isMain);
+    }
     bfa_ = bfa;
     isMain_ = isMain;
     actionMap_ = new HashMap<Integer, Action>();
@@ -101,6 +108,15 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
   //
   ////////////////////////////////////////////////////////////////////////////
 
+  /***************************************************************************
+  ** 
+  ** Get the window
+  */
+
+  public JFrame getWindow() { 
+    return (myWindow_);
+  }
+ 
   /****************************************************************************
   **
   ** disable
@@ -124,7 +140,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
       nac_.getOverview().showView(false);
     }
     nac_.getNavTool().enableControls(false);  
-    getContentPane().validate();
+    myWindow_.getContentPane().validate();
     fc.pushDisabled(pushFlags);
   }
 
@@ -140,7 +156,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     fmt_.enableControls(true);
     nac_.getOverview().showView(true);
     nac_.getNavTool().enableControls(true);
-    getContentPane().validate();    
+    myWindow_.getContentPane().validate();    
     
     //
     // Following background thread operations, sometimes we need to
@@ -173,37 +189,46 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
   */
 
   public void initWindow(Dimension dim) {
-    JPanel cpane = (JPanel)getContentPane();
-    ((JComponent)cpane).getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke("ESCAPE"), "BioTapCancel");
-    ((JComponent)cpane).getActionMap().put("BioTapCancel", new AbstractAction() {
-      private static final long serialVersionUID = 1L;
-      public void actionPerformed(ActionEvent e) {
-        try {
-          AbstractAction aa = (AbstractAction)actionMap_.get(Integer.valueOf(CommandSet.CANCEL));
-          aa.actionPerformed(null);
-          return;
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
-        }
-      }
-    });        
     CommandSet fc = CommandSet.getCmds((isMain_) ? "mainWindow" : "selectionWindow");
-    JToolBar toolBar = null;
-     
-    menuInstall(fc, isMain_);
-    toolBar = new JToolBar();
-    stockActionMap(fc, isMain_);
-    stockToolBar(toolBar, isMain_, fc);   
-    nac_ = new BioFabricNavAndControl(isMain_, this);
+    
+    JPanel cpane = null;
+    JToolBar toolBar = null; 
+    if (!isHeadless_) {
+      cpane = (JPanel)myWindow_.getContentPane();
+      ((JComponent)cpane).getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke("ESCAPE"), "BioTapCancel");
+      ((JComponent)cpane).getActionMap().put("BioTapCancel", new AbstractAction() {
+        private static final long serialVersionUID = 1L;
+        public void actionPerformed(ActionEvent e) {
+          try {
+            AbstractAction aa = (AbstractAction)actionMap_.get(Integer.valueOf(CommandSet.CANCEL));
+            aa.actionPerformed(null);
+            return;
+          } catch (Exception ex) {
+            ExceptionHandler.getHandler().displayException(ex);
+          }
+        }
+      });        
+        
+      menuInstall(fc, isMain_);
+      toolBar = new JToolBar();
+      stockActionMap(fc, isMain_);
+      stockToolBar(toolBar, isMain_, fc);
+    }
+    nac_ = new BioFabricNavAndControl(isMain_, myWindow_, isHeadless_);
     fmt_ = nac_.getFMT();
     BucketRenderer bucketRend = new BucketRenderer(fc.getColorGenerator());
-    cp_ = new BioFabricPanel(fc.getColorGenerator(), bfa_, fmt_, nac_.getOverview(), nac_.getNavTool(), isMain_, this, bucketRend);  
+    cp_ = new BioFabricPanel(fc.getColorGenerator(), bfa_, fmt_, 
+                             nac_.getOverview(), nac_.getNavTool(), isMain_, this, bucketRend, isHeadless_);  
     fc.setFabricPanel(cp_);
     nac_.setFabricPanel(cp_);
-    cp_.setFabricLocation(nac_.getFabricLocation(), nac_.getMouseOverView());        
-    cp_.setBackground(Color.white);
+    cp_.setFabricLocation(nac_.getFabricLocation(), nac_.getMouseOverView());
+    if (isHeadless_) {
+      return;
+    }
     
-    JScrollPane jsp = new JScrollPane(cp_);
+    cp_.getPanel().setBackground(Color.white);
+    
+    JScrollPane jsp = new JScrollPane(cp_.getPanel());
     //
     // "Zoom to full model" has problems if scrollbars come and go, since we check viewport
     // size to calculate the zoom:
@@ -229,7 +254,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     blankPanel.setBackground(Color.white);
     hidingPanel_.add(blankPanel, "Hiding");
 
-    sp_ = new JSplitPane(JSplitPane.VERTICAL_SPLIT, hidingPanel_, nac_);
+    sp_ = new JSplitPane(JSplitPane.VERTICAL_SPLIT, hidingPanel_, nac_.getPanel());
     sp_.setDividerLocation((int)(dim.height * 0.50));
     sp_.setResizeWeight(1.0);
 
@@ -237,8 +262,8 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
    // cpane.add(nac_, BorderLayout.SOUTH);
            
     URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/BioFab16White.gif");  
-    setIconImage(new ImageIcon(ugif).getImage());
-    setResizable(true);
+    myWindow_.setIconImage(new ImageIcon(ugif).getImage());
+    myWindow_.setResizable(true);
     fc.checkForChanges();
     // Zoom buttons need to be inactive with no model:
     fc.handleZoomButtons();
@@ -254,16 +279,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     cp_.shutdown();
     return;
   }
- 
-  /***************************************************************************
-  **
-  ** Drawing core
-  */
-  
-  public BioFabricApplication getApplication() {
-    return (bfa_);
-  }
-   
+    
   /***************************************************************************
   **
   ** Get fabric panel
@@ -288,6 +304,9 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
   */
   
   public void showNavAndControl(boolean show) {
+    if (isHeadless_) {
+      return;
+    }
     if (show) {
       sp_.setEnabled(true);
       nac_.setToBlank(!show);
@@ -308,6 +327,9 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
   */
   
   public void showTour(boolean show) {
+    if (isHeadless_) {
+      return;
+    }
     if (nac_.showTour(show)) {
       sp_.resetToPreferredSizes();
     }
@@ -415,6 +437,18 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     sMenu.add(fc.getAction(CommandSet.COMPARE_NODES, false, null));
     sMenu.add(fc.getAction(CommandSet.NET_ALIGN_SCORES, false, null));
     
+    
+     List<String> piks = fc.getPlugInKeys();
+     for (String pik : piks) {
+       BioFabricToolPlugIn tpi = fc.getPlugIn(pik);
+       JMenu plugMenu = new JMenu(tpi.getToolMenu());
+       sMenu.add(plugMenu);
+       int numAction = tpi.getCommandCount();
+       for (int i = 0; i < numAction; i++) {
+         plugMenu.add(fc.getPluginAction(pik, i));
+       }
+     }
+   
     //
     // Layout Menu
     //
@@ -455,7 +489,7 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
     menuBar.add(hMenu);
     hMenu.add(fc.getAction(CommandSet.ABOUT, false, null));
     
-    setJMenuBar(menuBar);
+    myWindow_.setJMenuBar(menuBar);
     return;
   }
     
@@ -513,5 +547,24 @@ public class BioFabricWindow extends JFrame implements BackgroundWorkerControlMa
       toolBar.add(actionMap_.get(Integer.valueOf(CommandSet.PROPAGATE_DOWN)));
     }
     return;
+  }
+  
+  /***************************************************************************
+  **
+  ** Now the actual frame to use
+  */  
+      
+  public class MyTopWindow extends JFrame {
+    
+    private static final long serialVersionUID = 1L;
+    
+    /***************************************************************************
+    **
+    ** Constructor
+    */
+
+    public MyTopWindow(boolean isMain) {
+      super((isMain) ? "BioFabric" : "BioFabric: Selected Submodel View");
+    }
   }
 }
