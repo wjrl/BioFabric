@@ -384,12 +384,16 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     }
     painter_.clear();
     bfn_ = null;
-    fmt_.setModel(null); 
+    if (fmt_ != null) {
+      fmt_.setModel(null);
+    }
     zoomMap_.clear();
     worldRectNetAR_ = new Rectangle2D.Double(0.0, 0.0, 100.0, 100.0); 
     zoomer_.setWorldRect(UiUtil.rectFromRect2D(worldRectNetAR_));
-    clearSelections(); 
-    fnt_.haveAModel(false);
+    clearSelections();
+    if (fnt_ != null) {
+      fnt_.haveAModel(false);
+    }
     floaterSet_.clear();
     nodeNameLocations_ = null;
     drainNameLocations_ = null;
@@ -585,7 +589,9 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     rects_.clear();
     currSel_ = -1;
     selections_ = null;
-    fnt_.haveASelection(false);
+    if (fnt_ != null) {
+      fnt_.haveASelection(false);
+    }
     handleFloaterChange();
     EventManager mgr = EventManager.getManager();
     SelectionChangeEvent ev = new SelectionChangeEvent(null, null, SelectionChangeEvent.SELECTED_ELEMENT);
@@ -704,7 +710,9 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
 
   public void handleFloaterChange() {
     repaint();
-    fmt_.repaint();
+    if (fmt_ != null) {
+      fmt_.repaint();
+    }
     return;
   } 
   
@@ -717,7 +725,9 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     if (myPanel_ != null) {
       myPanel_.repaint();
     }
-    fmt_.repaint();
+    if (fmt_ != null) {
+      fmt_.repaint();
+    }
     return;
   } 
 
@@ -1306,7 +1316,9 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     	}
     }
     lr.finish();
-    fnt_.haveAModel(true);
+    if (fnt_ != null) {
+      fnt_.haveAModel(true);
+    }
     return;
   }
   

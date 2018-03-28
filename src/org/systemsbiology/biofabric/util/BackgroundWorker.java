@@ -226,7 +226,8 @@ public abstract class BackgroundWorker implements Runnable, BTProgressMonitor {
     	} else if (message_.equals("INDET")) {
     	  cancelRequested_ = !client_.setToIndeterminate();
     	} else {
-    		cancelRequested_ = !client_.updateProgressAndPhase(percent_, message_);
+    	  UiUtil.fixMePrintout("DISASTER FIX ME");
+    //		cancelRequested_ = !client_.updateProgressAndPhase(percent_, message_);
     	} 
     }
   }

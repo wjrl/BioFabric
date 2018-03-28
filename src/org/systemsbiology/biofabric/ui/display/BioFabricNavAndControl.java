@@ -256,7 +256,9 @@ public class BioFabricNavAndControl {
   */
 
   public void setFabricPanel(BioFabricPanel cp) {
-    fnt_.setFabricPanel(cp);
+    if (fnt_ != null) {
+      fnt_.setFabricPanel(cp);
+    }
     return;
   }
   

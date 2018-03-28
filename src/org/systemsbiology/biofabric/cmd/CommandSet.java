@@ -743,7 +743,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     BackgroundFileReader br = new BackgroundFileReader();
     //
-    // This gets file file in:
+    // This gets file in:
     //
     boolean finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
     //
@@ -1507,12 +1507,14 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     if (didExist && checkOverwrite) {  // note we care about DID exist (before creation)
       String overFormat = rMan.getString("fileChecks.doOverwriteFormat");
       String overMsg = MessageFormat.format(overFormat, new Object[] {target.getName()});
-      int overwrite =
-        JOptionPane.showConfirmDialog(topWindow_, overMsg,
-                                      rMan.getString("fileChecks.doOverwriteTitle"),
-                                      JOptionPane.YES_NO_OPTION);        
-      if (overwrite != JOptionPane.YES_OPTION) {
-        return (false);
+      if (headlessOracle_ == null) {
+        int overwrite =
+          JOptionPane.showConfirmDialog(topWindow_, overMsg,
+                                        rMan.getString("fileChecks.doOverwriteTitle"),
+                                        JOptionPane.YES_NO_OPTION);        
+        if (overwrite != JOptionPane.YES_OPTION) {
+          return (false);
+        }
       }
     }
     return (true);
@@ -1706,7 +1708,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public BufferedImage expensiveModelOperations(BioFabricNetwork.BuildData bfnbd, 
   		                                          boolean forMain, 
   		                                          BTProgressMonitor monitor) throws IOException, AsynchExitRequestException {
-    Dimension screenSize = (forMain) ? Toolkit.getDefaultToolkit().getScreenSize() : new Dimension(600, 800);
+    Dimension screenSize = (forMain && (headlessOracle_ == null)) ? Toolkit.getDefaultToolkit().getScreenSize() : new Dimension(600, 800);
     // Possibly expensive network analysis preparation:
     BioFabricNetwork bfn = new BioFabricNetwork(bfnbd, monitor);
     // Possibly expensive display object creation:
@@ -2158,7 +2160,25 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       return (loadFromSifSource(inputFile_, null, null, new UniqueLabeller()));
     }
   }
-
+  
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+    
+  public class HeadlessExportAction extends ExportImageAction {
+ 
+    private static final long serialVersionUID = 1L;
+    
+    public HeadlessExportAction() {
+      super(false, "command.HeadlessExport", "command.HeadlessExportMnem");
+    }
+   
+    protected ExportSettingsDialog.ExportSettings getExportSettings() {
+      return (null); 
+    }
+  }
+  
   /***************************************************************************
   **
   ** Checks if it is enabled or not
@@ -4577,7 +4597,6 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     protected abstract ExportSettingsDialog.ExportSettings getExportSettings();
-    
     
     public boolean performOperation(Object[] args) { 
    

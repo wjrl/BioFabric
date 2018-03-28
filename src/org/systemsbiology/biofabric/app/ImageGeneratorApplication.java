@@ -20,6 +20,7 @@
 package org.systemsbiology.biofabric.app;
 
 import java.awt.Dimension;
+import java.awt.Rectangle;
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -34,8 +35,10 @@ import org.systemsbiology.biofabric.cmd.HeadlessOracle;
 import org.systemsbiology.biofabric.plugin.PlugInManager;
 import org.systemsbiology.biofabric.ui.ImageExporter;
 import org.systemsbiology.biofabric.ui.dialogs.ExportSettingsDialog;
+import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.ResourceManager;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 
 /****************************************************************************
@@ -53,8 +56,7 @@ public class ImageGeneratorApplication {
   
   /****************************************************************************
   **
-  ** These are the allowed input and output options when operating
-  ** in-process with input and output streams:
+  ** These are the allowed input and output options:
   */  
    
   public final static int TSV_INPUT  = 0;
@@ -196,14 +198,16 @@ public class ImageGeneratorApplication {
         throw new GeneratorException(rMan.getString("headless.noInputFailure"));
       }   
 
-/*
+      boolean aSuccess = false;
+
       String imageFileName = (String)args_.get(ArgParser.IMAGE_BATCH_OUTPUT);
+      imageFileName = "/Users/bill/Desktop/YeastWork/yeast25.png";
       if (imageFileName != null) {
-        MainCommands.OneShot imageWriter = mcmd.getOneShot(MainCommands.HEADLESS_EXPORT);
-        Object[] osArgs = imageExportPrepForFile(args_, imageFileName, mcmd);
+        CommandSet.HeadlessExportAction hexa = cmd.new HeadlessExportAction();
+        Object[] osArgs = imageExportPrepForFile(args_, imageFileName, cmd);
         if (osArgs != null) {
-          boolean ok = imageWriter.performOperation(osArgs);
-          if (!ok) {
+          boolean hok = hexa.performOperation(osArgs);
+          if (!hok) {
             System.err.println(rMan.getString("headless.imageExportFailure"));
           } else {
             aSuccess = true;
@@ -216,7 +220,7 @@ public class ImageGeneratorApplication {
       if (!aSuccess) {
         System.err.println(rMan.getString("headless.totalExportFailure"));
         return (rMan.getString("headless.earlyExit"));
-      } */
+      } 
     }
     return (null);
   }
@@ -224,14 +228,14 @@ public class ImageGeneratorApplication {
   /***************************************************************************
   ** 
   ** Image export argument prep for file output
- 
+  */
   
   
-  private Object[] imageExportPrepForFile(Map args, String imageFileName, MainCommands mcmd) {
+  private Object[] imageExportPrepForFile(Map args, String imageFileName, CommandSet cmd) {
     Object[] osArgs = new Object[3];
     osArgs[1] = new Boolean(true); // This is a file
     osArgs[2] = imageFileName;         
-    ExportSettingsDialog.ExportSettings settings = imageExportPrepGuts(args, mcmd);
+    ExportSettingsDialog.ExportSettings settings = imageExportPrepGuts(args, cmd);
     osArgs[0] = settings;    
     return (osArgs);
   }  
@@ -239,9 +243,9 @@ public class ImageGeneratorApplication {
   /***************************************************************************
   ** 
   ** Image export argument prep
- 
+  */
    
-  private ExportSettingsDialog.ExportSettings imageExportPrepGuts(Map args) {
+  private ExportSettingsDialog.ExportSettings imageExportPrepGuts(Map<String, Object> args, CommandSet cmd) {
 
     ResourceManager rMan = ResourceManager.getManager();
                        
@@ -249,7 +253,9 @@ public class ImageGeneratorApplication {
     List suppForms = ImageExporter.getSupportedExports();    
     
     ExportSettingsDialog.ExportSettings settings = new ExportSettingsDialog.ExportSettings();
-    settings.zoomVal = 1.0;
+    UiUtil.fixMePrintout("NO DISASTER");
+    //settings.zoomVal = 1.0;
+    settings.zoomVal = 0.05;
     
     // Make this an argument!
     if (suppForms.contains("PNG")) {
@@ -273,11 +279,10 @@ public class ImageGeneratorApplication {
       settings.res = null;
     }
    
-    SUPanel sup = mcmd.getSUPanel();
-    sup.setZoomFactor(settings.zoomVal);    
-    Dimension dim = sup.getBasicSize(true, true, ZoomTarget.VISIBLE_MODULES);   
-    double currentZoomHeight = Math.round(((double)dim.height) * settings.zoomVal);
-    double currentZoomWidth = Math.round(((double)dim.width) * settings.zoomVal);    
+    BioFabricPanel bfp = cmd.getBFW().getFabricPanel();
+    Rectangle wr = bfp.getRequiredSize();
+    double currentZoomHeight = Math.round(((double)wr.height) * settings.zoomVal);
+    double currentZoomWidth = Math.round(((double)wr.width) * settings.zoomVal);    
     settings.size = new Dimension((int)currentZoomWidth, (int)currentZoomHeight);    
     return (settings);
   }
