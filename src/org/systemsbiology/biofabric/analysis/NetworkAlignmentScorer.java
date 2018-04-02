@@ -2,7 +2,7 @@
 **
 **    File created by Rishi Desai
 **
-**    Copyright (C) 2003-2017 Institute for Systems Biology
+**    Copyright (C) 2003-2018 Institute for Systems Biology
 **                            Seattle, Washington, USA.
 **
 **    This library is free software; you can redistribute it and/or
@@ -289,7 +289,7 @@ public class NetworkAlignmentScorer {
                                                 Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
                                                 BTProgressMonitor monitor) {
     
-    NetworkAlignmentLayout.NodeGroupMap map = new NetworkAlignmentLayout.NodeGroupMap(links, loneNodeIDs, mergedToCorrect, isAlignedNode,
+    NodeGroupMap map = new NodeGroupMap(links, loneNodeIDs, mergedToCorrect, isAlignedNode,
             NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
     
     Set<NID.WithName> allNodes;
@@ -314,7 +314,7 @@ public class NetworkAlignmentScorer {
   }
   
   private static ScoreVector getLinkGroupRatios(Set<FabricLink> links, BTProgressMonitor monitor) {
-    int[] counts = new int[NetworkAlignmentLayout.NUMBER_LINK_GROUPS];
+    int[] counts = new int[NodeGroupMap.NUMBER_LINK_GROUPS];
     
     for (FabricLink link : links) {
       if (link.getRelation().equals(NetworkAlignment.COVERED_EDGE)) {
@@ -330,7 +330,7 @@ public class NetworkAlignmentScorer {
       }
     }
     
-    ScoreVector scoreLG = new ScoreVector(NetworkAlignmentLayout.NUMBER_LINK_GROUPS);
+    ScoreVector scoreLG = new ScoreVector(NodeGroupMap.NUMBER_LINK_GROUPS);
     
     for (int i = 0; i < counts.length; i++) {
       scoreLG.values_[i] = ((double)counts[i]) / ((double)links.size());
