@@ -66,7 +66,7 @@ public interface ZoomPresentation {
   
   /***************************************************************************
   **
-  ** Answers if we have mutliple selections (i.e. can cycle through selections) 
+  ** Answers if we have multiple selections (i.e. can cycle through selections) 
   */
   
   public boolean haveMultipleSelections();

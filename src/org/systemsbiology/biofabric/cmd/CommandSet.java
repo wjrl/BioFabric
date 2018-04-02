@@ -1716,15 +1716,17 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     // Very expensive display buffer creation:
     int[] preZooms = bfp_.calcZoomSettings(screenSize);
     BufferedImage topImage = null;
-    if (forMain) {
-      BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
-      topImage = bb.buildBufs(preZooms, bfp_, 25, monitor);
-      bfp_.setBufBuilder(bb);      
-    } else {
-      BufferBuilder bb = new BufferBuilder(bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
-      topImage = bb.buildOneBuf(preZooms);      
-      bfp_.setBufBuilder(null);
-    }    
+    if (headlessOracle_ == null) {
+      if (forMain) {
+        BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
+        topImage = bb.buildBufs(preZooms, bfp_, 25, monitor);
+        bfp_.setBufBuilder(bb);      
+      } else {
+        BufferBuilder bb = new BufferBuilder(bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
+        topImage = bb.buildOneBuf(preZooms);      
+        bfp_.setBufBuilder(null);
+      }
+    }
     return (topImage);
   }
 
@@ -5661,10 +5663,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
 	    	case BUILD_FROM_SIF:
 	    		HashMap<NID.WithName, String> emptyMap = new HashMap<NID.WithName, String>();
 	        return (new BioFabricNetwork.RelayoutBuildData(idGen_, links_, loneNodeIDs_, emptyMap, colGen_, bMode_));
-            case BUILD_NETWORK_ALIGNMENT:
-              HashMap<NID.WithName, String> emptyClustMap = new HashMap<NID.WithName, String>();
-              return (new BioFabricNetwork.NetworkAlignmentBuildData(idGen_, links_, loneNodeIDs_, mergedToCorrect_,
-                      isAlignedNode_, netAlignStats_, emptyClustMap, forOrphanEdge_, colGen_, bMode_));
+        case BUILD_NETWORK_ALIGNMENT:
+          HashMap<NID.WithName, String> emptyClustMap = new HashMap<NID.WithName, String>();
+          return (new BioFabricNetwork.NetworkAlignmentBuildData(idGen_, links_, loneNodeIDs_, mergedToCorrect_,
+                  isAlignedNode_, netAlignStats_, emptyClustMap, forOrphanEdge_, colGen_, bMode_));
 	    	case SHADOW_LINK_CHANGE:
 	    	case BUILD_FROM_XML:
 	    		return (new BioFabricNetwork.PreBuiltBuildData(bfn_, bMode_));		
@@ -5680,7 +5682,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       	} 	
         BioFabricNetwork.BuildData bd = generateBuildData();
         preLoadOperations();
-        BufferedImage bi = expensiveModelOperations(bd, forMain_, this);
+        // This can be run on foreground thread (for headless operation: shut up progress monitor
+        // if that is the case:
+        BTProgressMonitor monitor = (headlessOracle_ != null) ? null : this;
+        BufferedImage bi = expensiveModelOperations(bd, forMain_, monitor);
         if (linkCount_ > 10000) {
           (new GarbageRequester()).askForGC(this);
         }

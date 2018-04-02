@@ -1820,7 +1820,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
   
   @Override
   public Dimension getPreferredSize() {
-    return (zoomer_.getPreferredSize());    
+    return (this.myPanel_.getPreferredSize());    
   }
   
   public Dimension getBasicSize() {
@@ -3008,6 +3008,16 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     
     private static final long serialVersionUID = 1L;
     
+    /***************************************************************************
+    **
+    ** preferred size
+    */
+    
+    @Override
+    public Dimension getPreferredSize() {
+      return (zoomer_.getPreferredSize());    
+    }
+
     /***************************************************************************
     **
     ** Drawing routine for printing

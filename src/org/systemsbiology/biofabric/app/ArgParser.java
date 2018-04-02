@@ -45,8 +45,9 @@ public class ArgParser {
   public static final String FILE         = "file";
   public static final String PLUG_IN_DIR  = "plugInDir";  
   
-  public static final String TSV_BATCH_INPUT    = "tsvImport";
-  public static final String IMAGE_BATCH_OUTPUT = "imageExport";
+  public static final String SIF_BATCH_INPUT    = "sifImport";
+  public static final String IMAGE_BATCH_OUTPUT = "pngExport";
+  public static final String IMAGE_OUTPUT_WIDTH = "pngWidth";
 
   
   ////////////////////////////////////////////////////////////////////////////
@@ -176,12 +177,12 @@ public class ArgParser {
   private List<ArgInfo> loadForType(AppType type) {
     ArrayList<ArgInfo> retval = new ArrayList<ArgInfo>();
     if (type == AppType.VIEWER) {
-      retval.add(new ArgInfo(PLUG_IN_DIR, true, false));
+      retval.add(new ArgInfo(PLUG_IN_DIR, true, true));
       retval.add(new ArgInfo(FILE, true, true));
-    } else if (type == AppType.PIPELINE) {
-      retval.add(new ArgInfo(FILE, true, true));      
-      retval.add(new ArgInfo(TSV_BATCH_INPUT, true, true));   
-      retval.add(new ArgInfo(IMAGE_BATCH_OUTPUT, true, true));    
+    } else if (type == AppType.PIPELINE) {      
+      retval.add(new ArgInfo(SIF_BATCH_INPUT, true, false));   
+      retval.add(new ArgInfo(IMAGE_BATCH_OUTPUT, true, false)); 
+      retval.add(new ArgInfo(IMAGE_OUTPUT_WIDTH, true, false));   
     } else {
       throw new IllegalArgumentException();  
     }
@@ -206,7 +207,8 @@ public class ArgParser {
       buf.append(ai.key);
       buf.append((ai.opKey) ? " ] " : " ");
       if (ai.followOn) {
-        buf.append(" argument ]");
+        buf.append(" argument");
+        buf.append((ai.opKey) ? " ] " : "");
       }
       buf.append("\n");
     }
