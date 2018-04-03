@@ -1710,7 +1710,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   		                                          BTProgressMonitor monitor) throws IOException, AsynchExitRequestException {
     Dimension screenSize = (forMain && (headlessOracle_ == null)) ? Toolkit.getDefaultToolkit().getScreenSize() : new Dimension(600, 800);
     // Possibly expensive network analysis preparation:
-    BioFabricNetwork bfn = new BioFabricNetwork(bfnbd, monitor);
+    BioFabricNetwork bfn = new BioFabricNetwork(bfnbd, pMan_, monitor);
     // Possibly expensive display object creation:
     bfp_.installModel(bfn, monitor);
     // Very expensive display buffer creation:

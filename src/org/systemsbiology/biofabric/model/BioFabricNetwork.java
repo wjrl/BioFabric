@@ -33,6 +33,8 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.Collection;
 
+import org.xml.sax.Attributes;
+
 import org.systemsbiology.biofabric.analysis.NetworkAlignmentScorer;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
@@ -43,7 +45,6 @@ import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.layouts.WorldBankLayout;
-import org.xml.sax.Attributes;
 
 import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.io.AttributeLoader;
@@ -57,7 +58,9 @@ import org.systemsbiology.biofabric.layouts.ControlTopLayout.TargMode;
 
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
+import org.systemsbiology.biofabric.plugin.PlugInManager;
 import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
@@ -192,6 +195,8 @@ public class BioFabricNetwork implements PlugInNetworkModelAPI {
   
   public NetworkAlignmentScorer.NetAlignStats netAlignStats_;
   
+  private PlugInManager pMan_;
+  
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -204,8 +209,9 @@ public class BioFabricNetwork implements PlugInNetworkModelAPI {
   ** Constructor
   */
 
-  public BioFabricNetwork(BuildData bd, BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public BioFabricNetwork(BuildData bd, PlugInManager pMan, BTProgressMonitor monitor) throws AsynchExitRequestException {
   	nodeIDGenerator_ = new UniqueLabeller();
+  	pMan_ = pMan;
   	layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
     BuildMode mode = bd.getMode();
     nodeAnnot_ = new AnnotationSet();
@@ -1060,6 +1066,19 @@ public class BioFabricNetwork implements PlugInNetworkModelAPI {
     ind.down().indent();
     out.println("</shadowLinkAnnotations>");
 
+    //
+    // Let the plugins write to XML
+    
+    ind.indent();
+    out.println("<plugInDataSets>");
+    List<String> keyList = pMan_.getOrderedToolPlugInKeys();
+    for (String key : keyList) {
+      BioFabricToolPlugIn plugin = pMan_.getToolPlugIn(key);
+      plugin.writeXML(out, ind);
+    }
+    ind.indent();
+    out.println("</plugInDataSets>");
+    
     lr.finish();
     ind.down().indent();
     out.println("</BioFabric>"); 

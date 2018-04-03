@@ -33,13 +33,18 @@ import java.util.jar.JarFile;
 import java.util.jar.JarEntry;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.SUParser;
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.Indenter;
 import org.xml.sax.Attributes;
 import org.systemsbiology.biofabric.app.ArgParser;
+import org.systemsbiology.biofabric.io.FabricFactory;
 
 /****************************************************************************
 **
@@ -177,6 +182,27 @@ public class PlugInManager {
     return (true);
   }
 
+  /***************************************************************************
+  **
+  ** Dump plugin data using XML
+  */
+  
+  public void writeXML(PrintWriter out, Indenter ind, BTProgressMonitor monitor, boolean forCache) throws AsynchExitRequestException {    
+    //
+    // Let the plugins write to XML
+    //
+    ind.indent();
+    out.println("<plugInDataSets>");
+    List<String> keyList = getOrderedToolPlugInKeys();
+    for (String key : keyList) {
+      BioFabricToolPlugIn plugin = getToolPlugIn(key);
+      plugin.writeXML(out, ind);
+    }
+    ind.indent();
+    out.println("</plugInDataSets>");
+    return;
+  }
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE METHODS
@@ -305,6 +331,33 @@ public class PlugInManager {
     }
   }  
  
+  /***************************************************************************
+  **
+  ** For XML I/O
+  */  
+      
+  public static class PlugInWorker extends AbstractFactoryClient {
+      
+    public PlugInWorker(FabricFactory.FactoryWhiteboard board, PlugInManager pmg) {
+      super(board);
+      myKeys_.add("plugInDataSets");
+      List<String> keyList = pmg.getOrderedToolPlugInKeys();
+      for (String key : keyList) {
+        BioFabricToolPlugIn plugin = pmg.getToolPlugIn(key);
+        AbstractFactoryClient afc = plugin.getXMLWorker();
+        installWorker(afc, null);
+      }
+    }
+    
+    protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
+      Object retval = null;
+      if (myKeys_.contains(elemName)) {
+        // Nothing to do here
+      }
+      return (retval);     
+    }  
+  }
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // INNER CLASSES

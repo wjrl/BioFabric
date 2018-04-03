@@ -19,6 +19,10 @@
 
 package org.systemsbiology.biofabric.plugin;
 
+import java.io.PrintWriter;
+
+import org.systemsbiology.biofabric.util.Indenter;
+
 /****************************************************************************
 **
 ** Interface for plugins that can implement BioFabric workflows
@@ -67,12 +71,13 @@ public interface BioFabricToolPlugIn {
   
   public BioFabricToolPlugInCmd getCommand(int index);
    
+  
   /***************************************************************************
   **
-  ** Write session data to given output
+  ** Dump out using XML
   */
-  
-  public void writePluginData(String keyword, BioFabricToolPlugInData data);
+   
+  public void writeXML(PrintWriter out, Indenter ind);   
 
   /***************************************************************************
   **
