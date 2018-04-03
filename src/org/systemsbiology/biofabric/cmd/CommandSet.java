@@ -3621,7 +3621,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
     @Override
     protected boolean checkGuts() {
-      return (bfp_.hasAModel());
+      return (bfp_.hasAModel() && bfp_.getNetwork().netAlignStats_ != null);
     }
   
   }

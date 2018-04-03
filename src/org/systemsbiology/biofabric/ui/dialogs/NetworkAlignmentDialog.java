@@ -81,11 +81,6 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     alignField_ = new JTextField(25);
     perfectField_ = new JTextField(25);
   
-    graph1Field_.setEnabled(false);
-    graph2Field_.setEnabled(false);
-    alignField_.setEnabled(false);
-    perfectField_.setEnabled(false);
-  
     MatchingJLabel graph1FileMatch, graph2FileMatch, alignFileMatch, perfectFileMatch;
     JLabel perfectFileName = new JLabel(rMan.getString("networkAlignment.perfect")); // only to use as a reference, not in dialog
     perfectFileMatch = new MatchingJLabel(rMan.getString("networkAlignment.perfect"), perfectFileName);

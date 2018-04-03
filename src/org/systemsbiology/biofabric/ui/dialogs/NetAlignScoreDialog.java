@@ -50,12 +50,12 @@ public class NetAlignScoreDialog extends BTStashResultsDialog {
     String msg = ResourceManager.getManager().getString("networkAlignment.scoreMessage");
     addWidgetFullRow(new JLabel(msg), false);
     
-    for (NetworkAlignmentScorer.NetAlignMeasure measure : stats.measures) {
+    for (NetworkAlignmentScorer.NetAlignMeasure measure : netAlignStats_.measures) {
       String label = String.format("%s\t%4.4f", measure.name, measure.val);
       addWidgetFullRow(new JLabel(label, SwingConstants.LEFT), false);
     }
     
-    if (stats.measures.isEmpty()) {
+    if (netAlignStats_.measures.isEmpty()) {
       String noM = ResourceManager.getManager().getString("networkAlignment.noMeasuresAvailable");
       addWidgetFullRow(new JLabel(noM), false);
     }
