@@ -344,7 +344,7 @@ public class PlugInManager {
       List<String> keyList = pmg.getOrderedToolPlugInKeys();
       for (String key : keyList) {
         BioFabricToolPlugIn plugin = pmg.getToolPlugIn(key);
-        AbstractFactoryClient afc = plugin.getXMLWorker();
+        AbstractFactoryClient afc = plugin.getXMLWorker(board);
         installWorker(afc, null);
       }
     }

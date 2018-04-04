@@ -31,6 +31,8 @@ import org.xml.sax.Attributes;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.parser.ParserClient;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.NamedColor;
@@ -195,6 +197,9 @@ public class FabricFactory implements ParserClient {
   	public Map<NID, NID.WithName> wnMap;
   	public AnnotationSet.Annot annot;
   	public AnnotationSet currAnnots;
+  	
+  	public BioFabricToolPlugIn currPlugIn;
+  	public BioFabricToolPlugInData currPlugInData;
     
     public FactoryWhiteboard() {
       colTarg = FabricColorGenerator.UNCHANGED;

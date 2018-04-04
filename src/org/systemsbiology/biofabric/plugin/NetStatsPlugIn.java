@@ -29,6 +29,7 @@ import javax.swing.JOptionPane;
 
 import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
+import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.util.AttributeExtractor;
 import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.ResourceManager;
@@ -44,6 +45,7 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
   
   private ArrayList<BioFabricToolPlugInCmd> myCmds_;
   private String myTag_;
+  private StatData myData_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -59,6 +61,7 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
   public NetStatsPlugIn() {
     myCmds_ = new ArrayList<BioFabricToolPlugInCmd>();
     myCmds_.add(new NodeAndLinkCounterCmd());
+    myData_ = new StatData(0, 0, 0);
   }
   
   ////////////////////////////////////////////////////////////////////////////
@@ -135,45 +138,58 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
   public void writeXML(PrintWriter out, Indenter ind) {  
     ind.up();
     ind.indent();
-    NodeAndLinkCounterCmd nlcc = (NodeAndLinkCounterCmd)myCmds_.get(0);
-    out.print("<plugInData tag=\"");
-    out.print(myTag_);
-    out.println("\" >");
+    
+    String name = getClass().getName();
+    
+    out.print("<");
+    out.print(name);
+    out.println(">");
     ind.up();
     ind.indent();
     out.print("<netStats nodes=\"");
-    out.print(nlcc.nodeCount);
+    out.print(myData_.nodeCount);
     out.print("\" links=\"");
-    out.print(nlcc.linkCount);
+    out.print(myData_.linkCount);
     out.print("\" fullShadowlinks=\"");
-    out.print(nlcc.fullShadowLinkCount);
+    out.print(myData_.fullShadowLinkCount);
     out.println("\" />");
     ind.down();
     ind.indent();
-    out.println("</plugInData>");
+    out.print("</");
+    out.print(name);
+    out.println(">");
     ind.down();
     return;
   }  
-
+  
   /***************************************************************************
   **
-  ** Read session data
+  ** Get XML Reader
   */
-  
-  public void readPluginData() {
-    
-  }
  
+  public AbstractFactoryClient getXMLWorker(FabricFactory.FactoryWhiteboard board) {
+    return (new PlugInWorker(board, this));
+  }
+  
+  /***************************************************************************
+  **
+  ** Attach session data read from XML
+  */
+ 
+  public void attachXMLData(BioFabricToolPlugInData data) {
+    myData_ = (StatData)data;
+    return;   
+  }
+  
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // INNER CLASSES
   //
   ////////////////////////////////////////////////////////////////////////////
 
-  public static class NodeAndLinkCounterCmd implements BioFabricToolPlugInCmd {    
-    int nodeCount;
-    int linkCount;
-    int fullShadowLinkCount;
+  public class NodeAndLinkCounterCmd implements BioFabricToolPlugInCmd {    
+
     private boolean enabled_;
     
     /***************************************************************************
@@ -183,14 +199,14 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
     
     public void setNewNetwork(PlugInNetworkModelAPI api) {
       if (api != null) {
-        nodeCount = api.getNodeCount();
-        linkCount = api.getLinkCount(false);
-        fullShadowLinkCount = api.getLinkCount(true);
+        myData_.nodeCount = api.getNodeCount();
+        myData_.linkCount = api.getLinkCount(false);
+        myData_.fullShadowLinkCount = api.getLinkCount(true);
         enabled_ = true;
       } else {
-        nodeCount = 0;
-        linkCount = 0;
-        fullShadowLinkCount = 0;
+        myData_.nodeCount = 0;
+        myData_.linkCount = 0;
+        myData_.fullShadowLinkCount = 0;
         enabled_ = false;      
       }
       return;
@@ -218,9 +234,9 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
       
       ResourceManager rMan = ResourceManager.getManager();  // DOES NOT BELONG HERE   
       String desc = MessageFormat.format(rMan.getString("modelCounts.message"), 
-                                         new Object[] {new Integer(nodeCount), 
-                                                       new Integer(linkCount), 
-                                                       new Integer(fullShadowLinkCount)});  
+                                         new Object[] {new Integer(myData_.nodeCount), 
+                                                       new Integer(myData_.linkCount), 
+                                                       new Integer(myData_.fullShadowLinkCount)});  
       desc = UiUtil.convertMessageToHtml(desc);
       JOptionPane.showMessageDialog(topFrame, desc,
                                     rMan.getString("modelCounts.modelCountTitle"),
@@ -244,96 +260,89 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
   */  
       
   public static class PlugInWorker extends AbstractFactoryClient {
-    
-    public PlugInWorker(FabricFactory.FactoryWhiteboard board) {
+   
+    private NetStatsPlugIn plugin_;
+   
+    public PlugInWorker(FabricFactory.FactoryWhiteboard board, NetStatsPlugIn plugin) {
       super(board);
-      myKeys_.add(my class name or something);
-      installWorker(new DrainZoneWorker(board, false), new DrainZoneGlue());
-      installWorker(new DrainZoneWorker(board, true), new DrainZoneGlue());
+      plugin_ = plugin;
+      String name = plugin.getClass().getName();
+      myKeys_.add(name);
+      installWorker(new NetStatsWorker(board), new StatsGlue());
     }
     
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
       Object retval = null;
       FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard)this.sharedWhiteboard_;
       if (myKeys_.contains(elemName)) {
-        board.nodeInfo = buildFromXML(elemName, attrs, board);
-        retval = board.nodeInfo;
+        board.currPlugIn = plugin_;
+        retval = board.currPlugIn;
       }
       return (retval);     
     }  
-    
-    private NodeInfo buildFromXML(String elemName, Attributes attrs, FabricFactory.FactoryWhiteboard board) throws IOException {
-      String name = AttributeExtractor.extractAttribute(elemName, attrs, "node", "name", true);
-      String nidStr = AttributeExtractor.extractAttribute(elemName, attrs, "node", "nid", false);
-
-      NID nid;
-      NID.WithName nwn;
-      if (nidStr != null) {
-        boolean ok = board.ulb.addExistingLabel(nidStr);
-        if (!ok) {
-          throw new IOException();
-        }
-        nid = new NID(nidStr);
-        nwn = new NID.WithName(nid, name);
-      } else {
-        nid = board.ulb.getNextOID();
-        nwn = new NID.WithName(nid, name);
-
-        // Addresses Issue 41. Used DataUtil.normKey(name), but if a node made it
-        // as a separate entity in the past, we should keep them unique. Note that with
-        // NIDs now, we can support "identically" named nodes anyway:
-        board.legacyMap.put(name, nwn);
-      }
-      board.wnMap.put(nid, nwn);
- 
-      String row = AttributeExtractor.extractAttribute(elemName, attrs, "node", "row", true);
-      String minCol = AttributeExtractor.extractAttribute(elemName, attrs, "node", "minCol", true);
-      String maxCol = AttributeExtractor.extractAttribute(elemName, attrs, "node", "maxCol", true);
-      String minColSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "minColSha", true);
-      String maxColSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "maxColSha", true);
-      String minDrain = AttributeExtractor.extractAttribute(elemName, attrs, "node", "drainMin", false);
-      String maxDrain = AttributeExtractor.extractAttribute(elemName, attrs, "node", "drainMax", false);
-      String minDrainSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "drainMinSha", false);
-      String maxDrainSha = AttributeExtractor.extractAttribute(elemName, attrs, "node", "drainMaxSha", false);
-      String color = AttributeExtractor.extractAttribute(elemName, attrs, "node", "color", true);
-      String cluster = AttributeExtractor.extractAttribute(elemName, attrs, "node", "cluster", false);
-      cluster = CharacterEntityMapper.unmapEntities(cluster, false);
-      
-      NodeInfo retval;
-      try {
-        int nodeRow = Integer.valueOf(row).intValue();
-        retval = new NodeInfo(nid, name, nodeRow, color);
-        if (cluster != null) {
-          UiUtil.fixMePrintout("Make cluster assign a list");
-          retval.setCluster(cluster);
-        }
-        
-        int min = Integer.valueOf(minCol).intValue();
-        int max = Integer.valueOf(maxCol).intValue();
-        retval.updateMinMaxCol(min, false);
-        retval.updateMinMaxCol(max, false);
-        
-        int minSha = Integer.valueOf(minColSha).intValue();
-        int maxSha = Integer.valueOf(maxColSha).intValue();
-        retval.updateMinMaxCol(minSha, true);
-        retval.updateMinMaxCol(maxSha, true);
+  }
   
-        if (minDrain != null) {
-          int minDrVal = Integer.valueOf(minDrain).intValue();
-          int maxDrVal = Integer.valueOf(maxDrain).intValue();
-          DrainZone dz = new DrainZone(new MinMax(minDrVal, maxDrVal), false);
-          retval.addDrainZone(dz);
-        }
-        if (minDrainSha != null) {
-          int minDrValSha = Integer.valueOf(minDrainSha).intValue();
-          int maxDrValSha = Integer.valueOf(maxDrainSha).intValue();
-          DrainZone dz = new DrainZone(new MinMax(minDrValSha, maxDrValSha), true);
-          retval.addDrainZone(dz);
-        }
+  /***************************************************************************
+  **
+  ** For XML I/O
+  */  
+      
+  public static class StatData implements BioFabricToolPlugInData {
+    int nodeCount;
+    int linkCount;
+    int fullShadowLinkCount;
+    
+    public StatData(int nodeCount, int linkCount, int fullShadowLinkCount) {
+      this.nodeCount = nodeCount;
+      this.linkCount = linkCount;
+      this.fullShadowLinkCount = fullShadowLinkCount;
+    } 
+  }
+  
+  /***************************************************************************
+  **
+  ** For XML I/O
+  */
+  
+  public static class NetStatsWorker extends AbstractFactoryClient {
+        
+    public NetStatsWorker(FabricFactory.FactoryWhiteboard board) {
+      super(board);
+      myKeys_.add("netStats");
+    }
+    
+    protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
+      Object retval = null;
+      FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard) this.sharedWhiteboard_;
+      board.currPlugInData = buildFromXML(elemName, attrs);
+      retval = board.currPlugInData;
+      return (retval);
+    }
+    
+    private StatData buildFromXML(String elemName, Attributes attrs) throws IOException {
+      String nodeStr = AttributeExtractor.extractAttribute(elemName, attrs, "netStats", "nodes", true);
+      String linkStr = AttributeExtractor.extractAttribute(elemName, attrs, "netStats", "links", true);
+      String shadStr = AttributeExtractor.extractAttribute(elemName, attrs, "netStats", "fullShadowlinks", true);
+  
+      StatData retval;
+      try {
+        int nodeCount = Integer.valueOf(nodeStr).intValue();
+        int linkCount = Integer.valueOf(linkStr).intValue();
+        int fullCount = Integer.valueOf(shadStr).intValue();
+        retval = new StatData(nodeCount, linkCount, fullCount);
       } catch (NumberFormatException nfex) {
         throw new IOException();
       }
       return (retval);
-    }
+    }  
   }
+  
+  public static class StatsGlue implements GlueStick {    
+    public Object glueKidToParent(Object kidObj, AbstractFactoryClient parentWorker, Object optionalArgs) throws IOException {
+      FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard) optionalArgs;
+      board.currPlugIn.attachXMLData(board.currPlugInData);
+      return null;
+    }
+  }  
+  
 }

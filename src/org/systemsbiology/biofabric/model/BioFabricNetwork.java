@@ -3004,9 +3004,9 @@ public class BioFabricNetwork implements PlugInNetworkModelAPI {
   }
   
   /***************************************************************************
-   **
-   ** For XML I/O
-   */
+  **
+  ** For XML I/O
+  */
   
   public static class DrainZoneWorker extends AbstractFactoryClient {
     

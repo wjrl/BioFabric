@@ -21,6 +21,8 @@ package org.systemsbiology.biofabric.plugin;
 
 import java.io.PrintWriter;
 
+import org.systemsbiology.biofabric.io.FabricFactory;
+import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.util.Indenter;
 
 /****************************************************************************
@@ -71,7 +73,6 @@ public interface BioFabricToolPlugIn {
   
   public BioFabricToolPlugInCmd getCommand(int index);
    
-  
   /***************************************************************************
   **
   ** Dump out using XML
@@ -81,10 +82,17 @@ public interface BioFabricToolPlugIn {
 
   /***************************************************************************
   **
-  ** Read session data
+  ** Get XML Reader
   */
+ 
+  public AbstractFactoryClient getXMLWorker(FabricFactory.FactoryWhiteboard board);
   
-  public void readPluginData();
+  /***************************************************************************
+  **
+  ** Attach session data read from XML
+  */
+ 
+  public void attachXMLData(BioFabricToolPlugInData data);
   
   /***************************************************************************
   **

@@ -21,7 +21,7 @@ package org.systemsbiology.biofabric.plugin;
 
 /****************************************************************************
 **
-** Interface for data that can be stored in the network by the plugin. A marker
+** Interface for data that can be stored by a plugin. A marker
 ** interface.
 */
 
