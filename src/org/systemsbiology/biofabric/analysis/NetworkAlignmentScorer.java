@@ -68,10 +68,22 @@ public class NetworkAlignmentScorer {
   private Map<NID.WithName, Boolean> isAlignedNodeMain_, isAlignedNodePerfect_;
   private Map<NID.WithName, Boolean> mergedToCorrect_;
   
+  //
+  // This are from original untouched graphs and alignments
+  //
+  
+  private ArrayList<FabricLink> linksSmall_, linksLarge_;
+  private HashSet<NID.WithName> lonersSmall_, lonersLarge_;
+  private Map<NID.WithName, NID.WithName> mapG1toG2_, perfectG1toG2_;
+  
   private BTProgressMonitor monitor_;
   
   private Map<NID.WithName, Set<FabricLink>> nodeToLinksMain_, nodeToLinksPerfect_;
   private Map<NID.WithName, Set<NID.WithName>> nodeToNeighborsMain_, nodeToNeighborsPerfect_;
+  
+  //
+  // The scores
+  //
   
   private Double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccSim;
   private NetAlignStats netAlignStats_;
@@ -80,6 +92,9 @@ public class NetworkAlignmentScorer {
                                 Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
                                 Map<NID.WithName, Boolean> isAlignedNodePerfect,
                                 Set<FabricLink> linksPerfect, Set<NID.WithName> loneNodeIDsPerfect,
+                                ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
+                                ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                                Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2,
                                 BTProgressMonitor monitor) {
     this.linksMain_ = new HashSet<FabricLink>(reducedLinks);
     this.loneNodeIDsMain_ = new HashSet<NID.WithName>(loneNodeIDs);
@@ -93,6 +108,12 @@ public class NetworkAlignmentScorer {
     this.nodeToNeighborsMain_ = new HashMap<NID.WithName, Set<NID.WithName>>();
     this.nodeToLinksPerfect_ = new HashMap<NID.WithName, Set<FabricLink>>();
     this.nodeToNeighborsPerfect_ = new HashMap<NID.WithName, Set<NID.WithName>>();
+    this.linksSmall_ = linksSmall;
+    this.lonersSmall_ = lonersSmall;
+    this.linksLarge_ = linksLarge;
+    this.lonersLarge_ = lonersLarge;
+    this.mapG1toG2_ = mapG1toG2;
+    this.perfectG1toG2_ = perfectG1toG2;
     
     removeDuplicateAndShadow();
     generateStructs(reducedLinks, loneNodeIDs, nodeToLinksMain_, nodeToNeighborsMain_);
@@ -137,13 +158,13 @@ public class NetworkAlignmentScorer {
   
   private void calcScores() {
     calcTopologicalScores();
-//    calcJaccardSimilarity();
   
     if (mergedToCorrect_ != null) { // must have perfect alignment for these measures
       calcNodeCorrectness();
       calcNodeGroupValues();
       calcLinkGroupValues();
       calcBothGroupValues();
+      calcJaccardSimilarity();
     }
   }
   
@@ -339,7 +360,7 @@ public class NetworkAlignmentScorer {
   }
   
   private  void calcJaccardSimilarity() {
-    this.JaccSim = new JaccardSimilarity().calcScore(isAlignedNodeMain_.keySet(), nodeToLinksMain_);
+    this.JaccSim = new JaccardSimilarity().calcScore(mapG1toG2_, perfectG1toG2_, linksLarge_, lonersLarge_);
     return;
   }
   
@@ -453,19 +474,21 @@ public class NetworkAlignmentScorer {
   
   /****************************************************************************
    **
-   ** Jaccard Similarity- currently WRONG- need to fix
+   ** Jaccard Similarity Measure - Adapted from NodeEQC.java
    */
   
   private static class JaccardSimilarity {
   
     /***************************************************************************
      **
-     ** Calc the score; Adapted from NodeEQC.java
+     ** Calculated the score
      */
   
-    public double calcScore(Set<NID.WithName> alignedNodes, Map<NID.WithName, Set<FabricLink>> nodeToLinks) {
-    
-      // For alignment, figure Jaccard
+    double calcScore(Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2,
+                     ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge) {
+  
+      Map<NID.WithName, NID.WithName> entrezAlign = constructEntrezAlign(mapG1toG2, perfectG1toG2);
+      Map<NID.WithName, Set<NID.WithName>> nodeToNeigh = makeNodeToNeigh(linksLarge, lonersLarge);
     
       HashSet<NID.WithName> union = new HashSet<NID.WithName>();
       HashSet<NID.WithName> intersect = new HashSet<NID.WithName>();
@@ -474,19 +497,17 @@ public class NetworkAlignmentScorer {
       double totJ = 0.0;
       int numEnt = 0;
     
-      for (NID.WithName node : alignedNodes) {
+      for (NID.WithName node : entrezAlign.keySet()) {
         int lenAdjust = 0;
-        Set<NID.WithName> neighOfNode = neighborsOfLG(node, new String[]{NetworkAlignment.COVERED_EDGE, NetworkAlignment.GRAPH1}, nodeToLinks);
-
-        Set<NID.WithName> neighOfMatch = neighborsOfLG(node, new String[]{NetworkAlignment.COVERED_EDGE, NetworkAlignment.INDUCED_GRAPH2,
-                NetworkAlignment.HALF_UNALIGNED_GRAPH2, NetworkAlignment.FULL_UNALIGNED_GRAPH2}, nodeToLinks);
-        
+        NID.WithName match = entrezAlign.get(node);
+        Set<NID.WithName> neighOfNode = nodeToNeigh.get(node);
+        Set<NID.WithName> neighOfMatch = nodeToNeigh.get(match);
         scratchNode.clear();
         scratchNode.addAll(neighOfNode);
         scratchMatch.clear();
         scratchMatch.addAll(neighOfMatch);
-        if (scratchNode.contains(node)) {
-          scratchNode.remove(node);
+        if (scratchNode.contains(match)) {
+          scratchNode.remove(match);
           scratchMatch.remove(node);
           lenAdjust = 1;
         }
@@ -504,30 +525,55 @@ public class NetworkAlignmentScorer {
     
       return (score);
     }
+  
+    /***************************************************************************
+     **
+     ** Match up G2-aligned nodes with G2-aligned nodes in perfect alignment
+     */
     
-    private Set<NID.WithName> neighborsOfLG(NID.WithName node, String[] lgAllowed, Map<NID.WithName, Set<FabricLink>> nodeToLinks) {
-
-      Set<NID.WithName> nebrs = new HashSet<NID.WithName>();
-      
-      for (FabricLink link : nodeToLinks.get(node)) {
-        boolean ok = false;
-        for (String rel : lgAllowed) { // make sure this link is in specified link groups
-          if (link.getRelation().equals(rel)) {
-            ok = true;
-          }
-        }
-        if (!ok) {
+    private Map<NID.WithName, NID.WithName> constructEntrezAlign(Map<NID.WithName, NID.WithName> mapG1toG2,
+                                                                 Map<NID.WithName, NID.WithName> perfectG1toG2) {
+      Map<NID.WithName, NID.WithName> ret = new HashMap<NID.WithName, NID.WithName>();
+      for (NID.WithName node : mapG1toG2.keySet()) {
+        NID.WithName converted = perfectG1toG2.get(node);
+        if (converted == null) {
+          //System.err.println("no Entrez match for " + node);
           continue;
         }
-        nebrs.add(link.getSrcID()); // yes I am adding the main 'node' again every time
-        nebrs.add(link.getTrgID()); // but this is a set so it doesn't matter
+        NID.WithName matchedWith = mapG1toG2.get(node);
+        ret.put(converted, matchedWith);
+      }
+      return (ret);
+    }
+    
+    /***************************************************************************
+     **
+     ** Construct node to neighbor map
+     */
+    
+    private Map<NID.WithName, Set<NID.WithName>> makeNodeToNeigh(ArrayList<FabricLink> links, HashSet<NID.WithName> loners) {
+  
+      Map<NID.WithName, Set<NID.WithName>> ret = new HashMap<NID.WithName, Set<NID.WithName>>();
+  
+      for (FabricLink link : links) {
+        NID.WithName src = link.getSrcID(), trg = link.getTrgID();
+  
+        if (ret.get(src) == null) {
+          ret.put(src, new HashSet<NID.WithName>());
+        }
+        if (ret.get(trg) == null) {
+          ret.put(trg, new HashSet<NID.WithName>());
+        }
+        ret.get(src).add(trg);
+        ret.get(trg).add(src);
       }
       
-      nebrs.remove(node); // remove main 'node'
-      
-      return (nebrs);
+      for (NID.WithName node : loners) {
+        ret.put(node, new HashSet<NID.WithName>());
+      }
+      return (ret);
     }
-  
+    
     /***************************************************************************
      **
      ** Set intersection helper

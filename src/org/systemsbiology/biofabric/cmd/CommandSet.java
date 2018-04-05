@@ -1103,7 +1103,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     NetworkAlignmentScorer.NetAlignStats netAlignStats = new NetworkAlignmentScorer.NetAlignStats();
     if (finished) { // Score Report
       finished = networkAlignmentStepFour(reducedLinks, mergedLoneNodeIDs, isAlignedNode, mergedToCorrect,
-              reducedLinksPerfect, mergedLoneNodeIDsPerfect, isAlignedNodePerfect, netAlignStats);
+              reducedLinksPerfect, mergedLoneNodeIDsPerfect, isAlignedNodePerfect, netAlignStats,
+              linksSmall, lonersSmall, linksLarge, lonersLarge, mapG1toG2, perfectG1toG2);
     }
     
     if (finished) { // Load the alignments
@@ -1227,10 +1228,14 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   private boolean networkAlignmentStepFour(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Boolean> isAlignedNode,
                                            Map<NID.WithName, Boolean> mergedToCorrect, Set<FabricLink> reducedLinksPerfect,
                                            Set<NID.WithName> loneNodeIDsPerfect, Map<NID.WithName, Boolean> isAlignedNodePerfect,
-                                           NetworkAlignmentScorer.NetAlignStats report) {
+                                           NetworkAlignmentScorer.NetAlignStats report,
+                                           ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
+                                           ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                                           Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2) {
   
     NetworkAlignmentScorer scorer = new NetworkAlignmentScorer(reducedLinks, loneNodeIDs, mergedToCorrect,
-            isAlignedNode, isAlignedNodePerfect, reducedLinksPerfect, loneNodeIDsPerfect, null);
+            isAlignedNode, isAlignedNodePerfect, reducedLinksPerfect, loneNodeIDsPerfect,
+            linksSmall, lonersSmall, linksLarge, lonersLarge, mapG1toG2, perfectG1toG2, null);
 
     report.replaceValuesTo(scorer.getNetAlignStats());
     return (true);
