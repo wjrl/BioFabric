@@ -21,6 +21,7 @@
 
 package org.systemsbiology.biofabric.io;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -37,6 +38,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import org.systemsbiology.biofabric.util.ResourceManager;
 
 /****************************************************************************
  **
@@ -80,6 +82,8 @@ public class AlignmentLoader {
                               ArrayList<FabricLink> linksGraph2, HashSet<NID.WithName> loneNodesGraph2)
           throws IOException {
   
+    ResourceManager rMan = ResourceManager.getManager();
+    
     Map<String, NID.WithName> G1nameToNID, G2nameToNID;
     try {
       G1nameToNID = makeStringMap(BioFabricNetwork.extractNodes(linksGraph1, loneNodesGraph1, null));
@@ -107,19 +111,14 @@ public class AlignmentLoader {
      
       boolean existsInG1 = G1nameToNID.containsKey(strNameG1),
               existsInG2 = G2nameToNID.containsKey(strNameG2);
-      
-      String msg = "";
+  
       if (!existsInG1) {
-        msg += "Alignment file's node \"" + strNameG1 + "\" not found in smaller graph";
+        String msg = MessageFormat.format(rMan.getString("networkAlignment.nodeNotFoundG1"), strNameG1);
+        throw (new IOException(msg));
       }
       if (!existsInG2) {
-        if (!msg.isEmpty()) {
-          msg += "\n";
-        }
-        msg += "Alignment file's node \"" + strNameG2 + "\" not found in larger graph";
-      }
-      if (!msg.isEmpty()) {
-        throw new IOException("Load Error: " + msg);
+        String msg = MessageFormat.format(rMan.getString("networkAlignment.nodeNotFoundG2"), strNameG2);
+        throw (new IOException(msg));
       }
       
       NID.WithName nodeG1 = G1nameToNID.get(strNameG1), nodeG2 = G2nameToNID.get(strNameG2);
@@ -127,7 +126,8 @@ public class AlignmentLoader {
       if (mapG1ToG2.containsKey(nodeG1)) {
         
         if (! mapG1ToG2.get(nodeG1).equals(nodeG2)) {
-          throw new IOException("Node mapping must be one-to-one: \"" + strNameG1 + "\" is not");
+          String msg = MessageFormat.format(rMan.getString("networkAlignment.mapError"), strNameG1);
+          throw (new IOException(msg));
         } else {
           stats.dupLines.add(line);
         }
@@ -137,9 +137,8 @@ public class AlignmentLoader {
     }
   
     if (mapG1ToG2.size() != G1nameToNID.size()) {
-      String msg = "size of alignment map: " + mapG1ToG2.size() +
-              "; size of smaller graph: " + G1nameToNID.size() + "; sizes not equal";
-      throw (new IOException("Incomplete node mapping: " + msg));
+      String msg = MessageFormat.format(rMan.getString("networkAlignment.mapSizeError"), mapG1ToG2.size(), G1nameToNID.size());
+      throw (new IOException(msg));
     }
   
     in.close();
