@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,79 +17,47 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.ui;
-
-import java.awt.Rectangle;
+package org.systemsbiology.biofabric.plugin;
 
 /****************************************************************************
 **
-** Interface for zoom presentation
+** Interface for information plugins can get from BioFabric
 */
 
-public interface ZoomPresentation {
- 
+public interface PlugInNetworkModelAPI {
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
+  
+  /***************************************************************************
+  **
+  ** Get the link count, with and without shadows
+  */
+  
+  public int getLinkCount(boolean forShadow);
+  
+  /***************************************************************************
+  ** 
+  ** Get node count
+  */
+
+  public int getNodeCount();
+ 
+  /***************************************************************************
+  **
+  ** Stash plugin data for extraction
+  */
+  
+  public void stashPluginData(String keyword, BioFabricToolPlugInData data);
 
   /***************************************************************************
   **
-  ** Return the required size of the layout
+  ** Pull plugin data for extraction
   */
   
-  public Rectangle getRequiredSize();
- 
-  /***************************************************************************
-  **
-  ** Return the required size of the selected items.  Null if nothing is
-  ** selected.
-  */
-  
-  public Rectangle getSelectionSize(); 
+  public BioFabricToolPlugInData providePluginData(String keyword);
 
-  /***************************************************************************
-  **
-  ** Return the required size of the current zoom selection item.  Null if nothing is
-  ** selected.
-  */
-  
-  public Rectangle getCurrentSelectionSize();   
- 
-  /***************************************************************************
-  **
-  ** Answer if we have a current selection
-  */
-  
-  public boolean haveCurrentSelection();
-  
-  /***************************************************************************
-  **
-  ** Answers if we have multiple selections (i.e. can cycle through selections) 
-  */
-  
-  public boolean haveMultipleSelections();
- 
-  /***************************************************************************
-  **
-  ** Bump to the next selection for zoom
-  */
-  
-  public void bumpNextSelection();
-  
-  /***************************************************************************
-  **
-  ** Bump to the previous selection for zoom
-  */
-  
-  public void bumpPreviousSelection();
-  
-  /***************************************************************************
-  **
-  ** Set the zoom
-  */
-  
-  public void setPresentationZoomFactor(double zoom);
-    
 }

@@ -33,6 +33,8 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.Collection;
 
+import org.xml.sax.Attributes;
+
 import org.systemsbiology.biofabric.analysis.NetworkAlignmentScorer;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
@@ -43,7 +45,6 @@ import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.layouts.WorldBankLayout;
-import org.xml.sax.Attributes;
 
 import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.io.AttributeLoader;
@@ -57,6 +58,10 @@ import org.systemsbiology.biofabric.layouts.ControlTopLayout.TargMode;
 
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
+import org.systemsbiology.biofabric.plugin.PlugInManager;
+import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
@@ -77,7 +82,7 @@ import org.systemsbiology.biofabric.util.UniqueLabeller;
 ** This is the Network model.
 */
 
-public class BioFabricNetwork {
+public class BioFabricNetwork implements PlugInNetworkModelAPI {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -190,6 +195,8 @@ public class BioFabricNetwork {
   
   public NetworkAlignmentScorer.NetAlignStats netAlignStats_;
   
+  private PlugInManager pMan_;
+  
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -202,8 +209,9 @@ public class BioFabricNetwork {
   ** Constructor
   */
 
-  public BioFabricNetwork(BuildData bd, BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public BioFabricNetwork(BuildData bd, PlugInManager pMan, BTProgressMonitor monitor) throws AsynchExitRequestException {
   	nodeIDGenerator_ = new UniqueLabeller();
+  	pMan_ = pMan;
   	layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
     BuildMode mode = bd.getMode();
     nodeAnnot_ = new AnnotationSet();
@@ -1058,6 +1066,19 @@ public class BioFabricNetwork {
     ind.down().indent();
     out.println("</shadowLinkAnnotations>");
 
+    //
+    // Let the plugins write to XML
+    
+    ind.indent();
+    out.println("<plugInDataSets>");
+    List<String> keyList = pMan_.getOrderedToolPlugInKeys();
+    for (String key : keyList) {
+      BioFabricToolPlugIn plugin = pMan_.getToolPlugIn(key);
+      plugin.writeXML(out, ind);
+    }
+    ind.indent();
+    out.println("</plugInDataSets>");
+    
     lr.finish();
     ind.down().indent();
     out.println("</BioFabric>"); 
@@ -1219,13 +1240,40 @@ public class BioFabricNetwork {
   
   /***************************************************************************
   ** 
+  ** Get node count
+  */
+
+  public int getNodeCount() {
+    return (rowCount_);
+  } 
+  
+  /***************************************************************************
+  ** 
   ** Get Row Count
   */
 
   public int getRowCount() {
     return (rowCount_);
-  } 
-   
+  }
+  
+  /***************************************************************************
+  **
+  ** Stash plugin data for extraction
+  */
+  
+  public void stashPluginData(String keyword, BioFabricToolPlugInData data) {
+    
+  }
+
+  /***************************************************************************
+  **
+  ** Pull plugin data for extraction
+  */
+  
+  public BioFabricToolPlugInData providePluginData(String keyword) {
+     return (null);
+  }
+
   /***************************************************************************
   ** 
   ** Get node defs
@@ -2690,50 +2738,13 @@ public class BioFabricNetwork {
   }
   
   /***************************************************************************
-   **
-   **
-   */
+  **
+  ** For storing plugin data
+  */  
   
-  public interface PluginData {}
-  
-  /***************************************************************************
-   **
-   **
-   */
-  
-  public interface PluginDataOwner {
-  
-    void writePluginData(PluginData data);
+ // public void storePluginData(String keyword, PluginData data, PluginDataOwner owner) {
     
-    void readPluginData(PluginData data);
-    
-  }
-  
-  /***************************************************************************
-   **
-   **
-   */
-  
-  public class NetAlignPluginDataOwner implements PluginDataOwner {
-    
-    private Map<String, PluginData> map;
-    
-    public NetAlignPluginDataOwner() {
-      map = new HashMap<String, PluginData>();
-    }
-  
-    @Override
-    public void writePluginData(PluginData data) {
-    }
-  
-    @Override
-    public void readPluginData(PluginData data) {
-    }
-  }
-  
-  public void storePluginData(String keyword, PluginData data, PluginDataOwner owner) {
-    
-  }
+ // }
  
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -2993,9 +3004,9 @@ public class BioFabricNetwork {
   }
   
   /***************************************************************************
-   **
-   ** For XML I/O
-   */
+  **
+  ** For XML I/O
+  */
   
   public static class DrainZoneWorker extends AbstractFactoryClient {
     

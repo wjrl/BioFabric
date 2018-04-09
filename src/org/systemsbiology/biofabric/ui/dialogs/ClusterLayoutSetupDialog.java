@@ -301,7 +301,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
     }
     if (!asUpper.equals(new HashSet<AttributeLoader.AttributeKey>(nodeAttributes.keySet()))) {
       ResourceManager rMan = ResourceManager.getManager();
-      JOptionPane.showMessageDialog(cset.getBFW(), rMan.getString("attribRead.badRowMessage"),
+      JOptionPane.showMessageDialog(cset.getBFW().getWindow(), rMan.getString("attribRead.badRowMessage"),
                                     rMan.getString("attribRead.badRowSemanticsTitle"),
                                     JOptionPane.WARNING_MESSAGE);
       return (false);

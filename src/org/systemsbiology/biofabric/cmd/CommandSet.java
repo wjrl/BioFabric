@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -113,6 +113,9 @@ import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.ProgressFilterInputStream;
 import org.systemsbiology.biofabric.parser.SUParser;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
+import org.systemsbiology.biofabric.plugin.PlugInManager;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
@@ -262,9 +265,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   ////////////////////////////////////////////////////////////////////////////  
 
   private static HashMap<String, CommandSet> perClass_;
-  private BioFabricWindow topWindow_;
+  private JFrame topWindow_;
+  private BioFabricWindow bfw_;
   private BioFabricApplication bfa_;
   private BioFabricPanel bfp_;
+  private PlugInManager pMan_;
   private File currentFile_;
   private boolean isAMac_;
   private boolean isForMain_;
@@ -272,7 +277,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
   private HashMap<Integer, ChecksForEnabled> withIcons_;
   private HashMap<Integer, ChecksForEnabled> noIcons_;
+  private HashMap<String, ChecksForEnabled> plugInCmds_;
   private FabricColorGenerator colGen_;
+  private HeadlessOracle headlessOracle_;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -286,7 +293,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   */ 
   
   public BioFabricWindow getBFW() {
-    return (topWindow_);
+    return (bfw_);
   }
    
   /***************************************************************************
@@ -324,6 +331,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       ChecksForEnabled cfe = niit.next();
       cfe.checkIfEnabled();
     }
+    Iterator<ChecksForEnabled> piit = plugInCmds_.values().iterator();
+    while (piit.hasNext()) {
+      ChecksForEnabled cfe = piit.next();
+      cfe.checkIfEnabled();
+    }
     return;
   }
   
@@ -343,6 +355,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       ChecksForEnabled cfe = niit.next();
       cfe.pushDisabled(pushCondition);
     }
+    Iterator<ChecksForEnabled> piit = plugInCmds_.values().iterator();
+    while (piit.hasNext()) {
+      ChecksForEnabled cfe = piit.next();
+      cfe.pushDisabled(pushCondition);
+    }
+
     return;
   }
   
@@ -360,6 +378,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     Iterator<ChecksForEnabled> niit = noIcons_.values().iterator();
     while (niit.hasNext()) {
       ChecksForEnabled cfe = niit.next();
+      cfe.popDisabled();
+    }
+    Iterator<ChecksForEnabled> piit = plugInCmds_.values().iterator();
+    while (piit.hasNext()) {
+      ChecksForEnabled cfe = piit.next();
       cfe.popDisabled();
     }
 
@@ -407,6 +430,24 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
   public FabricColorGenerator getColorGenerator() {
     return (colGen_);
+  }
+  
+  /***************************************************************************
+  **
+  ** Get ordered keys for plugins that have commands to offer
+  */ 
+  
+  public List<String> getPlugInKeys() {
+    return (pMan_.getOrderedToolPlugInKeys());
+  }
+  
+  /***************************************************************************
+  **
+  ** Get plugIn
+  */ 
+  
+  public BioFabricToolPlugIn getPlugIn(String key) {
+    return (pMan_.getToolPlugIn(key));
   }
   
   /***************************************************************************
@@ -591,6 +632,25 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
   /***************************************************************************
   **
+  ** Get an action
+  */ 
+    
+  public Action getPluginAction(String plugin, int cmd) {
+    String key = plugin + ":::" + cmd;
+    ChecksForEnabled retval = plugInCmds_.get(key);
+    if (retval != null) {
+      return (retval);
+    } else {
+      BioFabricToolPlugIn pi = pMan_.getToolPlugIn(plugin);
+      BioFabricToolPlugInCmd pic = pi.getCommand(cmd);
+      retval = new PlugInAction(pic);
+    }
+    plugInCmds_.put(key, retval);
+    return (retval);
+  } 
+  
+  /***************************************************************************
+  **
   ** Common load operations.  Take your pick of input sources
   */ 
     
@@ -617,7 +677,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
     TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
     FabricImportLoader.FileImportStats sss;
-    if (file.length() > FILE_LENGTH_FOR_BACKGROUND_SIF_READ_) {
+    if ((file.length() > FILE_LENGTH_FOR_BACKGROUND_SIF_READ_) && (headlessOracle_ == null)) {
       sss = new FabricImportLoader.FileImportStats();
       BackgroundFileReader br = new BackgroundFileReader();
       //
@@ -683,7 +743,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     BackgroundFileReader br = new BackgroundFileReader();
     //
-    // This gets file file in:
+    // This gets file in:
     //
     boolean finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
     //
@@ -691,7 +751,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     //
     if (finished) {
       finished = loadFromSIFSourceStepTwo(file, idGen, sss, links, loneNodes, (magBins != null),
-              relMap, reducedLinks, holdIt, forNetworkAlignment);
+                                          relMap, reducedLinks, holdIt, forNetworkAlignment);
     }
     
     if (forNetworkAlignment) { // no need to continue when processing network alignments
@@ -714,8 +774,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   		                                       Set<FabricLink> reducedLinks, File holdIt) {
   	try {
       NetworkBuilder nb = new NetworkBuilder(true, holdIt);
-      nb.setForSifBuild(idGen, reducedLinks, loneNodeIDs, BioFabricNetwork.BuildMode.BUILD_FROM_SIF);
-      nb.doNetworkBuild();            
+      nb.setForSifBuild(idGen, reducedLinks, loneNodeIDs, BioFabricNetwork.BuildMode.BUILD_FROM_SIF);  
+      if (this.headlessOracle_ == null) {
+        nb.doNetworkBuild();            
+      } else {
+        nb.doNetworkBuildForeground();
+      }
     } catch (OutOfMemoryError oom) {
       ExceptionHandler.getHandler().displayOutOfMemory(oom);
       return (false);  
@@ -730,7 +794,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
    
   /***************************************************************************
   **
-  ** Second step fro loading from SIF
+  ** Second step for loading from SIF
   */
     
   private boolean loadFromSIFSourceStepTwo(File file, UniqueLabeller idGen, FabricImportLoader.FileImportStats sss,
@@ -742,74 +806,89 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       if (!sss.badLines.isEmpty()) {        
         String badLineFormat = rMan.getString("fabricRead.badLineFormat");
         String badLineMsg = MessageFormat.format(badLineFormat, new Object[] {Integer.valueOf(sss.badLines.size())});
-        JOptionPane.showMessageDialog(topWindow_, badLineMsg,
-                                      rMan.getString("fabricRead.badLineTitle"),
-                                      JOptionPane.WARNING_MESSAGE);
+        if (headlessOracle_ == null) {
+          JOptionPane.showMessageDialog(topWindow_, badLineMsg,
+                                        rMan.getString("fabricRead.badLineTitle"),
+                                        JOptionPane.WARNING_MESSAGE);
+        } else {
+          headlessOracle_.displayErrorMessage(badLineMsg);
+        }
       }
       
       if (forNetworkAlignment) { // no need to continue during network alignment processing
         return (true);
       }
       
-      RelationDirectionDialog rdd = new RelationDirectionDialog(topWindow_, relaMap);
-      rdd.setVisible(true);
-      if (!rdd.haveResult()) {
-        return (false);
-      }
-      if (rdd.getFromFile()) {
-        File fileEda = getTheFile(".rda", ".txt", "AttribDirectory", "filterName.rda");
-        if (fileEda == null) {
-          return (true);
-        }
-        Map<AttributeLoader.AttributeKey, String> relAttributes = loadTheFile(fileEda, null, true);  // Use the simple a = b format of node attributes
-        if (relAttributes == null) {
-          return (true);
-        }
-        
-        HashSet<FabricLink.AugRelation> needed = new HashSet<FabricLink.AugRelation>(relaMap.keySet());
-      
-        boolean tooMany = false;
-        Iterator<AttributeLoader.AttributeKey> rit = relAttributes.keySet().iterator();
-        while (rit.hasNext()) {
-          AttributeLoader.StringKey sKey = (AttributeLoader.StringKey)rit.next();
-          String key = sKey.key;
-          String val = relAttributes.get(sKey);
-          Boolean dirVal = Boolean.valueOf(val);
-          FabricLink.AugRelation forNorm = new FabricLink.AugRelation(key, false);
-          FabricLink.AugRelation forShad = new FabricLink.AugRelation(key, true);
-          boolean matched = false;
-          if (needed.contains(forNorm)) {
-            matched = true;
-            relaMap.put(forNorm, dirVal);
-            needed.remove(forNorm);
-          }
-          if (needed.contains(forShad)) {
-            matched = true;
-            relaMap.put(forShad, dirVal);
-            needed.remove(forShad);
-          }
-          if (!matched) {
-            tooMany = true;
-            break;
-          }          
-        }
-        if (!needed.isEmpty() || tooMany) {
-          JOptionPane.showMessageDialog(topWindow_, rMan.getString("fabricRead.directionMapLoadFailure"),
-                                        rMan.getString("fabricRead.directionMapLoadFailureTitle"),
-                                        JOptionPane.ERROR_MESSAGE);
+      if (headlessOracle_ == null) {
+        RelationDirectionDialog rdd = new RelationDirectionDialog(topWindow_, relaMap);
+        rdd.setVisible(true);
+        if (!rdd.haveResult()) {
           return (false);
         }
-      } else {
-        relaMap = rdd.getRelationMap();
+        if (rdd.getFromFile()) {
+          File fileEda = getTheFile(".rda", ".txt", "AttribDirectory", "filterName.rda");
+          if (fileEda == null) {
+            return (true);
+          }
+          Map<AttributeLoader.AttributeKey, String> relAttributes = loadTheFile(fileEda, null, true);  // Use the simple a = b format of node attributes
+          if (relAttributes == null) {
+            return (true);
+          }
+          
+          HashSet<FabricLink.AugRelation> needed = new HashSet<FabricLink.AugRelation>(relaMap.keySet());
+        
+          boolean tooMany = false;
+          Iterator<AttributeLoader.AttributeKey> rit = relAttributes.keySet().iterator();
+          while (rit.hasNext()) {
+            AttributeLoader.StringKey sKey = (AttributeLoader.StringKey)rit.next();
+            String key = sKey.key;
+            String val = relAttributes.get(sKey);
+            Boolean dirVal = Boolean.valueOf(val);
+            FabricLink.AugRelation forNorm = new FabricLink.AugRelation(key, false);
+            FabricLink.AugRelation forShad = new FabricLink.AugRelation(key, true);
+            boolean matched = false;
+            if (needed.contains(forNorm)) {
+              matched = true;
+              relaMap.put(forNorm, dirVal);
+              needed.remove(forNorm);
+            }
+            if (needed.contains(forShad)) {
+              matched = true;
+              relaMap.put(forShad, dirVal);
+              needed.remove(forShad);
+            }
+            if (!matched) {
+              tooMany = true;
+              break;
+            }          
+          }
+          if (!needed.isEmpty() || tooMany) {
+            JOptionPane.showMessageDialog(topWindow_, rMan.getString("fabricRead.directionMapLoadFailure"),
+                                          rMan.getString("fabricRead.directionMapLoadFailureTitle"),
+                                          JOptionPane.ERROR_MESSAGE);
+            return (false);
+          }
+        } else {
+          relaMap = rdd.getRelationMap();
+        }
       }
       
       HashSet<FabricLink> culledLinks = new HashSet<FabricLink>();
-      PreprocessNetwork pn = new PreprocessNetwork();
-      boolean didFinish = pn.doNetworkPreprocess(links, relaMap, reducedLinks, culledLinks, holdIt);
-      if (!didFinish) {
-        return (false);
+      
+      if (headlessOracle_ == null) {
+        PreprocessNetwork pn = new PreprocessNetwork();
+        boolean didFinish = pn.doNetworkPreprocess(links, relaMap, reducedLinks, culledLinks, holdIt);
+        if (!didFinish) {
+          return (false);
+        }
+      } else {   
+        try {
+          preprocess(links, relaMap, reducedLinks, culledLinks, null);
+        } catch ( AsynchExitRequestException axex) {
+          // Not going to happen
+        }
       }
-        
+
       if (!culledLinks.isEmpty()) {
         String dupLinkFormat = rMan.getString("fabricRead.dupLinkFormat");
         // Ignore shadow link culls: / 2
@@ -1129,7 +1208,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
       RelationDirectionDialog rdd = new RelationDirectionDialog(topWindow_, relMap);
       rdd.setVisible(true);
-      if (! rdd.haveResult()) {
+      if (!rdd.haveResult()) {
         return (false);
       }
       if (rdd.getFromFile()) {
@@ -1170,7 +1249,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
             break;
           }
         }
-        if (! needed.isEmpty() || tooMany) {
+        if (!needed.isEmpty() || tooMany) {
           JOptionPane.showMessageDialog(topWindow_, rMan.getString("fabricRead.directionMapLoadFailure"),
                   rMan.getString("fabricRead.directionMapLoadFailureTitle"),
                   JOptionPane.ERROR_MESSAGE);
@@ -1183,7 +1262,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       HashSet<FabricLink> culledLinks = new HashSet<FabricLink>();
       PreprocessNetwork pn = new PreprocessNetwork();
       boolean didFinish = pn.doNetworkPreprocess(links, relMap, reducedLinks, culledLinks, holdIt);
-      if (! didFinish) {
+      if (!didFinish) {
         return (false);
       }
   
@@ -1433,12 +1512,14 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     if (didExist && checkOverwrite) {  // note we care about DID exist (before creation)
       String overFormat = rMan.getString("fileChecks.doOverwriteFormat");
       String overMsg = MessageFormat.format(overFormat, new Object[] {target.getName()});
-      int overwrite =
-        JOptionPane.showConfirmDialog(topWindow_, overMsg,
-                                      rMan.getString("fileChecks.doOverwriteTitle"),
-                                      JOptionPane.YES_NO_OPTION);        
-      if (overwrite != JOptionPane.YES_OPTION) {
-        return (false);
+      if (headlessOracle_ == null) {
+        int overwrite =
+          JOptionPane.showConfirmDialog(topWindow_, overMsg,
+                                        rMan.getString("fileChecks.doOverwriteTitle"),
+                                        JOptionPane.YES_NO_OPTION);        
+        if (overwrite != JOptionPane.YES_OPTION) {
+          return (false);
+        }
       }
     }
     return (true);
@@ -1533,23 +1614,35 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         ResourceManager rMan = ResourceManager.getManager();
         String badLineFormat = rMan.getString("attribRead.badLineFormat");
         String badLineMsg = MessageFormat.format(badLineFormat, new Object[] {Integer.valueOf(stats.badLines.size())});
-        JOptionPane.showMessageDialog(topWindow_, badLineMsg,
-                                      rMan.getString("attribRead.badLineTitle"),
-                                      JOptionPane.WARNING_MESSAGE);
+        if (headlessOracle_ == null) {
+          JOptionPane.showMessageDialog(topWindow_, badLineMsg,
+                                        rMan.getString("attribRead.badLineTitle"),
+                                        JOptionPane.WARNING_MESSAGE);
+        } else {
+          headlessOracle_.displayErrorMessage(badLineMsg);
+        }
       }
       if (!stats.dupLines.isEmpty()) {
         ResourceManager rMan = ResourceManager.getManager();
         String dupLineFormat = rMan.getString("attribRead.dupLineFormat");
         String dupLineMsg = MessageFormat.format(dupLineFormat, new Object[] {Integer.valueOf(stats.dupLines.size())});
-        JOptionPane.showMessageDialog(topWindow_, dupLineMsg,
-                                      rMan.getString("attribRead.dupLineTitle"),
-                                      JOptionPane.WARNING_MESSAGE);
+        if (headlessOracle_ == null) {
+          JOptionPane.showMessageDialog(topWindow_, dupLineMsg,
+                                        rMan.getString("attribRead.dupLineTitle"),
+                                        JOptionPane.WARNING_MESSAGE);
+        } else {
+          headlessOracle_.displayErrorMessage(dupLineMsg);
+        }
       }
       if (!forNodes && !stats.shadowsPresent) {
         ResourceManager rMan = ResourceManager.getManager();
-        JOptionPane.showMessageDialog(topWindow_, rMan.getString("attribRead.noShadowError"),
-                                      rMan.getString("attribRead.noShadowTitle"),
-                                      JOptionPane.ERROR_MESSAGE);
+        if (headlessOracle_ == null) {
+          JOptionPane.showMessageDialog(topWindow_, rMan.getString("attribRead.noShadowError"),
+                                        rMan.getString("attribRead.noShadowTitle"),
+                                        JOptionPane.ERROR_MESSAGE);
+        } else {
+          headlessOracle_.displayErrorMessage(rMan.getString("attribRead.noShadowError"));
+        }
         return (null);
       }
      
@@ -1620,23 +1713,25 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public BufferedImage expensiveModelOperations(BioFabricNetwork.BuildData bfnbd, 
   		                                          boolean forMain, 
   		                                          BTProgressMonitor monitor) throws IOException, AsynchExitRequestException {
-    Dimension screenSize = (forMain) ? Toolkit.getDefaultToolkit().getScreenSize() : new Dimension(600, 800);
+    Dimension screenSize = (forMain && (headlessOracle_ == null)) ? Toolkit.getDefaultToolkit().getScreenSize() : new Dimension(600, 800);
     // Possibly expensive network analysis preparation:
-    BioFabricNetwork bfn = new BioFabricNetwork(bfnbd, monitor);
+    BioFabricNetwork bfn = new BioFabricNetwork(bfnbd, pMan_, monitor);
     // Possibly expensive display object creation:
     bfp_.installModel(bfn, monitor);
     // Very expensive display buffer creation:
     int[] preZooms = bfp_.calcZoomSettings(screenSize);
     BufferedImage topImage = null;
-    if (forMain) {
-      BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
-      topImage = bb.buildBufs(preZooms, bfp_, 25, monitor);
-      bfp_.setBufBuilder(bb);      
-    } else {
-      BufferBuilder bb = new BufferBuilder(bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
-      topImage = bb.buildOneBuf(preZooms);      
-      bfp_.setBufBuilder(null);
-    }    
+    if (headlessOracle_ == null) {
+      if (forMain) {
+        BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
+        topImage = bb.buildBufs(preZooms, bfp_, 25, monitor);
+        bfp_.setBufBuilder(bb);      
+      } else {
+        BufferBuilder bb = new BufferBuilder(bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
+        topImage = bb.buildOneBuf(preZooms);      
+        bfp_.setBufBuilder(null);
+      }
+    }
     return (topImage);
   }
 
@@ -1671,7 +1766,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   */ 
        
   public void postRecolorOperations(BufferedImage topImage) {
-    topWindow_.getOverview().installImage(topImage, bfp_.getWorldScreen());
+    bfw_.getOverview().installImage(topImage, bfp_.getWorldScreen());
     return;
   }
    
@@ -1681,12 +1776,13 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   */ 
        
   public void postLoadOperations(BufferedImage topImage) {
-    topWindow_.getOverview().installImage(topImage, bfp_.getWorldScreen());
+    bfw_.getOverview().installImage(topImage, bfp_.getWorldScreen());
     bfp_.installModelPost();
     bfp_.initZoom();
     checkForChanges();
     handleZoomButtons();
     bfp_.repaint();
+    pMan_.newNetworkInstalled(bfp_.getNetwork());
     return;
   }
   
@@ -1712,6 +1808,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   */ 
 
   public void manageWindowTitle(String fileName) {
+    if (headlessOracle_ != null) {
+      return;
+    }
     ResourceManager rMan = ResourceManager.getManager();
     String title;
     if (fileName == null) {
@@ -1834,18 +1933,26 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     ResourceManager rMan = ResourceManager.getManager();
     
     if ((ioex == null) || (ioex.getMessage() == null) || (ioex.getMessage().trim().equals(""))) {
-      JOptionPane.showMessageDialog(topWindow_, 
-                                    rMan.getString("fileRead.errorMessage"), 
-                                    rMan.getString("fileRead.errorTitle"),
-                                    JOptionPane.ERROR_MESSAGE);
+      if (headlessOracle_ == null) {
+        JOptionPane.showMessageDialog(topWindow_, 
+                                      rMan.getString("fileRead.errorMessage"), 
+                                      rMan.getString("fileRead.errorTitle"),
+                                      JOptionPane.ERROR_MESSAGE);
+      } else {
+        headlessOracle_.displayErrorMessage(rMan.getString("fileRead.errorMessage"));
+      }
       return;
     }
     String errMsg = ioex.getMessage().trim();
     String format = rMan.getString("fileRead.inputErrorMessageForIOEx");
     String outMsg = MessageFormat.format(format, new Object[] {errMsg}); 
-    JOptionPane.showMessageDialog(topWindow_, outMsg, 
-                                  rMan.getString("fileRead.errorTitle"),
-                                  JOptionPane.ERROR_MESSAGE);
+    if (headlessOracle_ == null) {
+      JOptionPane.showMessageDialog(topWindow_, outMsg, 
+                                    rMan.getString("fileRead.errorTitle"),
+                                    JOptionPane.ERROR_MESSAGE);
+    } else {
+      headlessOracle_.displayErrorMessage(outMsg);
+    }
     return;
   }
   
@@ -1914,7 +2021,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
    // if (!scrollOnly) { // Want nav panel resize to check zoom out ability
       handleZoomButtons();
    // }
-    topWindow_.getOverview().setViewInWorld(bfp_.getViewInWorld());
+    bfw_.getOverview().setViewInWorld(bfp_.getViewInWorld());
     return;
   }  
   
@@ -1993,7 +2100,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   */
 
   public static synchronized CommandSet initCmds(String className, BioFabricApplication bfa, 
-                                                     BioFabricWindow topWindow, boolean isForMain) {
+                                                 BioFabricWindow topWindow, boolean isForMain, 
+                                                 PlugInManager pMan, HeadlessOracle headlessOracle) {
     if (perClass_ == null) {
       perClass_ = new HashMap<String, CommandSet>();
     }
@@ -2001,7 +2109,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     if (fc != null) {
       throw new IllegalStateException();
     }
-    fc = new CommandSet(bfa, topWindow, isForMain);
+    fc = new CommandSet(bfa, topWindow, isForMain, pMan, headlessOracle);
     perClass_.put(className, fc);
     return (fc);
   }
@@ -2017,14 +2125,19 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   ** Constructor 
   */ 
   
-  private CommandSet(BioFabricApplication bfa, BioFabricWindow topWindow, boolean isMain) {
+  private CommandSet(BioFabricApplication bfa, BioFabricWindow bfw, 
+                     boolean isMain, PlugInManager pMan, HeadlessOracle headlessOracle) {
     bfa_ = bfa;
-    topWindow_ = topWindow;
+    bfw_ = bfw;
+    topWindow_ = bfw.getWindow();
     withIcons_ = new HashMap<Integer, ChecksForEnabled>();
     noIcons_ = new HashMap<Integer, ChecksForEnabled>();
+    plugInCmds_ = new HashMap<String, ChecksForEnabled>();
     colGen_ = new FabricColorGenerator();
     colGen_.newColorModel();
     isForMain_ = isMain;
+    pMan_ = pMan;
+    headlessOracle_ = headlessOracle;
     isAMac_ = System.getProperty("os.name").toLowerCase().startsWith("mac os x");
     FabricDisplayOptionsManager.getMgr().addTracker(this);
     EventManager mgr = EventManager.getManager();
@@ -2037,6 +2150,42 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   //
   ////////////////////////////////////////////////////////////////////////////
 
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+   
+  public class HeadlessImportSIFAction {
+    
+    private File inputFile_;
+    
+    public HeadlessImportSIFAction(File inputFile) {
+      inputFile_ = inputFile;
+    }
+    
+    public boolean performOperation(Object[] args) {
+      return (loadFromSifSource(inputFile_, null, null, new UniqueLabeller()));
+    }
+  }
+  
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+    
+  public class HeadlessExportAction extends ExportImageAction {
+ 
+    private static final long serialVersionUID = 1L;
+    
+    public HeadlessExportAction() {
+      super(false, "command.HeadlessExport", "command.HeadlessExportMnem");
+    }
+   
+    protected ExportSettingsDialog.ExportSettings getExportSettings() {
+      return (null); 
+    }
+  }
+  
   /***************************************************************************
   **
   ** Checks if it is enabled or not
@@ -2687,13 +2836,13 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       try {
         boolean haveSelection = bfp_.haveASelection();
         boolean buildingSels = bfp_.amBuildingSelections();
-        FabricSearchDialog fsd = new FabricSearchDialog(topWindow_, topWindow_.getFabricPanel().getNetwork(), 
+        FabricSearchDialog fsd = new FabricSearchDialog(topWindow_, bfw_.getFabricPanel().getNetwork(), 
                                                         haveSelection, buildingSels);      
         fsd.setVisible(true);
         if (fsd.itemWasFound()) {
           Set<NID.WithName> matches = fsd.getMatches();
           boolean doDiscard = fsd.discardSelections();
-          topWindow_.getFabricPanel().installSearchResult(matches, doDiscard);
+          bfw_.getFabricPanel().installSearchResult(matches, doDiscard);
         }
         return;
       } catch (Exception ex) {
@@ -3065,7 +3214,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     public void actionPerformed(ActionEvent ev) {
       showTour_ = !showTour_;
-      topWindow_.showTour(showTour_);
+      bfw_.showTour(showTour_);
       return;
     }
     
@@ -3100,7 +3249,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     public void actionPerformed(ActionEvent ev) {
       showNav_ = !showNav_;
-      topWindow_.showNavAndControl(showNav_);
+      bfw_.showNavAndControl(showNav_);
       checkForChanges(); // To disable/enable tour hiding
       return;
     }
@@ -3344,7 +3493,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       try {
         Set<NID.WithName> sels = bfp_.getNodeSelections();
         NID.WithName selNode = (sels.size() == 1) ? sels.iterator().next() : null;
-        BreadthFirstLayoutDialog bfl = new BreadthFirstLayoutDialog(topWindow_, selNode, topWindow_.getFabricPanel().getNetwork());
+        BreadthFirstLayoutDialog bfl = new BreadthFirstLayoutDialog(topWindow_, selNode, bfw_.getFabricPanel().getNetwork());
         bfl.setVisible(true);
            
         if (bfl.haveResult()) {
@@ -3828,6 +3977,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       return (loadFromSifSource(file, null, magBins, new UniqueLabeller()));
     }
   }
+  
+
   
   /***************************************************************************
   **
@@ -4454,7 +4605,6 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     protected abstract ExportSettingsDialog.ExportSettings getExportSettings();
     
-    
     public boolean performOperation(Object[] args) { 
    
       ExportSettingsDialog.ExportSettings set;
@@ -4654,7 +4804,37 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       }
       return;
     }
-  }       
+  } 
+
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+    
+  private class PlugInAction extends ChecksForEnabled {
+    
+    private static final long serialVersionUID = 1L;
+    private BioFabricToolPlugInCmd cmd_;
+   
+    PlugInAction(BioFabricToolPlugInCmd cmd) {
+      cmd_ = cmd;
+      putValue(Action.NAME, cmd_.getCommandName());
+    }
+
+    public void actionPerformed(ActionEvent e) {
+      try {
+        cmd_.performOperation(topWindow_);
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }
+      return;
+    }
+    
+    @Override
+    protected boolean checkGuts() {
+      return (cmd_.isEnabled());      
+    }
+  }
   
   /***************************************************************************
   **
@@ -4839,10 +5019,18 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     	runner_.setBuildDataForXMLLoad(bfn, bMode);	
     }
  
+    public void doNetworkBuildForeground() {
+      try {
+        runner_.runCore();
+      } catch (AsynchExitRequestException axex) {
+        // will not happen
+      }
+    }
+
     public boolean doNetworkBuild() {
     	finished_ = true;
       try {
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner_, topWindow_, topWindow_, 
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner_, topWindow_, bfw_, 
                                                                 "netBuild.waitTitle", "netBuild.wait", true);
         runner_.setClient(bwc);
         bwc.launchWorker();         
@@ -4936,7 +5124,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         holdIt_ = File.createTempFile("BioFabricHold", ".zip");
     		holdIt_.deleteOnExit();
         runner_.setNetworkAndMode(holdIt_, bfn, bMode);                                                                  
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner_, topWindow_, topWindow_, 
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner_, topWindow_, bfw_, 
                                                                 "netRelayout.waitTitle", "netRelayout.wait", true);
         if (bMode == BioFabricNetwork.BuildMode.REORDER_LAYOUT) {
           bwc.makeSuperChart();
@@ -5020,7 +5208,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         NetworkAlignmentRunner runner = new NetworkAlignmentRunner(mergedLinks, mergedLoneNodeIDs, mapG1toG2, perfectG1toG2,
                 mergedToCorrect, isAlignedNode, linksG1, lonersG1, linksG2, lonersG2, relMap, forClique, idGen);
         
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_,
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_,
                 "fileLoad.waitTitle", "fileLoad.wait", true);
         
         runner.setClient(bwc);
@@ -5097,7 +5285,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       forRecovery_ = false;
       try {
         SIFReaderRunner runner = new SIFReaderRunner(file, idGen, links, loneNodeIDs, nameMap, sss, magBins, relMap, holdIt_);                                                        
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
                                                                  "fileLoad.waitTitle", "fileLoad.wait", true);
         runner.setClient(bwc);
         bwc.launchWorker();         
@@ -5117,7 +5305,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       forRecovery_ = false;
       try {
         GWReaderRunner runner = new GWReaderRunner(file, idGen, links, loneNodeIDs, nameMap, gws, magBins, relMap, holdIt_);
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_,
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_,
                 "fileLoad.waitTitle", "fileLoad.wait", true);
         
         runner.setClient(bwc);
@@ -5134,7 +5322,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       forRecovery_ = (holdIt == null);
       try {
         ReaderRunner runner = new ReaderRunner(sup, file, compressed, holdIt_);                                                                  
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
                                                                  "fileLoad.waitTitle", "fileLoad.wait", true);
         runner.setClient(bwc);
         bwc.launchWorker();         
@@ -5204,7 +5392,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     private void doWrite(WriterRunner runner) {
       try {                                                                
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
                                                                  "fileWrite.waitTitle", "fileWrite.wait", true);
         runner.setClient(bwc);
         bwc.launchWorker();         
@@ -5264,7 +5452,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       	holdIt_ = holdIt;
         bfp_.shutdown();
         RecolorNetworkRunner runner = new RecolorNetworkRunner(isMain, holdIt_);                                                                  
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
                                                                  "netRecolor.waitTitle", "netRecolor.wait", true);
         runner.setClient(bwc);
         bwc.launchWorker();         
@@ -5322,7 +5510,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     	finished_ = true;
       try {
         PreprocessRunner runner = new PreprocessRunner(links, relaMap, reducedLinks, culledLinks, holdIt_);                                                            
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, topWindow_, 
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
                                                                  "netPreprocess.waitTitle", "netPreprocess.wait", true);
         runner.setClient(bwc);
         bwc.launchWorker();         
@@ -5480,10 +5668,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
 	    	case BUILD_FROM_SIF:
 	    		HashMap<NID.WithName, String> emptyMap = new HashMap<NID.WithName, String>();
 	        return (new BioFabricNetwork.RelayoutBuildData(idGen_, links_, loneNodeIDs_, emptyMap, colGen_, bMode_));
-            case BUILD_NETWORK_ALIGNMENT:
-              HashMap<NID.WithName, String> emptyClustMap = new HashMap<NID.WithName, String>();
-              return (new BioFabricNetwork.NetworkAlignmentBuildData(idGen_, links_, loneNodeIDs_, mergedToCorrect_,
-                      isAlignedNode_, netAlignStats_, emptyClustMap, forOrphanEdge_, colGen_, bMode_));
+        case BUILD_NETWORK_ALIGNMENT:
+          HashMap<NID.WithName, String> emptyClustMap = new HashMap<NID.WithName, String>();
+          return (new BioFabricNetwork.NetworkAlignmentBuildData(idGen_, links_, loneNodeIDs_, mergedToCorrect_,
+                  isAlignedNode_, netAlignStats_, emptyClustMap, forOrphanEdge_, colGen_, bMode_));
 	    	case SHADOW_LINK_CHANGE:
 	    	case BUILD_FROM_XML:
 	    		return (new BioFabricNetwork.PreBuiltBuildData(bfn_, bMode_));		
@@ -5499,7 +5687,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       	} 	
         BioFabricNetwork.BuildData bd = generateBuildData();
         preLoadOperations();
-        BufferedImage bi = expensiveModelOperations(bd, forMain_, this);
+        // This can be run on foreground thread (for headless operation: shut up progress monitor
+        // if that is the case:
+        BTProgressMonitor monitor = (headlessOracle_ != null) ? null : this;
+        BufferedImage bi = expensiveModelOperations(bd, forMain_, monitor);
         if (linkCount_ > 10000) {
           (new GarbageRequester()).askForGC(this);
         }

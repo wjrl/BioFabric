@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,34 +17,24 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.io;
+package org.systemsbiology.biofabric.plugin;
 
-import java.util.Set;
-import java.util.HashSet;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Map;
+import java.util.Set;
 
-import org.xml.sax.Attributes;
-import org.systemsbiology.biofabric.model.AnnotationSet;
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.parser.ParserClient;
-import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
-import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
-import org.systemsbiology.biofabric.ui.FabricColorGenerator;
-import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
-import org.systemsbiology.biofabric.ui.NamedColor;
-import org.systemsbiology.biofabric.util.NID;
-import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.xml.sax.Attributes;
 
 /****************************************************************************
 **
-** This handles fabric creation from XML files
+** This handles Plugin Directive Creation from XML files
 */
 
-public class FabricFactory implements ParserClient {
+public class PlugInDirectiveFactory implements ParserClient {
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -68,12 +58,12 @@ public class FabricFactory implements ParserClient {
   ** Constructor
   */
 
-  public FabricFactory() {
+  public PlugInDirectiveFactory(PlugInManager mgr) {
       
     allKeys_ = new HashSet<String>();
-    whiteBoard_ = new FactoryWhiteboard();
+    whiteBoard_ = new FactoryWhiteboard(mgr);
    
-    BioFabricNetwork.NetworkDataWorker ndw = new BioFabricNetwork.NetworkDataWorker(whiteBoard_);    
+    PlugInManager.DirectiveWorker ndw = new PlugInManager.DirectiveWorker(whiteBoard_);    
     ArrayList<ParserClient> alist = new ArrayList<ParserClient>();
     alist.add(ndw);
     
@@ -96,21 +86,12 @@ public class FabricFactory implements ParserClient {
     currClient_ = null;
     
   }
-
+ 
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-
-  /***************************************************************************
-  ** 
-  ** Get the network
-  */
-
-  public BioFabricNetwork getFabricNetwork() {
-    return (whiteBoard_.bfn);    
-  }
   
   /***************************************************************************
   ** 
@@ -183,29 +164,11 @@ public class FabricFactory implements ParserClient {
   }
 
   public static class FactoryWhiteboard {
-  	public UniqueLabeller ulb;
-    public BioFabricNetwork bfn;
-    public BioFabricNetwork.LinkInfo linkInfo;
-    public BioFabricNetwork.NodeInfo nodeInfo;
-    public BioFabricNetwork.DrainZone drainZone;
-    public FabricColorGenerator fcg;
-    public NamedColor currCol;
-    public int colTarg;
-    public String groupTag;
-    public FabricDisplayOptions displayOpts;
-    public Map<String, NID.WithName> legacyMap;
-  	public Map<NID, NID.WithName> wnMap;
-  	public AnnotationSet.Annot annot;
-  	public AnnotationSet currAnnots;
-  	
-  	public BioFabricToolPlugIn currPlugIn;
-  	public BioFabricToolPlugInData currPlugInData;
+  	public PlugInManager mgr;
+  	public AbstractPlugInDirective dir;
     
-    public FactoryWhiteboard() {
-      colTarg = FabricColorGenerator.UNCHANGED;
-      ulb = new UniqueLabeller();
-      legacyMap = new HashMap<String, NID.WithName>();
-      wnMap = new HashMap<NID, NID.WithName>();
+    public FactoryWhiteboard(PlugInManager mgr) {
+      this.mgr = mgr;
     } 
   }
 }
