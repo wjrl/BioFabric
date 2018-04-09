@@ -71,7 +71,7 @@ public class MatchingJLabel extends JLabel {
     Dimension ps = super.getPreferredSize();
     Dimension rps = reference_.getPreferredSize();
     if (rps.width > ps.width) {
-      rps.width = ps.width;
+      ps.width = rps.width;
     }
     return (ps);
   }  

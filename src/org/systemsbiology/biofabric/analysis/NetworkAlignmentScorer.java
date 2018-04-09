@@ -2,7 +2,7 @@
 **
 **    File created by Rishi Desai
 **
-**    Copyright (C) 2003-2017 Institute for Systems Biology
+**    Copyright (C) 2003-2018 Institute for Systems Biology
 **                            Seattle, Washington, USA.
 **
 **    This library is free software; you can redistribute it and/or
@@ -22,9 +22,11 @@
 
 package org.systemsbiology.biofabric.analysis;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.systemsbiology.biofabric.layouts.NetworkAlignmentLayout;
@@ -67,18 +69,33 @@ public class NetworkAlignmentScorer {
   private Map<NID.WithName, Boolean> isAlignedNodeMain_, isAlignedNodePerfect_;
   private Map<NID.WithName, Boolean> mergedToCorrect_;
   
+  //
+  // This are from original untouched graphs and alignments
+  //
+  
+  private ArrayList<FabricLink> linksSmall_, linksLarge_;
+  private HashSet<NID.WithName> lonersSmall_, lonersLarge_;
+  private Map<NID.WithName, NID.WithName> mapG1toG2_, perfectG1toG2_;
+  
   private BTProgressMonitor monitor_;
   
   private Map<NID.WithName, Set<FabricLink>> nodeToLinksMain_, nodeToLinksPerfect_;
   private Map<NID.WithName, Set<NID.WithName>> nodeToNeighborsMain_, nodeToNeighborsPerfect_;
   
-  private double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccSim;
+  //
+  // The scores
+  //
+  
+  private Double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccSim;
   private NetAlignStats netAlignStats_;
   
   public NetworkAlignmentScorer(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
                                 Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
                                 Map<NID.WithName, Boolean> isAlignedNodePerfect,
                                 Set<FabricLink> linksPerfect, Set<NID.WithName> loneNodeIDsPerfect,
+                                ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
+                                ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                                Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2,
                                 BTProgressMonitor monitor) {
     this.linksMain_ = new HashSet<FabricLink>(reducedLinks);
     this.loneNodeIDsMain_ = new HashSet<NID.WithName>(loneNodeIDs);
@@ -92,6 +109,12 @@ public class NetworkAlignmentScorer {
     this.nodeToNeighborsMain_ = new HashMap<NID.WithName, Set<NID.WithName>>();
     this.nodeToLinksPerfect_ = new HashMap<NID.WithName, Set<FabricLink>>();
     this.nodeToNeighborsPerfect_ = new HashMap<NID.WithName, Set<NID.WithName>>();
+    this.linksSmall_ = linksSmall;
+    this.lonersSmall_ = lonersSmall;
+    this.linksLarge_ = linksLarge;
+    this.lonersLarge_ = lonersLarge;
+    this.mapG1toG2_ = mapG1toG2;
+    this.perfectG1toG2_ = perfectG1toG2;
     
     removeDuplicateAndShadow();
     generateStructs(reducedLinks, loneNodeIDs, nodeToLinksMain_, nodeToNeighborsMain_);
@@ -99,7 +122,7 @@ public class NetworkAlignmentScorer {
       generateStructs(linksPerfect, loneNodeIDsPerfect, nodeToLinksPerfect_, nodeToNeighborsPerfect_);
     }
     calcScores();
-    this.netAlignStats_ = new NetAlignStats(EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccSim);
+    finalizeMeasures();
     return;
   }
   
@@ -136,14 +159,36 @@ public class NetworkAlignmentScorer {
   
   private void calcScores() {
     calcTopologicalScores();
-//    calcJaccardSimilarity();
   
     if (mergedToCorrect_ != null) { // must have perfect alignment for these measures
       calcNodeCorrectness();
       calcNodeGroupValues();
       calcLinkGroupValues();
       calcBothGroupValues();
+      calcJaccardSimilarity();
     }
+  }
+  
+  private void finalizeMeasures() {
+    NetAlignMeasure[] possibleMeasures = {
+            new NetAlignMeasure("EC", EC),
+            new NetAlignMeasure("S3", S3),
+            new NetAlignMeasure("ICS", ICS),
+            new NetAlignMeasure("NC", NC),
+            new NetAlignMeasure("NGDist", NGDist),
+            new NetAlignMeasure("LGDist", LGDist),
+            new NetAlignMeasure("NGLGDist", NGLGDist),
+            new NetAlignMeasure("JaccSim", JaccSim),
+    };
+  
+    List<NetAlignMeasure> measures = new ArrayList<NetAlignMeasure>();
+    for (NetAlignMeasure msr : possibleMeasures) {
+      if (msr.val != null) { // no point having null measures
+        measures.add(msr);
+      }
+    }
+    this.netAlignStats_ = new NetAlignStats(measures);
+    return;
   }
   
   private void calcTopologicalScores() {
@@ -168,9 +213,9 @@ public class NetworkAlignmentScorer {
       S3 = ((double) numCoveredEdge) / (numCoveredEdge + numGraph1 + numInducedGraph2);
       ICS = ((double) numCoveredEdge) / (numCoveredEdge + numInducedGraph2); // this is correct right?
     } catch (ArithmeticException ae) {
-      EC = -1;
-      S3 = -1;
-      ICS = -1; // add better error catching
+      EC = null;
+      S3 = null;
+      ICS = null; // add better error catching
       UiUtil.fixMePrintout("Needs better Net-Align score calculator");
     }
     return;
@@ -178,7 +223,7 @@ public class NetworkAlignmentScorer {
   
   private void calcNodeCorrectness() {
     if (mergedToCorrect_ == null) {
-      NC = -1;
+      NC = null;
       return;
     }
     
@@ -266,7 +311,7 @@ public class NetworkAlignmentScorer {
                                                 Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
                                                 BTProgressMonitor monitor) {
     
-    NetworkAlignmentLayout.NodeGroupMap map = new NetworkAlignmentLayout.NodeGroupMap(links, loneNodeIDs, mergedToCorrect, isAlignedNode,
+    NodeGroupMap map = new NodeGroupMap(links, loneNodeIDs, mergedToCorrect, isAlignedNode,
             NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
     
     Set<NID.WithName> allNodes;
@@ -291,7 +336,7 @@ public class NetworkAlignmentScorer {
   }
   
   private static ScoreVector getLinkGroupRatios(Set<FabricLink> links, BTProgressMonitor monitor) {
-    int[] counts = new int[NetworkAlignmentLayout.NUMBER_LINK_GROUPS];
+    int[] counts = new int[NodeGroupMap.NUMBER_LINK_GROUPS];
     
     for (FabricLink link : links) {
       if (link.getRelation().equals(NetworkAlignment.COVERED_EDGE)) {
@@ -307,7 +352,7 @@ public class NetworkAlignmentScorer {
       }
     }
     
-    ScoreVector scoreLG = new ScoreVector(NetworkAlignmentLayout.NUMBER_LINK_GROUPS);
+    ScoreVector scoreLG = new ScoreVector(NodeGroupMap.NUMBER_LINK_GROUPS);
     
     for (int i = 0; i < counts.length; i++) {
       scoreLG.values_[i] = ((double)counts[i]) / ((double)links.size());
@@ -316,7 +361,7 @@ public class NetworkAlignmentScorer {
   }
   
   private  void calcJaccardSimilarity() {
-    this.JaccSim = new JaccardSimilarity().calcScore(isAlignedNodeMain_.keySet(), nodeToLinksMain_);
+    this.JaccSim = new JaccardSimilarity().calcScore(mapG1toG2_, perfectG1toG2_, linksLarge_, lonersLarge_);
     return;
   }
   
@@ -333,39 +378,43 @@ public class NetworkAlignmentScorer {
   
   public static class NetAlignStats implements BioFabricToolPlugInData {
     
-    public double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccardSim;
+    public List<NetAlignMeasure> measures;
     
-    public NetAlignStats() {}
+    public NetAlignStats() {
+      measures = new ArrayList<NetAlignMeasure>();
+    }
     
-    public NetAlignStats(double EC, double S3, double ICS, double NC, double NGDist, double LGDist,
-                         double NGLGDist, double JaccardSim) {
-      this.EC = EC;
-      this.S3 = S3;
-      this.ICS = ICS;
-      this.NC = NC;
-      this.NGDist = NGDist;
-      this.LGDist = LGDist;
-      this.NGLGDist = NGLGDist;
-      this.JaccardSim = JaccardSim;
+    public NetAlignStats(List<NetAlignMeasure> measures) {
+      this.measures = measures;
     }
   
     @Override
     public String toString() {
-      String scores = String.format("SCORES\nEC:%4.4f\nS3:%4.4f\nICS:%4.4f\nNC:%4.4" +
-                      "f\nNGD:%4.4f\nLGD:%4.4f\nNGLGD:%4.4f\nJS:%4.4f",
-              EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccardSim);
-      return (scores);
+      StringBuilder ret = new StringBuilder("Measures");
+      for (NetAlignMeasure msr : measures) {
+        ret.append('\n').append(msr.name).append(':').append(String.format("%4.4f", msr.val));
+      }
+      return (ret.toString());
     }
     
     public void replaceValuesTo(NetAlignStats other) {
-      EC = other.EC;
-      S3 = other.S3;
-      ICS = other.ICS;
-      NC = other.NC;
-      NGDist = other.NGDist;
-      LGDist = other.LGDist;
-      NGLGDist = other.NGLGDist;
-      JaccardSim = other.JaccardSim;
+      measures = new ArrayList<NetAlignMeasure>(other.measures);
+    }
+  }
+  
+  public static class NetAlignMeasure {
+    
+    public final Double val;
+    public final String name;
+    
+    public NetAlignMeasure(String name, Double val) {
+      this.val = val;
+      this.name = name;
+    }
+  
+    @Override
+    public String toString() {
+      return ("NetAlignMeasure{" + "val=" + val + ", name='" + name + '\'' + '}');
     }
   }
   
@@ -426,19 +475,21 @@ public class NetworkAlignmentScorer {
   
   /****************************************************************************
    **
-   ** Jaccard Similarity- currently WRONG- need to fix
+   ** Jaccard Similarity Measure - Adapted from NodeEQC.java
    */
   
   private static class JaccardSimilarity {
   
     /***************************************************************************
      **
-     ** Calc the score; Adapted from NodeEQC.java
+     ** Calculated the score
      */
   
-    public double calcScore(Set<NID.WithName> alignedNodes, Map<NID.WithName, Set<FabricLink>> nodeToLinks) {
-    
-      // For alignment, figure Jaccard
+    double calcScore(Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2,
+                     ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge) {
+  
+      Map<NID.WithName, NID.WithName> entrezAlign = constructEntrezAlign(mapG1toG2, perfectG1toG2);
+      Map<NID.WithName, Set<NID.WithName>> nodeToNeigh = makeNodeToNeigh(linksLarge, lonersLarge);
     
       HashSet<NID.WithName> union = new HashSet<NID.WithName>();
       HashSet<NID.WithName> intersect = new HashSet<NID.WithName>();
@@ -447,19 +498,17 @@ public class NetworkAlignmentScorer {
       double totJ = 0.0;
       int numEnt = 0;
     
-      for (NID.WithName node : alignedNodes) {
+      for (NID.WithName node : entrezAlign.keySet()) {
         int lenAdjust = 0;
-        Set<NID.WithName> neighOfNode = neighborsOfLG(node, new String[]{NetworkAlignment.COVERED_EDGE, NetworkAlignment.GRAPH1}, nodeToLinks);
-
-        Set<NID.WithName> neighOfMatch = neighborsOfLG(node, new String[]{NetworkAlignment.COVERED_EDGE, NetworkAlignment.INDUCED_GRAPH2,
-                NetworkAlignment.HALF_UNALIGNED_GRAPH2, NetworkAlignment.FULL_UNALIGNED_GRAPH2}, nodeToLinks);
-        
+        NID.WithName match = entrezAlign.get(node);
+        Set<NID.WithName> neighOfNode = nodeToNeigh.get(node);
+        Set<NID.WithName> neighOfMatch = nodeToNeigh.get(match);
         scratchNode.clear();
         scratchNode.addAll(neighOfNode);
         scratchMatch.clear();
         scratchMatch.addAll(neighOfMatch);
-        if (scratchNode.contains(node)) {
-          scratchNode.remove(node);
+        if (scratchNode.contains(match)) {
+          scratchNode.remove(match);
           scratchMatch.remove(node);
           lenAdjust = 1;
         }
@@ -477,30 +526,55 @@ public class NetworkAlignmentScorer {
     
       return (score);
     }
+  
+    /***************************************************************************
+     **
+     ** Match up G2-aligned nodes with G2-aligned nodes in perfect alignment
+     */
     
-    private Set<NID.WithName> neighborsOfLG(NID.WithName node, String[] lgAllowed, Map<NID.WithName, Set<FabricLink>> nodeToLinks) {
-
-      Set<NID.WithName> nebrs = new HashSet<NID.WithName>();
-      
-      for (FabricLink link : nodeToLinks.get(node)) {
-        boolean ok = false;
-        for (String rel : lgAllowed) { // make sure this link is in specified link groups
-          if (link.getRelation().equals(rel)) {
-            ok = true;
-          }
-        }
-        if (!ok) {
+    private Map<NID.WithName, NID.WithName> constructEntrezAlign(Map<NID.WithName, NID.WithName> mapG1toG2,
+                                                                 Map<NID.WithName, NID.WithName> perfectG1toG2) {
+      Map<NID.WithName, NID.WithName> ret = new HashMap<NID.WithName, NID.WithName>();
+      for (NID.WithName node : mapG1toG2.keySet()) {
+        NID.WithName converted = perfectG1toG2.get(node);
+        if (converted == null) {
+          //System.err.println("no Entrez match for " + node);
           continue;
         }
-        nebrs.add(link.getSrcID()); // yes I am adding the main 'node' again every time
-        nebrs.add(link.getTrgID()); // but this is a set so it doesn't matter
+        NID.WithName matchedWith = mapG1toG2.get(node);
+        ret.put(converted, matchedWith);
+      }
+      return (ret);
+    }
+    
+    /***************************************************************************
+     **
+     ** Construct node to neighbor map
+     */
+    
+    private Map<NID.WithName, Set<NID.WithName>> makeNodeToNeigh(ArrayList<FabricLink> links, HashSet<NID.WithName> loners) {
+  
+      Map<NID.WithName, Set<NID.WithName>> ret = new HashMap<NID.WithName, Set<NID.WithName>>();
+  
+      for (FabricLink link : links) {
+        NID.WithName src = link.getSrcID(), trg = link.getTrgID();
+  
+        if (ret.get(src) == null) {
+          ret.put(src, new HashSet<NID.WithName>());
+        }
+        if (ret.get(trg) == null) {
+          ret.put(trg, new HashSet<NID.WithName>());
+        }
+        ret.get(src).add(trg);
+        ret.get(trg).add(src);
       }
       
-      nebrs.remove(node); // remove main 'node'
-      
-      return (nebrs);
+      for (NID.WithName node : loners) {
+        ret.put(node, new HashSet<NID.WithName>());
+      }
+      return (ret);
     }
-  
+    
     /***************************************************************************
      **
      ** Set intersection helper

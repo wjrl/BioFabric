@@ -21,78 +21,53 @@
 
 package org.systemsbiology.biofabric.ui.dialogs;
 
-import java.awt.FlowLayout;
-import java.awt.GridBagConstraints;
+import java.awt.Dimension;
 import java.awt.GridBagLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import javax.swing.Box;
-import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 import org.systemsbiology.biofabric.analysis.NetworkAlignmentScorer;
-import org.systemsbiology.biofabric.util.FixedJButton;
+import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
+import org.systemsbiology.biofabric.ui.dialogs.utils.DialogSupport;
 import org.systemsbiology.biofabric.util.ResourceManager;
-import org.systemsbiology.biofabric.util.UiUtil;
 
-public class NetAlignScoreDialog extends JDialog {
+public class NetAlignScoreDialog extends BTStashResultsDialog {
   
   private JFrame parent_;
   private NetworkAlignmentScorer.NetAlignStats netAlignStats_;
   
   public NetAlignScoreDialog(JFrame parent, NetworkAlignmentScorer.NetAlignStats stats) {
-    super(parent, ResourceManager.getManager().getString("networkAlignment.scores"), true);
+    super(parent, ResourceManager.getManager().getString("networkAlignment.measures"), new Dimension(300, 400), 2);
     this.parent_ = parent;
     this.netAlignStats_ = stats;
   
-    final ResourceManager rMan = ResourceManager.getManager();
-    setSize(300, 300);
     JPanel cp = (JPanel) getContentPane();
     cp.setBorder(new EmptyBorder(20, 20, 20, 20));
     cp.setLayout(new GridBagLayout());
-    GridBagConstraints gbc = new GridBagConstraints();
   
-    JLabel[] labels = {
-            new JLabel(String.format("EC: %4.4f", stats.EC)),
-            new JLabel(String.format("S3: %4.4f", stats.S3)),
-            new JLabel(String.format("ICS: %4.4f", stats.ICS)),
-            new JLabel(String.format("NC: %4.4f", stats.NC)),
-            new JLabel(String.format("NGDist: %4.4f", stats.NGDist)),
-            new JLabel(String.format("LGDist: %4.4f", stats.LGDist)),
-            new JLabel(String.format("NGLGDist: %4.4f", stats.NGLGDist)),
-            new JLabel(String.format("JaccSim: %4.4f", stats.JaccardSim)),
-    };
+    String msg = ResourceManager.getManager().getString("networkAlignment.scoreMessage");
+    addWidgetFullRow(new JLabel(msg), false);
     
-    Box scoreBox = Box.createVerticalBox();
-    for (JLabel label : labels) {
-      scoreBox.add(label);
+    for (NetworkAlignmentScorer.NetAlignMeasure measure : netAlignStats_.measures) {
+      String label = String.format("%s\t%4.4f", measure.name, measure.val);
+      addWidgetFullRow(new JLabel(label, SwingConstants.LEFT), false);
     }
     
-    cp.add(scoreBox, gbc);
+    if (netAlignStats_.measures.isEmpty()) {
+      String noM = ResourceManager.getManager().getString("networkAlignment.noMeasuresAvailable");
+      addWidgetFullRow(new JLabel(noM), false);
+    }
     
-    FixedJButton buttonO = new FixedJButton(rMan.getString("networkAlignment.ok"));
-    buttonO.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent ev) {
-        NetAlignScoreDialog.this.setVisible(false);
-        NetAlignScoreDialog.this.dispose();
-      }
-    });
-  
-    JPanel panOptions = new JPanel(new FlowLayout(FlowLayout.LEFT));
-  
-    panOptions.add(buttonO);
-    panOptions.add(Box.createHorizontalStrut(10));
-  
-    Box optButtonBox = Box.createHorizontalBox();
-    optButtonBox.add(panOptions);
-  
-    UiUtil.gbcSet(gbc, 0, 1, 5, 1, UiUtil.HOR, 0, 0,
-            5, 5, 5, 5, UiUtil.SE, 1.0, 0.0);
-    cp.add(optButtonBox, gbc);
+    DialogSupport.Buttons buttons = finishConstruction();
+    buttons.cancelButton.setVisible(false);
   
     setLocationRelativeTo(parent);
   }
   
+  @Override
+  protected boolean stashForOK() {
+    return (true);
+  }
 }
