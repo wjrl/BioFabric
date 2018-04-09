@@ -19,7 +19,7 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.layouts;
+package org.systemsbiology.biofabric.plugin.core.align;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,7 +33,10 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import org.systemsbiology.biofabric.analysis.NodeGroupMap;
+
+import org.systemsbiology.biofabric.layouts.DefaultLayout;
+import org.systemsbiology.biofabric.layouts.NodeLayout;
+import org.systemsbiology.biofabric.layouts.NodeLayout.Params;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;

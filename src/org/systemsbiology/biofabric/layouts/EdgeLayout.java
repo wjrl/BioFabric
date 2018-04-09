@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -19,7 +19,7 @@
 
 package org.systemsbiology.biofabric.layouts;
 
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 
@@ -41,7 +41,7 @@ public interface EdgeLayout {
   ** Relayout the whole network!
   */
   
-  public void layoutEdges(BioFabricNetwork.RelayoutBuildData rbd, 
+  public void layoutEdges(BuildData.RelayoutBuildData rbd, 
   		                    BTProgressMonitor monitor) throws AsynchExitRequestException;
   
   
@@ -50,7 +50,7 @@ public interface EdgeLayout {
   ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
   */
   
-  public void preProcessEdges(BioFabricNetwork.RelayoutBuildData rbd, 
+  public void preProcessEdges(BuildData.RelayoutBuildData rbd, 
   		                        BTProgressMonitor monitor) throws AsynchExitRequestException;
    
 

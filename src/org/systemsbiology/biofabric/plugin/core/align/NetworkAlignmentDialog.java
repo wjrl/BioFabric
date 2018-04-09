@@ -19,7 +19,7 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.ui.dialogs;
+package org.systemsbiology.biofabric.plugin.core.align;
 
 import java.awt.Dimension;
 import java.awt.FlowLayout;

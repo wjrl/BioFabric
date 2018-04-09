@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -34,6 +34,7 @@ import org.systemsbiology.biofabric.analysis.CycleFinder;
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout.DefaultFabricLinkLocater;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
@@ -152,9 +153,9 @@ public class ControlTopLayout extends NodeLayout {
   */
   
   @Override
-  public boolean criteriaMet(BioFabricNetwork.RelayoutBuildData rbd,
-                           BTProgressMonitor monitor) throws AsynchExitRequestException, 
-                                                             LayoutCriterionFailureException {
+  public boolean criteriaMet(BuildData.RelayoutBuildData rbd,
+                             BTProgressMonitor monitor) throws AsynchExitRequestException, 
+                                                               LayoutCriterionFailureException {
     //
     // 1) What are the requirements?
     // 2) If we ae given a fixed list, we need to map to nodes, and make sure it is 1:1 and onto.
@@ -177,7 +178,7 @@ public class ControlTopLayout extends NodeLayout {
   ** Order the nodes
   */
   
-  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd,
+  public List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd,
   																			 Params params,
   		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
 									    

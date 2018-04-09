@@ -19,7 +19,7 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.ui.dialogs;
+package org.systemsbiology.biofabric.plugin.core.align;
 
 import java.awt.Dimension;
 import java.awt.GridBagLayout;
@@ -28,7 +28,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
-import org.systemsbiology.biofabric.analysis.NetworkAlignmentScorer;
+
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.utils.DialogSupport;
 import org.systemsbiology.biofabric.util.ResourceManager;

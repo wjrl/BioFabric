@@ -67,6 +67,7 @@ import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.ui.BasicZoomTargetSupport;
 import org.systemsbiology.biofabric.ui.CursorManager;
@@ -694,7 +695,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     }
     CommandSet fc = CommandSet.getCmds("selectionWindow");
     try {
-      BioFabricNetwork.SelectBuildData bfnsbd = new BioFabricNetwork.SelectBuildData(bfn_, targetList, linkList);
+      BuildData.SelectBuildData bfnsbd = new BuildData.SelectBuildData(bfn_, targetList, linkList);
       fc.newModelOperations(bfnsbd, false);
     } catch (IOException ioex) {
       throw new IllegalStateException();  // should not happen

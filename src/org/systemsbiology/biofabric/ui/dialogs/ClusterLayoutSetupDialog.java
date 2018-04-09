@@ -37,6 +37,7 @@ import javax.swing.JTextField;
 
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.io.AttributeLoader;
+import org.systemsbiology.biofabric.io.FileLoadFlows;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
@@ -279,13 +280,14 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
   ////////////////////////////////////////////////////////////////////////////    
     
     
-  public static boolean askForFileInfo(NodeClusterLayout.ClusterParams params, CommandSet cset, BioFabricNetwork bfn)  {   
+  public static boolean askForFileInfo(NodeClusterLayout.ClusterParams params, CommandSet cset, 
+                                       FileLoadFlows flf, BioFabricNetwork bfn)  {   
       
-    File file = cset.getTheFile(".noa", ".na", "AttribDirectory", "filterName.noa");
+    File file = flf.getTheFile(".noa", ".na", "AttribDirectory", "filterName.noa");
     if (file == null) {
       return (false);
     }
-    Map<AttributeLoader.AttributeKey, String> nodeAttributes = cset.loadTheFile(file, null, true);
+    Map<AttributeLoader.AttributeKey, String> nodeAttributes = flf.loadTheFile(file, null, true);
     if (nodeAttributes == null) {
       return (false);
     }
