@@ -1,6 +1,6 @@
 <BioFabricPlugIns>
   <toolPlugIns>
   <!-- plug-ins for tools -->  
-    <toolPlugIn class="org.systemsbiology.biofabric.plugin.NetStatsPlugIn" order="1" />
+    <toolPlugIn class="org.systemsbiology.biofabric.plugin.core.NetStatsPlugIn" order="1" />
   </toolPlugIns>
 </BioFabricPlugIns>
