@@ -42,7 +42,7 @@ import org.xml.sax.Attributes;
 
 /****************************************************************************
 **
-** Class for the simple network statistics tool
+** Class for the simple network statistics tool 
 */
 
 public class NetStatsPlugIn implements BioFabricToolPlugIn {
