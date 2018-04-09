@@ -150,7 +150,7 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
     out.print(myData_.nodeCount);
     out.print("\" links=\"");
     out.print(myData_.linkCount);
-    out.print("\" fullShadowlinks=\"");
+    out.print("\" fullShadowLinks=\"");
     out.print(myData_.fullShadowLinkCount);
     out.println("\" />");
     ind.down();
@@ -322,7 +322,7 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
     private StatData buildFromXML(String elemName, Attributes attrs) throws IOException {
       String nodeStr = AttributeExtractor.extractAttribute(elemName, attrs, "netStats", "nodes", true);
       String linkStr = AttributeExtractor.extractAttribute(elemName, attrs, "netStats", "links", true);
-      String shadStr = AttributeExtractor.extractAttribute(elemName, attrs, "netStats", "fullShadowlinks", true);
+      String shadStr = AttributeExtractor.extractAttribute(elemName, attrs, "netStats", "fullShadowLinks", true);
   
       StatData retval;
       try {
