@@ -83,11 +83,11 @@ import javax.swing.filechooser.FileFilter;
 
 import org.systemsbiology.biofabric.app.BioFabricApplication;
 import org.systemsbiology.biofabric.app.BioFabricWindow;
+import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.cmd.HeadlessOracle;
 import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.event.SelectionChangeListener;
-import org.systemsbiology.biofabric.io.AlignmentLoader;
 import org.systemsbiology.biofabric.io.AnnotationLoader;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FabricFactory;
@@ -112,6 +112,7 @@ import org.systemsbiology.biofabric.parser.SUParser;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
 import org.systemsbiology.biofabric.plugin.PlugInManager;
+import org.systemsbiology.biofabric.plugin.core.align.AlignmentLoader;
 import org.systemsbiology.biofabric.plugin.core.align.NetAlignScoreDialog;
 import org.systemsbiology.biofabric.plugin.core.align.NetworkAlignment;
 import org.systemsbiology.biofabric.plugin.core.align.NetworkAlignmentDialog;
@@ -203,7 +204,11 @@ public class FileLoadFlows {
   private HeadlessOracle headlessOracle_;
   private JFrame topWindow_;
   private BioFabricWindow bfw_;
+  private BioFabricPanel bfp_;
   private File currentFile_;
+  private PlugInManager pMan_;
+  private FabricColorGenerator colGen_;
+  private CommandSet cSet_;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -216,20 +221,54 @@ public class FileLoadFlows {
   ** Constructor 
   */ 
   
-  private FileLoadFlows(BioFabricWindow bfw, 
-                        HeadlessOracle headlessOracle) {
+  public FileLoadFlows(BioFabricWindow bfw, PlugInManager pMan,
+                       FabricColorGenerator colGen, CommandSet cSet,
+                       HeadlessOracle headlessOracle) {
     bfw_ = bfw;
+    pMan_ = pMan;
     topWindow_ = bfw.getWindow();
     headlessOracle_ = headlessOracle;
+    colGen_ = colGen;
+    cSet_ = cSet;
   }    
-  
-  
-  
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////  
+
+  /***************************************************************************
+  **
+  ** Set the fabric panel
+  */ 
+  
+  public void setFabricPanel(BioFabricPanel bfp) {
+    bfp_ = bfp;
+    return;
+  } 
+  
+  /***************************************************************************
+  **
+  ** Do basic relayout
+  */ 
+     
+  public void doBasicRelayout(BuildData.BuildMode bMode) { 
+    (new NetworkRelayout()).doNetworkRelayout(bfp_.getNetwork(), bMode); 
+    return;
+  }
+   
+  /***************************************************************************
+  **
+  ** Do default relayout
+  */ 
+     
+  public void doDefaultRelayout(DefaultLayout.Params params) { 
+    NetworkRelayout nb = new NetworkRelayout();
+    nb.setParams(params);
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.DEFAULT_LAYOUT); 
+    return;
+  }
 
   /***************************************************************************
   **
@@ -240,6 +279,48 @@ public class FileLoadFlows {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setParams(params);
     nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.CLUSTERED_LAYOUT);    
+    return;
+  }
+    
+  /***************************************************************************
+  **
+  ** Do recolor
+  */ 
+    
+  public void doDisplayOptionChange() {
+    File holdIt;  
+    try {
+      holdIt = File.createTempFile("BioFabricHold", ".zip");
+      holdIt.deleteOnExit();
+    } catch (IOException ioex) {
+      holdIt = null;
+    }
+   
+    BioFabricNetwork bfn = bfp_.getNetwork();
+    if (bfn != null) {
+      NetworkBuilder nb = new NetworkBuilder(true, holdIt);
+      nb.setForDisplayOptionChange(bfn, BuildData.BuildMode.SHADOW_LINK_CHANGE);
+      nb.doNetworkBuild();
+    }
+    return;
+  } 
+  
+  /***************************************************************************
+  **
+  ** Do recolor
+  */ 
+     
+  public void doRecolor(boolean isForMain) {
+    File holdIt;  
+    try {
+      holdIt = File.createTempFile("BioFabricHold", ".zip");
+      holdIt.deleteOnExit();
+    } catch (IOException ioex) {
+      holdIt = null;
+    }
+    System.out.println("Lotsa problems here (nulls) if non-main has never been launched");
+    NetworkRecolor nb = new NetworkRecolor(); 
+    nb.doNetworkRecolor(isForMain, holdIt);
     return;
   }
 
@@ -269,6 +350,18 @@ public class FileLoadFlows {
   }
 
   /***************************************************************************
+   **
+   ** Do set relayout
+   */ 
+      
+   public void doSetRelayout(boolean pointUp) {
+     NetworkRelayout nb = new NetworkRelayout();
+     nb.setPointUp(pointUp);
+     nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.SET_LAYOUT);
+     return;
+   }
+  
+  /***************************************************************************
   **
   ** Do HierDag relayout
   */ 
@@ -276,11 +369,7 @@ public class FileLoadFlows {
   public void doHierDagRelayout(boolean pointUp) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setPointUp(pointUp);
-    try {
-      nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.HIER_DAG_LAYOUT); 
-    } catch (Exception ex) {
-      ExceptionHandler.getHandler().displayException(ex);
-    }
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.HIER_DAG_LAYOUT); 
     return;
   }
   
@@ -293,11 +382,7 @@ public class FileLoadFlows {
                                    ControlTopLayout.TargMode tMode, List<String> fixedList) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setControlTopModes(cMode, tMode, fixedList);
-    try {
-      nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.CONTROL_TOP_LAYOUT); 
-    } catch (Exception ex) {
-      ExceptionHandler.getHandler().displayException(ex);
-    }
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.CONTROL_TOP_LAYOUT); 
     return;
   }
   
@@ -390,7 +475,7 @@ public class FileLoadFlows {
     HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
     TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
     FabricImportLoader.FileImportStats sss;
-    if ((file.length() > FILE_LENGTH_FOR_BACKGROUND_SIF_READ_) && (headlessOracle_ == null)) {
+    if ((file.length() > FILE_LENGTH_FOR_BACKGROUND_SIF_READ) && (headlessOracle_ == null)) {
       sss = new FabricImportLoader.FileImportStats();
       BackgroundFileReader br = new BackgroundFileReader();
       //
@@ -614,7 +699,7 @@ public class FileLoadFlows {
       // shadows. Let them set this here:
       //
       
-      if (reducedLinks.size() > SIZE_TO_ASK_ABOUT_SHADOWS_) {
+      if (reducedLinks.size() > SIZE_TO_ASK_ABOUT_SHADOWS) {
 	      String shadowMessage = rMan.getString("fabricRead.askAboutShadows");
 	      int doShadow =
 	        JOptionPane.showConfirmDialog(topWindow_, shadowMessage,
@@ -669,9 +754,9 @@ public class FileLoadFlows {
    ** First step for loading from GW
    */
   
-  private boolean loadFromGWSource(File file, ArrayList<FabricLink> links,
-                                   HashSet<NID.WithName> loneNodes, Integer magBins,
-                                   UniqueLabeller idGen, boolean forNetworkAlignment) {
+  public boolean loadFromGWSource(File file, ArrayList<FabricLink> links,
+                                  HashSet<NID.WithName> loneNodes, Integer magBins,
+                                  UniqueLabeller idGen, boolean forNetworkAlignment) {
   
   
     HashMap<String, String> nodeNames = null;
@@ -740,7 +825,7 @@ public class FileLoadFlows {
     FabricFactory ff = new FabricFactory();
     alist.add(ff);
     SUParser sup = new SUParser(alist);   
-    if (file.length() > XML_SIZE_FOR_BACKGROUND_READ_) {
+    if (file.length() > XML_SIZE_FOR_BACKGROUND_READ) {
       BackgroundFileReader br = new BackgroundFileReader(); 
       boolean finished = br.doBackgroundRead(ff, sup, file, false, holdIt);
       if (finished) {
@@ -1410,7 +1495,7 @@ public class FileLoadFlows {
   ** followed by (maybe) telling the user what is dropped.
   */ 
     
-  public class PreprocessNetwork implements BackgroundWorkerOwner {
+  public static class PreprocessNetwork implements BackgroundWorkerOwner {
     
     private boolean finished_;
     private File holdIt_;
@@ -2203,5 +2288,237 @@ public class FileLoadFlows {
     } 
   }  
   
+  /***************************************************************************
+  **
+  ** Class for recoloring networks
+  */ 
+    
+  public class NetworkRecolor implements BackgroundWorkerOwner {
+    
+    private File holdIt_;
+    
+    public void doNetworkRecolor(boolean isMain, File holdIt) {
+      try {
+        holdIt_ = holdIt;
+        bfp_.shutdown();
+        RecolorNetworkRunner runner = new RecolorNetworkRunner(isMain, holdIt_);                                                                  
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
+                                                                 "netRecolor.waitTitle", "netRecolor.wait", true);
+        runner.setClient(bwc);
+        bwc.launchWorker();         
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }
+      return;
+    }
+
+    public boolean handleRemoteException(Exception remoteEx) {
+      if (remoteEx instanceof IOException) {
+        finishedRecolor(null, (IOException)remoteEx);
+        return (true);
+      }
+      return (false);
+    }    
+        
+    public void cleanUpPreEnable(Object result) {
+      return;
+    }
+    
+    public void handleCancellation() {
+      cancelAndRestore(holdIt_);
+      return;
+    }     
+    
+    public void cleanUpPostRepaint(Object result) {   
+      finishedRecolor(result, null);
+      return;
+    }
+
+    private void finishedRecolor(Object result, IOException ioEx) {     
+      postRecolorOperations((BufferedImage)result);
+      return;
+    }
+  }
   
+  /***************************************************************************
+  **
+  ** Background network recolor
+  */ 
+    
+  private class RecolorNetworkRunner extends BackgroundWorker {
+ 
+    private boolean forMain_;
+    private File holdIt_;
+    
+    public RecolorNetworkRunner(boolean forMain, File holdIt) {
+      super(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)); 
+      holdIt_ = holdIt;
+      forMain_ = forMain;
+    }
+    
+    public Object runCore() throws AsynchExitRequestException {
+      try {       
+        buildRestoreCache(holdIt_, this); 
+        BufferedImage bi = expensiveRecolorOperations(forMain_, this);
+        (new GarbageRequester()).askForGC(this);
+        return (bi);
+      } catch (IOException ex) {
+        stashException(ex);
+        return (null);
+      }
+    }
+    
+    public Object postRunCore() {
+      return (null);
+    } 
+  }  
+ 
+  /***************************************************************************
+  **
+  ** Build an empty network
+  */
+  
+  public void buildEmptyNetwork() {
+    BuildData.RelayoutBuildData obd = new BuildData.RelayoutBuildData(new UniqueLabeller(),
+                                                                      new HashSet<FabricLink>(), 
+                                                                      new HashSet<NID.WithName>(), 
+                                                                      new HashMap<NID.WithName, String>(),
+                                                                      colGen_, 
+                                                                      BuildData.BuildMode.BUILD_FROM_SIF);
+    try {
+      newModelOperations(obd, true);
+    } catch (IOException ioex) {
+      //Silent fail     
+    }
+    return;
+  }
+  
+  
+  /***************************************************************************
+  **
+  ** Do new model operations
+  */ 
+
+  public void preLoadOperations() { 
+    bfp_.reset();
+    return;
+  }
+  
+  /***************************************************************************
+  **
+  ** Do new model operations
+  */ 
+
+  public BufferedImage expensiveModelOperations(BuildData bfnbd, 
+                                                boolean forMain, 
+                                                BTProgressMonitor monitor) throws IOException, AsynchExitRequestException {
+    Dimension screenSize = (forMain && (headlessOracle_ == null)) ? Toolkit.getDefaultToolkit().getScreenSize() : new Dimension(600, 800);
+    // Possibly expensive network analysis preparation:
+    BioFabricNetwork bfn = new BioFabricNetwork(bfnbd, pMan_, monitor);
+    // Possibly expensive display object creation:
+    bfp_.installModel(bfn, monitor);
+    // Very expensive display buffer creation:
+    int[] preZooms = bfp_.calcZoomSettings(screenSize);
+    BufferedImage topImage = null;
+    if (headlessOracle_ == null) {
+      if (forMain) {
+        BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
+        topImage = bb.buildBufs(preZooms, bfp_, 25, monitor);
+        bfp_.setBufBuilder(bb);      
+      } else {
+        BufferBuilder bb = new BufferBuilder(bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
+        topImage = bb.buildOneBuf(preZooms);      
+        bfp_.setBufBuilder(null);
+      }
+    }
+    return (topImage);
+  }
+
+  /***************************************************************************
+  **
+  ** Do new model operations
+  */ 
+
+  public BufferedImage expensiveRecolorOperations(boolean forMain,
+                                                  BTProgressMonitor monitor) throws IOException, AsynchExitRequestException {
+    Dimension screenSize = (forMain) ? Toolkit.getDefaultToolkit().getScreenSize() : new Dimension(800, 400);
+    screenSize.setSize((int)(screenSize.getWidth() * 0.8), (int)(screenSize.getHeight() * 0.4));
+    colGen_.newColorModel();
+    bfp_.changePaint(monitor);
+    int[] preZooms = bfp_.getZoomController().getZoomIndices();
+    BufferedImage topImage = null;
+    if (forMain) {
+      BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
+      topImage = bb.buildBufs(preZooms, bfp_, 24, monitor);
+      bfp_.setBufBuilder(bb);      
+    } else {
+      BufferBuilder bb = new BufferBuilder(bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
+      topImage = bb.buildOneBuf(preZooms);      
+      bfp_.setBufBuilder(null);
+    }
+    return (topImage);
+  }
+  
+  /***************************************************************************
+  **
+  ** Handles post-recolor operations
+  */ 
+       
+  public void postRecolorOperations(BufferedImage topImage) {
+    bfw_.getOverview().installImage(topImage, bfp_.getWorldScreen());
+    return;
+  }
+   
+  /***************************************************************************
+  **
+  ** Handles post-loading operations
+  */ 
+       
+  public void postLoadOperations(BufferedImage topImage) {
+    bfw_.getOverview().installImage(topImage, bfp_.getWorldScreen());
+    bfp_.installModelPost();
+    bfp_.initZoom();
+    cSet_.checkForChanges();
+    cSet_.handleZoomButtons();
+    bfp_.repaint();
+    pMan_.newNetworkInstalled(bfp_.getNetwork());
+    return;
+  }
+  
+  /***************************************************************************
+  **
+  ** Do new model operations all on AWT thread!
+  */ 
+
+  public void newModelOperations(BuildData bfnbd, boolean forMain) throws IOException { 
+    preLoadOperations();
+    try {
+      BufferedImage topImage = expensiveModelOperations(bfnbd, forMain, null);
+      postLoadOperations(topImage);
+    } catch (AsynchExitRequestException aex) {
+      // Not being used in background; will not happen
+    }
+    return;
+  }
+    
+  /***************************************************************************
+  **
+  ** Do window title
+  */ 
+
+  public void manageWindowTitle(String fileName) {
+    if (headlessOracle_ != null) {
+      return;
+    }
+    ResourceManager rMan = ResourceManager.getManager();
+    String title;
+    if (fileName == null) {
+      title = rMan.getString("window.title");  
+    } else {
+      String titleFormat = rMan.getString("window.titleWithName");
+      title = MessageFormat.format(titleFormat, new Object[] {fileName});
+    }
+    topWindow_.setTitle(title);
+    return;
+  }   
 }

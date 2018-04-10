@@ -29,7 +29,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
@@ -83,7 +82,7 @@ public class NodeGroupMap {
   
   public static final int NUMBER_LINK_GROUPS = 5;   // 0..4
   
-  public NodeGroupMap(BioFabricNetwork.NetworkAlignmentBuildData nabd, String[] nodeGroupOrder, String[][] colorMap) {
+  public NodeGroupMap(NetworkAlignmentBuildData nabd, String[] nodeGroupOrder, String[][] colorMap) {
     this(nabd.allLinks, nabd.loneNodeIDs, nabd.mergedToCorrect, nabd.isAlignedNode, nodeGroupOrder, colorMap);
   }
   

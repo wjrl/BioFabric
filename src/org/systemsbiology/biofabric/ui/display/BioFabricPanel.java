@@ -696,7 +696,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     CommandSet fc = CommandSet.getCmds("selectionWindow");
     try {
       BuildData.SelectBuildData bfnsbd = new BuildData.SelectBuildData(bfn_, targetList, linkList);
-      fc.newModelOperations(bfnsbd, false);
+      fc.getFileLoader().newModelOperations(bfnsbd, false);
     } catch (IOException ioex) {
       throw new IllegalStateException();  // should not happen
     }

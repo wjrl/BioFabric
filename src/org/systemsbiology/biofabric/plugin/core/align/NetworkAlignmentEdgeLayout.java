@@ -33,6 +33,7 @@ import java.util.Set;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
@@ -72,14 +73,14 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
    */
   
   @Override
-  public void preProcessEdges(BioFabricNetwork.RelayoutBuildData rbd,
+  public void preProcessEdges(BuildData.RelayoutBuildData rbd,
                               BTProgressMonitor monitor) throws AsynchExitRequestException {
     installLinkGroups(rbd, monitor);
     return;
   }
   
   @Override
-  public void layoutEdges(BioFabricNetwork.RelayoutBuildData rbd,
+  public void layoutEdges(BuildData.RelayoutBuildData rbd,
                           BTProgressMonitor monitor) throws AsynchExitRequestException {
     super.layoutEdges(rbd, monitor);
     this.installLinkAnnotations(rbd, monitor);
@@ -92,7 +93,7 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
   ** Note: some link groups may not be present.
   */
 
-  private void installLinkGroups(BioFabricNetwork.RelayoutBuildData rbd, BTProgressMonitor monitor)
+  private void installLinkGroups(BuildData.RelayoutBuildData rbd, BTProgressMonitor monitor)
           throws AsynchExitRequestException {
   
     LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.orderingLinkGroups");
@@ -118,7 +119,7 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
    ** Install Link Annotations (link order must be calculated prior to this)
    */
   
-  private void installLinkAnnotations(BioFabricNetwork.RelayoutBuildData rbd, BTProgressMonitor monitor)
+  private void installLinkAnnotations(BuildData.RelayoutBuildData rbd, BTProgressMonitor monitor)
     throws AsynchExitRequestException {
   
     LoopReporter lr = new LoopReporter(rbd.linkOrder.size(), 20, monitor, 0, .25, "progress.linkAnnotationSifting");

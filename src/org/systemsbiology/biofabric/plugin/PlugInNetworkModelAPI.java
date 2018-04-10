@@ -19,6 +19,8 @@
 
 package org.systemsbiology.biofabric.plugin;
 
+import org.systemsbiology.biofabric.io.FileLoadFlows;
+
 /****************************************************************************
 **
 ** Interface for information plugins can get from BioFabric
@@ -45,7 +47,14 @@ public interface PlugInNetworkModelAPI {
   */
 
   public int getNodeCount();
- 
+  
+  /***************************************************************************
+  ** 
+  ** Get file loading utilities
+  */
+
+  public FileLoadFlows getFileUtilities();
+
   /***************************************************************************
   **
   ** Stash plugin data for extraction

@@ -24,16 +24,21 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.TreeMap;
 
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
+import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FabricFactory;
+import org.systemsbiology.biofabric.io.FileLoadFlows;
 import org.systemsbiology.biofabric.io.GWImportLoader;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
@@ -43,16 +48,21 @@ import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
 import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
+import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
+import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
+import org.systemsbiology.biofabric.ui.dialogs.RelationDirectionDialog;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.AttributeExtractor;
 import org.systemsbiology.biofabric.util.BackgroundWorker;
 import org.systemsbiology.biofabric.util.BackgroundWorkerClient;
 import org.systemsbiology.biofabric.util.BackgroundWorkerOwner;
+import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 import org.xml.sax.Attributes;
 
 /****************************************************************************
@@ -64,9 +74,9 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
   private ArrayList<BioFabricToolPlugInCmd> myCmds_;
   private String myTag_;
-  private StatData myData_;
-  
   private NetworkAlignmentScorer.NetAlignStats netAlignStats_;
+  private FileLoadFlows flf_;
+  private JFrame topWindow_;
   
   
   ////////////////////////////////////////////////////////////////////////////
@@ -82,8 +92,10 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
   public NetworkAlignmentPlugIn() {
     myCmds_ = new ArrayList<BioFabricToolPlugInCmd>();
-    myCmds_.add(new NodeAndLinkCounterCmd());
-    myData_ = new StatData(0, 0, 0);
+    myCmds_.add(new LoadNetAlignGroupsCmd());
+    myCmds_.add(new LoadNetAlignOrphanCmd());
+    myCmds_.add(new NetAlignScoresCmd()); 
+    netAlignStats_ = new NetworkAlignmentScorer.NetAlignStats();
   }
   
   ////////////////////////////////////////////////////////////////////////////
@@ -117,9 +129,10 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   */
   
   public void newNetworkInstalled(PlugInNetworkModelAPI api) {
+    flf_ = api.getFileUtilities();
+    topWindow_ = api.getTopWindow();
     for (BioFabricToolPlugInCmd cmd : myCmds_) {
-      NodeAndLinkCounterCmd nalc = (NodeAndLinkCounterCmd)cmd;
-      nalc.setNewNetwork(api);
+      //nalc.setNewNetwork(api);
     }
     return;
   }
@@ -131,7 +144,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
   public String getToolMenu() {
     ResourceManager rMan = ResourceManager.getManager();  // DOES NOT BELONG HERE
-    return (rMan.getString("command.statsCommands"));
+    return (rMan.getString("command.alignmentCommands"));
   }
   
   /***************************************************************************
@@ -151,13 +164,14 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   public BioFabricToolPlugInCmd getCommand(int index) {
     return (myCmds_.get(index));
   }
-   
+ 
   /***************************************************************************
   **
   ** Write session data to given output
   */
   
-  public void writeXML(PrintWriter out, Indenter ind) {  
+  public void writeXML(PrintWriter out, Indenter ind) {
+    /*
     ind.up();
     ind.indent();
     
@@ -181,6 +195,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     out.print(name);
     out.println(">");
     ind.down();
+    */
     return;
   }  
   
@@ -199,7 +214,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   */
  
   public void attachXMLData(BioFabricToolPlugInData data) {
-    myData_ = (StatData)data;
+    netAlignStats_ = (NetworkAlignmentScorer.NetAlignStats)data;
     return;   
   }
   
@@ -220,9 +235,9 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     HashSet<NID.WithName> lonersGraphA = new HashSet<NID.WithName>();
     
     if (GWImportLoader.isGWFile(nadi.graphA)) {
-      loadFromGWSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
+      flf_.loadFromGWSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
     } else {
-      loadFromSifSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
+      flf_.loadFromSifSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
     } // assume it's sif if it's not gw
     
     
@@ -230,9 +245,9 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     HashSet<NID.WithName> lonersGraphB = new HashSet<NID.WithName>();
     
     if (GWImportLoader.isGWFile(nadi.graphB)) {
-      loadFromGWSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
+      flf_.loadFromGWSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
     } else {
-      loadFromSifSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
+      flf_.loadFromSifSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
     }
     
     return (networkAlignmentStepTwo(nadi, linksGraphA, lonersGraphA, linksGraphB, lonersGraphB, idGen));
@@ -243,7 +258,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    ** Load the alignment file
    */
   
-  public Map<NID.WithName, NID.WithName> loadTheAlignmentFile(File file,
+  private Map<NID.WithName, NID.WithName> loadTheAlignmentFile(File file,
                                                               ArrayList<FabricLink> linksGraph1, HashSet<NID.WithName> loneNodesGraph1,
                                                               ArrayList<FabricLink> linksGraph2, HashSet<NID.WithName> loneNodesGraph2) {
     
@@ -272,7 +287,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
                 JOptionPane.WARNING_MESSAGE);
       }
     } catch (IOException ioe) {
-      displayFileInputError(ioe);
+      flf_.displayFileInputError(ioe);
       return (null);
     }
     FabricCommands.setPreference("AttribDirectory", file.getAbsoluteFile().getParent());
@@ -454,11 +469,11 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
         return (false);
       }
       if (rdd.getFromFile()) {
-        File fileEda = getTheFile(".rda", ".txt", "AttribDirectory", "filterName.rda");
+        File fileEda = flf_.getTheFile(".rda", ".txt", "AttribDirectory", "filterName.rda");
         if (fileEda == null) {
           return (true);
         }
-        Map<AttributeLoader.AttributeKey, String> relAttributes = loadTheFile(fileEda, null, true);
+        Map<AttributeLoader.AttributeKey, String> relAttributes = flf_.loadTheFile(fileEda, null, true);
         // Use the simple a = b format of node attributes
         if (relAttributes == null) {
           return (true);
@@ -502,7 +517,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       }
   
       HashSet<FabricLink> culledLinks = new HashSet<FabricLink>();
-      PreprocessNetwork pn = new PreprocessNetwork();
+      FileLoadFlows.PreprocessNetwork pn = new FileLoadFlows.PreprocessNetwork();
       boolean didFinish = pn.doNetworkPreprocess(links, relMap, reducedLinks, culledLinks, holdIt);
       if (!didFinish) {
         return (false);
@@ -522,7 +537,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       // shadows. Let them set this here:
       //
   
-      if (reducedLinks.size() > SIZE_TO_ASK_ABOUT_SHADOWS_) {
+      if (reducedLinks.size() > FileLoadFlows.SIZE_TO_ASK_ABOUT_SHADOWS) {
         String shadowMessage = rMan.getString("fabricRead.askAboutShadows");
         int doShadow =
                 JOptionPane.showConfirmDialog(topWindow_, shadowMessage,
@@ -535,8 +550,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
         dops.setDisplayShadows((doShadow == JOptionPane.YES_OPTION));
       }
     } catch (OutOfMemoryError oom) {
-    ExceptionHandler.getHandler().displayOutOfMemory(oom);
-    return (false);
+      ExceptionHandler.getHandler().displayOutOfMemory(oom);
+      return (false);
     }
     return (true);
   }
@@ -572,7 +587,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
                                            NetworkAlignmentScorer.NetAlignStats report,
                                            boolean forOrphanEdge, UniqueLabeller idGen, File align, File holdIt) {
     try {
-      NetworkBuilder nb = new NetworkBuilder(true, holdIt);
+      NetworkBuilder nb = new FileLoadFlows.NetworkBuilder(true, holdIt);
       nb.setForNetAlignBuild(idGen, reducedLinks, loneNodeIDs, mergedToCorrect, isAlignedNode, report, forOrphanEdge,
                              BuildData.BuildMode.BUILD_NETWORK_ALIGNMENT);
       nb.doNetworkBuild();
@@ -585,125 +600,41 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     manageWindowTitle(align.getName());
     return true;
   }
- 
-  
-  
-  
+
   ////////////////////////////////////////////////////////////////////////////
   //
   // INNER CLASSES
   //
   ////////////////////////////////////////////////////////////////////////////
-
-  public class NodeAndLinkCounterCmd implements BioFabricToolPlugInCmd {    
-
-    private boolean enabled_;
-    
-    /***************************************************************************
-    **
-    ** Set new network. In this case, process the network too
-    */
-    
-    public void setNewNetwork(PlugInNetworkModelAPI api) {
-      if (api != null) {
-        myData_.nodeCount = api.getNodeCount();
-        myData_.linkCount = api.getLinkCount(false);
-        myData_.fullShadowLinkCount = api.getLinkCount(true);
-        enabled_ = true;
-      } else {
-        myData_.nodeCount = 0;
-        myData_.linkCount = 0;
-        myData_.fullShadowLinkCount = 0;
-        enabled_ = false;      
-      }
-      return;
-    }
-
-    /***************************************************************************
-    **
-    ** Get the name
-    */
-    
-    public String getCommandName() {
-      ResourceManager rMan = ResourceManager.getManager();  // DOES NOT BELONG HERE
-      return (rMan.getString("command.statsCommands"));  
-    }
-
-    /***************************************************************************
-    **
-    ** Perform the operation
-    */
-    
-    public boolean performOperation(JFrame topFrame) {
-      if (!enabled_) {
-        return (false);
-      }
-      
-      ResourceManager rMan = ResourceManager.getManager();  // DOES NOT BELONG HERE   
-      String desc = MessageFormat.format(rMan.getString("modelCounts.message"), 
-                                         new Object[] {new Integer(myData_.nodeCount), 
-                                                       new Integer(myData_.linkCount), 
-                                                       new Integer(myData_.fullShadowLinkCount)});  
-      desc = UiUtil.convertMessageToHtml(desc);
-      JOptionPane.showMessageDialog(topFrame, desc,
-                                    rMan.getString("modelCounts.modelCountTitle"),
-                                    JOptionPane.INFORMATION_MESSAGE);        
-      return (true);
-    }
   
-    /***************************************************************************
-    **
-    ** Answer if command is enabled
-    */
-    
-    public boolean isEnabled() {
-      return (enabled_);    
-    }
-  }
   /***************************************************************************
    **
    ** Command
    */
   
-  private class NetAlignScoresAction extends ChecksForEnabled {
+  private class NetAlignScoresCmd implements BioFabricToolPlugInCmd {
+   
+    private boolean enabled_;
+
+    public String getCommandName() {
+      ResourceManager rMan = ResourceManager.getManager();  // DOES NOT BELONG HERE
+      return (rMan.getString("command.netAlignScores"));  
+    }   
     
-    private static final long serialVersionUID = 1L;
+    public boolean performOperation(JFrame topFrame) {
+      if (!enabled_) {
+        return (false);
+      }    
     
-    NetAlignScoresAction(boolean doIcon) {
-      ResourceManager rMan = ResourceManager.getManager();
-      putValue(Action.NAME, rMan.getString("command.netAlignScores"));
-      if (doIcon) {
-        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.netAlignScores"));
-        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/FIXME24.gif");
-        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
-      } else {
-        char mnem = rMan.getChar("command.netAlignScoresMnem");
-        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
-      }
-    }
-    
-    public void actionPerformed(ActionEvent e) {
-      try {
-        performOperation(null);
-      } catch (Exception ex) {
-        ExceptionHandler.getHandler().displayException(ex);
-      }
-      return;
-    }
-    
-    private boolean performOperation(Object[] args) {
-  
       // just temporary until I install PluginData stuff
-      NetAlignScoreDialog scoreDialog = new NetAlignScoreDialog(topWindow_, bfp_.getNetwork().netAlignStats_);
+      NetAlignScoreDialog scoreDialog = new NetAlignScoreDialog(topFrame, netAlignStats_);
       scoreDialog.setVisible(true);
       return (true);
     }
   
-    @Override
-    protected boolean checkGuts() {
-      return (bfp_.hasAModel() && bfp_.getNetwork().netAlignStats_ != null);
-    }
-  
+    public boolean isEnabled() {
+      return (enabled_);    
+    } 
   }
  
   /***************************************************************************
@@ -711,35 +642,21 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   ** Command
   */
   
-  private class LoadNetAlignGroupsAction extends ChecksForEnabled {
+  private class LoadNetAlignGroupsCmd implements BioFabricToolPlugInCmd {
   
-    private static final long serialVersionUID = 1L;
-    
-    LoadNetAlignGroupsAction(boolean doIcon) {
-      ResourceManager rMan = ResourceManager.getManager();
-      putValue(Action.NAME, rMan.getString("command.netAlignGroupLayout"));
-      if (doIcon) {
-        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.netAlignGroupLayout"));
-        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/FIXME24.gif");
-        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
-      } else {
-        char mnem = rMan.getChar("command.netAlignGroupLayoutMnem");
-        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
-      }
+    private boolean enabled_;
+
+    public String getCommandName() {
+      ResourceManager rMan = ResourceManager.getManager();  // DOES NOT BELONG HERE
+      return (rMan.getString("command.netAlignGroupLayout"));  
     }
-  
-    public void actionPerformed(ActionEvent e) {
-      try {
-        performOperation(null);
-      } catch (Exception ex) {
-        ExceptionHandler.getHandler().displayException(ex);
-      }
-      return;
-    }
-  
-    private boolean performOperation(Object[] args) {
     
-      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topWindow_, false);
+    public boolean performOperation(JFrame topFrame) {
+      if (!enabled_) {
+        return (false);
+      }    
+    
+      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame, false);
       nad.setVisible(true);
       
       if(!nad.haveResult()) {
@@ -769,6 +686,10 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       }
       return (networkAlignmentFromSources(nai));
     }
+    
+    public boolean isEnabled() {
+      return (enabled_);    
+    }
   
   }
   
@@ -777,35 +698,21 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    ** Command
    */
   
-  private class LoadNetAlignOrphanAction extends ChecksForEnabled {
+  private class LoadNetAlignOrphanCmd implements BioFabricToolPlugInCmd {
+ 
+    private boolean enabled_;
     
-    private static final long serialVersionUID = 1L;
-    
-    LoadNetAlignOrphanAction(boolean doIcon) {
-      ResourceManager rMan = ResourceManager.getManager();
-      putValue(Action.NAME, rMan.getString("command.orphanLayout"));
-      if (doIcon) {
-        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.orphanLayout"));
-        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/FIXME24.gif");
-        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
-      } else {
-        char mnem = rMan.getChar("command.orphanLayoutMnem");
-        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
-      }
+    public String getCommandName() {
+      ResourceManager rMan = ResourceManager.getManager();  // DOES NOT BELONG HERE
+      return (rMan.getString("command.orphanLayout"));  
     }
     
-    public void actionPerformed(ActionEvent e) {
-      try {
-        performOperation(null);
-      } catch (Exception ex) {
-        ExceptionHandler.getHandler().displayException(ex);
+    public boolean performOperation(JFrame topFrame) {
+      if (!enabled_) {
+        return (false);
       }
-      return;
-    }
-    
-    private boolean performOperation(Object[] args) {
       
-      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topWindow_, true);
+      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame, true);
       nad.setVisible(true);
       
       if(!nad.haveResult()) {
@@ -831,6 +738,9 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       return (networkAlignmentFromSources(nai));
     }
     
+    public boolean isEnabled() {
+      return (enabled_);    
+    }
   }
   
   /***************************************************************************
@@ -946,11 +856,6 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       return null;
     }
   }
-    
-  
-  
-  
-  
   
   /***************************************************************************
   **
@@ -978,23 +883,6 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       }
       return (retval);     
     }  
-  }
-  
-  /***************************************************************************
-  **
-  ** For XML I/O
-  */  
-      
-  public static class StatData implements BioFabricToolPlugInData {
-    int nodeCount;
-    int linkCount;
-    int fullShadowLinkCount;
-    
-    public StatData(int nodeCount, int linkCount, int fullShadowLinkCount) {
-      this.nodeCount = nodeCount;
-      this.linkCount = linkCount;
-      this.fullShadowLinkCount = fullShadowLinkCount;
-    } 
   }
   
   /***************************************************************************

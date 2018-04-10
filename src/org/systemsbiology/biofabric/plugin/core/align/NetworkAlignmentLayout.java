@@ -36,9 +36,9 @@ import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.NodeLayout;
-import org.systemsbiology.biofabric.layouts.NodeLayout.Params;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
@@ -84,10 +84,10 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Relayout the network!
    */
   
-  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, Params params, BTProgressMonitor monitor)
+  public List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd, Params params, BTProgressMonitor monitor)
           throws AsynchExitRequestException {
     
-    BioFabricNetwork.NetworkAlignmentBuildData nabd = (BioFabricNetwork.NetworkAlignmentBuildData) rbd;
+    NetworkAlignmentBuildData nabd = (NetworkAlignmentBuildData) rbd;
     
     List<NID.WithName> targetIDs;
     
@@ -106,7 +106,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Breadth first search based on node groups
    */
   
-  public List<NID.WithName> bfsNodeGroupLayout(BioFabricNetwork.NetworkAlignmentBuildData nabd,
+  public List<NID.WithName> bfsNodeGroupLayout(NetworkAlignmentBuildData nabd,
                                                BTProgressMonitor monitor) throws AsynchExitRequestException {
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
@@ -339,7 +339,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Install Layer Zero Node Annotations
    */
   
-  private void installAnnotations(BioFabricNetwork.NetworkAlignmentBuildData nabd,
+  private void installAnnotations(NetworkAlignmentBuildData nabd,
                                   SortedMap<Integer, List<NID.WithName>> targetsGroup,
                                   List<NID.WithName> targets, NodeGroupMap grouper) {
     
