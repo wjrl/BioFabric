@@ -28,6 +28,7 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
 import org.systemsbiology.biofabric.io.FabricFactory;
+import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
@@ -95,13 +96,27 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
 
   /***************************************************************************
   **
+  ** InstallAPI
+  */
+  
+  public void installAPI(PlugInNetworkModelAPI bfn) {
+    for (BioFabricToolPlugInCmd cmd : myCmds_) {
+      NodeAndLinkCounterCmd nalc = (NodeAndLinkCounterCmd)cmd;
+      // Pass
+    }
+    return;
+  }
+  
+  
+  /***************************************************************************
+  **
   ** Install a new network
   */
   
-  public void newNetworkInstalled(PlugInNetworkModelAPI api) {
+  public void newNetworkInstalled(BioFabricNetwork bfn) {
     for (BioFabricToolPlugInCmd cmd : myCmds_) {
       NodeAndLinkCounterCmd nalc = (NodeAndLinkCounterCmd)cmd;
-      nalc.setNewNetwork(api);
+      nalc.setNewNetwork(bfn);
     }
     return;
   }
@@ -201,11 +216,11 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
     ** Set new network. In this case, process the network too
     */
     
-    public void setNewNetwork(PlugInNetworkModelAPI api) {
-      if (api != null) {
-        myData_.nodeCount = api.getNodeCount();
-        myData_.linkCount = api.getLinkCount(false);
-        myData_.fullShadowLinkCount = api.getLinkCount(true);
+    public void setNewNetwork(BioFabricNetwork bfn) {
+      if (bfn != null) {
+        myData_.nodeCount = bfn.getNodeCount();
+        myData_.linkCount = bfn.getLinkCount(false);
+        myData_.fullShadowLinkCount = bfn.getLinkCount(true);
         enabled_ = true;
       } else {
         myData_.nodeCount = 0;

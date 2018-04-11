@@ -69,7 +69,7 @@ import org.systemsbiology.biofabric.util.UniqueLabeller;
 ** This is the Network model.
 */
 
-public class BioFabricNetwork implements PlugInNetworkModelAPI {
+public class BioFabricNetwork {
   
   ////////////////////////////////////////////////////////////////////////////
   //

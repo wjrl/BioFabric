@@ -41,6 +41,7 @@ import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.io.FileLoadFlows;
 import org.systemsbiology.biofabric.io.GWImportLoader;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
@@ -55,7 +56,9 @@ import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.AttributeExtractor;
 import org.systemsbiology.biofabric.util.BackgroundWorker;
 import org.systemsbiology.biofabric.util.BackgroundWorkerClient;
+import org.systemsbiology.biofabric.util.BackgroundWorkerControlManager;
 import org.systemsbiology.biofabric.util.BackgroundWorkerOwner;
+import org.systemsbiology.biofabric.util.CharacterEntityMapper;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.NID;
@@ -74,9 +77,10 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
   private ArrayList<BioFabricToolPlugInCmd> myCmds_;
   private String myTag_;
-  private NetworkAlignmentScorer.NetAlignStats netAlignStats_;
+  private NetAlignStats netAlignStats_;
   private FileLoadFlows flf_;
   private JFrame topWindow_;
+  private BackgroundWorkerControlManager bwcm_;
   
   
   ////////////////////////////////////////////////////////////////////////////
@@ -95,7 +99,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     myCmds_.add(new LoadNetAlignGroupsCmd());
     myCmds_.add(new LoadNetAlignOrphanCmd());
     myCmds_.add(new NetAlignScoresCmd()); 
-    netAlignStats_ = new NetworkAlignmentScorer.NetAlignStats();
+    netAlignStats_ = new NetAlignStats();
   }
   
   ////////////////////////////////////////////////////////////////////////////
@@ -128,11 +132,22 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   ** Install a new network
   */
   
-  public void newNetworkInstalled(PlugInNetworkModelAPI api) {
+  public void newNetworkInstalled(BioFabricNetwork bfn) {
+    // Do something
+    return;
+  }
+  
+  /***************************************************************************
+  **
+  ** InstallAPI
+  */
+  
+  public void installAPI(PlugInNetworkModelAPI api) {
     flf_ = api.getFileUtilities();
     topWindow_ = api.getTopWindow();
+    bwcm_ = api.getBWCtrlMgr();
     for (BioFabricToolPlugInCmd cmd : myCmds_) {
-      //nalc.setNewNetwork(api);
+      ((Enabler)cmd).setEnabled(true);
     }
     return;
   }
@@ -171,31 +186,21 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   */
   
   public void writeXML(PrintWriter out, Indenter ind) {
-    /*
     ind.up();
     ind.indent();
-    
     String name = getClass().getName();
     
     out.print("<");
     out.print(name);
     out.println(">");
     ind.up();
-    ind.indent();
-    out.print("<netStats nodes=\"");
-    out.print(myData_.nodeCount);
-    out.print("\" links=\"");
-    out.print(myData_.linkCount);
-    out.print("\" fullShadowLinks=\"");
-    out.print(myData_.fullShadowLinkCount);
-    out.println("\" />");
+    netAlignStats_.writeXML(out, ind);
     ind.down();
     ind.indent();
     out.print("</");
     out.print(name);
     out.println(">");
     ind.down();
-    */
     return;
   }  
   
@@ -214,7 +219,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   */
  
   public void attachXMLData(BioFabricToolPlugInData data) {
-    netAlignStats_ = (NetworkAlignmentScorer.NetAlignStats)data;
+    netAlignStats_ = (NetAlignStats)data;
     return;   
   }
   
@@ -436,7 +441,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       finished = networkAlignmentStepThree(mergedLinksPerfect, reducedLinksPerfect, mergedLoneNodeIDsPerfect, relMapPerfect, idGen, holdIt);
     }
   
-    NetworkAlignmentScorer.NetAlignStats netAlignStats = new NetworkAlignmentScorer.NetAlignStats();
+    NetAlignStats netAlignStats = new NetAlignStats();
     if (finished) { // Score Report
       finished = networkAlignmentStepFour(reducedLinks, mergedLoneNodeIDs, isAlignedNode, mergedToCorrect,
               reducedLinksPerfect, mergedLoneNodeIDsPerfect, isAlignedNodePerfect, netAlignStats,
@@ -517,8 +522,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       }
   
       HashSet<FabricLink> culledLinks = new HashSet<FabricLink>();
-      FileLoadFlows.PreprocessNetwork pn = new FileLoadFlows.PreprocessNetwork();
-      boolean didFinish = pn.doNetworkPreprocess(links, relMap, reducedLinks, culledLinks, holdIt);
+      boolean didFinish = flf_.backPreprocess(links, relMap, reducedLinks, culledLinks, holdIt);
       if (!didFinish) {
         return (false);
       }
@@ -564,7 +568,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   private boolean networkAlignmentStepFour(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Boolean> isAlignedNode,
                                            Map<NID.WithName, Boolean> mergedToCorrect, Set<FabricLink> reducedLinksPerfect,
                                            Set<NID.WithName> loneNodeIDsPerfect, Map<NID.WithName, Boolean> isAlignedNodePerfect,
-                                           NetworkAlignmentScorer.NetAlignStats report,
+                                           NetAlignStats report,
                                            ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
                                            ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
                                            Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2) {
@@ -584,20 +588,18 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
   private boolean networkAlignmentStepFive(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
                                            Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
-                                           NetworkAlignmentScorer.NetAlignStats report,
+                                           NetAlignStats report,
                                            boolean forOrphanEdge, UniqueLabeller idGen, File align, File holdIt) {
     try {
-      NetworkBuilder nb = new FileLoadFlows.NetworkBuilder(true, holdIt);
-      nb.setForNetAlignBuild(idGen, reducedLinks, loneNodeIDs, mergedToCorrect, isAlignedNode, report, forOrphanEdge,
-                             BuildData.BuildMode.BUILD_NETWORK_ALIGNMENT);
-      nb.doNetworkBuild();
+      flf_.buildNetworkAlignment(idGen, reducedLinks, loneNodeIDs, mergedToCorrect, 
+                                 isAlignedNode, report, forOrphanEdge, holdIt); 
     } catch (OutOfMemoryError oom) {
       ExceptionHandler.getHandler().displayOutOfMemory(oom);
       return (false);
     }
-    currentFile_ = null;
+    flf_.setCurrentXMLFile(null);
     FabricCommands.setPreference("LoadDirectory", align.getAbsoluteFile().getParent());
-    manageWindowTitle(align.getName());
+    flf_.manageWindowTitle(align.getName());
     return true;
   }
 
@@ -607,15 +609,24 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  /***************************************************************************
-   **
-   ** Command
-   */
+  interface Enabler {
+    public void setEnabled(boolean isEnabled);
+  }
   
-  private class NetAlignScoresCmd implements BioFabricToolPlugInCmd {
+  
+  /***************************************************************************
+  **
+  ** Command
+  */
+  
+  private class NetAlignScoresCmd implements BioFabricToolPlugInCmd, Enabler {
    
     private boolean enabled_;
 
+    public void setEnabled(boolean isEnabled) {
+      UiUtil.fixMePrintout("Gotta install scores!");
+    }
+      
     public String getCommandName() {
       ResourceManager rMan = ResourceManager.getManager();  // DOES NOT BELONG HERE
       return (rMan.getString("command.netAlignScores"));  
@@ -626,7 +637,6 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
         return (false);
       }    
     
-      // just temporary until I install PluginData stuff
       NetAlignScoreDialog scoreDialog = new NetAlignScoreDialog(topFrame, netAlignStats_);
       scoreDialog.setVisible(true);
       return (true);
@@ -642,10 +652,14 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   ** Command
   */
   
-  private class LoadNetAlignGroupsCmd implements BioFabricToolPlugInCmd {
+  private class LoadNetAlignGroupsCmd implements BioFabricToolPlugInCmd, Enabler {
   
     private boolean enabled_;
 
+    public void setEnabled(boolean isEnabled) {
+      enabled_ = isEnabled;
+    }
+    
     public String getCommandName() {
       ResourceManager rMan = ResourceManager.getManager();  // DOES NOT BELONG HERE
       return (rMan.getString("command.netAlignGroupLayout"));  
@@ -666,19 +680,19 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       NetworkAlignmentDialog.NetworkAlignmentDialogInfo nai = nad.getNAInfo();
       
       boolean filesNotOkay =
-              !standardFileChecks(nai.graphA, FILE_MUST_EXIST, FILE_CAN_CREATE_DONT_CARE,
-                      FILE_DONT_CHECK_OVERWRITE, FILE_MUST_BE_FILE,
-                      FILE_CAN_WRITE_DONT_CARE, FILE_CAN_READ) ||
-              !standardFileChecks(nai.graphB, FILE_MUST_EXIST, FILE_CAN_CREATE_DONT_CARE,
-                      FILE_DONT_CHECK_OVERWRITE, FILE_MUST_BE_FILE,
-                      FILE_CAN_WRITE_DONT_CARE, FILE_CAN_READ) ||
-              !standardFileChecks(nai.align, FILE_MUST_EXIST, FILE_CAN_CREATE_DONT_CARE,
-                      FILE_DONT_CHECK_OVERWRITE, FILE_MUST_BE_FILE,
-                      FILE_CAN_WRITE_DONT_CARE, FILE_CAN_READ);
+              !flf_.standardFileChecks(nai.graphA, FileLoadFlows.FILE_MUST_EXIST, FileLoadFlows.FILE_CAN_CREATE_DONT_CARE,
+                                       FileLoadFlows.FILE_DONT_CHECK_OVERWRITE, FileLoadFlows.FILE_MUST_BE_FILE,
+                                       FileLoadFlows.FILE_CAN_WRITE_DONT_CARE, FileLoadFlows.FILE_CAN_READ) ||
+              !flf_.standardFileChecks(nai.graphB, FileLoadFlows.FILE_MUST_EXIST, FileLoadFlows.FILE_CAN_CREATE_DONT_CARE,
+                                       FileLoadFlows.FILE_DONT_CHECK_OVERWRITE, FileLoadFlows.FILE_MUST_BE_FILE,
+                                       FileLoadFlows.FILE_CAN_WRITE_DONT_CARE, FileLoadFlows.FILE_CAN_READ) ||
+              !flf_.standardFileChecks(nai.align, FileLoadFlows.FILE_MUST_EXIST, FileLoadFlows.FILE_CAN_CREATE_DONT_CARE,
+                  FileLoadFlows.FILE_DONT_CHECK_OVERWRITE, FileLoadFlows.FILE_MUST_BE_FILE,
+                  FileLoadFlows.FILE_CAN_WRITE_DONT_CARE, FileLoadFlows.FILE_CAN_READ);
       if (nai.perfect != null) {
-        filesNotOkay = !standardFileChecks(nai.perfect, FILE_MUST_EXIST, FILE_CAN_CREATE_DONT_CARE,
-                      FILE_DONT_CHECK_OVERWRITE, FILE_MUST_BE_FILE,
-                      FILE_CAN_WRITE_DONT_CARE, FILE_CAN_READ);
+        filesNotOkay = !flf_.standardFileChecks(nai.perfect, FileLoadFlows.FILE_MUST_EXIST, FileLoadFlows.FILE_CAN_CREATE_DONT_CARE,
+                                                FileLoadFlows.FILE_DONT_CHECK_OVERWRITE, FileLoadFlows.FILE_MUST_BE_FILE,
+                                                FileLoadFlows.FILE_CAN_WRITE_DONT_CARE, FileLoadFlows.FILE_CAN_READ);
       }
       
       if (filesNotOkay) {
@@ -698,9 +712,13 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    ** Command
    */
   
-  private class LoadNetAlignOrphanCmd implements BioFabricToolPlugInCmd {
+  private class LoadNetAlignOrphanCmd implements BioFabricToolPlugInCmd, Enabler {
  
     private boolean enabled_;
+    
+    public void setEnabled(boolean isEnabled) {
+      enabled_ = isEnabled;
+    }
     
     public String getCommandName() {
       ResourceManager rMan = ResourceManager.getManager();  // DOES NOT BELONG HERE
@@ -722,15 +740,15 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       NetworkAlignmentDialog.NetworkAlignmentDialogInfo nai = nad.getNAInfo();
       
       boolean filesNotOkay =
-              !standardFileChecks(nai.graphA, FILE_MUST_EXIST, FILE_CAN_CREATE_DONT_CARE,
-                      FILE_DONT_CHECK_OVERWRITE, FILE_MUST_BE_FILE,
-                      FILE_CAN_WRITE_DONT_CARE, FILE_CAN_READ) ||
-              !standardFileChecks(nai.graphB, FILE_MUST_EXIST, FILE_CAN_CREATE_DONT_CARE,
-                              FILE_DONT_CHECK_OVERWRITE, FILE_MUST_BE_FILE,
-                              FILE_CAN_WRITE_DONT_CARE, FILE_CAN_READ) ||
-              !standardFileChecks(nai.align, FILE_MUST_EXIST, FILE_CAN_CREATE_DONT_CARE,
-                              FILE_DONT_CHECK_OVERWRITE, FILE_MUST_BE_FILE,
-                              FILE_CAN_WRITE_DONT_CARE, FILE_CAN_READ);
+              !flf_.standardFileChecks(nai.graphA, FileLoadFlows.FILE_MUST_EXIST, FileLoadFlows.FILE_CAN_CREATE_DONT_CARE,
+                                       FileLoadFlows.FILE_DONT_CHECK_OVERWRITE, FileLoadFlows.FILE_MUST_BE_FILE,
+                                       FileLoadFlows.FILE_CAN_WRITE_DONT_CARE, FileLoadFlows.FILE_CAN_READ) ||
+              !flf_.standardFileChecks(nai.graphB, FileLoadFlows.FILE_MUST_EXIST, FileLoadFlows.FILE_CAN_CREATE_DONT_CARE,
+                                       FileLoadFlows.FILE_DONT_CHECK_OVERWRITE, FileLoadFlows.FILE_MUST_BE_FILE,
+                                       FileLoadFlows.FILE_CAN_WRITE_DONT_CARE, FileLoadFlows.FILE_CAN_READ) ||
+              !flf_.standardFileChecks(nai.align, FileLoadFlows.FILE_MUST_EXIST, FileLoadFlows.FILE_CAN_CREATE_DONT_CARE,
+                                       FileLoadFlows.FILE_DONT_CHECK_OVERWRITE, FileLoadFlows.FILE_MUST_BE_FILE,
+                                       FileLoadFlows.FILE_CAN_WRITE_DONT_CARE, FileLoadFlows.FILE_CAN_READ);
       
       if (filesNotOkay) {
         return (false);
@@ -743,6 +761,81 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
   }
   
+  /****************************************************************************
+  **
+  ** Contains common network alignment scores
+  */
+  
+  public static class NetAlignStats implements BioFabricToolPlugInData {
+    
+    public List<NetAlignMeasure> measures;
+    
+    public NetAlignStats() {
+      measures = new ArrayList<NetAlignMeasure>();
+    }
+    
+    public NetAlignStats(List<NetAlignMeasure> measures) {
+      this.measures = measures;
+    }
+     
+    public void addAMeasure(NetAlignMeasure measure) {
+      this.measures.add(measure);
+      return;
+    }
+  
+    @Override
+    public String toString() {
+      StringBuilder ret = new StringBuilder("Measures");
+      for (NetAlignMeasure msr : measures) {
+        ret.append('\n').append(msr.name).append(':').append(String.format("%4.4f", msr.val));
+      }
+      return (ret.toString());
+    }
+    
+    public void replaceValuesTo(NetAlignStats other) {
+      measures = new ArrayList<NetAlignMeasure>(other.measures);
+    }
+    
+    public void writeXML(PrintWriter out, Indenter ind) {
+      ind.indent();  
+      out.println("<NetAlignStats>");
+      ind.up();
+      for (NetAlignMeasure msr : measures) {
+        msr.writeXML(out, ind);
+      }
+      ind.down();
+      ind.indent();
+      out.println("<NetAlignStats/>");
+      return;
+    }
+  }
+  
+  public static class NetAlignMeasure {
+    
+    public final Double val;
+    public final String name;
+    
+    public NetAlignMeasure(String name, Double val) {
+      this.val = val;
+      this.name = name;
+    }
+  
+    public void writeXML(PrintWriter out, Indenter ind) {
+      ind.indent(); 
+      out.print("<NetAlignMeasure name=\"");
+      out.print(CharacterEntityMapper.mapEntities(name, false));
+      out.print("\" val=\"");
+      out.print(val);
+      out.println("\"/>");
+      return;
+    }
+ 
+    @Override
+    public String toString() {
+      return ("NetAlignMeasure{" + "val=" + val + ", name='" + name + '\'' + '}');
+    }
+  }
+
   /***************************************************************************
    **
    ** Class for building network alignments
@@ -768,7 +861,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
         NetworkAlignmentRunner runner = new NetworkAlignmentRunner(mergedLinks, mergedLoneNodeIDs, mapG1toG2, perfectG1toG2,
                 mergedToCorrect, isAlignedNode, linksG1, lonersG1, linksG2, lonersG2, relMap, forClique, idGen);
         
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_,
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bwcm_,
                 "fileLoad.waitTitle", "fileLoad.wait", true);
         
         runner.setClient(bwc);
@@ -871,7 +964,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       plugin_ = plugin;
       String name = plugin.getClass().getName();
       myKeys_.add(name);
-      installWorker(new NetStatsWorker(board), new StatsGlue());
+      installWorker(new NetAlignStatsWorker(board), new NetAlignStatsGlue());
     }
     
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
@@ -890,45 +983,63 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   ** For XML I/O
   */
   
-  public static class NetStatsWorker extends AbstractFactoryClient {
+  public static class NetAlignStatsWorker extends AbstractFactoryClient {
         
-    public NetStatsWorker(FabricFactory.FactoryWhiteboard board) {
+    public NetAlignStatsWorker(FabricFactory.FactoryWhiteboard board) {
       super(board);
-      myKeys_.add("netStats");
+      myKeys_.add("NetAlignStats");
+      installWorker(new NetAlignStatsWorker(board), new NetAlignStatsGlue());
     }
     
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
       Object retval = null;
       FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard) this.sharedWhiteboard_;
-      board.currPlugInData = buildFromXML(elemName, attrs);
+      board.currPlugInData = new NetAlignStats();
       retval = board.currPlugInData;
       return (retval);
     }
-    
-    private StatData buildFromXML(String elemName, Attributes attrs) throws IOException {
-      String nodeStr = AttributeExtractor.extractAttribute(elemName, attrs, "netStats", "nodes", true);
-      String linkStr = AttributeExtractor.extractAttribute(elemName, attrs, "netStats", "links", true);
-      String shadStr = AttributeExtractor.extractAttribute(elemName, attrs, "netStats", "fullShadowLinks", true);
+  }
   
-      StatData retval;
+  public static class NetAlignStatsGlue implements GlueStick {    
+    public Object glueKidToParent(Object kidObj, AbstractFactoryClient parentWorker, Object optionalArgs) throws IOException {
+      FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard) optionalArgs;
+      board.currPlugIn.attachXMLData(board.currPlugInData);
+      return null;
+    }
+  } 
+  
+  /***************************************************************************
+  **
+  ** For XML I/O
+  */
+  
+  public static class NetAlignMeasureWorker extends AbstractFactoryClient {
+        
+    public NetAlignMeasureWorker(FabricFactory.FactoryWhiteboard board) {
+      super(board);
+      myKeys_.add("NetAlignMeasure");
+    }
+    
+    protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
+      Object retval = null;
+      FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard) this.sharedWhiteboard_;    
+      ((NetAlignStats)board.currPlugInData).addAMeasure(buildFromXML(elemName, attrs));
+      return (retval);
+    }
+    
+    private NetAlignMeasure buildFromXML(String elemName, Attributes attrs) throws IOException {
+      String name = AttributeExtractor.extractAttribute(elemName, attrs, "NetAlignMeasure", "name", true);
+      name = CharacterEntityMapper.unmapEntities(name, false);
+      String valStr = AttributeExtractor.extractAttribute(elemName, attrs, "NetAlignMeasure", "val", true);
+      
+      NetAlignMeasure retval;
       try {
-        int nodeCount = Integer.valueOf(nodeStr).intValue();
-        int linkCount = Integer.valueOf(linkStr).intValue();
-        int fullCount = Integer.valueOf(shadStr).intValue();
-        retval = new StatData(nodeCount, linkCount, fullCount);
+        Double value = Double.valueOf(valStr);
+        retval = new NetAlignMeasure(name, value);
       } catch (NumberFormatException nfex) {
         throw new IOException();
       }
       return (retval);
     }  
   }
-  
-  public static class StatsGlue implements GlueStick {    
-    public Object glueKidToParent(Object kidObj, AbstractFactoryClient parentWorker, Object optionalArgs) throws IOException {
-      FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard) optionalArgs;
-      board.currPlugIn.attachXMLData(board.currPlugInData);
-      return null;
-    }
-  }  
-  
 }

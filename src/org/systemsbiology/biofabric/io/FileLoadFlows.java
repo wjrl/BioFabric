@@ -111,11 +111,15 @@ import org.systemsbiology.biofabric.parser.ProgressFilterInputStream;
 import org.systemsbiology.biofabric.parser.SUParser;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
 import org.systemsbiology.biofabric.plugin.PlugInManager;
+import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
 import org.systemsbiology.biofabric.plugin.core.align.AlignmentLoader;
 import org.systemsbiology.biofabric.plugin.core.align.NetAlignScoreDialog;
 import org.systemsbiology.biofabric.plugin.core.align.NetworkAlignment;
+import org.systemsbiology.biofabric.plugin.core.align.NetworkAlignmentBuildData;
 import org.systemsbiology.biofabric.plugin.core.align.NetworkAlignmentDialog;
+import org.systemsbiology.biofabric.plugin.core.align.NetworkAlignmentPlugIn;
 import org.systemsbiology.biofabric.plugin.core.align.NetworkAlignmentScorer;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
@@ -141,6 +145,7 @@ import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.BackgroundWorker;
 import org.systemsbiology.biofabric.util.BackgroundWorkerClient;
+import org.systemsbiology.biofabric.util.BackgroundWorkerControlManager;
 import org.systemsbiology.biofabric.util.BackgroundWorkerOwner;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FileExtensionFilters;
@@ -229,7 +234,7 @@ public class FileLoadFlows {
     topWindow_ = bfw.getWindow();
     headlessOracle_ = headlessOracle;
     colGen_ = colGen;
-    cSet_ = cSet;
+    cSet_ = cSet; 
   }    
 
   ////////////////////////////////////////////////////////////////////////////
@@ -245,8 +250,28 @@ public class FileLoadFlows {
   
   public void setFabricPanel(BioFabricPanel bfp) {
     bfp_ = bfp;
+    pMan_.installAPI(new PlugInInfo(this, bfp_.getNetwork(), bfw_));
     return;
   } 
+  
+  /***************************************************************************
+  **
+  ** Do basic relayout
+  */ 
+     
+  public void buildNetworkAlignment(UniqueLabeller idGen, Set<FabricLink> reducedLinks,
+                                    Set<NID.WithName> loneNodeIDs, 
+                                    Map<NID.WithName, Boolean> mergedToCorrect, 
+                                    Map<NID.WithName, Boolean> isAlignedNode,
+                                    NetworkAlignmentPlugIn.NetAlignStats report,
+                                    boolean forOrphanEdges, File holdIt) { 
+    NetworkBuilder nb = new FileLoadFlows.NetworkBuilder(true, holdIt);
+    nb.setForNetAlignBuild(idGen, reducedLinks, loneNodeIDs, mergedToCorrect, isAlignedNode, 
+                           report, forOrphanEdges,
+                           BuildData.BuildMode.BUILD_NETWORK_ALIGNMENT);
+    nb.doNetworkBuild();
+    return;
+  }
   
   /***************************************************************************
   **
@@ -672,8 +697,7 @@ public class FileLoadFlows {
       HashSet<FabricLink> culledLinks = new HashSet<FabricLink>();
       
       if (headlessOracle_ == null) {
-        PreprocessNetwork pn = new PreprocessNetwork();
-        boolean didFinish = pn.doNetworkPreprocess(links, relaMap, reducedLinks, culledLinks, holdIt);
+        boolean didFinish = backPreprocess(links, relaMap, reducedLinks, culledLinks, holdIt);
         if (!didFinish) {
           return (false);
         }
@@ -750,9 +774,21 @@ public class FileLoadFlows {
   }
   
   /***************************************************************************
-   **
-   ** First step for loading from GW
-   */
+  **
+  ** Do preprocessing
+  */
+  
+  public boolean backPreprocess(List<FabricLink> links, SortedMap<FabricLink.AugRelation, Boolean> relMap,
+                            Set<FabricLink> reducedLinks, Set<FabricLink> culledLinks, File holdIt) {
+    PreprocessNetwork pn = new PreprocessNetwork();
+    boolean didFinish = pn.doNetworkPreprocess(links, relMap, reducedLinks, culledLinks, holdIt);
+    return (didFinish);
+  }
+     
+  /***************************************************************************
+  **
+  ** First step for loading from GW
+  */
   
   public boolean loadFromGWSource(File file, ArrayList<FabricLink> links,
                                   HashSet<NID.WithName> loneNodes, Integer magBins,
@@ -1495,7 +1531,7 @@ public class FileLoadFlows {
   ** followed by (maybe) telling the user what is dropped.
   */ 
     
-  public static class PreprocessNetwork implements BackgroundWorkerOwner {
+  public class PreprocessNetwork implements BackgroundWorkerOwner {
     
     private boolean finished_;
     private File holdIt_;
@@ -1873,7 +1909,7 @@ public class FileLoadFlows {
     
     void setForNetAlignBuild(UniqueLabeller idGen, Set<FabricLink> links, Set<NID.WithName> loneNodeIDs,
                              Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
-                             NetworkAlignmentScorer.NetAlignStats report,
+                             NetworkAlignmentPlugIn.NetAlignStats report,
                              boolean forOrphanEdges, BuildData.BuildMode bMode) {
       if (bMode != BuildData.BuildMode.BUILD_NETWORK_ALIGNMENT) {
         throw new IllegalArgumentException();
@@ -1969,7 +2005,7 @@ public class FileLoadFlows {
     // Network Alignment specific fields below
     private Boolean forOrphanEdge_;
     private Map<NID.WithName, Boolean> mergedToCorrect_, isAlignedNode_;
-    private NetworkAlignmentScorer.NetAlignStats netAlignStats_;
+    private NetworkAlignmentPlugIn.NetAlignStats netAlignStats_;
 
     public NewNetworkRunner(boolean forMain, File holdIt) {
       super(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB));      
@@ -1989,7 +2025,7 @@ public class FileLoadFlows {
     
     void setBuildDataForNetAlign(UniqueLabeller idGen, Set<FabricLink> links, Set<NID.WithName> loneNodeIDs,
                                  Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
-                                 NetworkAlignmentScorer.NetAlignStats report,
+                                 NetworkAlignmentPlugIn.NetAlignStats report,
                                  boolean forOrphanEdge, BuildData.BuildMode bMode) {
       idGen_ = idGen;
       links_ = links;
@@ -2481,10 +2517,58 @@ public class FileLoadFlows {
     cSet_.checkForChanges();
     cSet_.handleZoomButtons();
     bfp_.repaint();
+    System.out.println("new network installed!!");
     pMan_.newNetworkInstalled(bfp_.getNetwork());
     return;
   }
   
+  /***************************************************************************
+  **
+  ** Background file write
+  */ 
+    
+  public static class PlugInInfo implements PlugInNetworkModelAPI {
+   
+    private BioFabricNetwork bfn_;
+    private FileLoadFlows flf_;
+    private BioFabricWindow bfw_;
+    
+    PlugInInfo(FileLoadFlows flf, BioFabricNetwork bfn, BioFabricWindow bfw) {
+      flf_ = flf;
+      bfn_ = bfn;
+      bfw_ = bfw;
+    }
+    
+    public int getLinkCount(boolean forShadow)  {
+      return (bfn_.getLinkCount(forShadow));
+    }
+    
+    public int getNodeCount() {
+      return (bfn_.getNodeCount());
+    }
+    
+    public FileLoadFlows getFileUtilities() {
+      return (flf_);
+    }
+
+    public JFrame getTopWindow() {
+      return (bfw_.getWindow());
+    }
+   
+    public BackgroundWorkerControlManager getBWCtrlMgr() {
+      return (bfw_);
+    }
+    
+    public void stashPluginData(String keyword, BioFabricToolPlugInData data) {
+      bfn_.stashPluginData(keyword, data);
+      return;
+    }
+ 
+    public BioFabricToolPlugInData providePluginData(String keyword) {
+      return (bfn_.providePluginData(keyword));
+    }
+  }
+
   /***************************************************************************
   **
   ** Do new model operations all on AWT thread!

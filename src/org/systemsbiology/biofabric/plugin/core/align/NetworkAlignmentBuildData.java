@@ -43,14 +43,14 @@ import org.systemsbiology.biofabric.util.UniqueLabeller;
 public class NetworkAlignmentBuildData extends BuildData.RelayoutBuildData {
   
   public Map<NID.WithName, Boolean> mergedToCorrect, isAlignedNode;
-  public NetworkAlignmentScorer.NetAlignStats netAlignStats;
+  public NetworkAlignmentPlugIn.NetAlignStats netAlignStats;
   public boolean forOrphans;
 
   public NetworkAlignmentBuildData(UniqueLabeller idGen,
                                    Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
                                    Map<NID.WithName, Boolean> mergedToCorrect,
                                    Map<NID.WithName, Boolean> isAlignedNode,
-                                   NetworkAlignmentScorer.NetAlignStats netAlignStats,
+                                   NetworkAlignmentPlugIn.NetAlignStats netAlignStats,
                                    Map<NID.WithName, String> clustAssign, boolean forOrphans,
                                    FabricColorGenerator colGen, BuildMode mode) {
     super(idGen, allLinks, loneNodeIDs, clustAssign, colGen, mode);

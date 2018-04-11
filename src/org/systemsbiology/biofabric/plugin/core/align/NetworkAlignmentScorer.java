@@ -87,7 +87,7 @@ public class NetworkAlignmentScorer {
   //
   
   private Double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccSim;
-  private NetAlignStats netAlignStats_;
+  private NetworkAlignmentPlugIn.NetAlignStats netAlignStats_;
   
   public NetworkAlignmentScorer(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
                                 Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
@@ -170,24 +170,24 @@ public class NetworkAlignmentScorer {
   }
   
   private void finalizeMeasures() {
-    NetAlignMeasure[] possibleMeasures = {
-            new NetAlignMeasure("EC", EC),
-            new NetAlignMeasure("S3", S3),
-            new NetAlignMeasure("ICS", ICS),
-            new NetAlignMeasure("NC", NC),
-            new NetAlignMeasure("NGDist", NGDist),
-            new NetAlignMeasure("LGDist", LGDist),
-            new NetAlignMeasure("NGLGDist", NGLGDist),
-            new NetAlignMeasure("JaccSim", JaccSim),
+    NetworkAlignmentPlugIn.NetAlignMeasure[] possibleMeasures = {
+            new NetworkAlignmentPlugIn.NetAlignMeasure("EC", EC),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("S3", S3),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("ICS", ICS),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("NC", NC),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("NGDist", NGDist),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("LGDist", LGDist),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("NGLGDist", NGLGDist),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("JaccSim", JaccSim),
     };
   
-    List<NetAlignMeasure> measures = new ArrayList<NetAlignMeasure>();
-    for (NetAlignMeasure msr : possibleMeasures) {
+    List<NetworkAlignmentPlugIn.NetAlignMeasure> measures = new ArrayList<NetworkAlignmentPlugIn.NetAlignMeasure>();
+    for (NetworkAlignmentPlugIn.NetAlignMeasure msr : possibleMeasures) {
       if (msr.val != null) { // no point having null measures
         measures.add(msr);
       }
     }
-    this.netAlignStats_ = new NetAlignStats(measures);
+    this.netAlignStats_ = new NetworkAlignmentPlugIn.NetAlignStats(measures);
     return;
   }
   
@@ -303,7 +303,7 @@ public class NetworkAlignmentScorer {
     return;
   }
   
-  public NetAlignStats getNetAlignStats() {
+  public NetworkAlignmentPlugIn.NetAlignStats getNetAlignStats() {
     return (netAlignStats_);
   }
   
@@ -371,52 +371,7 @@ public class NetworkAlignmentScorer {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  /****************************************************************************
-   **
-   ** Contains common network alignment scores
-   */
-  
-  public static class NetAlignStats implements BioFabricToolPlugInData {
-    
-    public List<NetAlignMeasure> measures;
-    
-    public NetAlignStats() {
-      measures = new ArrayList<NetAlignMeasure>();
-    }
-    
-    public NetAlignStats(List<NetAlignMeasure> measures) {
-      this.measures = measures;
-    }
-  
-    @Override
-    public String toString() {
-      StringBuilder ret = new StringBuilder("Measures");
-      for (NetAlignMeasure msr : measures) {
-        ret.append('\n').append(msr.name).append(':').append(String.format("%4.4f", msr.val));
-      }
-      return (ret.toString());
-    }
-    
-    public void replaceValuesTo(NetAlignStats other) {
-      measures = new ArrayList<NetAlignMeasure>(other.measures);
-    }
-  }
-  
-  public static class NetAlignMeasure {
-    
-    public final Double val;
-    public final String name;
-    
-    public NetAlignMeasure(String name, Double val) {
-      this.val = val;
-      this.name = name;
-    }
-  
-    @Override
-    public String toString() {
-      return ("NetAlignMeasure{" + "val=" + val + ", name='" + name + '\'' + '}');
-    }
-  }
+
   
   /****************************************************************************
    **

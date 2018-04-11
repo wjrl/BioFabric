@@ -36,9 +36,9 @@ import org.systemsbiology.biofabric.util.ResourceManager;
 public class NetAlignScoreDialog extends BTStashResultsDialog {
   
   private JFrame parent_;
-  private NetworkAlignmentScorer.NetAlignStats netAlignStats_;
+  private NetworkAlignmentPlugIn.NetAlignStats netAlignStats_;
   
-  public NetAlignScoreDialog(JFrame parent, NetworkAlignmentScorer.NetAlignStats stats) {
+  public NetAlignScoreDialog(JFrame parent, NetworkAlignmentPlugIn.NetAlignStats stats) {
     super(parent, ResourceManager.getManager().getString("networkAlignment.measures"), new Dimension(300, 400), 2);
     this.parent_ = parent;
     this.netAlignStats_ = stats;
@@ -50,7 +50,7 @@ public class NetAlignScoreDialog extends BTStashResultsDialog {
     String msg = ResourceManager.getManager().getString("networkAlignment.scoreMessage");
     addWidgetFullRow(new JLabel(msg), false);
     
-    for (NetworkAlignmentScorer.NetAlignMeasure measure : netAlignStats_.measures) {
+    for (NetworkAlignmentPlugIn.NetAlignMeasure measure : netAlignStats_.measures) {
       String label = String.format("%s\t%4.4f", measure.name, measure.val);
       addWidgetFullRow(new JLabel(label, SwingConstants.LEFT), false);
     }
