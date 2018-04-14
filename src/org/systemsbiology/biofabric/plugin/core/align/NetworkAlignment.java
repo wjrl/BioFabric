@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,14 +33,13 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildExtractor;
 import org.systemsbiology.biofabric.model.FabricLink;
 
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
-import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
 
 /****************************************************************************
@@ -369,7 +367,7 @@ public class NetworkAlignment {
   
   private void createIsAlignedMap() throws AsynchExitRequestException {
   
-    Set<NID.WithName> allNodes = BioFabricNetwork.extractNodes(mergedLinks_, mergedLoners_, monitor_);
+    Set<NID.WithName> allNodes = BuildExtractor.extractNodes(mergedLinks_, mergedLoners_, monitor_);
     for (NID.WithName node : allNodes) {
       // here mergedIDToSmall_ is a tool: if node is in it, we know it is an aligned node
       if (mergedIDToSmall_.get(node) != null) {

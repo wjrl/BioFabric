@@ -40,6 +40,7 @@ import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FileLoadFlows;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildExtractor;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
@@ -205,7 +206,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
     if ((selName != null) && !selName.trim().equals("")) {
     	String cand = selName.trim();
     	Map<String, Set<NID.WithName>> nn2ids = bfn_.getNormNameToIDs();
-      Map<String, NID.WithName> nn2id = BioFabricNetwork.reduceNameSetToOne(nn2ids);
+      Map<String, NID.WithName> nn2id = BuildExtractor.reduceNameSetToOne(nn2ids);
       NID.WithName nidCand = nn2id.get(DataUtil.normKey(cand));
     	if (bfn_.getNodeDefinition(nidCand) == null) {
         ResourceManager rMan = ResourceManager.getManager();
@@ -309,7 +310,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
       return (false);
     }
     Map<String, Set<NID.WithName>> nn2ids = bfn.getNormNameToIDs();
-    Map<String, NID.WithName> nn2id = BioFabricNetwork.reduceNameSetToOne(nn2ids);
+    Map<String, NID.WithName> nn2id = BuildExtractor.reduceNameSetToOne(nn2ids);
     params.install(nodeAttributes, nn2id);
     return (true);
   }

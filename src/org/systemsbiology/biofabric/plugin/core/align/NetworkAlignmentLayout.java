@@ -37,8 +37,8 @@ import java.util.TreeSet;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.BuildData;
+import org.systemsbiology.biofabric.model.BuildExtractor;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
@@ -165,7 +165,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       classToGroup.put(i, new ArrayList<NID.WithName>());
     }
     
-    Set<NID.WithName> allNodes = BioFabricNetwork.extractNodes(nabd.allLinks, nabd.loneNodeIDs, monitor);
+    Set<NID.WithName> allNodes = BuildExtractor.extractNodes(nabd.allLinks, nabd.loneNodeIDs, monitor);
     for (NID.WithName node : allNodes) {
       int nodeClass = grouper.getIndex(node);
       classToGroup.get(nodeClass).add(node);

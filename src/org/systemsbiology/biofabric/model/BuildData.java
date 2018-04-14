@@ -84,7 +84,7 @@ public abstract class BuildData {
                          WORLD_BANK_LAYOUT,
                          SET_LAYOUT,
                          GROUP_PER_NETWORK_CHANGE,
-                         BUILD_NETWORK_ALIGNMENT
+                         BUILD_FROM_PLUGIN
                         };
                                                   
   ////////////////////////////////////////////////////////////////////////////
@@ -198,6 +198,15 @@ public abstract class BuildData {
       this.linkAnnotsForLayout = null;
     } 
 
+    //
+    // Allow for late binding of color generator:
+    //
+    
+    public void setColorGen(FabricColorGenerator colGen) {
+      this.colGen = colGen;
+      return;
+    }
+     
     public Map<String, Set<NID.WithName>> genNormNameToID() {
     	HashMap<String, Set<NID.WithName>> retval = new HashMap<String, Set<NID.WithName>>();
     	Iterator<NID.WithName> nit = this.allNodeIDs.iterator();
@@ -296,7 +305,7 @@ public abstract class BuildData {
         case BUILD_FOR_SUBMODEL:
         case BUILD_FROM_XML:
         case BUILD_FROM_SIF:
-        case BUILD_NETWORK_ALIGNMENT:
+        case BUILD_FROM_PLUGIN:
         default:
         	// Not legal!
           throw new IllegalStateException();

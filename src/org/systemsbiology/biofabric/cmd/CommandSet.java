@@ -85,6 +85,7 @@ import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.BuildData;
+import org.systemsbiology.biofabric.model.BuildExtractor;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
@@ -725,7 +726,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     colGen_.newColorModel();
     isForMain_ = isMain;
     pMan_ = pMan;
-    flf_ = new FileLoadFlows(bfw_, pMan_, colGen_, this, headlessOracle);
+    flf_ = new FileLoadFlows(bfw_, pMan_, colGen_, this, headlessOracle, isMain);
     isAMac_ = System.getProperty("os.name").toLowerCase().startsWith("mac os x");
     FabricDisplayOptionsManager.getMgr().addTracker(this);
     EventManager mgr = EventManager.getManager();
@@ -2254,7 +2255,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       ArrayList<FabricLink> links = new ArrayList<FabricLink>(bfn.getAllLinks(true));
       TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
       try {
-        BioFabricNetwork.extractRelations(links, relMap, null);
+        BuildExtractor.extractRelations(links, relMap, null);
       } catch (AsynchExitRequestException aerx) {
       	// Should not happen...
       }

@@ -30,9 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildExtractor;
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.NID;
@@ -316,7 +315,7 @@ public class NetworkAlignmentScorer {
     
     Set<NID.WithName> allNodes;
     try {
-      allNodes = BioFabricNetwork.extractNodes(links, loneNodeIDs, monitor);
+      allNodes = BuildExtractor.extractNodes(links, loneNodeIDs, monitor);
     } catch (AsynchExitRequestException aere) {
       throw new IllegalStateException();
     }

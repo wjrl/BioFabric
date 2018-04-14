@@ -51,9 +51,8 @@ public class NetworkAlignmentBuildData extends BuildData.RelayoutBuildData {
                                    Map<NID.WithName, Boolean> mergedToCorrect,
                                    Map<NID.WithName, Boolean> isAlignedNode,
                                    NetworkAlignmentPlugIn.NetAlignStats netAlignStats,
-                                   Map<NID.WithName, String> clustAssign, boolean forOrphans,
-                                   FabricColorGenerator colGen, BuildMode mode) {
-    super(idGen, allLinks, loneNodeIDs, clustAssign, colGen, mode);
+                                   Map<NID.WithName, String> clustAssign, boolean forOrphans) {
+    super(idGen, allLinks, loneNodeIDs, clustAssign, null, BuildData.BuildMode.BUILD_FROM_PLUGIN);
     this.layoutMode = BioFabricNetwork.LayoutMode.PER_NETWORK_MODE;
     this.forOrphans = forOrphans;
     this.mergedToCorrect = mergedToCorrect;

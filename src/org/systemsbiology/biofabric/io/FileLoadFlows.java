@@ -19,24 +19,9 @@
 
 package org.systemsbiology.biofabric.io;
 
-import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Event;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Point;
-import java.awt.Rectangle;
 import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
-import java.awt.print.PageFormat;
-import java.awt.print.PrinterException;
-import java.awt.print.PrinterJob;
 import java.io.BufferedInputStream;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -47,7 +32,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.net.URL;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -55,7 +39,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -64,82 +47,37 @@ import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.Box;
-import javax.swing.ImageIcon;
-import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.KeyStroke;
-import javax.swing.border.EmptyBorder;
-import javax.swing.event.HyperlinkEvent;
-import javax.swing.event.HyperlinkListener;
 import javax.swing.filechooser.FileFilter;
 
-import org.systemsbiology.biofabric.app.BioFabricApplication;
 import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.cmd.HeadlessOracle;
-import org.systemsbiology.biofabric.event.EventManager;
-import org.systemsbiology.biofabric.event.SelectionChangeEvent;
-import org.systemsbiology.biofabric.event.SelectionChangeListener;
-import org.systemsbiology.biofabric.io.AnnotationLoader;
-import org.systemsbiology.biofabric.io.AttributeLoader;
-import org.systemsbiology.biofabric.io.FabricFactory;
-import org.systemsbiology.biofabric.io.FabricImportLoader;
-import org.systemsbiology.biofabric.io.GWImportLoader;
-import org.systemsbiology.biofabric.io.SIFImportLoader;
-import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
-import org.systemsbiology.biofabric.layouts.NodeLayout;
-import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.EdgeLayout;
 import org.systemsbiology.biofabric.layouts.LayoutCriterionFailureException;
-
+import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
+import org.systemsbiology.biofabric.layouts.NodeLayout;
+import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.BuildData;
+import org.systemsbiology.biofabric.model.BuildExtractor;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.ProgressFilterInputStream;
 import org.systemsbiology.biofabric.parser.SUParser;
-import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
-import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
 import org.systemsbiology.biofabric.plugin.PlugInManager;
 import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
-import org.systemsbiology.biofabric.plugin.core.align.AlignmentLoader;
-import org.systemsbiology.biofabric.plugin.core.align.NetAlignScoreDialog;
-import org.systemsbiology.biofabric.plugin.core.align.NetworkAlignment;
-import org.systemsbiology.biofabric.plugin.core.align.NetworkAlignmentBuildData;
-import org.systemsbiology.biofabric.plugin.core.align.NetworkAlignmentDialog;
-import org.systemsbiology.biofabric.plugin.core.align.NetworkAlignmentPlugIn;
-import org.systemsbiology.biofabric.plugin.core.align.NetworkAlignmentScorer;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
-import org.systemsbiology.biofabric.ui.ImageExporter;
-import org.systemsbiology.biofabric.ui.dialogs.BreadthFirstLayoutDialog;
-import org.systemsbiology.biofabric.ui.dialogs.ClusterLayoutSetupDialog;
-import org.systemsbiology.biofabric.ui.dialogs.NodeSimilarityLayoutSetupDialog;
-import org.systemsbiology.biofabric.ui.dialogs.PointUpOrDownDialog;
-import org.systemsbiology.biofabric.ui.dialogs.CompareNodesSetupDialog;
-import org.systemsbiology.biofabric.ui.dialogs.ControlTopLayoutSetupDialog;
-import org.systemsbiology.biofabric.ui.dialogs.ExportSettingsDialog;
-import org.systemsbiology.biofabric.ui.dialogs.ExportSettingsPublishDialog;
-import org.systemsbiology.biofabric.ui.dialogs.FabricDisplayOptionsDialog;
-import org.systemsbiology.biofabric.ui.dialogs.FabricSearchDialog;
-import org.systemsbiology.biofabric.ui.dialogs.LinkGroupingSetupDialog;
 import org.systemsbiology.biofabric.ui.dialogs.RelationDirectionDialog;
-import org.systemsbiology.biofabric.ui.dialogs.ReorderLayoutParamsDialog;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
-import org.systemsbiology.biofabric.ui.display.FabricMagnifyingTool;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
@@ -149,7 +87,6 @@ import org.systemsbiology.biofabric.util.BackgroundWorkerControlManager;
 import org.systemsbiology.biofabric.util.BackgroundWorkerOwner;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FileExtensionFilters;
-import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.GarbageRequester;
 import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.InvalidInputException;
@@ -214,6 +151,7 @@ public class FileLoadFlows {
   private PlugInManager pMan_;
   private FabricColorGenerator colGen_;
   private CommandSet cSet_;
+  private boolean isForMain_;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -228,13 +166,14 @@ public class FileLoadFlows {
   
   public FileLoadFlows(BioFabricWindow bfw, PlugInManager pMan,
                        FabricColorGenerator colGen, CommandSet cSet,
-                       HeadlessOracle headlessOracle) {
+                       HeadlessOracle headlessOracle, boolean isForMain) {
     bfw_ = bfw;
     pMan_ = pMan;
     topWindow_ = bfw.getWindow();
     headlessOracle_ = headlessOracle;
     colGen_ = colGen;
-    cSet_ = cSet; 
+    cSet_ = cSet;
+    isForMain_ = isForMain;
   }    
 
   ////////////////////////////////////////////////////////////////////////////
@@ -250,25 +189,20 @@ public class FileLoadFlows {
   
   public void setFabricPanel(BioFabricPanel bfp) {
     bfp_ = bfp;
-    pMan_.installAPI(new PlugInInfo(this, bfp_.getNetwork(), bfw_));
+    if (isForMain_) {
+      pMan_.installAPI(new PlugInInfo(this, bfp_.getNetwork(), bfw_));
+    }
     return;
   } 
   
   /***************************************************************************
   **
-  ** Do basic relayout
+  ** Do network build for a plug-in that provides the needed custom BuildData
   */ 
      
-  public void buildNetworkAlignment(UniqueLabeller idGen, Set<FabricLink> reducedLinks,
-                                    Set<NID.WithName> loneNodeIDs, 
-                                    Map<NID.WithName, Boolean> mergedToCorrect, 
-                                    Map<NID.WithName, Boolean> isAlignedNode,
-                                    NetworkAlignmentPlugIn.NetAlignStats report,
-                                    boolean forOrphanEdges, File holdIt) { 
+  public void buildNetworkForPlugIn(BuildData.RelayoutBuildData pluginData, File holdIt) { 
     NetworkBuilder nb = new FileLoadFlows.NetworkBuilder(true, holdIt);
-    nb.setForNetAlignBuild(idGen, reducedLinks, loneNodeIDs, mergedToCorrect, isAlignedNode, 
-                           report, forOrphanEdges,
-                           BuildData.BuildMode.BUILD_NETWORK_ALIGNMENT);
+    nb.setForPlugInBuild(pluginData);
     nb.doNetworkBuild();
     return;
   }
@@ -511,21 +445,22 @@ public class FileLoadFlows {
       // This looks for dups to toss and prep work:
       //
       if (finished) {
-        finished = loadFromSIFSourceStepTwo(file, idGen, sss, links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);
+        announceBadLines(sss);
+        finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt);
       }
       
       if (finished) {
-        loadFromSIFSourceStepThree(file, idGen, loneNodes, reducedLinks, holdIt);
+        buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
       }
       return (true);
     } else {
       try { 
         sss = (new SIFImportLoader()).importFabric(file, idGen, links, loneNodes, nodeNames, magBins, null);
-        BioFabricNetwork.extractRelations(links, relMap, null);
-        boolean finished = loadFromSIFSourceStepTwo(file, idGen, sss, links, loneNodes, 
-        		                                        (magBins != null), relMap, reducedLinks, holdIt, false);
+        BuildExtractor.extractRelations(links, relMap, null);
+        announceBadLines(sss);
+        boolean finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt);
         if (finished) {
-        	loadFromSIFSourceStepThree(file, idGen, loneNodes, reducedLinks, holdIt);
+        	buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
         }
         return (true);
       } catch (AsynchExitRequestException axex) {
@@ -548,7 +483,7 @@ public class FileLoadFlows {
   
   public boolean loadFromSifSource(File file, ArrayList<FabricLink> links,
                                    HashSet<NID.WithName> loneNodes, Integer magBins,
-                                   UniqueLabeller idGen, boolean forNetworkAlignment) {
+                                   UniqueLabeller idGen, boolean loadOnly) {
     
     HashMap<String, String> nodeNames = null;
   
@@ -569,20 +504,33 @@ public class FileLoadFlows {
     // This gets file in:
     //
     boolean finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
+   
+    if (!finished) {
+      return (true);  
+    }
+    
+    //
+    // Let user know if there were formatting problems (but keep going...)
+    //
+    
+    announceBadLines(sss);
+    
+    //
+    // If caller just wants to get the file in without followup, exit now:
+    //
+    
+    if (loadOnly) {
+      return (true);
+    }
+
     //
     // This looks for dups to toss and prep work:
     //
-    if (finished) {
-      finished = loadFromSIFSourceStepTwo(file, idGen, sss, links, loneNodes, (magBins != null),
-                                          relMap, reducedLinks, holdIt, forNetworkAlignment);
-    }
-    
-    if (forNetworkAlignment) { // no need to continue when processing network alignments
-      return (true);
-    }
+
+    finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt);   
     
     if (finished) {
-      loadFromSIFSourceStepThree(file, idGen, loneNodes, reducedLinks, holdIt);
+      buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
     }
     return (true);
   }
@@ -592,9 +540,9 @@ public class FileLoadFlows {
   ** Third step for loading from SIF
   */
     
-  private boolean loadFromSIFSourceStepThree(File file, UniqueLabeller idGen,
-  		                                       Set<NID.WithName> loneNodeIDs, 
-  		                                       Set<FabricLink> reducedLinks, File holdIt) {
+  private boolean buildTheNetworkFomLinks(File file, UniqueLabeller idGen,
+  		                                    Set<NID.WithName> loneNodeIDs, 
+  		                                    Set<FabricLink> reducedLinks, File holdIt) {
   	try {
       NetworkBuilder nb = new NetworkBuilder(true, holdIt);
       nb.setForSifBuild(idGen, reducedLinks, loneNodeIDs, BuildData.BuildMode.BUILD_FROM_SIF);  
@@ -612,33 +560,38 @@ public class FileLoadFlows {
     manageWindowTitle(file.getName());
     return (true);
   } 
-   
+ 
+  /***************************************************************************
+  **
+  ** Announce bad lines
+  */
+    
+  private void announceBadLines(FabricImportLoader.FileImportStats sss) {
+    ResourceManager rMan = ResourceManager.getManager();
+    if (!sss.badLines.isEmpty()) {        
+      String badLineFormat = rMan.getString("fabricRead.badLineFormat");
+      String badLineMsg = MessageFormat.format(badLineFormat, new Object[] {Integer.valueOf(sss.badLines.size())});
+      if (headlessOracle_ == null) {
+        JOptionPane.showMessageDialog(topWindow_, badLineMsg,
+                                      rMan.getString("fabricRead.badLineTitle"),
+                                      JOptionPane.WARNING_MESSAGE);
+      } else {
+        headlessOracle_.displayErrorMessage(badLineMsg);
+      }
+    }
+    return;
+  }
+
   /***************************************************************************
   **
   ** Second step for loading from SIF
   */
     
-  private boolean loadFromSIFSourceStepTwo(File file, UniqueLabeller idGen, FabricImportLoader.FileImportStats sss,
-  		                                     List<FabricLink> links, Set<NID.WithName> loneNodeIDs, 
-  		                                     boolean binMag, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
-  		                                     Set<FabricLink> reducedLinks, File holdIt, boolean forNetworkAlignment) {
+  public boolean handleDirectionsDupsAndShadows(List<FabricLink> links, Set<NID.WithName> loneNodeIDs, 
+  		                                           boolean binMag, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
+  		                                           Set<FabricLink> reducedLinks, File holdIt) {
     ResourceManager rMan = ResourceManager.getManager();
     try {
-      if (!sss.badLines.isEmpty()) {        
-        String badLineFormat = rMan.getString("fabricRead.badLineFormat");
-        String badLineMsg = MessageFormat.format(badLineFormat, new Object[] {Integer.valueOf(sss.badLines.size())});
-        if (headlessOracle_ == null) {
-          JOptionPane.showMessageDialog(topWindow_, badLineMsg,
-                                        rMan.getString("fabricRead.badLineTitle"),
-                                        JOptionPane.WARNING_MESSAGE);
-        } else {
-          headlessOracle_.displayErrorMessage(badLineMsg);
-        }
-      }
-      
-      if (forNetworkAlignment) { // no need to continue during network alignment processing
-        return (true);
-      }
       
       if (headlessOracle_ == null) {
         RelationDirectionDialog rdd = new RelationDirectionDialog(topWindow_, relaMap);
@@ -792,7 +745,7 @@ public class FileLoadFlows {
   
   public boolean loadFromGWSource(File file, ArrayList<FabricLink> links,
                                   HashSet<NID.WithName> loneNodes, Integer magBins,
-                                  UniqueLabeller idGen, boolean forNetworkAlignment) {
+                                  UniqueLabeller idGen, boolean loadOnly) {
   
   
     HashMap<String, String> nodeNames = null;
@@ -813,27 +766,36 @@ public class FileLoadFlows {
     // This gets file file in:
 
     boolean finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
+     
+    if (!finished) {
+      return (true);  
+    }
     
+    //
+    // Let user know if there were formatting problems (but keep going...)
+    //
+    
+    announceBadLines(sss);
+    
+    //
+    // If caller just wants to get the file in without followup, exit now:
+    //
+    
+    if (loadOnly) {
+      return (true);
+    }
+
     //
     // This looks for dups to toss and prep work:
     //
-    
-    //
-    // Use SIF loading methods
-    //
 
-    if (finished) {
-      finished = loadFromSIFSourceStepTwo(file, idGen, sss, links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, forNetworkAlignment);
-    }
-    
-    if (forNetworkAlignment) { // no need to continue when processing network alignments
-      return (true);
-    }
+    finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt);   
     
     if (finished) {
-      loadFromSIFSourceStepThree(file, idGen, loneNodes, reducedLinks, holdIt);
+      buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
     }
-    return (true);
+    
+    return (true);     
   }
   
  
@@ -846,8 +808,8 @@ public class FileLoadFlows {
   		                    SortedMap<FabricLink.AugRelation, Boolean> relaMap,
   	                      Set<FabricLink> reducedLinks, Set<FabricLink> culledLinks,  
   	                      BTProgressMonitor monitor) throws AsynchExitRequestException {
-    BioFabricNetwork.assignDirections(links, relaMap, monitor);
-    BioFabricNetwork.preprocessLinks(links, reducedLinks, culledLinks, monitor);
+    BuildExtractor.assignDirections(links, relaMap, monitor);
+    BuildExtractor.preprocessLinks(links, reducedLinks, culledLinks, monitor);
     return;
   }  
     
@@ -1101,7 +1063,7 @@ public class FileLoadFlows {
     try {    
       AttributeLoader.ReadStats stats = new AttributeLoader.ReadStats();
       AttributeLoader alod = new AttributeLoader(); 
-      Map<String, NID.WithName> nameToID = (!forNodes) ? BioFabricNetwork.reduceNameSetToOne(nameToIDs) : null;
+      Map<String, NID.WithName> nameToID = (!forNodes) ? BuildExtractor.reduceNameSetToOne(nameToIDs) : null;
       alod.readAttributes(file, forNodes, attributes, nameToID, stats);
       if (!stats.badLines.isEmpty()) {
         ResourceManager rMan = ResourceManager.getManager();
@@ -1730,7 +1692,7 @@ public class FileLoadFlows {
         FabricImportLoader.FileImportStats sss = (new GWImportLoader()).importFabric(myFile_, idGen_, links_,
                         loneNodeIDs_, nameMap_, magBins_, this);
         sss_.copyInto(sss);
-        BioFabricNetwork.extractRelations(links_, relaMap_, this);
+        BuildExtractor.extractRelations(links_, relaMap_, this);
         
         return (new Boolean(true));
       } catch (IOException ioe) {
@@ -1787,7 +1749,7 @@ public class FileLoadFlows {
         preLoadOperations();
         FabricImportLoader.FileImportStats sss = (new SIFImportLoader()).importFabric(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, this);
         sss_.copyInto(sss);
-        BioFabricNetwork.extractRelations(links_, relaMap_, this);     
+        BuildExtractor.extractRelations(links_, relaMap_, this);     
         return (new Boolean(true));
       } catch (IOException ioe) {
         stashException(ioe);
@@ -1907,14 +1869,8 @@ public class FileLoadFlows {
       return;
     }
     
-    void setForNetAlignBuild(UniqueLabeller idGen, Set<FabricLink> links, Set<NID.WithName> loneNodeIDs,
-                             Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
-                             NetworkAlignmentPlugIn.NetAlignStats report,
-                             boolean forOrphanEdges, BuildData.BuildMode bMode) {
-      if (bMode != BuildData.BuildMode.BUILD_NETWORK_ALIGNMENT) {
-        throw new IllegalArgumentException();
-      }
-      runner_.setBuildDataForNetAlign(idGen, links, loneNodeIDs, mergedToCorrect, isAlignedNode, report, forOrphanEdges, bMode);
+    void setForPlugInBuild(BuildData.RelayoutBuildData bData) {
+      runner_.setBuildDataForPlugin(bData);
       return;
     }
     
@@ -2002,10 +1958,7 @@ public class FileLoadFlows {
     private BioFabricNetwork bfn_;
     private File holdIt_;
     private long linkCount_;
-    // Network Alignment specific fields below
-    private Boolean forOrphanEdge_;
-    private Map<NID.WithName, Boolean> mergedToCorrect_, isAlignedNode_;
-    private NetworkAlignmentPlugIn.NetAlignStats netAlignStats_;
+    private BuildData.RelayoutBuildData plugInBuildData_;
 
     public NewNetworkRunner(boolean forMain, File holdIt) {
       super(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB));      
@@ -2023,19 +1976,10 @@ public class FileLoadFlows {
       return;
     }
     
-    void setBuildDataForNetAlign(UniqueLabeller idGen, Set<FabricLink> links, Set<NID.WithName> loneNodeIDs,
-                                 Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
-                                 NetworkAlignmentPlugIn.NetAlignStats report,
-                                 boolean forOrphanEdge, BuildData.BuildMode bMode) {
-      idGen_ = idGen;
-      links_ = links;
-      loneNodeIDs_ = loneNodeIDs;
-      bMode_ = bMode;
-      linkCount_ = links.size();
-      this.forOrphanEdge_ = forOrphanEdge;
-      this.mergedToCorrect_ = mergedToCorrect;
-      this.isAlignedNode_ = isAlignedNode;
-      this.netAlignStats_ = report;
+    void setBuildDataForPlugin(BuildData.RelayoutBuildData bd) {
+      bMode_ = bd.getMode();
+      plugInBuildData_ = bd;
+      return;
     }
     
     void setBuildDataForOptionChange(BioFabricNetwork bfn, BuildData.BuildMode bMode) {
@@ -2057,10 +2001,9 @@ public class FileLoadFlows {
         case BUILD_FROM_SIF:
           HashMap<NID.WithName, String> emptyMap = new HashMap<NID.WithName, String>();
           return (new BuildData.RelayoutBuildData(idGen_, links_, loneNodeIDs_, emptyMap, colGen_, bMode_));
-        case BUILD_NETWORK_ALIGNMENT:
-          HashMap<NID.WithName, String> emptyClustMap = new HashMap<NID.WithName, String>();
-          return (new NetworkAlignmentBuildData(idGen_, links_, loneNodeIDs_, mergedToCorrect_,
-                  isAlignedNode_, netAlignStats_, emptyClustMap, forOrphanEdge_, colGen_, bMode_));
+        case BUILD_FROM_PLUGIN:
+          plugInBuildData_.setColorGen(colGen_);
+          return (plugInBuildData_);
         case SHADOW_LINK_CHANGE:
         case BUILD_FROM_XML:
           return (new BuildData.PreBuiltBuildData(bfn_, bMode_));   
@@ -2094,13 +2037,7 @@ public class FileLoadFlows {
       return (null);
     } 
   }  
-  
 
-  
-  
-  
-  
-  
   /***************************************************************************
   **
   ** Class for relayout of networks
