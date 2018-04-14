@@ -422,8 +422,11 @@ public class BucketRenderer implements BufBuildDrawer {
 		    }
 		    int bufStart = (bam.startPtInV.y * bam.scrnWidth) + bam.startPtInV.x - bufOffset;
 		    int bufEnd = (bam.endPtInV.y * bam.scrnWidth) + bam.endPtInV.x - bufOffset;
-		       
-		    bam.transColorToBuf(bufStart, bufEnd, colNum);
+		      
+		    PaintCacheSmall.AnnotColor acol = annot.getColor();
+		    int useColorNum = (acol == null) ? colNum : acol.getCycle();
+		    
+		    bam.transColorToBuf(bufStart, bufEnd, useColorNum);
       }
       colNum = (colNum + 1) % annotColors_.length;
     }

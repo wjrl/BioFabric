@@ -45,6 +45,7 @@ import org.systemsbiology.biofabric.util.Indenter;
 import org.xml.sax.Attributes;
 import org.systemsbiology.biofabric.app.ArgParser;
 import org.systemsbiology.biofabric.io.FabricFactory;
+import org.systemsbiology.biofabric.model.BioFabricNetwork;
 
 /****************************************************************************
 **
@@ -91,9 +92,21 @@ public class PlugInManager {
   ** Install a new network
   */
   
-  public void newNetworkInstalled(PlugInNetworkModelAPI api) {
+  public void installAPI(PlugInNetworkModelAPI api) {
     for (BioFabricToolPlugIn pi : toolPlugIns_) {
-      pi.newNetworkInstalled(api);
+      pi.installAPI(api);
+    }
+    return;
+  }
+  
+  /***************************************************************************
+  **
+  ** Install a new network
+  */
+  
+  public void newNetworkInstalled(BioFabricNetwork bfn) {
+    for (BioFabricToolPlugIn pi : toolPlugIns_) {
+      pi.newNetworkInstalled(bfn);
     }
     return;
   }

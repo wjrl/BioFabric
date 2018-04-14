@@ -360,10 +360,10 @@ public class BioFabricWindow implements BackgroundWorkerControlManager {
       importMenu.add(fc.getAction(CommandSet.LOAD_WITH_NODE_ATTRIBUTES, false, null));       
       importMenu.add(fc.getAction(CommandSet.LOAD_WITH_EDGE_WEIGHTS, false, null));
   
-      JMenu netAlignMenu = new JMenu(rMan.getString("command.LoadNetAlign"));
-      netAlignMenu.add(fc.getAction(CommandSet.LOAD_NET_ALIGN_GROUPS, false, null));
-      netAlignMenu.add(fc.getAction(CommandSet.LOAD_NET_ALIGN_ORPHAN_EDGES, false, null));
-      importMenu.add(netAlignMenu);
+     // JMenu netAlignMenu = new JMenu(rMan.getString("command.LoadNetAlign"));
+     // netAlignMenu.add(fc.getAction(CommandSet.LOAD_NET_ALIGN_GROUPS, false, null));
+      //netAlignMenu.add(fc.getAction(CommandSet.LOAD_NET_ALIGN_ORPHAN_EDGES, false, null));
+     //importMenu.add(netAlignMenu);
       
       JMenu exportMenu = new JMenu(rMan.getString("command.exportMenu"));
       exportMenu.setMnemonic(rMan.getChar("command.exportMenuMnem"));
@@ -435,7 +435,7 @@ public class BioFabricWindow implements BackgroundWorkerControlManager {
     menuBar.add(sMenu);
     sMenu.add(fc.getAction(CommandSet.SEARCH, false, null));
     sMenu.add(fc.getAction(CommandSet.COMPARE_NODES, false, null));
-    sMenu.add(fc.getAction(CommandSet.NET_ALIGN_SCORES, false, null));
+  //  sMenu.add(fc.getAction(CommandSet.NET_ALIGN_SCORES, false, null));
     
     
      List<String> piks = fc.getPlugInKeys();

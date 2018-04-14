@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -31,8 +31,7 @@ import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.analysis.CycleFinder;
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
-import org.systemsbiology.biofabric.layouts.NodeLayout.Params;
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
@@ -91,7 +90,7 @@ public class HierDAGLayout extends NodeLayout {
   */
   
   @Override
-  public boolean criteriaMet(BioFabricNetwork.RelayoutBuildData rbd,
+  public boolean criteriaMet(BuildData.RelayoutBuildData rbd,
   		                       BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                              LayoutCriterionFailureException {
   	//
@@ -121,7 +120,7 @@ public class HierDAGLayout extends NodeLayout {
   ** Generate the Node ordering
   */
   
-  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd,
+  public List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd,
   		                                   Params params,
   		   																 BTProgressMonitor monitor) throws AsynchExitRequestException {
     
@@ -142,7 +141,7 @@ public class HierDAGLayout extends NodeLayout {
   ** Get the ordering of nodes by node degree:
   */
   
-  private List<NID.WithName> orderByNodeDegree(BioFabricNetwork.RelayoutBuildData rbd, 
+  private List<NID.WithName> orderByNodeDegree(BuildData.RelayoutBuildData rbd, 
   		                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     HashSet<NID.WithName> nodesToGo = new HashSet<NID.WithName>(rbd.allNodeIDs);

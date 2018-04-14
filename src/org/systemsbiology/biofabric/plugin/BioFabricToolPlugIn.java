@@ -22,6 +22,8 @@ package org.systemsbiology.biofabric.plugin;
 import java.io.PrintWriter;
 
 import org.systemsbiology.biofabric.io.FabricFactory;
+import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.util.Indenter;
 
@@ -99,6 +101,13 @@ public interface BioFabricToolPlugIn {
   ** Install a new network
   */
   
-  public void newNetworkInstalled(PlugInNetworkModelAPI bfn);
+  public void newNetworkInstalled(BioFabricNetwork bfn);
   
+  /***************************************************************************
+  **
+  ** Install API
+  */
+  
+  public void installAPI(PlugInNetworkModelAPI bfn);
+    
 }

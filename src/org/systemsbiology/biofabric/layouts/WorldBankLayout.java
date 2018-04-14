@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -32,7 +32,7 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
@@ -91,9 +91,9 @@ public class WorldBankLayout extends NodeLayout {
   */
   
   @Override
-  public boolean criteriaMet(BioFabricNetwork.RelayoutBuildData rbd,
-                           BTProgressMonitor monitor) throws AsynchExitRequestException, 
-                                                             LayoutCriterionFailureException {
+  public boolean criteriaMet(BuildData.RelayoutBuildData rbd,
+                             BTProgressMonitor monitor) throws AsynchExitRequestException, 
+                                                               LayoutCriterionFailureException {
     //
     // 1) This is going to have problems with two connected nodes of degree 1.
     // 2) Other topology issues???
@@ -126,7 +126,7 @@ public class WorldBankLayout extends NodeLayout {
   ** Relayout the network!
   */
   
-  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd,
+  public List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd,
   																			 Params params,
   		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
     

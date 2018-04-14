@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.TreeMap;
 
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.LoopReporter;
@@ -49,7 +50,7 @@ public abstract class NodeLayout {
   ** layout handles anything.
   */
    
-  public boolean criteriaMet(BioFabricNetwork.RelayoutBuildData rbd,
+  public boolean criteriaMet(BuildData.RelayoutBuildData rbd,
                              BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                                LayoutCriterionFailureException {
     return (true);
@@ -61,7 +62,7 @@ public abstract class NodeLayout {
   ** Relayout the nodes!
   */
   
-  public abstract List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, 
+  public abstract List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd, 
 												  		                    Params params,
 												  		                    BTProgressMonitor monitor) throws AsynchExitRequestException;
   
@@ -71,7 +72,7 @@ public abstract class NodeLayout {
   ** Install node orders
   */
   
-  protected void installNodeOrder(List<NID.WithName> targetIDs, BioFabricNetwork.RelayoutBuildData rbd, 
+  protected void installNodeOrder(List<NID.WithName> targetIDs, BuildData.RelayoutBuildData rbd, 
   		                            BTProgressMonitor monitor) throws AsynchExitRequestException {
     int currRow = 0;
     LoopReporter lr = new LoopReporter(targetIDs.size(), 20, monitor, 0.0, 1.0, "progress.installOrdering");
@@ -93,7 +94,7 @@ public abstract class NodeLayout {
   */
 
   protected List<NID.WithName> convertOrderToMap(BioFabricNetwork bfn, 
-  		                                           BioFabricNetwork.RelayoutBuildData rbd, 
+                                                 BuildData.RelayoutBuildData rbd, 
   		                                           List<Integer> orderedStringRows) { 
     HashMap<NID.WithName, Integer> nOrd = new HashMap<NID.WithName, Integer>();
     TreeMap<Integer, NID.WithName> rev = new TreeMap<Integer, NID.WithName>();

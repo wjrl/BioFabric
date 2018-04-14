@@ -17,7 +17,7 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.plugin;
+package org.systemsbiology.biofabric.plugin.core;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -28,8 +28,14 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
 import org.systemsbiology.biofabric.io.FabricFactory;
+import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
+import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
 import org.systemsbiology.biofabric.util.AttributeExtractor;
 import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.ResourceManager;
@@ -38,7 +44,7 @@ import org.xml.sax.Attributes;
 
 /****************************************************************************
 **
-** Class for the simple network statistics tool
+** Class for the simple network statistics tool 
 */
 
 public class NetStatsPlugIn implements BioFabricToolPlugIn {
@@ -91,13 +97,27 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
 
   /***************************************************************************
   **
+  ** InstallAPI
+  */
+  
+  public void installAPI(PlugInNetworkModelAPI bfn) {
+    for (BioFabricToolPlugInCmd cmd : myCmds_) {
+      NodeAndLinkCounterCmd nalc = (NodeAndLinkCounterCmd)cmd;
+      // Pass
+    }
+    return;
+  }
+  
+  
+  /***************************************************************************
+  **
   ** Install a new network
   */
   
-  public void newNetworkInstalled(PlugInNetworkModelAPI api) {
+  public void newNetworkInstalled(BioFabricNetwork bfn) {
     for (BioFabricToolPlugInCmd cmd : myCmds_) {
       NodeAndLinkCounterCmd nalc = (NodeAndLinkCounterCmd)cmd;
-      nalc.setNewNetwork(api);
+      nalc.setNewNetwork(bfn);
     }
     return;
   }
@@ -181,7 +201,6 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
     return;   
   }
   
-  
   ////////////////////////////////////////////////////////////////////////////
   //
   // INNER CLASSES
@@ -197,11 +216,11 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
     ** Set new network. In this case, process the network too
     */
     
-    public void setNewNetwork(PlugInNetworkModelAPI api) {
-      if (api != null) {
-        myData_.nodeCount = api.getNodeCount();
-        myData_.linkCount = api.getLinkCount(false);
-        myData_.fullShadowLinkCount = api.getLinkCount(true);
+    public void setNewNetwork(BioFabricNetwork bfn) {
+      if (bfn != null) {
+        myData_.nodeCount = bfn.getNodeCount();
+        myData_.linkCount = bfn.getLinkCount(false);
+        myData_.fullShadowLinkCount = bfn.getLinkCount(true);
         enabled_ = true;
       } else {
         myData_.nodeCount = 0;

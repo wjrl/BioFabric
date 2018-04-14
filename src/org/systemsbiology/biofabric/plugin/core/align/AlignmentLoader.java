@@ -19,7 +19,7 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.io;
+package org.systemsbiology.biofabric.plugin.core.align;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -28,17 +28,18 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
+
+import org.systemsbiology.biofabric.model.BuildExtractor;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.ResourceManager;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import org.systemsbiology.biofabric.util.ResourceManager;
 
 /****************************************************************************
  **
@@ -86,8 +87,8 @@ public class AlignmentLoader {
     
     Map<String, NID.WithName> G1nameToNID, G2nameToNID;
     try {
-      G1nameToNID = makeStringMap(BioFabricNetwork.extractNodes(linksGraph1, loneNodesGraph1, null));
-      G2nameToNID = makeStringMap(BioFabricNetwork.extractNodes(linksGraph2, loneNodesGraph2, null));
+      G1nameToNID = makeStringMap(BuildExtractor.extractNodes(linksGraph1, loneNodesGraph1, null));
+      G2nameToNID = makeStringMap(BuildExtractor.extractNodes(linksGraph2, loneNodesGraph2, null));
     } catch (AsynchExitRequestException aere) {
       throw new IllegalStateException();
     }

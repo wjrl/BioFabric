@@ -19,7 +19,7 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.layouts;
+package org.systemsbiology.biofabric.plugin.core.align;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,9 +33,12 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import org.systemsbiology.biofabric.analysis.NodeGroupMap;
+
+import org.systemsbiology.biofabric.layouts.DefaultLayout;
+import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
+import org.systemsbiology.biofabric.model.BuildExtractor;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
@@ -81,10 +84,10 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Relayout the network!
    */
   
-  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, Params params, BTProgressMonitor monitor)
+  public List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd, Params params, BTProgressMonitor monitor)
           throws AsynchExitRequestException {
     
-    BioFabricNetwork.NetworkAlignmentBuildData nabd = (BioFabricNetwork.NetworkAlignmentBuildData) rbd;
+    NetworkAlignmentBuildData nabd = (NetworkAlignmentBuildData) rbd;
     
     List<NID.WithName> targetIDs;
     
@@ -103,7 +106,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Breadth first search based on node groups
    */
   
-  public List<NID.WithName> bfsNodeGroupLayout(BioFabricNetwork.NetworkAlignmentBuildData nabd,
+  public List<NID.WithName> bfsNodeGroupLayout(NetworkAlignmentBuildData nabd,
                                                BTProgressMonitor monitor) throws AsynchExitRequestException {
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
@@ -162,7 +165,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       classToGroup.put(i, new ArrayList<NID.WithName>());
     }
     
-    Set<NID.WithName> allNodes = BioFabricNetwork.extractNodes(nabd.allLinks, nabd.loneNodeIDs, monitor);
+    Set<NID.WithName> allNodes = BuildExtractor.extractNodes(nabd.allLinks, nabd.loneNodeIDs, monitor);
     for (NID.WithName node : allNodes) {
       int nodeClass = grouper.getIndex(node);
       classToGroup.get(nodeClass).add(node);
@@ -336,7 +339,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Install Layer Zero Node Annotations
    */
   
-  private void installAnnotations(BioFabricNetwork.NetworkAlignmentBuildData nabd,
+  private void installAnnotations(NetworkAlignmentBuildData nabd,
                                   SortedMap<Integer, List<NID.WithName>> targetsGroup,
                                   List<NID.WithName> targets, NodeGroupMap grouper) {
     

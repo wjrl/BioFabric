@@ -19,7 +19,7 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.ui.dialogs;
+package org.systemsbiology.biofabric.plugin.core.align;
 
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -232,16 +232,16 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     
     switch (mode) {
       case GRAPH_ONE_FILE:
-        file = cmd.getTheFile(".gw", ".sif", "LoadDirectory", "Graph Files (*.gw, *.sif)");
+        file = cmd.getFileLoader().getTheFile(".gw", ".sif", "LoadDirectory", "Graph Files (*.gw, *.sif)");
         break;
       case GRAPH_TWO_FILE:
-        file = cmd.getTheFile(".gw", ".sif", "LoadDirectory", "Graph Files (*.gw, *.sif)");
+        file = cmd.getFileLoader().getTheFile(".gw", ".sif", "LoadDirectory", "Graph Files (*.gw, *.sif)");
         break;
       case ALIGNMENT_FILE:
-        file = cmd.getTheFile(".align", null, "LoadDirectory", "filterName.align");
+        file = cmd.getFileLoader().getTheFile(".align", null, "LoadDirectory", "filterName.align");
         break;
       case PERFECT_FILE:
-        file = cmd.getTheFile(".align", null, "LoadDirectory", "filterName.align");
+        file = cmd.getFileLoader().getTheFile(".align", null, "LoadDirectory", "filterName.align");
         break;
       default:
         throw new IllegalArgumentException();

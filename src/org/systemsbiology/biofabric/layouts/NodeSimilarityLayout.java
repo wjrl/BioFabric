@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -21,7 +21,6 @@ package org.systemsbiology.biofabric.layouts;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.TreeSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -31,11 +30,12 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
-
+import java.util.TreeSet;
 import java.util.Vector;
 
 import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
@@ -98,7 +98,7 @@ public class NodeSimilarityLayout extends NodeLayout {
   ** Node layout
   */
 
-  public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, 
+  public List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd, 
 							                           NodeLayout.Params params,
 							                           BTProgressMonitor monitor) throws AsynchExitRequestException { 
   	if (params instanceof NodeSimilarityLayout.ResortParams) {
@@ -115,7 +115,7 @@ public class NodeSimilarityLayout extends NodeLayout {
   ** Move nodes to match shapes
   */
 
-  private List<NID.WithName> doReorderLayout(BioFabricNetwork.RelayoutBuildData rbd, 
+  private List<NID.WithName> doReorderLayout(BuildData.RelayoutBuildData rbd, 
                                              NodeSimilarityLayout.ResortParams rp,
                                              BTProgressMonitor monitor) throws AsynchExitRequestException { 
 
@@ -165,7 +165,7 @@ public class NodeSimilarityLayout extends NodeLayout {
   ** Clustered Layout guts
   */   
 
-  private List<NID.WithName> doClusteredLayout(BioFabricNetwork.RelayoutBuildData rbd, 
+  private List<NID.WithName> doClusteredLayout(BuildData.RelayoutBuildData rbd, 
                                                NodeSimilarityLayout.ClusterParams params,
                                                BTProgressMonitor monitor) throws AsynchExitRequestException {   
  
@@ -179,7 +179,7 @@ public class NodeSimilarityLayout extends NodeLayout {
   ** Clustered Layout Ordering only
   */   
 
-  private List<Integer> doClusteredLayoutOrder(BioFabricNetwork.RelayoutBuildData rbd, 
+  private List<Integer> doClusteredLayoutOrder(BuildData.RelayoutBuildData rbd, 
 							                                 NodeSimilarityLayout.ClusterParams cp,
 							                                 BTProgressMonitor monitor) throws AsynchExitRequestException {   
  
@@ -222,7 +222,7 @@ public class NodeSimilarityLayout extends NodeLayout {
   ** Get connection vectors
   */
 
-  private SortedMap<Integer, SortedSet<Integer>> getConnectionVectors(BioFabricNetwork.RelayoutBuildData rbd, 
+  private SortedMap<Integer, SortedSet<Integer>> getConnectionVectors(BuildData.RelayoutBuildData rbd, 
   		                                                                Map<NID.WithName, Integer> targToRow,
   		                                                                BTProgressMonitor monitor) throws AsynchExitRequestException {
     
@@ -274,7 +274,7 @@ public class NodeSimilarityLayout extends NodeLayout {
   private Integer getCosines(SortedMap<Integer, SortedSet<Integer>> connVec, 
                              SortedMap<Double, SortedSet<Link>> retval, 
                              Map<Integer, Integer> connMag, 
-                             BioFabricNetwork.RelayoutBuildData rbd, 
+                             BuildData.RelayoutBuildData rbd, 
                              Map<NID.WithName, Integer> targToRow,
                              BTProgressMonitor monitor) throws AsynchExitRequestException {
     int rowCount = rbd.allNodeIDs.size();
@@ -363,7 +363,7 @@ public class NodeSimilarityLayout extends NodeLayout {
   private Integer getJaccard(SortedMap<Integer, SortedSet<Integer>> connVec, 
                             SortedMap<Double, SortedSet<Link>> retval, 
                             Map<Integer, Integer> connMag, 
-                            BioFabricNetwork.RelayoutBuildData rbd, 
+                            BuildData.RelayoutBuildData rbd, 
                             Map<NID.WithName, Integer> targToRow,
   	                        BTProgressMonitor monitor) throws AsynchExitRequestException {
 
