@@ -30,9 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.systemsbiology.biofabric.model.BuildExtractor;
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
@@ -80,6 +78,7 @@ public class NetworkAlignmentScorer {
   
   private Map<NID.WithName, Set<FabricLink>> nodeToLinksMain_, nodeToLinksPerfect_;
   private Map<NID.WithName, Set<NID.WithName>> nodeToNeighborsMain_, nodeToNeighborsPerfect_;
+  private NodeGroupMap groupMapMain_, groupMapPerfect_;
   
   //
   // The scores
@@ -114,6 +113,12 @@ public class NetworkAlignmentScorer {
     this.lonersLarge_ = lonersLarge;
     this.mapG1toG2_ = mapG1toG2;
     this.perfectG1toG2_ = perfectG1toG2;
+    this.groupMapMain_ = new NodeGroupMap(reducedLinks, loneNodeIDs, mergedToCorrect, isAlignedNode,
+            NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
+    if (mergedToCorrect != null) {
+      this.groupMapPerfect_ = new NodeGroupMap(linksPerfect, loneNodeIDsPerfect, mergedToCorrect, isAlignedNodePerfect,
+              NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
+    }
     
     removeDuplicateAndShadow();
     generateStructs(reducedLinks, loneNodeIDs, nodeToLinksMain_, nodeToNeighborsMain_);
@@ -122,6 +127,9 @@ public class NetworkAlignmentScorer {
     }
     calcScores();
     finalizeMeasures();
+    for (NetworkAlignmentPlugIn.NetAlignMeasure m : getNetAlignStats().getMeasures()) {
+      System.out.println(m);
+    }
     return;
   }
   
@@ -161,9 +169,10 @@ public class NetworkAlignmentScorer {
   
     if (mergedToCorrect_ != null) { // must have perfect alignment for these measures
       calcNodeCorrectness();
-      calcNodeGroupValues();
-      calcLinkGroupValues();
-      calcBothGroupValues();
+//      calcNodeGroupValues();
+//      calcLinkGroupValues();
+//      calcBothGroupValues();
+      calcGroupDistance();
       calcJaccardSimilarity();
     }
   }
@@ -174,9 +183,9 @@ public class NetworkAlignmentScorer {
             new NetworkAlignmentPlugIn.NetAlignMeasure("S3", S3),
             new NetworkAlignmentPlugIn.NetAlignMeasure("ICS", ICS),
             new NetworkAlignmentPlugIn.NetAlignMeasure("NC", NC),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("NGDist", NGDist),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("LGDist", LGDist),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("NGLGDist", NGLGDist),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("NGD", NGDist),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("LGD", LGDist),
+//            new NetworkAlignmentPlugIn.NetAlignMeasure("NGLGDist", NGLGDist),
             new NetworkAlignmentPlugIn.NetAlignMeasure("JaccSim", JaccSim),
     };
   
@@ -236,34 +245,41 @@ public class NetworkAlignmentScorer {
     return;
   }
   
-  private void calcNodeGroupValues() {
-    ScoreVector mainAlign = getNodeGroupRatios(linksMain_, loneNodeIDsMain_, mergedToCorrect_, isAlignedNodeMain_, monitor_);
-    ScoreVector perfectAlign = getNodeGroupRatios(linksPerfect_, loneNodeIDsPerfect_, null, isAlignedNodePerfect_, monitor_);
-    
-    NGDist = mainAlign.distance(perfectAlign);
-    return;
+  private void calcGroupDistance() {
+    GroupDistance gd = new GroupDistance();
+    NGDist = gd.calcNGD(groupMapMain_, groupMapPerfect_);
+    LGDist = gd.calcLGD(groupMapMain_, groupMapPerfect_);
+//    NGLGDist = gd.calcNGLGD();
   }
   
-  private void calcLinkGroupValues() {
-    ScoreVector mainAlign = getLinkGroupRatios(linksMain_, monitor_);
-    ScoreVector perfectAlign = getLinkGroupRatios(linksPerfect_, monitor_);
-    
-    LGDist = mainAlign.distance(perfectAlign);
-    return;
-  }
-  
-  private void calcBothGroupValues() {
-    ScoreVector mainNG = getNodeGroupRatios(linksMain_, loneNodeIDsMain_, mergedToCorrect_, isAlignedNodeMain_, monitor_);
-    ScoreVector mainLG = getLinkGroupRatios(linksMain_, monitor_);
-    mainNG.concat(mainLG);
-  
-    ScoreVector perfectNG = getNodeGroupRatios(linksPerfect_, loneNodeIDsPerfect_, null, isAlignedNodePerfect_, monitor_);
-    ScoreVector perfectLG = getLinkGroupRatios(linksPerfect_, monitor_);
-    perfectNG.concat(perfectLG);
-    
-    NGLGDist = mainNG.distance(perfectNG);
-    return;
-  }
+//  private void calcNodeGroupValues() {
+//    ScoreVector mainAlign = getNodeGroupRatios(linksMain_, loneNodeIDsMain_, mergedToCorrect_, isAlignedNodeMain_, monitor_);
+//    ScoreVector perfectAlign = getNodeGroupRatios(linksPerfect_, loneNodeIDsPerfect_, null, isAlignedNodePerfect_, monitor_);
+//
+//    NGDist = mainAlign.distance(perfectAlign);
+//    return;
+//  }
+//
+//  private void calcLinkGroupValues() {
+//    ScoreVector mainAlign = getLinkGroupRatios(linksMain_, monitor_);
+//    ScoreVector perfectAlign = getLinkGroupRatios(linksPerfect_, monitor_);
+//
+//    LGDist = mainAlign.distance(perfectAlign);
+//    return;
+//  }
+//
+//  private void calcBothGroupValues() {
+//    ScoreVector mainNG = getNodeGroupRatios(linksMain_, loneNodeIDsMain_, mergedToCorrect_, isAlignedNodeMain_, monitor_);
+//    ScoreVector mainLG = getLinkGroupRatios(linksMain_, monitor_);
+//    mainNG.concat(mainLG);
+//
+//    ScoreVector perfectNG = getNodeGroupRatios(linksPerfect_, loneNodeIDsPerfect_, null, isAlignedNodePerfect_, monitor_);
+//    ScoreVector perfectLG = getLinkGroupRatios(linksPerfect_, monitor_);
+//    perfectNG.concat(perfectLG);
+//
+//    NGLGDist = mainNG.distance(perfectNG);
+//    return;
+//  }
   
   private void removeDuplicateAndShadow() {
     Set<FabricLink> nonShdwLinks = new HashSet<FabricLink>();
@@ -302,66 +318,66 @@ public class NetworkAlignmentScorer {
     return;
   }
   
-  public NetworkAlignmentPlugIn.NetAlignStats getNetAlignStats() {
-    return (netAlignStats_);
-  }
-  
-  private static ScoreVector getNodeGroupRatios(Set<FabricLink> links, Set<NID.WithName> loneNodeIDs,
-                                                Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
-                                                BTProgressMonitor monitor) {
-    
-    NodeGroupMap map = new NodeGroupMap(links, loneNodeIDs, mergedToCorrect, isAlignedNode,
-            NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
-    
-    Set<NID.WithName> allNodes;
-    try {
-      allNodes = BuildExtractor.extractNodes(links, loneNodeIDs, monitor);
-    } catch (AsynchExitRequestException aere) {
-      throw new IllegalStateException();
-    }
-    
-    int[] groupCounter = new int[map.numGroups()];
-    
-    for (NID.WithName node : allNodes) {
-      int index = map.getIndex(node);
-      groupCounter[index]++;
-    }
-    
-    ScoreVector scoreNG = new ScoreVector(map.numGroups());
-    for (int i = 0; i < groupCounter.length; i++) {
-      scoreNG.values_[i] = ((double)groupCounter[i]) / ((double)allNodes.size());
-    }
-    return (scoreNG);
-  }
-  
-  private static ScoreVector getLinkGroupRatios(Set<FabricLink> links, BTProgressMonitor monitor) {
-    int[] counts = new int[NodeGroupMap.NUMBER_LINK_GROUPS];
-    
-    for (FabricLink link : links) {
-      if (link.getRelation().equals(NetworkAlignment.COVERED_EDGE)) {
-        counts[0]++;
-      } else if (link.getRelation().equals(NetworkAlignment.GRAPH1)) {
-        counts[1]++;
-      } else if (link.getRelation().equals(NetworkAlignment.INDUCED_GRAPH2)) {
-        counts[2]++;
-      } else if (link.getRelation().equals(NetworkAlignment.HALF_UNALIGNED_GRAPH2)) {
-        counts[3]++;
-      } else if (link.getRelation().equals(NetworkAlignment.FULL_UNALIGNED_GRAPH2)) {
-        counts[4]++;
-      }
-    }
-    
-    ScoreVector scoreLG = new ScoreVector(NodeGroupMap.NUMBER_LINK_GROUPS);
-    
-    for (int i = 0; i < counts.length; i++) {
-      scoreLG.values_[i] = ((double)counts[i]) / ((double)links.size());
-    }
-    return (scoreLG);
-  }
+//  private static ScoreVector getNodeGroupRatios(Set<FabricLink> links, Set<NID.WithName> loneNodeIDs,
+//                                                Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
+//                                                BTProgressMonitor monitor) {
+//
+//    NodeGroupMap map = new NodeGroupMap(links, loneNodeIDs, mergedToCorrect, isAlignedNode,
+//            NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
+//
+//    Set<NID.WithName> allNodes;
+//    try {
+//      allNodes = BuildExtractor.extractNodes(links, loneNodeIDs, monitor);
+//    } catch (AsynchExitRequestException aere) {
+//      throw new IllegalStateException();
+//    }
+//
+//    int[] groupCounter = new int[map.numGroups()];
+//
+//    for (NID.WithName node : allNodes) {
+//      int index = map.getIndex(node);
+//      groupCounter[index]++;
+//    }
+//
+//    ScoreVector scoreNG = new ScoreVector(map.numGroups());
+//    for (int i = 0; i < groupCounter.length; i++) {
+//      scoreNG.values_[i] = ((double)groupCounter[i]) / ((double)allNodes.size());
+//    }
+//    return (scoreNG);
+//  }
+//
+//  private static ScoreVector getLinkGroupRatios(Set<FabricLink> links, BTProgressMonitor monitor) {
+//    int[] counts = new int[NodeGroupMap.NUMBER_LINK_GROUPS];
+//
+//    for (FabricLink link : links) {
+//      if (link.getRelation().equals(NetworkAlignment.COVERED_EDGE)) {
+//        counts[0]++;
+//      } else if (link.getRelation().equals(NetworkAlignment.GRAPH1)) {
+//        counts[1]++;
+//      } else if (link.getRelation().equals(NetworkAlignment.INDUCED_GRAPH2)) {
+//        counts[2]++;
+//      } else if (link.getRelation().equals(NetworkAlignment.HALF_UNALIGNED_GRAPH2)) {
+//        counts[3]++;
+//      } else if (link.getRelation().equals(NetworkAlignment.FULL_UNALIGNED_GRAPH2)) {
+//        counts[4]++;
+//      }
+//    }
+//
+//    ScoreVector scoreLG = new ScoreVector(NodeGroupMap.NUMBER_LINK_GROUPS);
+//
+//    for (int i = 0; i < counts.length; i++) {
+//      scoreLG.values_[i] = ((double)counts[i]) / ((double)links.size());
+//    }
+//    return (scoreLG);
+//  }
   
   private  void calcJaccardSimilarity() {
     this.JaccSim = new JaccardSimilarity().calcScore(mapG1toG2_, perfectG1toG2_, linksLarge_, lonersLarge_);
     return;
+  }
+  
+  public NetworkAlignmentPlugIn.NetAlignStats getNetAlignStats() {
+    return (netAlignStats_);
   }
   
   ////////////////////////////////////////////////////////////////////////////
@@ -369,8 +385,6 @@ public class NetworkAlignmentScorer {
   // INNER CLASSES
   //
   ////////////////////////////////////////////////////////////////////////////
-  
-
   
   /****************************************************************************
    **
@@ -405,26 +419,191 @@ public class NetworkAlignmentScorer {
   
     /****************************************************************************
      **
-     ** Concatenating two vectors: [A,B,C] + [D,E] -> [A,B,C,D,E]
+     ** Magnitude
      */
     
-    public void concat(ScoreVector vector) {
-      
-      double[] concated = new double[this.values_.length + vector.values_.length];
+    public double magnitude() {
+      double ret = 0;
+//      for (double val : values_) {
+//        ret += val * val;
+//      }
+//      ret = Math.sqrt(ret);
+      ret = this.dot(this);
+      ret = Math.sqrt(ret);
+      return (ret);
+    }
   
-      int count = 0;
-      for (int i = 0; i < this.values_.length; i++) {
-        concated[i] = this.values_[i];
-        count++;
+    /****************************************************************************
+     **
+     ** Normalize
+     */
+    
+    public void normalize() {
+      double mag = magnitude();
+      if (mag == 0) {
+        return;
       }
-      for (int i = 0; i < vector.values_.length; i++) {
-        concated[count] = vector.values_[i];
-        count++;
+      for (int i = 0; i < values_.length; i++) {
+        values_[i] /= mag;
       }
-      this.values_ = concated;
       return;
     }
+  
+    /****************************************************************************
+     **
+     ** Dot product
+     */
     
+    public double dot(ScoreVector vector) {
+      if (this.values_.length != vector.values_.length) {
+        throw new IllegalArgumentException("score vector length not equal");
+      }
+      double ret = 0;
+      for (int i = 0; i < this.values_.length; i++) {
+        ret += this.values_[i] * vector.values_[i];
+      }
+      return (ret);
+    }
+  
+    /****************************************************************************
+     **
+     ** Cosine similarity - returns cos(angle)
+     */
+    
+    public double cosSim(ScoreVector vector) {
+      double cosTheta = dot(vector) / (this.magnitude() * vector.magnitude());
+      return (cosTheta);
+    }
+  
+//    /****************************************************************************
+//     **
+//     ** Concatenating two vectors: [A,B,C] + [D,E] -> [A,B,C,D,E]
+//     */
+//
+//    public void concat(ScoreVector vector) {
+//
+//      double[] concated = new double[this.values_.length + vector.values_.length];
+//
+//      int count = 0;
+//      for (int i = 0; i < this.values_.length; i++) {
+//        concated[i] = this.values_[i];
+//        count++;
+//      }
+//      for (int i = 0; i < vector.values_.length; i++) {
+//        concated[count] = vector.values_[i];
+//        count++;
+//      }
+//      this.values_ = concated;
+//      return;
+//    }
+    
+  }
+  
+//  public static void main(String[] args) {
+//
+//    ScoreVector u = new ScoreVector(3);
+//    u.values_ = new double[]{.1, .4, .5};
+//
+//    ScoreVector v = new ScoreVector(3);
+//    v.values_ = new double[]{.2, .7, .1};
+//
+//
+//    System.out.println(u.magnitude() + " " + v.magnitude());
+//    System.out.println(u.dot(v) + "  " + u.distance(v) + "  " + u.cosSim(v));
+//
+//    u.normalize();
+//    v.normalize();
+//    System.out.println(Arrays.toString(u.values_));
+//    System.out.println(Arrays.toString(v.values_));
+//
+//    System.out.println(u.dot(v) + "  " + u.distance(v) + "  " + u.cosSim(v));
+//
+//
+//  }
+  
+  /****************************************************************************
+   **
+   ** NGD and LGD
+   */
+  
+  private static class GroupDistance {
+  
+    /***************************************************************************
+     **
+     ** Calculated the score
+     */
+  
+    double calcNGD(NodeGroupMap groupMapMain, NodeGroupMap groupMapPerfect) {
+      ScoreVector main = getNGVector(groupMapMain), perfect = getNGVector(groupMapPerfect);
+      double score = main.distance(perfect);
+      score = main.cosSim(perfect);
+      return (score);
+    }
+  
+    /***************************************************************************
+     **
+     ** Convert ratio to vector
+     */
+    
+    private ScoreVector getNGVector(NodeGroupMap groupMap) {
+      ScoreVector vector = new ScoreVector(groupMap.numGroups());
+      Map<String, Double> ngRatios = groupMap.getNodeGroupRatios();
+  
+      for (Map.Entry<String, Double> entry : ngRatios.entrySet()) {
+        int index = groupMap.getIndex(entry.getKey());
+        vector.values_[index] = entry.getValue();
+      }
+      vector.normalize();
+      return (vector);
+    }
+  
+    /***************************************************************************
+     **
+     ** Calculated the score
+     */
+  
+    double calcLGD(NodeGroupMap groupMapMain, NodeGroupMap groupMapPerfect) {
+      ScoreVector main = getLGVector(groupMapMain), perfect = getLGVector(groupMapPerfect);
+      double score = main.distance(perfect);
+      score = main.cosSim(perfect);
+      return (score);
+    }
+  
+    /***************************************************************************
+     **
+     ** Convert ratio to vector
+     */
+    
+    private ScoreVector getLGVector(NodeGroupMap groupMap) {
+
+      Map<String, Integer> relToIndex = new HashMap<String, Integer>();
+      relToIndex.put(NetworkAlignment.COVERED_EDGE, NodeGroupMap.PURPLE_EDGES);
+      relToIndex.put(NetworkAlignment.GRAPH1, NodeGroupMap.BLUE_EDGES);
+      relToIndex.put(NetworkAlignment.INDUCED_GRAPH2, NodeGroupMap.RED_EDGES);
+      relToIndex.put(NetworkAlignment.HALF_UNALIGNED_GRAPH2, NodeGroupMap.ORANGE_EDGES);
+      relToIndex.put(NetworkAlignment.FULL_UNALIGNED_GRAPH2, NodeGroupMap.YELLOW_EDGES);
+      
+      ScoreVector vector = new ScoreVector(NodeGroupMap.NUMBER_LINK_GROUPS);
+      Map<String, Double> lgRatios = groupMap.getLinkGroupRatios();
+      
+      for (Map.Entry<String, Double> entry : lgRatios.entrySet()) {
+        int index = relToIndex.get(entry.getKey());
+        vector.values_[index] = entry.getValue();
+      }
+      vector.normalize();
+      return (vector);
+    }
+    
+//    /***************************************************************************
+//     **
+//     ** Calculated the score
+//     */
+//
+//    double calcNGLGD() {
+//      return -4220.0;
+//      // do I normalize the vectors before or after concatenation?
+//    }
+  
   }
   
   /****************************************************************************

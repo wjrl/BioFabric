@@ -63,17 +63,22 @@ public class NodeGroupMap {
   //
   ////////////////////////////////////////////////////////////////////////////
   
+  private Set<FabricLink> links_;
+  private Set<NID.WithName> loners_;
+  private Map<NID.WithName, Boolean> mergedToCorrect_, isAlignedNode_;
+  
   private Map<NID.WithName, Set<FabricLink>> nodeToLinks_;
   private Map<NID.WithName, Set<NID.WithName>> nodeToNeighbors_;
-  private Map<NID.WithName, Boolean> mergedToCorrect_, isAlignedNode_;
+  
   private Map<GroupID, Integer> groupIDtoIndex_;
   private Map<Integer, GroupID> indexToGroupID_;
   private Map<GroupID, String> groupIDtoColor_;
   private final int numGroups_;
   
-  private Map<Integer, Double> indexToRatio_;
+//  private Map<Integer, Double> indexToRatio_;
+  private Map<String, Double> nodeGroupRatios_, linkGroupRatios_;
   
-  private static final int
+  public static final int
           PURPLE_EDGES = 0,
           BLUE_EDGES = 1,
           RED_EDGES = 2,
@@ -89,13 +94,17 @@ public class NodeGroupMap {
   public NodeGroupMap(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
                       Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
                       String[] nodeGroupOrder, String[][] colorMap) {
+    this.links_ = allLinks;
+    this.loners_ = loneNodeIDs;
     this.mergedToCorrect_ = mergedToCorrect;
     this.isAlignedNode_ = isAlignedNode;
     this.numGroups_ = nodeGroupOrder.length;
     generateStructs(allLinks, loneNodeIDs);
-    generateMap(nodeGroupOrder);
+    generateOrderMap(nodeGroupOrder);
     generateColorMap(colorMap);
-    calcRatios();
+//    calcRatios();
+    calcNGRatios();
+    calcLGRatios();
     return;
   }
   
@@ -133,7 +142,7 @@ public class NodeGroupMap {
     return;
   }
   
-  private void generateMap(String[] nodeGroupOrder) {
+  private void generateOrderMap(String[] nodeGroupOrder) {
     groupIDtoIndex_ = new HashMap<GroupID, Integer>();
     indexToGroupID_ = new HashMap<Integer, GroupID>();
     for (int index = 0; index < nodeGroupOrder.length; index++) {
@@ -226,43 +235,116 @@ public class NodeGroupMap {
     return (new GroupID(sb.toString()));
   }
   
+//  /***************************************************************************
+//   **
+//   ** Calculate node group size to total #nodes for each group
+//   */
+//
+//  private void calcRatios() {
+//    Set<NID.WithName> nodes = nodeToLinks_.keySet();
+//    double size = (double) nodes.size();
+//
+//    Map<Integer, Integer> counts = new HashMap<Integer, Integer>();
+//    for (NID.WithName node : nodes) {
+//      Integer index = getIndex(node);
+//      if (counts.get(index) == null) {
+//        counts.put(index, 0);
+//      }
+//      counts.put(index, counts.get(index) + 1);
+//    }
+//
+//    indexToRatio_ = new HashMap<Integer, Double>();
+//    for (Map.Entry<Integer, Integer> count : counts.entrySet()) {
+//      double ratio = count.getValue() / size;
+//      indexToRatio_.put(count.getKey(), ratio);
+//    }
+//    return;
+//  }
+  
   /***************************************************************************
    **
    ** Calculate node group size to total #nodes for each group
    */
   
-  private void calcRatios() {
+  private void calcNGRatios() {
     Set<NID.WithName> nodes = nodeToLinks_.keySet();
     double size = (double) nodes.size();
-    
-    Map<Integer, Integer> counts = new HashMap<Integer, Integer>();
-    for (NID.WithName node : nodes) {
-      Integer index = getIndex(node);
-      if (counts.get(index) == null) {
-        counts.put(index, 0);
-      }
-      counts.put(index, counts.get(index) + 1);
+    Set<GroupID> tags = groupIDtoIndex_.keySet();
+  
+    Map<GroupID, Integer> counts = new HashMap<GroupID, Integer>(); // initial vals
+    for (GroupID gID : tags) {
+      counts.put(gID, 0);
     }
     
-    indexToRatio_ = new HashMap<Integer, Double>();
-    for (Map.Entry<Integer, Integer> count : counts.entrySet()) {
+    for (NID.WithName node : nodes) {
+      GroupID gID = generateID(node);
+      counts.put(gID, counts.get(gID) + 1);
+    }
+  
+    nodeGroupRatios_ = new HashMap<String, Double>();
+    for (Map.Entry<GroupID, Integer> count : counts.entrySet()) {
+      String tag = count.getKey().getKey();
       double ratio = count.getValue() / size;
-      indexToRatio_.put(count.getKey(), ratio);
+      nodeGroupRatios_.put(tag, ratio);
     }
     return;
   }
   
   /***************************************************************************
    **
-   ** Return the index from the given node group ordering
+   ** Calculate link group size to total #links for each group
+   */
+  
+  private void calcLGRatios() {
+    
+    String[] rels = {NetworkAlignment.COVERED_EDGE, NetworkAlignment.GRAPH1,
+            NetworkAlignment.INDUCED_GRAPH2, NetworkAlignment.HALF_UNALIGNED_GRAPH2, NetworkAlignment.FULL_UNALIGNED_GRAPH2};
+    double size = (double) links_.size();
+    
+    Map<String, Integer> counts = new HashMap<String, Integer>(); // initial vals
+    for (String rel : rels) {
+      counts.put(rel, 0);
+    }
+    
+    for (FabricLink link : links_) {
+      String rel = link.getRelation();
+      counts.put(rel, counts.get(rel) + 1);
+    }
+    
+    linkGroupRatios_ = new HashMap<String, Double>();
+    for (Map.Entry<String, Integer> count : counts.entrySet()) {
+      String tag = count.getKey();
+      double ratio = count.getValue() / size;
+      linkGroupRatios_.put(tag, ratio);
+    }
+    return;
+  }
+  
+  /***************************************************************************
+   **
+   ** Return the index in given ordering given node
    */
   
   public int getIndex(NID.WithName node) {
     GroupID groupID = generateID(node);
-    if (groupIDtoIndex_.get(groupID) == null) {
-      throw new IllegalArgumentException("GroupID not found in given order list");
+    Integer index = groupIDtoIndex_.get(groupID);
+    if (index == null) {
+      throw new IllegalArgumentException("GroupID not found in given order list; given node");
     }
-    return (groupIDtoIndex_.get(groupID));
+    return (index);
+  }
+  
+  /***************************************************************************
+   **
+   ** Return the index from the given ordering given tag
+   */
+  
+  public int getIndex(String key) {
+    Integer index = groupIDtoIndex_.get(new GroupID(key));
+    if (index == null) {
+      throw new IllegalArgumentException("GroupID not found in given order list; given key");
+    }
+    return (index);
   }
 
   /***************************************************************************
@@ -291,8 +373,16 @@ public class NodeGroupMap {
     return (numGroups_);
   }
   
-  public Map<Integer, Double> getIndexToRatio() {
-    return (indexToRatio_);
+//  public Map<Integer, Double> getIndexToRatio() {
+//    return (indexToRatio_);
+//  }
+  
+  public Map<String, Double> getNodeGroupRatios() {
+    return (nodeGroupRatios_);
+  }
+  
+  public Map<String, Double> getLinkGroupRatios() {
+    return (linkGroupRatios_);
   }
   
   /***************************************************************************
