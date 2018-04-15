@@ -75,7 +75,6 @@ public class NodeGroupMap {
   private Map<GroupID, String> groupIDtoColor_;
   private final int numGroups_;
   
-//  private Map<Integer, Double> indexToRatio_;
   private Map<String, Double> nodeGroupRatios_, linkGroupRatios_;
   
   public static final int
@@ -102,7 +101,6 @@ public class NodeGroupMap {
     generateStructs(allLinks, loneNodeIDs);
     generateOrderMap(nodeGroupOrder);
     generateColorMap(colorMap);
-//    calcRatios();
     calcNGRatios();
     calcLGRatios();
     return;
@@ -235,32 +233,6 @@ public class NodeGroupMap {
     return (new GroupID(sb.toString()));
   }
   
-//  /***************************************************************************
-//   **
-//   ** Calculate node group size to total #nodes for each group
-//   */
-//
-//  private void calcRatios() {
-//    Set<NID.WithName> nodes = nodeToLinks_.keySet();
-//    double size = (double) nodes.size();
-//
-//    Map<Integer, Integer> counts = new HashMap<Integer, Integer>();
-//    for (NID.WithName node : nodes) {
-//      Integer index = getIndex(node);
-//      if (counts.get(index) == null) {
-//        counts.put(index, 0);
-//      }
-//      counts.put(index, counts.get(index) + 1);
-//    }
-//
-//    indexToRatio_ = new HashMap<Integer, Double>();
-//    for (Map.Entry<Integer, Integer> count : counts.entrySet()) {
-//      double ratio = count.getValue() / size;
-//      indexToRatio_.put(count.getKey(), ratio);
-//    }
-//    return;
-//  }
-  
   /***************************************************************************
    **
    ** Calculate node group size to total #nodes for each group
@@ -372,10 +344,6 @@ public class NodeGroupMap {
   public int numGroups() {
     return (numGroups_);
   }
-  
-//  public Map<Integer, Double> getIndexToRatio() {
-//    return (indexToRatio_);
-//  }
   
   public Map<String, Double> getNodeGroupRatios() {
     return (nodeGroupRatios_);
