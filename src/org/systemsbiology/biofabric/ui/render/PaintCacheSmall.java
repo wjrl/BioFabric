@@ -80,20 +80,22 @@ public class PaintCacheSmall {
   public final static int STROKE_SIZE = 3;
   
   public enum AnnotColor {
-    GRAY_BLUE("GrayBlue", new Color(228, 236, 248, 255)),
-    ORANGE("Orange", new Color(253, 222, 195, 255)),
-    YELLOW("Yellow", new Color(255, 252, 203, 255)),
-    GREEN("Green", new Color(227, 253, 230, 255)),
-    PURPLE("Purple", new Color(227, 224, 253, 255)),
-    PINK("Pink", new Color(253, 224, 235, 255)),
-    POWDER_BLUE("PowderBlue", new Color(224, 243, 253, 255)),
-    PEACH("Peach", new Color(254, 246, 225, 255));
-
+    GRAY_BLUE("GrayBlue", 0, new Color(228, 236, 248, 255)),
+    ORANGE("Orange", 1, new Color(253, 222, 195, 255)),
+    YELLOW("Yellow", 2, new Color(255, 252, 203, 255)),
+    GREEN("Green", 3, new Color(227, 253, 230, 255)),
+    PURPLE("Purple", 4, new Color(227, 224, 253, 255)),
+    PINK("Pink", 5, new Color(253, 224, 235, 255)),
+    POWDER_BLUE("PowderBlue", 6, new Color(224, 243, 253, 255)),
+    PEACH("Peach", 7, new Color(254, 246, 225, 255));
+    
     private final String name_;
+    private final int cycle_;
     private final Color col_;
    
-    private AnnotColor(String name, Color col) {
-      this.name_ = name;  
+    private AnnotColor(String name, int cycle, Color col) {
+      this.name_ = name; 
+      this.cycle_ = cycle;
       this.col_ = col;
     }
     
@@ -103,6 +105,10 @@ public class PaintCacheSmall {
     
     public String getName() {
       return (name_);
+    }
+    
+    public int getCycle() {
+      return (cycle_);
     }
         
     public static AnnotColor getColor(String name) {
@@ -187,16 +193,13 @@ public class PaintCacheSmall {
     colGen_ = colGen;
     superLightPink_ = new Color(255, 244, 244);
     superLightBlue_ = new Color(244, 244, 255);
-      
-    annotColors_ = new AnnotColor[8];
-    annotColors_[0] = AnnotColor.GRAY_BLUE;
-    annotColors_[1] = AnnotColor.ORANGE;
-    annotColors_[2] = AnnotColor.YELLOW;
-    annotColors_[3] = AnnotColor.GREEN;
-    annotColors_[4] = AnnotColor.PURPLE;
-    annotColors_[5] = AnnotColor.PINK;
-    annotColors_[6] = AnnotColor.POWDER_BLUE;
-    annotColors_[7] = AnnotColor.PEACH;
+     
+
+    AnnotColor[] ancs = AnnotColor.values();
+    annotColors_ = new AnnotColor[ancs.length];
+    for (AnnotColor ac : ancs) {
+      annotColors_[ac.getCycle()] = ac;
+    }
 
     annotGrays_ = new Color[2];
     annotGrays_[0] = new Color(220, 220, 220, 127);

@@ -17,41 +17,50 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.layouts;
-
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
+package org.systemsbiology.biofabric.cmd;
 
 /****************************************************************************
 **
-** This is the interface for edge layout algorithms
+** Answers questions and consumes error messages for headless operation 
 */
 
-public interface EdgeLayout {
+public class HeadlessOracle {
+ 
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PRIVATE MEMBERS
+  //
+  ////////////////////////////////////////////////////////////////////////////   
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC CONSTRUCTORS
+  //
+  ////////////////////////////////////////////////////////////////////////////    
+  
+  /***************************************************************************
+  ** 
+  ** Constructor
+  */ 
+  
+  public HeadlessOracle() {
+    
+  }  
 
-	////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-   
-  /***************************************************************************
-  **
-  ** Relayout the whole network!
-  */
-  
-  public void layoutEdges(BuildData.RelayoutBuildData rbd, 
-  		                    BTProgressMonitor monitor) throws AsynchExitRequestException;
-  
   
   /***************************************************************************
-  **
-  ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
+  ** 
+  ** In-process processing entry point.  This method is synchronized internally
+  ** on a global basis to insure one process call at a time.
   */
-  
-  public void preProcessEdges(BuildData.RelayoutBuildData rbd, 
-  		                        BTProgressMonitor monitor) throws AsynchExitRequestException;
-   
 
+  public void displayErrorMessage(String message) {
+    System.err.println(message);
+    return;
+  }    
 }

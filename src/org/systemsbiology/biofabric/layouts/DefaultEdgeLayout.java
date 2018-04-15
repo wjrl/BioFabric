@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -30,6 +30,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.model.FabricLink.AugRelation;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
@@ -76,7 +77,7 @@ public class DefaultEdgeLayout implements EdgeLayout {
   ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
   */
   
-  public void preProcessEdges(BioFabricNetwork.RelayoutBuildData rbd, 
+  public void preProcessEdges(BuildData.RelayoutBuildData rbd, 
   		                        BTProgressMonitor monitor) throws AsynchExitRequestException {
   	return;
   }
@@ -155,7 +156,7 @@ public class DefaultEdgeLayout implements EdgeLayout {
   ** Relayout the whole network!
   */
   
-  public void layoutEdges(BioFabricNetwork.RelayoutBuildData rbd, 
+  public void layoutEdges(BuildData.RelayoutBuildData rbd, 
   		                    BTProgressMonitor monitor) throws AsynchExitRequestException {
    
     SortedMap<Integer, FabricLink> retval = layoutEdges(rbd.nodeOrder, rbd.allLinks, rbd.linkGroups, rbd.layoutMode, monitor);

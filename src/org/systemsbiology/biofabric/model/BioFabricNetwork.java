@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -33,30 +33,21 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.Collection;
 
-import org.systemsbiology.biofabric.analysis.NetworkAlignmentScorer;
-import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
-import org.systemsbiology.biofabric.layouts.DefaultLayout;
-import org.systemsbiology.biofabric.layouts.EdgeLayout;
-import org.systemsbiology.biofabric.layouts.NetworkAlignmentEdgeLayout;
-import org.systemsbiology.biofabric.layouts.NetworkAlignmentLayout;
-import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
-import org.systemsbiology.biofabric.layouts.NodeLayout;
-import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
-import org.systemsbiology.biofabric.layouts.WorldBankLayout;
 import org.xml.sax.Attributes;
+
+import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
+import org.systemsbiology.biofabric.layouts.EdgeLayout;
+import org.systemsbiology.biofabric.layouts.NodeLayout;
 
 import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FabricFactory;
 
-import org.systemsbiology.biofabric.layouts.ControlTopLayout;
-import org.systemsbiology.biofabric.layouts.HierDAGLayout;
-import org.systemsbiology.biofabric.layouts.SetLayout;
-import org.systemsbiology.biofabric.layouts.ControlTopLayout.CtrlMode;
-import org.systemsbiology.biofabric.layouts.ControlTopLayout.TargMode;
-
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
+import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
+import org.systemsbiology.biofabric.plugin.PlugInManager;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
@@ -91,26 +82,6 @@ public class BioFabricNetwork {
   //
   //////////////////////////////////////////////////////////////////////////// 
   
-  public enum BuildMode {DEFAULT_LAYOUT,
-                         REORDER_LAYOUT ,
-                         CLUSTERED_LAYOUT ,
-                         SHADOW_LINK_CHANGE,
-                         GROUP_PER_NODE_CHANGE,
-                         BUILD_FOR_SUBMODEL,
-                         BUILD_FROM_XML,
-                         BUILD_FROM_SIF,
-                         NODE_ATTRIB_LAYOUT,
-                         LINK_ATTRIB_LAYOUT,
-                         NODE_CLUSTER_LAYOUT,
-                         CONTROL_TOP_LAYOUT,
-                         HIER_DAG_LAYOUT,
-                         MULTI_MODE_DAG_LAYOUT,
-                         WORLD_BANK_LAYOUT,
-                         SET_LAYOUT,
-                         GROUP_PER_NETWORK_CHANGE,
-                         BUILD_NETWORK_ALIGNMENT
-                        };
-                                                
   public enum LayoutMode {
     UNINITIALIZED_MODE("notSet"),
     PER_NODE_MODE("perNode"),
@@ -187,9 +158,8 @@ public class BioFabricNetwork {
   
   private AnnotationSet nodeAnnot_;
   private Map<Boolean, AnnotationSet> linkAnnots_;
-  
-  public NetworkAlignmentScorer.NetAlignStats netAlignStats_;
-  
+
+  private PlugInManager pMan_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -202,10 +172,11 @@ public class BioFabricNetwork {
   ** Constructor
   */
 
-  public BioFabricNetwork(BuildData bd, BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public BioFabricNetwork(BuildData bd, PlugInManager pMan, BTProgressMonitor monitor) throws AsynchExitRequestException {
   	nodeIDGenerator_ = new UniqueLabeller();
+  	pMan_ = pMan;
   	layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
-    BuildMode mode = bd.getMode();
+  	BuildData.BuildMode mode = bd.getMode();
     nodeAnnot_ = new AnnotationSet();
     Map<Boolean, AnnotationSet> linkAnnots_ = new HashMap<Boolean, AnnotationSet>();
     linkAnnots_.put(Boolean.TRUE, new AnnotationSet());
@@ -224,36 +195,21 @@ public class BioFabricNetwork {
       case MULTI_MODE_DAG_LAYOUT:
       case SET_LAYOUT:
       case WORLD_BANK_LAYOUT:
-        RelayoutBuildData rbd = (RelayoutBuildData)bd;
-        normalCols_ = new ColumnAssign();
-        shadowCols_ = new ColumnAssign();
-        rowToTargID_ = new HashMap<Integer, NID.WithName>(); 
-        fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
-        nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
-        nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
-        linkGrouping_ = new ArrayList<String>(rbd.linkGroups);
-        colGen_ = rbd.colGen;
-        layoutMode_ = rbd.layoutMode;
+        standardBuildDataInit(bd);
+        BuildData.RelayoutBuildData rbd = (BuildData.RelayoutBuildData)bd;
+        transferRelayoutBuildData(rbd);
         relayoutNetwork(rbd, monitor);
         break;
-      case BUILD_NETWORK_ALIGNMENT:
-        NetworkAlignmentBuildData nad = (NetworkAlignmentBuildData) bd;
-        this.normalCols_ = new ColumnAssign();
-        this.shadowCols_ = new ColumnAssign();
-        this.rowToTargID_ = new HashMap<Integer, NID.WithName>();
-        this.fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
-        this.nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
-        this.nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
-        this.linkGrouping_ = new ArrayList<String>(nad.linkGroups);
-        this.colGen_ = nad.colGen;
-        this.layoutMode_ = nad.layoutMode;
-        this.nodeAnnot_ = nad.nodeAnnotForLayout;
-        this.linkAnnots_ = nad.linkAnnotsForLayout;
-        this.netAlignStats_ = nad.netAlignStats;
-        processLinks(nad, monitor);
+      case BUILD_FROM_PLUGIN:
+        standardBuildDataInit(bd);
+        rbd = (BuildData.RelayoutBuildData)bd;
+        transferRelayoutBuildData(rbd);
+        this.transferAnnotations(rbd);
+        bd.processSpecialtyBuildData();
+        processLinks(rbd, monitor);
         break;
       case BUILD_FOR_SUBMODEL:
-        SelectBuildData sbd = (SelectBuildData)bd;
+        BuildData.SelectBuildData sbd = (BuildData.SelectBuildData)bd;
         colGen_ = sbd.fullNet.colGen_;
         this.linkGrouping_ = new ArrayList<String>(sbd.fullNet.linkGrouping_);
         this.layoutMode_ = sbd.fullNet.layoutMode_;
@@ -261,28 +217,12 @@ public class BioFabricNetwork {
         break;
       case BUILD_FROM_XML:
       case SHADOW_LINK_CHANGE:
-        BioFabricNetwork built = ((PreBuiltBuildData)bd).bfn;
-        this.normalCols_ = built.normalCols_;
-        this.shadowCols_ = built.shadowCols_;
-        this.rowToTargID_ = built.rowToTargID_; 
-        this.fullLinkDefs_ = built.fullLinkDefs_;
-        this.nonShadowedLinkMap_ = built.nonShadowedLinkMap_;
-        this.nodeDefs_ = built.nodeDefs_;
-        this.colGen_ = built.colGen_;
-        this.rowCount_ = built.rowCount_;
-        this.linkGrouping_ = built.linkGrouping_;
-        this.layoutMode_ = built.layoutMode_;
-        this.nodeAnnot_ = built.nodeAnnot_;
-        this.linkAnnots_= built.linkAnnots_;
+        BioFabricNetwork built = ((BuildData.PreBuiltBuildData)bd).bfn;
+        standardBuildDataTransfer(built);
         break;
       case BUILD_FROM_SIF:
-        RelayoutBuildData obd = (RelayoutBuildData)bd;    
-        normalCols_ = new ColumnAssign();
-        shadowCols_ = new ColumnAssign();
-        rowToTargID_ = new HashMap<Integer, NID.WithName>(); 
-        fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
-        nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
-        nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
+        standardBuildDataInit(bd);
+        BuildData.RelayoutBuildData obd = (BuildData.RelayoutBuildData)bd;
         linkGrouping_ = new ArrayList<String>();
         layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
         colGen_ = obd.colGen;
@@ -298,6 +238,93 @@ public class BioFabricNetwork {
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
+
+  /***************************************************************************
+  ** 
+  ** Build support
+  */
+  
+  private void standardBuildDataInit(BuildData bd) {
+    this.normalCols_ = new ColumnAssign();
+    this.shadowCols_ = new ColumnAssign();
+    this.rowToTargID_ = new HashMap<Integer, NID.WithName>();
+    this.fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
+    this.nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
+    this.nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
+    return;
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Build support
+  */
+  
+  private void transferRelayoutBuildData(BuildData.RelayoutBuildData bd) { 
+    this.linkGrouping_ = new ArrayList<String>(bd.linkGroups);
+    this.colGen_ = bd.colGen;
+    this.layoutMode_ = bd.layoutMode;
+    return;
+  }
+ 
+  /***************************************************************************
+  ** 
+  ** Build support
+  */
+  
+  private void transferAnnotations(BuildData.RelayoutBuildData bd) { 
+    this.linkGrouping_ = new ArrayList<String>(bd.linkGroups);
+    this.colGen_ = bd.colGen;
+    this.layoutMode_ = bd.layoutMode;
+    return;
+  }
+ 
+  /***************************************************************************
+  ** 
+  ** Build support
+  */
+  
+  private void standardBuildDataTransfer(BioFabricNetwork built) {
+    this.normalCols_ = built.normalCols_;
+    this.shadowCols_ = built.shadowCols_;
+    this.rowToTargID_ = built.rowToTargID_; 
+    this.fullLinkDefs_ = built.fullLinkDefs_;
+    this.nonShadowedLinkMap_ = built.nonShadowedLinkMap_;
+    this.nodeDefs_ = built.nodeDefs_;
+    this.colGen_ = built.colGen_;
+    this.rowCount_ = built.rowCount_;
+    this.linkGrouping_ = built.linkGrouping_;
+    this.layoutMode_ = built.layoutMode_;
+    this.nodeAnnot_ = built.nodeAnnot_;
+    this.linkAnnots_= built.linkAnnots_;
+    return;
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Build support
+  */
+  
+  UniqueLabeller getGenerator() { 
+    return (nodeIDGenerator_);
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Build support
+  */
+  
+  FabricColorGenerator getColorGenerator() { 
+    return (colGen_);
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Build support
+  */
+  
+  List<String> getLinkGrouping() { 
+    return (linkGrouping_);
+  }
 
   /***************************************************************************
   ** 
@@ -589,7 +616,7 @@ public class BioFabricNetwork {
   ** Process a link set
   */
 
-  private void processLinks(RelayoutBuildData rbd, BTProgressMonitor monitor) throws AsynchExitRequestException {
+  private void processLinks(BuildData.RelayoutBuildData rbd, BTProgressMonitor monitor) throws AsynchExitRequestException {
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
     //
@@ -641,20 +668,20 @@ public class BioFabricNetwork {
   ** Relayout the network!
   */
   
-  private void relayoutNetwork(RelayoutBuildData rbd, BTProgressMonitor monitor) throws AsynchExitRequestException {
-    BuildMode mode = rbd.getMode();
+  private void relayoutNetwork(BuildData.RelayoutBuildData rbd, BTProgressMonitor monitor) throws AsynchExitRequestException {
+    BuildData.BuildMode mode = rbd.getMode();
     installLinkGroups(rbd.linkGroups);
     setLayoutMode(rbd.layoutMode);
-    boolean specifiedNodeOrder = (mode == BuildMode.NODE_ATTRIB_LAYOUT) || 
-                                 (mode == BuildMode.DEFAULT_LAYOUT) ||
-                                 (mode == BuildMode.CONTROL_TOP_LAYOUT) ||
-                                 (mode == BuildMode.HIER_DAG_LAYOUT) ||
-                                 (mode == BuildMode.MULTI_MODE_DAG_LAYOUT) ||
-                                 (mode == BuildMode.SET_LAYOUT) ||
-                                 (mode == BuildMode.WORLD_BANK_LAYOUT) ||
-                                 (mode == BuildMode.NODE_CLUSTER_LAYOUT) || 
-                                 (mode == BuildMode.CLUSTERED_LAYOUT) || 
-                                 (mode == BuildMode.REORDER_LAYOUT); 
+    boolean specifiedNodeOrder = (mode == BuildData.BuildMode.NODE_ATTRIB_LAYOUT) || 
+                                 (mode == BuildData.BuildMode.DEFAULT_LAYOUT) ||
+                                 (mode == BuildData.BuildMode.CONTROL_TOP_LAYOUT) ||
+                                 (mode == BuildData.BuildMode.HIER_DAG_LAYOUT) ||
+                                 (mode == BuildData.BuildMode.MULTI_MODE_DAG_LAYOUT) ||
+                                 (mode == BuildData.BuildMode.SET_LAYOUT) ||
+                                 (mode == BuildData.BuildMode.WORLD_BANK_LAYOUT) ||
+                                 (mode == BuildData.BuildMode.NODE_CLUSTER_LAYOUT) || 
+                                 (mode == BuildData.BuildMode.CLUSTERED_LAYOUT) || 
+                                 (mode == BuildData.BuildMode.REORDER_LAYOUT); 
 
     List<NID.WithName> targetIDs;
     if (specifiedNodeOrder) {
@@ -674,7 +701,7 @@ public class BioFabricNetwork {
     // Ordering of links:
     //
   
-    if ((rbd.linkOrder == null) || rbd.linkOrder.isEmpty() || (mode == BuildMode.GROUP_PER_NODE_CHANGE) || (mode == BuildMode.GROUP_PER_NETWORK_CHANGE)) {
+    if ((rbd.linkOrder == null) || rbd.linkOrder.isEmpty() || (mode == BuildData.BuildMode.GROUP_PER_NODE_CHANGE) || (mode == BuildData.BuildMode.GROUP_PER_NETWORK_CHANGE)) {
       if ((rbd.nodeOrder == null) || rbd.nodeOrder.isEmpty()) {
         rbd.nodeOrder = new HashMap<NID.WithName, Integer>();
         int numT = targetIDs.size();
@@ -690,10 +717,10 @@ public class BioFabricNetwork {
     // This now assigns the link to its column, based on user specification
     //
   
-    specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, ((mode == BuildMode.LINK_ATTRIB_LAYOUT) || 
-    		                                              (mode == BuildMode.NODE_CLUSTER_LAYOUT) ||
-    		                                              (mode == BuildMode.GROUP_PER_NODE_CHANGE) ||
-    		                                              (mode == BuildMode.GROUP_PER_NETWORK_CHANGE)), monitor);
+    specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, ((mode == BuildData.BuildMode.LINK_ATTRIB_LAYOUT) || 
+    		                                              (mode == BuildData.BuildMode.NODE_CLUSTER_LAYOUT) ||
+    		                                              (mode == BuildData.BuildMode.GROUP_PER_NODE_CHANGE) ||
+    		                                              (mode == BuildData.BuildMode.GROUP_PER_NETWORK_CHANGE)), monitor);
       
     //
     // Determine the start & end of each target row needed to handle the incoming
@@ -1058,6 +1085,19 @@ public class BioFabricNetwork {
     ind.down().indent();
     out.println("</shadowLinkAnnotations>");
 
+    //
+    // Let the plugins write to XML
+    
+    ind.indent();
+    out.println("<plugInDataSets>");
+    List<String> keyList = pMan_.getOrderedToolPlugInKeys();
+    for (String key : keyList) {
+      BioFabricToolPlugIn plugin = pMan_.getToolPlugIn(key);
+      plugin.writeXML(out, ind);
+    }
+    ind.indent();
+    out.println("</plugInDataSets>");
+    
     lr.finish();
     ind.down().indent();
     out.println("</BioFabric>"); 
@@ -1110,6 +1150,15 @@ public class BioFabricNetwork {
   public NodeInfo getNodeDefinition(NID.WithName targID) {
     NodeInfo node = nodeDefs_.get(targID);
     return (node);
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Get All Node Definition
+  */
+
+  Map<NID.WithName, NodeInfo> getAllNodeDefinitions() {
+    return (nodeDefs_);
   }
   
   /***************************************************************************
@@ -1219,13 +1268,40 @@ public class BioFabricNetwork {
   
   /***************************************************************************
   ** 
+  ** Get node count
+  */
+
+  public int getNodeCount() {
+    return (rowCount_);
+  } 
+  
+  /***************************************************************************
+  ** 
   ** Get Row Count
   */
 
   public int getRowCount() {
     return (rowCount_);
-  } 
-   
+  }
+  
+  /***************************************************************************
+  **
+  ** Stash plugin data for extraction
+  */
+  
+  public void stashPluginData(String keyword, BioFabricToolPlugInData data) {
+    
+  }
+
+  /***************************************************************************
+  **
+  ** Pull plugin data for extraction
+  */
+  
+  public BioFabricToolPlugInData providePluginData(String keyword) {
+     return (null);
+  }
+
   /***************************************************************************
   ** 
   ** Get node defs
@@ -1909,7 +1985,7 @@ public class BioFabricNetwork {
   ** Pretty icky hack:
   */
 
-  private Set<NID.WithName> getLoneNodes(BTProgressMonitor monitor) throws AsynchExitRequestException { 
+  Set<NID.WithName> getLoneNodes(BTProgressMonitor monitor) throws AsynchExitRequestException { 
     HashSet<NID.WithName> retval = new HashSet<NID.WithName>();
     LoopReporter lr = new LoopReporter(nodeDefs_.size(), 20, monitor, 0.0, 1.0, "progress.findingLoneNodes");   
     Iterator<NID.WithName> lnit = nodeDefs_.keySet().iterator();
@@ -2352,311 +2428,6 @@ public class BioFabricNetwork {
   
   /***************************************************************************
   **
-  ** For passing around build data
-  */  
-  
-  public static abstract class BuildData {
-    protected BuildMode mode;
-    
-    public BuildData(BuildMode mode) {
-      this.mode = mode;
-    }
-       
-    public BuildMode getMode() {
-      return (mode);
-    }  
-    
-    public boolean canRestore() {
-      return (true);
-    }  
-  }
-
-  /***************************************************************************
-  **
-  ** For passing around build data
-  */  
-  
-  public static class PreBuiltBuildData extends BuildData {
-    BioFabricNetwork bfn;
-  
-    public PreBuiltBuildData(BioFabricNetwork bfn, BuildMode mode) {
-      super(mode);
-      this.bfn = bfn;
-    } 
-  }
-  
-  /***************************************************************************
-  **
-  ** For passing around build data
-  */  
-  
-  public static class RelayoutBuildData extends BuildData {
-    public BioFabricNetwork bfn;
-    public Set<FabricLink> allLinks;
-    public Set<NID.WithName> loneNodeIDs;
-    public FabricColorGenerator colGen;
-    public Map<NID.WithName, Integer> nodeOrder;
-    public List<NID.WithName> existingIDOrder;
-    public SortedMap<Integer, FabricLink> linkOrder;
-    public List<String> linkGroups;
-    public Set<NID.WithName> allNodeIDs;
-    public Map<NID.WithName, String> clustAssign;
-    public LayoutMode layoutMode;
-    public UniqueLabeller idGen;
-    
-    public CtrlMode cMode; 
-    public TargMode tMode;
-    public List<String> fixedOrder; 
-    public Map<String, Set<NID.WithName>> normNameToIDs;
-    public Boolean pointUp;
-    
-    public AnnotationSet nodeAnnotForLayout;
-    public Map<Boolean, AnnotationSet> linkAnnotsForLayout;
-    
-    public RelayoutBuildData(BioFabricNetwork fullNet, BuildMode mode, BTProgressMonitor monitor) throws AsynchExitRequestException {
-      super(mode);
-      this.bfn = fullNet;
-      this.allLinks = fullNet.getAllLinks(true);
-      this.colGen = fullNet.colGen_;
-      this.nodeOrder = null;
-      this.existingIDOrder = fullNet.existingIDOrder();
-      this.linkOrder = null;
-      this.linkGroups = fullNet.linkGrouping_;
-      this.loneNodeIDs = fullNet.getLoneNodes(monitor);
-      this.allNodeIDs = fullNet.nodeDefs_.keySet();
-      this.clustAssign = (fullNet.nodeClustersAssigned()) ? fullNet.nodeClusterAssigment() : null;
-      this.layoutMode = fullNet.getLayoutMode();
-      this.idGen = fullNet.nodeIDGenerator_;
-      this.nodeAnnotForLayout = null;
-      this.linkAnnotsForLayout = null;
-    }
-    
-    public RelayoutBuildData(UniqueLabeller idGen,
-    		                     Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs, 
-    		                     Map<NID.WithName, String> clustAssign, 
-    		                     FabricColorGenerator colGen, BuildMode mode) {
-      super(mode);
-      this.bfn = null;
-      this.allLinks = allLinks;
-      this.colGen = colGen;
-      this.nodeOrder = null;
-      this.existingIDOrder = null;
-      this.linkOrder = null;
-      this.linkGroups = new ArrayList<String>();
-      this.clustAssign = clustAssign;
-      this.loneNodeIDs = loneNodeIDs;
-      this.allNodeIDs = null;
-      this.layoutMode = LayoutMode.PER_NODE_MODE;
-      this.idGen = idGen;
-      this.nodeAnnotForLayout = null;
-      this.linkAnnotsForLayout = null;
-    } 
-
-    public Map<String, Set<NID.WithName>> genNormNameToID() {
-    	HashMap<String, Set<NID.WithName>> retval = new HashMap<String, Set<NID.WithName>>();
-    	Iterator<NID.WithName> nit = this.allNodeIDs.iterator();
-    	while (nit.hasNext()) {
-    		NID.WithName nodeID = nit.next();
-    		String name = nodeID.getName();
-  		  String nameNorm = DataUtil.normKey(name);
-  	   	Set<NID.WithName> forName = retval.get(nameNorm);
-  		  if (forName == null) {
-  			  forName = new HashSet<NID.WithName>();
-  			  retval.put(nameNorm, forName);
-  		  }
-  		  forName.add(nodeID);
-  	  }
-      return (retval);	
-    }
-    
-    public void setNodeOrderFromAttrib(Map<AttributeLoader.AttributeKey, String> nodeOrderIn) {
-      this.nodeOrder = new HashMap<NID.WithName, Integer>();
-      Map<String, Set<NID.WithName>> nameToID = genNormNameToID();
-      for (AttributeLoader.AttributeKey key : nodeOrderIn.keySet()) {
-        try {
-          Integer newRow = Integer.valueOf(nodeOrderIn.get(key));
-          String keyName = ((AttributeLoader.StringKey)key).key;
-          String normName = DataUtil.normKey(keyName);        
-          Set<NID.WithName> ids = nameToID.get(normName);
-          if (ids.size() != 1) {
-          	throw new IllegalStateException();
-          }
-          NID.WithName id = ids.iterator().next();
-          this.nodeOrder.put(id, newRow);
-        } catch (NumberFormatException nfex) {
-          throw new IllegalStateException();
-        }
-      }
-      return;
-    }
-    
-    public void setNodeOrder(Map<NID.WithName, Integer> nodeOrder) {
-      this.nodeOrder = nodeOrder;
-      return;
-    }
-
-    public void setLinkOrder(SortedMap<Integer, FabricLink> linkOrder) {
-      this.linkOrder = linkOrder;
-      return;
-    }
-    
-    public void setNodeAnnotations(AnnotationSet annots) {
-      this.nodeAnnotForLayout = annots;
-      return;
-    }
-    
-    public void setLinkAnnotations(Map<Boolean, AnnotationSet> annots) {
-      this.linkAnnotsForLayout = annots;
-      return;
-    }
-      
-    public void setGroupOrderAndMode(List<String> groupOrder, LayoutMode mode) {
-      this.linkGroups = groupOrder;
-      this.layoutMode = mode;
-      return;
-    }
-    
-    public void setCTL(CtrlMode cMode, TargMode tMode, List<String> fixedOrder, BioFabricNetwork bfn) {
-      this.normNameToIDs = (fixedOrder == null) ? null : bfn.getNormNameToIDs();
-      this.cMode = cMode;
-      this.tMode = tMode;
-      this.fixedOrder = fixedOrder;
-      return;
-    }
-    
-    public void setPointUp(Boolean pointUp) {
-      this.pointUp = pointUp;
-      return;
-    }
-
-    public boolean needsLayoutForRelayout() {
-      switch (mode) {
-        case DEFAULT_LAYOUT:
-        case WORLD_BANK_LAYOUT:
-        case CONTROL_TOP_LAYOUT:
-        case HIER_DAG_LAYOUT:
-        case SET_LAYOUT:      
-        case REORDER_LAYOUT:
-        case CLUSTERED_LAYOUT:      
-        case NODE_CLUSTER_LAYOUT:
-        	return (true);
-        case NODE_ATTRIB_LAYOUT:
-        case LINK_ATTRIB_LAYOUT:
-        case GROUP_PER_NODE_CHANGE:
-        case GROUP_PER_NETWORK_CHANGE:
-        	// Already installed!
-          return (false);
-        case SHADOW_LINK_CHANGE:
-        case BUILD_FOR_SUBMODEL:
-        case BUILD_FROM_XML:
-        case BUILD_FROM_SIF:
-        case BUILD_NETWORK_ALIGNMENT:
-        default:
-        	// Not legal!
-          throw new IllegalStateException();
-      }
-    }
-
-    public NodeLayout getNodeLayout() {
-    	switch (mode) {
-    	  case DEFAULT_LAYOUT:
-    	  case BUILD_FROM_SIF:
-    	  	return (new DefaultLayout());
-    	  case WORLD_BANK_LAYOUT:
-    	  	return (new WorldBankLayout());
-    	  case REORDER_LAYOUT:
-        case CLUSTERED_LAYOUT:
-          return (new NodeSimilarityLayout()); 	
-        case NODE_CLUSTER_LAYOUT:
-          return (new NodeClusterLayout());
-        case CONTROL_TOP_LAYOUT:
-          return (new ControlTopLayout(cMode, tMode, fixedOrder, normNameToIDs));
-        case HIER_DAG_LAYOUT:  
-          return (new HierDAGLayout(pointUp.booleanValue())); 
-        case SET_LAYOUT:   
-          UiUtil.fixMePrintout("Get customized set dialog");
-          FabricLink link = allLinks.iterator().next();
-          System.out.print(link + " means what?");            
-          return (new SetLayout(pointUp.booleanValue() ? SetLayout.LinkMeans.BELONGS_TO : SetLayout.LinkMeans.CONTAINS)); 
-    	  default:
-    	  	System.err.println("Mode = " + mode);
-    	  	UiUtil.fixMePrintout("Should throw exception");
-    	  	return (new DefaultLayout());
-    	} 	
-    }
-
-    public EdgeLayout getEdgeLayout() {
-    	switch (mode) {
-    	  case REORDER_LAYOUT:
-        case CLUSTERED_LAYOUT:  
-        case NODE_CLUSTER_LAYOUT:
-           // The above layouts do edge layout as part of node layout:
-          return (null);	
-    	  default:
-    	  	return (new DefaultEdgeLayout());	
-    	}
-    }
-
-  }
-  
-  /***************************************************************************
-   **
-   ** For passing around Network Alignment data
-   */
-  
-  public static class NetworkAlignmentBuildData extends RelayoutBuildData {
-    
-    public Map<NID.WithName, Boolean> mergedToCorrect, isAlignedNode;
-    public NetworkAlignmentScorer.NetAlignStats netAlignStats;
-    public boolean forOrphans;
-  
-    public NetworkAlignmentBuildData(UniqueLabeller idGen,
-                                     Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
-                                     Map<NID.WithName, Boolean> mergedToCorrect,
-                                     Map<NID.WithName, Boolean> isAlignedNode,
-                                     NetworkAlignmentScorer.NetAlignStats netAlignStats,
-                                     Map<NID.WithName, String> clustAssign, boolean forOrphans,
-                                     FabricColorGenerator colGen, BuildMode mode) {
-      super(idGen, allLinks, loneNodeIDs, clustAssign, colGen, mode);
-      this.layoutMode = LayoutMode.PER_NETWORK_MODE;
-      this.forOrphans = forOrphans;
-      this.mergedToCorrect = mergedToCorrect;
-      this.isAlignedNode = isAlignedNode;
-      this.netAlignStats = netAlignStats;
-    }
-
-    @Override
-    public NodeLayout getNodeLayout() {
-    	return (new NetworkAlignmentLayout());	
-    }
-  
-    @Override
-    public EdgeLayout getEdgeLayout() {
-    	return (new NetworkAlignmentEdgeLayout());
-    }
-
-  }
- 
-  /***************************************************************************
-  **
-  ** For passing around build data
-  */  
-  
-  public static class SelectBuildData extends BuildData {
-     BioFabricNetwork fullNet;
-     List<NodeInfo> subNodes;
-     List<LinkInfo> subLinks;
-
-    public SelectBuildData(BioFabricNetwork fullNet, List<NodeInfo> subNodes, List<LinkInfo> subLinks) {
-      super(BuildMode.BUILD_FOR_SUBMODEL);
-      this.fullNet = fullNet;
-      this.subNodes = subNodes;
-      this.subLinks = subLinks;
-    } 
-  }
-  
-  /***************************************************************************
-  **
   ** For passing around ranked nodes
   */  
   
@@ -2688,211 +2459,12 @@ public class BioFabricNetwork {
       this.columnCount = 0;
     } 
   }
-  
-  /***************************************************************************
-   **
-   **
-   */
-  
-  public interface PluginData {}
-  
-  /***************************************************************************
-   **
-   **
-   */
-  
-  public interface PluginDataOwner {
-  
-    void writePluginData(PluginData data);
-    
-    void readPluginData(PluginData data);
-    
-  }
-  
-  /***************************************************************************
-   **
-   **
-   */
-  
-  public class NetAlignPluginDataOwner implements PluginDataOwner {
-    
-    private Map<String, PluginData> map;
-    
-    public NetAlignPluginDataOwner() {
-      map = new HashMap<String, PluginData>();
-    }
-  
-    @Override
-    public void writePluginData(PluginData data) {
-    }
-  
-    @Override
-    public void readPluginData(PluginData data) {
-    }
-  }
-  
-  public void storePluginData(String keyword, PluginData data, PluginDataOwner owner) {
-    
-  }
  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC STATIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-  
-  /***************************************************************************
-   **
-   ** Extract nodes
-   */
-  
-  public static Set<NID.WithName> extractNodes(Collection<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
-                                               BTProgressMonitor monitor) throws AsynchExitRequestException {
-    
-    Set<NID.WithName> retval = new HashSet<NID.WithName>(loneNodeIDs);
-    LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor, 0.0, 1.0, "progress.analyzingNodes");
-    
-    for (FabricLink link : allLinks) {
-      retval.add(link.getSrcID());
-      retval.add(link.getTrgID());
-      lr.report();
-    }
-    lr.finish();  // DO I NEED THIS lr.finish() HERE? THE OTHER STATIC METHODS DON'T HAVE IT
-    return (retval);
-  }
- 
-  /***************************************************************************
-  ** 
-  ** Extract relations
-  */
-
-  public static void extractRelations(List<FabricLink> allLinks, 
-  		                                SortedMap<FabricLink.AugRelation, Boolean> relMap, 
-  		                                BTProgressMonitor monitor) 
-  		                                  throws AsynchExitRequestException {
-    HashSet<FabricLink> flipSet = new HashSet<FabricLink>();
-    HashSet<FabricLink.AugRelation> flipRels = new HashSet<FabricLink.AugRelation>();
-    HashSet<FabricLink.AugRelation> rels = new HashSet<FabricLink.AugRelation>();
-    int size = allLinks.size();
-    LoopReporter lr = new LoopReporter(size, 20, monitor, 0.0, 1.0, "progress.analyzingRelations");
-    Iterator<FabricLink> alit = allLinks.iterator();
-    while (alit.hasNext()) {
-      FabricLink nextLink = alit.next();
-      lr.report();
-      FabricLink.AugRelation relation = nextLink.getAugRelation();
-      if (!nextLink.isFeedback()) {  // Autofeedback not flippable
-        FabricLink flipLink = nextLink.flipped();
-        if (flipSet.contains(flipLink)) {
-          flipRels.add(relation);
-        } else {
-          flipSet.add(nextLink);
-        }
-      }
-      rels.add(relation);
-    } 
-    
-    //
-    // We have a hint that something is signed if there are two
-    // separate links running in opposite directions!
-    //
-        
-    Boolean noDir = new Boolean(false);
-    Boolean haveDir = new Boolean(true);
-    Iterator<FabricLink.AugRelation> rit = rels.iterator();
-    while (rit.hasNext()) {
-      FabricLink.AugRelation rel = rit.next();
-      relMap.put(rel, (flipRels.contains(rel)) ? haveDir : noDir);
-    }    
-    return;
-  }
-  
-  /***************************************************************************
-  ** 
-  ** Helper to drop to map to single name: useful
-  */
-
-  public static Map<String, NID.WithName> reduceNameSetToOne(Map<String, Set<NID.WithName>> mapsToSets) { 
-  	HashMap<String, NID.WithName> retval = new HashMap<String, NID.WithName>();
-    Iterator<String> alit = mapsToSets.keySet().iterator();
-    while (alit.hasNext()) {
-      String nextName = alit.next();
-      Set<NID.WithName> forName = mapsToSets.get(nextName);
-      if (forName.size() != 1) {
-      	throw new IllegalStateException();
-      }
-      retval.put(nextName, forName.iterator().next());
-    }
-    return (retval);
-  }
-  
-  
-  /***************************************************************************
-  ** 
-  ** Process a link set that has not had directionality established
-  */
-
-  public static void assignDirections(List<FabricLink> allLinks, 
-  		                                Map<FabricLink.AugRelation, Boolean> relMap,
-  		                                BTProgressMonitor monitor) throws AsynchExitRequestException { 
-     
-	  int numLink = allLinks.size();
-	  LoopReporter lr = new LoopReporter(numLink, 20, monitor, 0.0, 1.0, "progress.installDirections");
-	 
-    Iterator<FabricLink> alit = allLinks.iterator();
-    while (alit.hasNext()) {
-      FabricLink nextLink = alit.next();
-      lr.report();
-      FabricLink.AugRelation rel = nextLink.getAugRelation();
-      Boolean isDir = relMap.get(rel);
-      nextLink.installDirection(isDir);
-    }
-    return;
-  }
-
-  /***************************************************************************
-  ** 
-  ** This culls a set of links to remove non-directional synonymous and
-  ** duplicate links.  Note that shadow links have already been created
-  ** and added to the allLinks list. 
-  */
-
-  public static void preprocessLinks(List<FabricLink> allLinks, Set<FabricLink> retval, Set<FabricLink> culled,
-  		                               BTProgressMonitor monitor) 
-  		                              	 throws AsynchExitRequestException {
-  	FabricLink.FabLinkComparator flc = new FabricLink.FabLinkComparator();
-  	int numLink = allLinks.size();
-	  LoopReporter lr = new LoopReporter(numLink, 20, monitor, 0.0, 1.0, "progress.cullingAndFlipping");
-  	
-    Iterator<FabricLink> alit = allLinks.iterator();
-    while (alit.hasNext()) {
-      FabricLink nextLink = alit.next();
-      lr.report();
-      if (retval.contains(nextLink)) {
-        culled.add(nextLink);
-      } else if (!nextLink.isDirected()) {
-        if (!nextLink.isFeedback()) {
-          FabricLink flipLink = nextLink.flipped();
-          if (retval.contains(flipLink)) {
-            // Make the order consistent for a given src & pair!
-            if (flc.compare(nextLink, flipLink) < 0) {
-              retval.remove(flipLink);
-              culled.add(flipLink);
-              retval.add(nextLink);
-            } else {
-              culled.add(nextLink);              
-            }  
-          } else {
-            retval.add(nextLink);
-          }
-        } else {
-          retval.add(nextLink);
-        }
-      } else {
-        retval.add(nextLink);
-      }
-    }
-    return;
-  }
   
   /***************************************************************************
   **
@@ -2993,9 +2565,9 @@ public class BioFabricNetwork {
   }
   
   /***************************************************************************
-   **
-   ** For XML I/O
-   */
+  **
+  ** For XML I/O
+  */
   
   public static class DrainZoneWorker extends AbstractFactoryClient {
     

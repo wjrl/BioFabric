@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -38,6 +38,7 @@ import org.systemsbiology.biofabric.analysis.GraphSearcher;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
@@ -80,7 +81,7 @@ public class NodeClusterLayout extends NodeLayout {
   **
   */
   
-   public List<NID.WithName> doNodeLayout(BioFabricNetwork.RelayoutBuildData rbd, 
+   public List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd, 
 							                            Params crParams,
 							                            BTProgressMonitor monitor) throws AsynchExitRequestException { 
      
@@ -90,7 +91,7 @@ public class NodeClusterLayout extends NodeLayout {
   	 
   	ClusterParams params = (ClusterParams)crParams;
     
-    TreeMap<String, BioFabricNetwork.RelayoutBuildData> perClust = new TreeMap<String, BioFabricNetwork.RelayoutBuildData>();
+    TreeMap<String, BuildData.RelayoutBuildData> perClust = new TreeMap<String, BuildData.RelayoutBuildData>();
     HashMap<Tuple, List<FabricLink>> interClust = new HashMap<Tuple, List<FabricLink>>();
     HashSet<NID.WithName> interNodesOnly = new HashSet<NID.WithName>();
     
@@ -99,8 +100,8 @@ public class NodeClusterLayout extends NodeLayout {
       fullNodeDegree = new HashMap<NID.WithName, Integer>();
     } 	
     
-    BioFabricNetwork.BuildMode intraLay = (params.cLay == ClusterParams.ClustLayout.SIMILAR) ? BioFabricNetwork.BuildMode.CLUSTERED_LAYOUT
-            																																								 : BioFabricNetwork.BuildMode.DEFAULT_LAYOUT;
+    BuildData.BuildMode intraLay = (params.cLay == ClusterParams.ClustLayout.SIMILAR) ? BuildData.BuildMode.CLUSTERED_LAYOUT
+            																																					: BuildData.BuildMode.DEFAULT_LAYOUT;
       
     Iterator<FabricLink> flit = rbd.allLinks.iterator();
     while (flit.hasNext()) {
@@ -119,9 +120,9 @@ public class NodeClusterLayout extends NodeLayout {
       String srcClust = params.getClusterForNode(source);
       String trgClust = params.getClusterForNode(target);
       if (srcClust.equals(trgClust)) {
-        BioFabricNetwork.RelayoutBuildData rbdpc = perClust.get(srcClust);
+        BuildData.RelayoutBuildData rbdpc = perClust.get(srcClust);
         if (rbdpc == null) {
-          rbdpc = new BioFabricNetwork.RelayoutBuildData(new UniqueLabeller(),
+          rbdpc = new BuildData.RelayoutBuildData(new UniqueLabeller(),
     		                                                 new HashSet<FabricLink>(), new HashSet<NID.WithName>(),
     		                                                 new HashMap<NID.WithName, String>(), rbd.colGen, intraLay);
           rbdpc.allNodeIDs = new HashSet<NID.WithName>();
@@ -149,11 +150,11 @@ public class NodeClusterLayout extends NodeLayout {
     
     for (NID.WithName node : rbd.allNodeIDs) {
     	String clust = params.getClusterForNode(node);
-    	BioFabricNetwork.RelayoutBuildData rbdpc = perClust.get(clust);
+    	BuildData.RelayoutBuildData rbdpc = perClust.get(clust);
     	if (rbdpc == null) {
-    		rbdpc = new BioFabricNetwork.RelayoutBuildData(new UniqueLabeller(),
-    		                                               new HashSet<FabricLink>(), new HashSet<NID.WithName>(),
-    		                                               new HashMap<NID.WithName, String>(), rbd.colGen, intraLay);
+    		rbdpc = new BuildData.RelayoutBuildData(new UniqueLabeller(),
+    		                                        new HashSet<FabricLink>(), new HashSet<NID.WithName>(),
+    		                                        new HashMap<NID.WithName, String>(), rbd.colGen, intraLay);
         rbdpc.allNodeIDs = new HashSet<NID.WithName>();
         perClust.put(clust, rbdpc);
     	}  		
@@ -194,12 +195,12 @@ public class NodeClusterLayout extends NodeLayout {
     Iterator<String> pcit = bfc.iterator(); 
     while (pcit.hasNext()) {
     	String clustName = pcit.next();
-      BioFabricNetwork.RelayoutBuildData pcrbd = perClust.get(clustName);
+    	BuildData.RelayoutBuildData pcrbd = perClust.get(clustName);
       if (pcrbd == null) {
       	continue;
       }
       List<NID.WithName> targets;
-      if (intraLay == BioFabricNetwork.BuildMode.CLUSTERED_LAYOUT) {
+      if (intraLay == BuildData.BuildMode.CLUSTERED_LAYOUT) {
         NodeSimilarityLayout.ClusterParams crp = new NodeSimilarityLayout.ClusterParams();
     	  NodeSimilarityLayout nslLayout = new NodeSimilarityLayout();
     	  pcrbd.existingIDOrder = new ArrayList<NID.WithName>(pcrbd.allNodeIDs);
@@ -317,7 +318,7 @@ public class NodeClusterLayout extends NodeLayout {
   ** Generate node annotations to tag each cluster
   */
     
-  private AnnotationSet generateNodeAnnotations(BioFabricNetwork.RelayoutBuildData rbd, ClusterParams params) {
+  private AnnotationSet generateNodeAnnotations(BuildData.RelayoutBuildData rbd, ClusterParams params) {
     
     AnnotationSet retval = new AnnotationSet();  
     
@@ -374,7 +375,7 @@ public class NodeClusterLayout extends NodeLayout {
   ** Generate link annotations to tag each cluster and intercluster links
   */
     
-  private Map<Boolean, AnnotationSet> generateLinkAnnotations(BioFabricNetwork.RelayoutBuildData rbd, ClusterParams params) { 
+  private Map<Boolean, AnnotationSet> generateLinkAnnotations(BuildData.RelayoutBuildData rbd, ClusterParams params) { 
   	HashMap<Boolean, AnnotationSet> retval = new HashMap<Boolean, AnnotationSet>();
     
   	List<FabricLink> noShadows = new ArrayList<FabricLink>();
@@ -446,7 +447,7 @@ public class NodeClusterLayout extends NodeLayout {
   ** Helper
   */
   
-  private void addClusterNode(BioFabricNetwork.RelayoutBuildData rbd, NID.WithName nid) { 
+  private void addClusterNode(BuildData.RelayoutBuildData rbd, NID.WithName nid) { 
     if (!rbd.allNodeIDs.contains(nid)) {
     	boolean ok = rbd.idGen.addExistingLabel(nid.getNID().getInternal());
     	if (!ok) {
@@ -535,13 +536,13 @@ public class NodeClusterLayout extends NodeLayout {
   **
   */
   
-  private List<String> clusterSizeOrder(TreeMap<String, BioFabricNetwork.RelayoutBuildData> perClust, 
+  private List<String> clusterSizeOrder(TreeMap<String, BuildData.RelayoutBuildData> perClust, 
   		                                  boolean nodeFirst, String startClust) { 
   	
   	TreeMap<Integer, SortedMap<Integer, SortedSet<String>>> preRet = 
   		new TreeMap<Integer, SortedMap<Integer, SortedSet<String>>>(Collections.reverseOrder());
   	for (String clustName : perClust.keySet()) {
-  	  BioFabricNetwork.RelayoutBuildData rbdpc = perClust.get(clustName);
+  	  BuildData.RelayoutBuildData rbdpc = perClust.get(clustName);
   	  Integer size1 = Integer.valueOf((nodeFirst) ? rbdpc.allNodeIDs.size() : rbdpc.allLinks.size());
   	  SortedMap<Integer, SortedSet<String>> forSize1 = preRet.get(size1);
   	  if (forSize1 == null) {

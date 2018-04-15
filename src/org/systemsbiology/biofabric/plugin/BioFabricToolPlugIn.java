@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,79 +17,97 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.ui;
+package org.systemsbiology.biofabric.plugin;
 
-import java.awt.Rectangle;
+import java.io.PrintWriter;
+
+import org.systemsbiology.biofabric.io.FabricFactory;
+import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BuildData;
+import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
+import org.systemsbiology.biofabric.util.Indenter;
 
 /****************************************************************************
 **
-** Interface for zoom presentation
+** Interface for plugins that can implement BioFabric workflows
 */
 
-public interface ZoomPresentation {
- 
+public interface BioFabricToolPlugIn {
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
+ 
+  /***************************************************************************
+  **
+  ** Set the unique plugin tag:
+  */
+  
+  public void setUniquePlugInTag(String tag);
+  
+  /***************************************************************************
+  **
+  ** Get the unique tag
+  */
+  
+  public String getUniquePlugInTag();
+   
+  /***************************************************************************
+  **
+  ** Get name of tool menu to display
+  */
+  
+  public String getToolMenu();
+  
+  /***************************************************************************
+  **
+  ** Get count of commands
+  */
+  
+  public int getCommandCount();
+  
+  /***************************************************************************
+  **
+  ** Get the nth command
+  */
+  
+  public BioFabricToolPlugInCmd getCommand(int index);
+   
+  /***************************************************************************
+  **
+  ** Dump out using XML
+  */
+   
+  public void writeXML(PrintWriter out, Indenter ind);   
 
   /***************************************************************************
   **
-  ** Return the required size of the layout
+  ** Get XML Reader
   */
-  
-  public Rectangle getRequiredSize();
  
+  public AbstractFactoryClient getXMLWorker(FabricFactory.FactoryWhiteboard board);
+  
   /***************************************************************************
   **
-  ** Return the required size of the selected items.  Null if nothing is
-  ** selected.
+  ** Attach session data read from XML
   */
-  
-  public Rectangle getSelectionSize(); 
-
-  /***************************************************************************
-  **
-  ** Return the required size of the current zoom selection item.  Null if nothing is
-  ** selected.
-  */
-  
-  public Rectangle getCurrentSelectionSize();   
  
-  /***************************************************************************
-  **
-  ** Answer if we have a current selection
-  */
-  
-  public boolean haveCurrentSelection();
+  public void attachXMLData(BioFabricToolPlugInData data);
   
   /***************************************************************************
   **
-  ** Answers if we have multiple selections (i.e. can cycle through selections) 
+  ** Install a new network
   */
   
-  public boolean haveMultipleSelections();
- 
-  /***************************************************************************
-  **
-  ** Bump to the next selection for zoom
-  */
-  
-  public void bumpNextSelection();
+  public void newNetworkInstalled(BioFabricNetwork bfn);
   
   /***************************************************************************
   **
-  ** Bump to the previous selection for zoom
+  ** Install API
   */
   
-  public void bumpPreviousSelection();
-  
-  /***************************************************************************
-  **
-  ** Set the zoom
-  */
-  
-  public void setPresentationZoomFactor(double zoom);
+  public void installAPI(PlugInNetworkModelAPI bfn);
     
 }

@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -39,17 +39,18 @@ import org.systemsbiology.biofabric.util.ResourceManager;
 
 /****************************************************************************
 **
-** This is the BioFabric Control dashboard
+** This is the BioFabric Control dashboard wrapper
 */
 
-public class BioFabricNavAndControl extends JPanel {
+public class BioFabricNavAndControl {
   
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE INSTANCE MEMBERS
   //
   //////////////////////////////////////////////////////////////////////////// 
-   
+  
+  private MyNavPanel myPanel_;
   private FabricMagnifyingTool fmt_;
   private BioFabricOverview bfo_;
   private MouseOverView mvo_;
@@ -61,7 +62,6 @@ public class BioFabricNavAndControl extends JPanel {
   private JPanel withControls_;
   private JSplitPane spot_;
   private double savedSplitFrac_;
-  private static final long serialVersionUID = 1L;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -74,13 +74,18 @@ public class BioFabricNavAndControl extends JPanel {
   ** Constructor
   */
 
-  public BioFabricNavAndControl(boolean isMain, JFrame topWindow) {
+  public BioFabricNavAndControl(boolean isMain, JFrame topWindow, boolean isHeadless) {
 
+    if (isHeadless) {
+      return;
+    }
+    myPanel_ = new MyNavPanel();
+    
     floc_ = new FabricLocation();
 
     CommandSet fc = CommandSet.getCmds((isMain) ? "mainWindow" : "selectionWindow");
     fmt_ = new FabricMagnifyingTool(fc.getColorGenerator());
-    fmt_.keyInstall((JPanel)topWindow.getContentPane());
+    fmt_.keyInstall((JPanel)topWindow.getContentPane());  
     JPanel fmpan = new JPanel();
     fmpan.setLayout(new BorderLayout());
     fmpan.setBorder(new LineBorder(Color.black, 2));
@@ -93,7 +98,7 @@ public class BioFabricNavAndControl extends JPanel {
     fmpan.add(magLab, BorderLayout.NORTH);
     fmpan.add(fmt_, BorderLayout.CENTER);
 
-    bfo_ = new BioFabricOverview();
+    bfo_ = new BioFabricOverview(isHeadless);
     fmt_.setFabricOverview(bfo_);
     
     // This is a new feature that has no place to live, and no UI to install the needed data.
@@ -116,7 +121,7 @@ public class BioFabricNavAndControl extends JPanel {
     overLab.setBackground(Color.white);
     overLab.setFont(labelFont);
     fopan.add(overLab, BorderLayout.NORTH);
-    fopan.add(bfo_, BorderLayout.CENTER);
+    fopan.add(bfo_.getPanel(), BorderLayout.CENTER);
     
     lfnt_ = new FabricNavTool.LabeledFabricNavTool(topWindow, labelFont);
     fnt_ = lfnt_.getFabricNavTool();
@@ -141,10 +146,10 @@ public class BioFabricNavAndControl extends JPanel {
     withControls_.add(sp, BorderLayout.CENTER);
     
     clay_ = new CardLayout();
-    this.setLayout(clay_);
-    this.add(withControls_, "cntrl");
-    this.add(new JPanel(), "blank");
-    clay_.show(this, "cntrl");
+    myPanel_.setLayout(clay_);
+    myPanel_.add(withControls_, "cntrl");
+    myPanel_.add(new JPanel(), "blank");
+    clay_.show(myPanel_, "cntrl");
     collapsed_ = false;
     
     return;
@@ -158,48 +163,13 @@ public class BioFabricNavAndControl extends JPanel {
 
   /***************************************************************************
   **
-  ** Sizing
+  ** Get actual panel
   */
   
-  @Override
-  public Dimension getPreferredSize() {
-    if (collapsed_) {
-      return (new Dimension(0, 0));    
-    } else {
-      return (withControls_.getPreferredSize());
-    } 
+  public MyNavPanel getPanel() {
+    return (myPanel_);
   }
-
-  @Override
-  public Dimension getMinimumSize() {
-    if (collapsed_) {
-      return (new Dimension(0, 0));    
-    } else {
-      return (withControls_.getMinimumSize());
-    } 
-  }
-  
-  @Override
-  public Dimension getMaximumSize() {
-    if (collapsed_) {
-      return (new Dimension(0, 0));    
-    } else {
-      return (withControls_.getMaximumSize());
-    } 
-  }
-
-  /***************************************************************************
-  **
-  ** Set bounds
-  */
-
-  @Override
-  public void setBounds(int x, int y, int width, int height) {
-    super.setBounds(x, y, width, height);
-    repaint();
-    return;
-  }
-
+ 
   /***************************************************************************
   **
   ** Hide/show nav and controls
@@ -211,7 +181,7 @@ public class BioFabricNavAndControl extends JPanel {
       lfnt_.setToBlank(!show);
       double need = (double)(spot_.getWidth() - lfnt_.getMinimumSize().width) / (double)spot_.getWidth();
       spot_.setDividerLocation(Math.min(savedSplitFrac_, need));
-      if (lfnt_.getMinimumSize().height > this.getHeight()) {
+      if (lfnt_.getMinimumSize().height > myPanel_.getHeight()) {
         return (true);
       }
     } else {
@@ -239,7 +209,7 @@ public class BioFabricNavAndControl extends JPanel {
   */
 
   public void setToBlank(boolean val) {
-    clay_.show(this, (val) ? "blank" : "cntrl");
+    clay_.show(myPanel_, (val) ? "blank" : "cntrl");
     collapsed_ = val;
     return;
   }  
@@ -286,7 +256,63 @@ public class BioFabricNavAndControl extends JPanel {
   */
 
   public void setFabricPanel(BioFabricPanel cp) {
-    fnt_.setFabricPanel(cp);
+    if (fnt_ != null) {
+      fnt_.setFabricPanel(cp);
+    }
     return;
+  }
+  
+  /***************************************************************************
+  **
+  ** Now the actual panel to use
+  */  
+      
+  public class MyNavPanel extends JPanel {
+    
+    private static final long serialVersionUID = 1L;
+    
+    /***************************************************************************
+    **
+    ** Sizing
+    */
+     
+    @Override
+    public Dimension getPreferredSize() {
+      if (collapsed_) {
+        return (new Dimension(0, 0));    
+      } else {
+        return (withControls_.getPreferredSize());
+      } 
+    }
+
+    @Override
+    public Dimension getMinimumSize() {
+      if (collapsed_) {
+        return (new Dimension(0, 0));    
+      } else {
+        return (withControls_.getMinimumSize());
+      } 
+    }
+     
+    @Override
+    public Dimension getMaximumSize() {
+      if (collapsed_) {
+        return (new Dimension(0, 0));    
+      } else {
+        return (withControls_.getMaximumSize());
+      } 
+    }
+
+    /***************************************************************************
+    **
+    ** Set bounds
+    */
+
+    @Override
+    public void setBounds(int x, int y, int width, int height) {
+      super.setBounds(x, y, width, height);
+      repaint();
+      return;
+    }
   }
 }

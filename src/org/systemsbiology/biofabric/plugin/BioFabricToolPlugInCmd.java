@@ -17,41 +17,42 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.layouts;
+package org.systemsbiology.biofabric.plugin;
 
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import javax.swing.JFrame;
 
 /****************************************************************************
 **
-** This is the interface for edge layout algorithms
+** Interface for tool command to display
 */
 
-public interface EdgeLayout {
-
-	////////////////////////////////////////////////////////////////////////////
+public interface BioFabricToolPlugInCmd {
+  
+  ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-   
-  /***************************************************************************
-  **
-  ** Relayout the whole network!
-  */
-  
-  public void layoutEdges(BuildData.RelayoutBuildData rbd, 
-  		                    BTProgressMonitor monitor) throws AsynchExitRequestException;
-  
   
   /***************************************************************************
   **
-  ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
+  ** Get the name
   */
   
-  public void preProcessEdges(BuildData.RelayoutBuildData rbd, 
-  		                        BTProgressMonitor monitor) throws AsynchExitRequestException;
-   
+  public String getCommandName();
 
+  /***************************************************************************
+  **
+  ** Perform the operation
+  */
+  
+  public boolean performOperation(JFrame topFrame);
+  
+  /***************************************************************************
+  **
+  ** Answer if command is enabled
+  */
+  
+  public boolean isEnabled();
+  
 }

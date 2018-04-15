@@ -271,7 +271,7 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
   
   void loadFromFile() {
     CommandSet cmd = CommandSet.getCmds("mainWindow");
-    File fileEda = cmd.getTheFile(".txt", null, "AttribDirectory", "filterName.txt");
+    File fileEda = cmd.getFileLoader().getTheFile(".txt", null, "AttribDirectory", "filterName.txt");
     if (fileEda == null) {
       return;
     }
