@@ -26,6 +26,7 @@ import java.awt.FlowLayout;
 import java.awt.GridBagLayout;
 import java.awt.Label;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -56,9 +57,10 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   private JTextField graph1Field_, graph2Field_, alignField_, perfectField_;
   private File graph1File_, graph2File_, alignmentFile_, perfectAlignFile_; // perfect Alignment is optional
   private FixedJButton buttonOK_;
+  private JCheckBox buttonPerfectNG_;
   
   public NetworkAlignmentDialog(JFrame parent, boolean forOrphanEdges) {
-    super(parent, ResourceManager.getManager().getString("networkAlignment.title"), new Dimension(600, 300), 3);
+    super(parent, ResourceManager.getManager().getString("networkAlignment.title"), new Dimension(700, 400), 3);
     this.parent_ = parent;
     this.forOrphanEdge_ = forOrphanEdges;
     
@@ -76,10 +78,10 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     JButton alignmentBrowse = new JButton(rMan.getString("networkAlignment.browse"));
     JButton perfectBrowse = new JButton(rMan.getString("networkAlignment.browse"));
   
-    graph1Field_ = new JTextField(25);
-    graph2Field_= new JTextField(25);
-    alignField_ = new JTextField(25);
-    perfectField_ = new JTextField(25);
+    graph1Field_ = new JTextField(30);
+    graph2Field_= new JTextField(30);
+    alignField_ = new JTextField(30);
+    perfectField_ = new JTextField(30);
   
     MatchingJLabel graph1FileMatch, graph2FileMatch, alignFileMatch, perfectFileMatch;
     JLabel perfectFileName = new JLabel(rMan.getString("networkAlignment.perfect")); // only to use as a reference, not in dialog
@@ -161,12 +163,18 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     addWidgetFullRow(panG2, true);
     addWidgetFullRow(panAlign, true);
   
+    buttonPerfectNG_ = new JCheckBox(rMan.getString("networkAlignment.perfectNodeGroups"));
+    buttonPerfectNG_.setVisible(false);
+  
     //
     // No Perfect Alignment for Orphan Layout
+    //
+    // 'Correct' node groups enabling
     //
     
     if (!forOrphanEdges) { // add perfect alignment button
       addWidgetFullRow(panPerfect, true);
+      addWidgetFullRow(buttonPerfectNG_, true);
     }
     
     //
@@ -215,10 +223,11 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   }
   
   public NetworkAlignmentDialogInfo getNAInfo() {
-    if (! hasRequiredFiles()) { // perfect alignment file is optional
+    if (! hasRequiredFiles()) {
+      // should never happen
       throw new IllegalStateException("Graph file(s) or alignment file missing.");
     }
-    return (new NetworkAlignmentDialogInfo(graph1File_, graph2File_, alignmentFile_, perfectAlignFile_, forOrphanEdge_));
+    return (new NetworkAlignmentDialogInfo(graph1File_, graph2File_, alignmentFile_, perfectAlignFile_, forOrphanEdge_, buttonPerfectNG_.isSelected()));
   }
   
   /**
@@ -269,6 +278,8 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
       case PERFECT_FILE:
         perfectField_.setText(file.getAbsolutePath());
         perfectAlignFile_ = file;
+        buttonPerfectNG_.setVisible(true);  // enable check box
+        buttonPerfectNG_.setSelected(true);
         break;
       default:
         throw new IllegalArgumentException();
@@ -287,14 +298,15 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   public static class NetworkAlignmentDialogInfo {
     
     public final File graphA, graphB, align, perfect; // graph1 and graph2 can be out of order (size), hence graphA and graphB
-    public final boolean forOrphanEdge;
+    public final boolean forOrphanEdge, forPerfectNG;
     
-    public NetworkAlignmentDialogInfo(File graph1, File graph2, File align, File perfect, boolean forOrphanEdge) {
+    public NetworkAlignmentDialogInfo(File graph1, File graph2, File align, File perfect, boolean forOrphanEdge, boolean forPerfectNG) {
       this.graphA = graph1;
       this.graphB = graph2;
       this.align = align;
       this.perfect = perfect;
       this.forOrphanEdge = forOrphanEdge;
+      this.forPerfectNG = forPerfectNG;
     }
     
   }

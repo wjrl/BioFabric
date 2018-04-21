@@ -63,6 +63,7 @@ public class NodeGroupMap {
   //
   ////////////////////////////////////////////////////////////////////////////
   
+  private boolean forPerfectNG_;
   private Set<FabricLink> links_;
   private Set<NID.WithName> loners_;
   private Map<NID.WithName, Boolean> mergedToCorrect_, isAlignedNode_;
@@ -87,16 +88,17 @@ public class NodeGroupMap {
   public static final int NUMBER_LINK_GROUPS = 5;   // 0..4
   
   public NodeGroupMap(NetworkAlignmentBuildData nabd, String[] nodeGroupOrder, String[][] colorMap) {
-    this(nabd.allLinks, nabd.loneNodeIDs, nabd.mergedToCorrect, nabd.isAlignedNode, nodeGroupOrder, colorMap);
+    this(nabd.allLinks, nabd.loneNodeIDs, nabd.mergedToCorrect, nabd.isAlignedNode, nabd.forPerfectNG, nodeGroupOrder, colorMap);
   }
   
   public NodeGroupMap(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
                       Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
-                      String[] nodeGroupOrder, String[][] colorMap) {
+                      boolean forPerfectNG, String[] nodeGroupOrder, String[][] colorMap) {
     this.links_ = allLinks;
     this.loners_ = loneNodeIDs;
     this.mergedToCorrect_ = mergedToCorrect;
     this.isAlignedNode_ = isAlignedNode;
+    this.forPerfectNG_ = forPerfectNG;
     this.numGroups_ = nodeGroupOrder.length;
     generateStructs(allLinks, loneNodeIDs);
     generateOrderMap(nodeGroupOrder);
@@ -208,28 +210,25 @@ public class NodeGroupMap {
     sb.append("(");
     sb.append(isAlignedNode_.get(node) ? "P" : "R");  // aligned/unaligned node
     sb.append(":");
-    
-    for (String tag : tags) {  // link group tags
-      sb.append(tag);
-      sb.append("/");
+  
+    for (int i = 0; i < tags.size(); i++) {
+      sb.append(tags.get(i));    // link group tags
+      if (i != tags.size() - 1) {
+        sb.append("/");
+      }
     }
     
-    sb.deleteCharAt(sb.length()-1);
-    if (false) {
-      if (mergedToCorrect_ == null) { // aligned correctly
+    if (mergedToCorrect_ != null && forPerfectNG_) {  // perfect alignment given and user wants perfect NGs
+      sb.append("/");
+      if (mergedToCorrect_.get(node) == null) {       // red node
         sb.append(0);
       } else {
-        if (mergedToCorrect_.get(node) == null) { // red node
-          sb.append(0);
-        } else {
-          sb.append((mergedToCorrect_.get(node)) ? 1 : 0);
-        }
+        sb.append((mergedToCorrect_.get(node)) ? 1 : 0);
       }
     }
     
     sb.append(")");
     
-    UiUtil.fixMePrintout("Manage whether to see if correctly aligned or not");
     return (new GroupID(sb.toString()));
   }
   
@@ -301,7 +300,7 @@ public class NodeGroupMap {
     GroupID groupID = generateID(node);
     Integer index = groupIDtoIndex_.get(groupID);
     if (index == null) {
-      throw new IllegalArgumentException("GroupID not found in given order list; given node");
+      throw new IllegalArgumentException("GroupID " + groupID + " not found in given order list; given node " + node.getName());
     }
     return (index);
   }
@@ -314,7 +313,7 @@ public class NodeGroupMap {
   public int getIndex(String key) {
     Integer index = groupIDtoIndex_.get(new GroupID(key));
     if (index == null) {
-      throw new IllegalArgumentException("GroupID not found in given order list; given key");
+      throw new IllegalArgumentException("GroupID " + key + " not found in given order list; given key " + key);
     }
     return (index);
   }
@@ -326,7 +325,7 @@ public class NodeGroupMap {
   
   public String getKey(Integer index) {
     if (indexToGroupID_.get(index) == null) {
-      throw new IllegalArgumentException("Index not found in given order list");
+      throw new IllegalArgumentException("Index not found in given order list; given index " + index);
     }
     return (indexToGroupID_.get(index).getKey());
   }

@@ -113,10 +113,10 @@ public class NetworkAlignmentScorer {
     this.lonersLarge_ = lonersLarge;
     this.mapG1toG2_ = mapG1toG2;
     this.perfectG1toG2_ = perfectG1toG2;
-    this.groupMapMain_ = new NodeGroupMap(reducedLinks, loneNodeIDs, mergedToCorrect, isAlignedNode,
+    this.groupMapMain_ = new NodeGroupMap(reducedLinks, loneNodeIDs, mergedToCorrect, isAlignedNode, false,
             NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
     if (mergedToCorrect != null) {
-      this.groupMapPerfect_ = new NodeGroupMap(linksPerfect, loneNodeIDsPerfect, mergedToCorrect, isAlignedNodePerfect,
+      this.groupMapPerfect_ = new NodeGroupMap(linksPerfect, loneNodeIDsPerfect, mergedToCorrect, isAlignedNodePerfect, false,
               NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
     }
     
@@ -279,7 +279,7 @@ public class NetworkAlignmentScorer {
     return;
   }
   
-  private  void calcJaccardSimilarity() {
+  private void calcJaccardSimilarity() {
     this.JaccSim = new JaccardSimilarity().calcScore(mapG1toG2_, perfectG1toG2_, linksLarge_, lonersLarge_);
     return;
   }
