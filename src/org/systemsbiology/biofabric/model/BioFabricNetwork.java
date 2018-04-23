@@ -2473,7 +2473,7 @@ public class BioFabricNetwork {
       
   public static class NetworkDataWorker extends AbstractFactoryClient {
     
-    public NetworkDataWorker(FabricFactory.FactoryWhiteboard whiteboard) {
+    public NetworkDataWorker(FabricFactory.FactoryWhiteboard whiteboard, PlugInManager pMan) {
       super(whiteboard);
       myKeys_.add("BioFabric");
       installWorker(new FabricColorGenerator.ColorSetWorker(whiteboard), new MyColorSetGlue());
@@ -2483,7 +2483,8 @@ public class BioFabricNetwork {
       installWorker(new LinkGroupWorker(whiteboard), null);
       installWorker(new AnnotationSet.AnnotsWorker(whiteboard, "nodeAnnotations"), new MyAnnotsGlue(true, false));
       installWorker(new AnnotationSet.AnnotsWorker(whiteboard, "linkAnnotations"), new MyAnnotsGlue(false, false));
-      installWorker(new AnnotationSet.AnnotsWorker(whiteboard, "shadowLinkAnnotations"), new MyAnnotsGlue(false, true));
+      installWorker(new AnnotationSet.AnnotsWorker(whiteboard, "shadowLinkAnnotations"), new MyAnnotsGlue(false, true));     
+      installWorker(new PlugInManager.PlugInWorker(whiteboard, pMan), null);
     }
     
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {

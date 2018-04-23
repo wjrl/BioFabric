@@ -820,7 +820,7 @@ public class FileLoadFlows {
     
   public boolean loadXMLFromSource(File file, File holdIt) {  
     ArrayList<ParserClient> alist = new ArrayList<ParserClient>();
-    FabricFactory ff = new FabricFactory();
+    FabricFactory ff = new FabricFactory(pMan_);
     alist.add(ff);
     SUParser sup = new SUParser(alist);   
     if (file.length() > XML_SIZE_FOR_BACKGROUND_READ) {
@@ -854,7 +854,7 @@ public class FileLoadFlows {
     
   private boolean restoreFromBackup(File file) {  
     ArrayList<ParserClient> alist = new ArrayList<ParserClient>();
-    FabricFactory ff = new FabricFactory();
+    FabricFactory ff = new FabricFactory(pMan_);
     alist.add(ff);
     SUParser sup = new SUParser(alist);   
     BackgroundFileReader br = new BackgroundFileReader(); 
