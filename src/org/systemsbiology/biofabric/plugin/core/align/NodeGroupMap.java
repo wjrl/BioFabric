@@ -63,7 +63,8 @@ public class NodeGroupMap {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  private boolean forPerfectNG_;
+  private final boolean forPerfectNG_;
+  private final PerfectNGMode mode_;
   private Set<FabricLink> links_;
   private Set<NID.WithName> loners_;
   private Map<NID.WithName, Boolean> mergedToCorrect_, isAlignedNode_;
@@ -87,19 +88,25 @@ public class NodeGroupMap {
   
   public static final int NUMBER_LINK_GROUPS = 5;   // 0..4
   
+  public enum PerfectNGMode {
+    NONE, NODE_CORRECTNESS, JACCARD_SIMILARITY
+  }
+  
   public NodeGroupMap(NetworkAlignmentBuildData nabd, String[] nodeGroupOrder, String[][] colorMap) {
-    this(nabd.allLinks, nabd.loneNodeIDs, nabd.mergedToCorrect, nabd.isAlignedNode, nabd.forPerfectNG, nodeGroupOrder, colorMap);
+    this(nabd.allLinks, nabd.loneNodeIDs, nabd.mergedToCorrect, nabd.isAlignedNode, nabd.forPerfectNG, nabd.mode,
+            nodeGroupOrder, colorMap);
   }
   
   public NodeGroupMap(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
                       Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
-                      boolean forPerfectNG, String[] nodeGroupOrder, String[][] colorMap) {
+                      boolean forPerfectNG, PerfectNGMode mode, String[] nodeGroupOrder, String[][] colorMap) {
     this.links_ = allLinks;
     this.loners_ = loneNodeIDs;
     this.mergedToCorrect_ = mergedToCorrect;
     this.isAlignedNode_ = isAlignedNode;
     this.forPerfectNG_ = forPerfectNG;
     this.numGroups_ = nodeGroupOrder.length;
+    this.mode_ = mode;
     generateStructs(allLinks, loneNodeIDs);
     generateOrderMap(nodeGroupOrder);
     generateColorMap(colorMap);
@@ -218,8 +225,11 @@ public class NodeGroupMap {
       }
     }
     
-    if (mergedToCorrect_ != null && forPerfectNG_) {  // perfect alignment given and user wants perfect NGs
-      sb.append("/");
+//    if (mergedToCorrect_ != null && forPerfectNG_) {  // perfect alignment given and user wants perfect NGs
+    
+    if (mergedToCorrect_ != null && mode_ == PerfectNGMode.NODE_CORRECTNESS ||
+            mode_ == PerfectNGMode.JACCARD_SIMILARITY) {  // perfect alignment given and user wants perfect NGs
+      sb.append("/");                                     // For now, JS just uses NC because JC hasnt been implemented
       if (mergedToCorrect_.get(node) == null) {       // red node
         sb.append(0);
       } else {
@@ -412,4 +422,17 @@ public class NodeGroupMap {
     }
     
   }
+  
+//  private static class Equivalent {
+//
+//    private static boolean NodeCorrectness(Map<NID.WithName, Boolean> mergedToCorrect, NID.WithName node) {
+//      return (mergedToCorrect.get(node));
+//    }
+//
+//    private static boolean JaccardSimilarity() {
+//      return (true);
+//    }
+//
+//  }
+
 }

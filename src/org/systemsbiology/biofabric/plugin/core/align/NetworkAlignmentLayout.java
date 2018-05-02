@@ -157,7 +157,9 @@ public class NetworkAlignmentLayout extends NodeLayout {
     //
     
     NodeGroupMap grouper;
-    if (nabd.forPerfectNG) {
+//    if (nabd.forPerfectNG) {
+    
+    if (nabd.mode == NodeGroupMap.PerfectNGMode.NODE_CORRECTNESS || nabd.mode == NodeGroupMap.PerfectNGMode.JACCARD_SIMILARITY) {
       grouper = new NodeGroupMap(nabd, defaultNGOrderWithCorrect, ngAnnotcolorsWithCorrect);
     } else {
       grouper = new NodeGroupMap(nabd, defaultNGOrderWithoutCorrect, ngAnnotColorsWithoutCorrect);
@@ -473,42 +475,42 @@ public class NetworkAlignmentLayout extends NodeLayout {
   };
   
   public static final String[][] ngAnnotcolorsWithCorrect = {
-          {"(P:0/1)", "GrayBlue"},
-          {"(P:0/0)", "GrayBlue"},
-          {"(P:P/1)","GrayBlue"},
-          {"(P:P/0)", "GrayBlue"},
-          {"(P:B/1)","GrayBlue"},
-          {"(P:B/0)","GrayBlue"},
-          {"(P:pRp/1)","GrayBlue"},
-          {"(P:pRp/0)","GrayBlue"},
-          {"(P:P/B/1)","GrayBlue"},
-          {"(P:P/B/0)","GrayBlue"},
-          {"(P:P/pRp/1)","GrayBlue"},
-          {"(P:P/pRp/0)","GrayBlue"},
-          {"(P:B/pRp/1)","GrayBlue"},
-          {"(P:B/pRp/0)","GrayBlue"},
-          {"(P:P/B/pRp/1)","GrayBlue"},
-          {"(P:P/B/pRp/0)","GrayBlue"},
-          {"(P:pRr/1)","GrayBlue"},
-          {"(P:pRr/0)","GrayBlue"},
-          {"(P:P/pRr/1)","GrayBlue"},
-          {"(P:P/pRr/0)","GrayBlue"},
-          {"(P:B/pRr/1)","GrayBlue"},
-          {"(P:B/pRr/0)","GrayBlue"},
-          {"(P:pRp/pRr/1)","GrayBlue"},
-          {"(P:pRp/pRr/0)","GrayBlue"},
-          {"(P:P/B/pRr/1)","GrayBlue"},
-          {"(P:P/B/pRr/0)","GrayBlue"},
-          {"(P:P/pRp/pRr/1)","GrayBlue"},
-          {"(P:P/pRp/pRr/0)","GrayBlue"},
-          {"(P:B/pRp/pRr/1)","GrayBlue"},
-          {"(P:B/pRp/pRr/0)","GrayBlue"},
+          {"(P:0/1)",          "GrayBlue"},
+          {"(P:0/0)",          "GrayBlue"},
+          {"(P:P/1)",          "GrayBlue"},
+          {"(P:P/0)",          "GrayBlue"},
+          {"(P:B/1)",          "GrayBlue"},
+          {"(P:B/0)",          "GrayBlue"},
+          {"(P:pRp/1)",        "GrayBlue"},
+          {"(P:pRp/0)",        "GrayBlue"},
+          {"(P:P/B/1)",        "GrayBlue"},
+          {"(P:P/B/0)",        "GrayBlue"},
+          {"(P:P/pRp/1)",      "GrayBlue"},
+          {"(P:P/pRp/0)",      "GrayBlue"},
+          {"(P:B/pRp/1)",      "GrayBlue"},
+          {"(P:B/pRp/0)",      "GrayBlue"},
+          {"(P:P/B/pRp/1)",    "GrayBlue"},
+          {"(P:P/B/pRp/0)",    "GrayBlue"},
+          {"(P:pRr/1)",        "GrayBlue"},
+          {"(P:pRr/0)",        "GrayBlue"},
+          {"(P:P/pRr/1)",      "GrayBlue"},
+          {"(P:P/pRr/0)",      "GrayBlue"},
+          {"(P:B/pRr/1)",      "GrayBlue"},
+          {"(P:B/pRr/0)",      "GrayBlue"},
+          {"(P:pRp/pRr/1)",    "GrayBlue"},
+          {"(P:pRp/pRr/0)",    "GrayBlue"},
+          {"(P:P/B/pRr/1)",    "GrayBlue"},
+          {"(P:P/B/pRr/0)",    "GrayBlue"},
+          {"(P:P/pRp/pRr/1)",  "GrayBlue"},
+          {"(P:P/pRp/pRr/0)",  "GrayBlue"},
+          {"(P:B/pRp/pRr/1)",  "GrayBlue"},
+          {"(P:B/pRp/pRr/0)",  "GrayBlue"},
           {"(P:P/B/pRp/pRr/1)","GrayBlue"},
           {"(P:P/B/pRp/pRr/0)","GrayBlue"},
-          {"(R:pRr/0)","GrayBlue"},
-          {"(R:rRr/0)","GrayBlue"},
-          {"(R:pRr/rRr/0)","GrayBlue"},
-          {"(R:0/0)", "GrayBlue"}
+          {"(R:pRr/0)",        "GrayBlue"},
+          {"(R:rRr/0)",        "GrayBlue"},
+          {"(R:pRr/rRr/0)",    "GrayBlue"},
+          {"(R:0/0)",          "GrayBlue"}
   };
   
 }

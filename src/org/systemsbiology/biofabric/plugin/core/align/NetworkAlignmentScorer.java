@@ -113,10 +113,10 @@ public class NetworkAlignmentScorer {
     this.lonersLarge_ = lonersLarge;
     this.mapG1toG2_ = mapG1toG2;
     this.perfectG1toG2_ = perfectG1toG2;
-    this.groupMapMain_ = new NodeGroupMap(reducedLinks, loneNodeIDs, mergedToCorrect, isAlignedNode, false,
+    this.groupMapMain_ = new NodeGroupMap(reducedLinks, loneNodeIDs, mergedToCorrect, isAlignedNode, false, NodeGroupMap.PerfectNGMode.NONE,
             NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
     if (mergedToCorrect != null) {
-      this.groupMapPerfect_ = new NodeGroupMap(linksPerfect, loneNodeIDsPerfect, mergedToCorrect, isAlignedNodePerfect, false,
+      this.groupMapPerfect_ = new NodeGroupMap(linksPerfect, loneNodeIDsPerfect, mergedToCorrect, isAlignedNodePerfect, false, NodeGroupMap.PerfectNGMode.NONE,
               NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
     }
     
@@ -207,13 +207,13 @@ public class NetworkAlignmentScorer {
   
   private void finalizeMeasures() {
     NetworkAlignmentPlugIn.NetAlignMeasure[] possibleMeasures = {
-            new NetworkAlignmentPlugIn.NetAlignMeasure("EC", EC),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("S3", S3),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("ICS", ICS),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("NC", NC),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("NGD", NGD),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("LGD", LGD),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("JS", JaccSim),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("Edge Coverage", EC),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("Symmetric Substructure Score", S3),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("Induced Conserved Structure", ICS),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("Node Correctness", NC),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("Node Group Distance", NGD),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("Link Group Distance", LGD),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("Jaccard Similarity", JaccSim),
     };
   
     List<NetworkAlignmentPlugIn.NetAlignMeasure> measures = new ArrayList<NetworkAlignmentPlugIn.NetAlignMeasure>();
@@ -378,7 +378,7 @@ public class NetworkAlignmentScorer {
   
     /****************************************************************************
      **
-     ** Cosine similarity - returns cos(angle)
+     ** Cosine similarity = returns cos(angle)
      */
   
     public double cosSim(VectorND vector) {
@@ -386,6 +386,18 @@ public class NetworkAlignmentScorer {
       return (cosTheta);
     }
   
+    /****************************************************************************
+     **
+     ** Angular Similarity = 1 - (2 * arccos(similarity) / pi)
+     **
+     ** similarity = cos(angle)
+     */
+    
+    public double angSim(VectorND vector) {
+      double sim = 1 - (2 * Math.acos(cosSim(vector)) / Math.PI);
+      return (sim);
+    }
+    
     @Override
     public String toString() {
       return "VectorND{" +
@@ -427,7 +439,7 @@ public class NetworkAlignmentScorer {
   
     double calcNGD(NodeGroupMap groupMapMain, NodeGroupMap groupMapPerfect) {
       VectorND main = getNGVector(groupMapMain), perfect = getNGVector(groupMapPerfect);
-      double score = main.cosSim(perfect);
+      double score = main.angSim(perfect);
       return (score);
     }
   
@@ -455,7 +467,7 @@ public class NetworkAlignmentScorer {
   
     double calcLGD(NodeGroupMap groupMapMain, NodeGroupMap groupMapPerfect) {
       VectorND main = getLGVector(groupMapMain), perfect = getLGVector(groupMapPerfect);
-      double score = main.cosSim(perfect);
+      double score = main.angSim(perfect);
       return (score);
     }
   

@@ -45,13 +45,14 @@ public class NetworkAlignmentBuildData extends BuildData.RelayoutBuildData {
   public Map<NID.WithName, Boolean> mergedToCorrect, isAlignedNode;
   public NetworkAlignmentPlugIn.NetAlignStats netAlignStats;
   public boolean forOrphans, forPerfectNG;
+  public NodeGroupMap.PerfectNGMode mode;
 
   public NetworkAlignmentBuildData(UniqueLabeller idGen,
                                    Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
                                    Map<NID.WithName, Boolean> mergedToCorrect,
                                    Map<NID.WithName, Boolean> isAlignedNode,
                                    NetworkAlignmentPlugIn.NetAlignStats netAlignStats,
-                                   Map<NID.WithName, String> clustAssign, boolean forOrphans, boolean forPerfectNG) {
+                                   Map<NID.WithName, String> clustAssign, boolean forOrphans, boolean forPerfectNG, NodeGroupMap.PerfectNGMode mode) {
     super(idGen, allLinks, loneNodeIDs, clustAssign, null, BuildData.BuildMode.BUILD_FROM_PLUGIN);
     this.layoutMode = BioFabricNetwork.LayoutMode.PER_NETWORK_MODE;
     this.forOrphans = forOrphans;
@@ -59,6 +60,7 @@ public class NetworkAlignmentBuildData extends BuildData.RelayoutBuildData {
     this.isAlignedNode = isAlignedNode;
     this.netAlignStats = netAlignStats;
     this.forPerfectNG = forPerfectNG;
+    this.mode = mode;
   }
 
   @Override
