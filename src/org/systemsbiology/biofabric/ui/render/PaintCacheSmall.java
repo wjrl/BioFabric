@@ -87,7 +87,33 @@ public class PaintCacheSmall {
     PURPLE("Purple", 4, new Color(227, 224, 253, 255)),
     PINK("Pink", 5, new Color(253, 224, 235, 255)),
     POWDER_BLUE("PowderBlue", 6, new Color(224, 243, 253, 255)),
-    PEACH("Peach", 7, new Color(254, 246, 225, 255));
+    PEACH("Peach", 7, new Color(254, 246, 225, 255)),
+    
+    // 90 %
+    DARK_GRAY_BLUE("DarkGrayBlue", 8, new Color(205, 212, 223, 255)),
+    DARK_ORANGE("DarkOrange", 9, new Color(228, 200, 176, 255)),
+    DARK_YELLOW("DarkYellow", 10, new Color(230, 227, 183, 255)),
+    DARK_GREEN("DarkGreen", 11, new Color(205, 228, 207, 255)),
+    DARK_PURPLE("DarkPurple", 12, new Color(205, 202, 228, 255)),
+    DARK_PINK("DarkPink", 13, new Color(228, 202, 212, 255)),
+    DARK_POWDER_BLUE("DarkPowderBlue", 14, new Color(202, 219, 228, 255)),
+    DARK_PEACH("DarkPeach", 15, new Color(229, 221, 203, 255));
+    
+    /* 80 %
+    DARK_GRAY_BLUE("DarkGrayBlue", 8, new Color(182, 189, 198, 255)),
+    DARK_ORANGE("DarkOrange", 9, new Color(202, 178, 156, 255)),
+    DARK_YELLOW("DarkYellow", 10, new Color(204, 202, 162, 255)),
+    DARK_GREEN("DarkGreen", 11, new Color(182, 202, 184, 255)),
+    DARK_PURPLE("DarkPurple", 12, new Color(182, 179, 202, 255)),
+    DARK_PINK("DarkPink", 13, new Color(202, 179, 188, 255)),
+    DARK_POWDER_BLUE("DarkPowderBlue", 14, new Color(179, 194, 202, 255)),
+    DARK_PEACH("DarkPeach", 15, new Color(203, 197, 180, 255));
+    */
+    
+    
+    
+    
+    
     
     private final String name_;
     private final int cycle_;

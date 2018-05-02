@@ -33,6 +33,7 @@ import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
+import org.systemsbiology.biofabric.plugin.PlugInManager;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.NamedColor;
@@ -68,12 +69,12 @@ public class FabricFactory implements ParserClient {
   ** Constructor
   */
 
-  public FabricFactory() {
+  public FabricFactory(PlugInManager pMan) {
       
     allKeys_ = new HashSet<String>();
     whiteBoard_ = new FactoryWhiteboard();
    
-    BioFabricNetwork.NetworkDataWorker ndw = new BioFabricNetwork.NetworkDataWorker(whiteBoard_);    
+    BioFabricNetwork.NetworkDataWorker ndw = new BioFabricNetwork.NetworkDataWorker(whiteBoard_, pMan);    
     ArrayList<ParserClient> alist = new ArrayList<ParserClient>();
     alist.add(ndw);
     

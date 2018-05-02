@@ -26,7 +26,6 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,7 +35,6 @@ import java.util.TreeMap;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
-import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.io.FileLoadFlows;
 import org.systemsbiology.biofabric.io.GWImportLoader;
@@ -49,9 +47,6 @@ import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
 import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
-import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
-import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
-import org.systemsbiology.biofabric.ui.dialogs.RelationDirectionDialog;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.AttributeExtractor;
 import org.systemsbiology.biofabric.util.BackgroundWorker;
@@ -135,6 +130,9 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
   public void newNetworkInstalled(BioFabricNetwork bfn) {
     UiUtil.fixMePrintout("Drop stats if new network is not an alignment");
+    for (BioFabricToolPlugInCmd cmd : myCmds_) {
+      ((Enabler)cmd).setEnabled(true);
+    }
     return;
   }
   
@@ -527,6 +525,11 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    
     public void setEnabled(boolean isEnabled) {
       // Depends on if we have non-null scores.
+      if (!isEnabled) {
+        System.out.println("Turn off " + isEnabled);
+      } else {
+        System.out.println("Set Enabled? " + netAlignStats_.hasStats());
+      } 
     }
       
     public String getCommandName() {
@@ -545,6 +548,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
   
     public boolean isEnabled() {
+      System.out.println("Enabled? " + netAlignStats_.hasStats());
       return (netAlignStats_.hasStats());    
     } 
   }
@@ -898,7 +902,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     public NetAlignStatsWorker(FabricFactory.FactoryWhiteboard board) {
       super(board);
       myKeys_.add("NetAlignStats");
-      installWorker(new NetAlignStatsWorker(board), new NetAlignStatsGlue());
+      installWorker(new NetAlignMeasureWorker(board), null);
     }
     
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
@@ -946,6 +950,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       try {
         Double value = Double.valueOf(valStr);
         retval = new NetAlignMeasure(name, value);
+        System.out.println("NAM " + retval);
       } catch (NumberFormatException nfex) {
         throw new IOException();
       }
