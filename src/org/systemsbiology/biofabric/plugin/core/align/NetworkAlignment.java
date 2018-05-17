@@ -50,8 +50,6 @@ import org.systemsbiology.biofabric.util.UniqueLabeller;
  */
 
 public class NetworkAlignment {
-  
-  public enum OutType {GROUP, ORPHAN, CYCLE};
    
   public static final String                // Ordered as in the default link group order
           COVERED_EDGE = "G12",             // Covered Edges
@@ -77,7 +75,7 @@ public class NetworkAlignment {
   private HashSet<NID.WithName> lonersG1_;
   private ArrayList<FabricLink> linksG2_;
   private HashSet<NID.WithName> lonersG2_;
-  private OutType outType_;
+  private NetworkAlignmentBuildData.ViewType outType_;
   private UniqueLabeller idGen_;
   private BTProgressMonitor monitor_;
   
@@ -111,7 +109,7 @@ public class NetworkAlignment {
                           ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
                           ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
                           Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
-                          OutType outType, UniqueLabeller idGen, BTProgressMonitor monitor) {
+                          NetworkAlignmentBuildData.ViewType outType, UniqueLabeller idGen, BTProgressMonitor monitor) {
     
     this.mapG1toG2_ = mapG1toG2;
     this.perfectG1toG2_ = perfectG1toG2_;
@@ -174,10 +172,8 @@ public class NetworkAlignment {
     // Orphan Edges: All unaligned edges; plus all of their endpoint nodes' edges
     //
     
-    if (outType_ == OutType.ORPHAN) {
+    if (outType_ == NetworkAlignmentBuildData.ViewType.ORPHAN) {
       (new OrphanEdgeLayout()).process(mergedLinks_, mergedLoners_, monitor_);
-    } else if (outType_ == OutType.CYCLE) {
-      findCycles();
     }
     
     return;
@@ -188,57 +184,6 @@ public class NetworkAlignment {
   // PRIVATE METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-  
-  /****************************************************************************
-  **
-  ** Create merged nodes, install into maps
-  */
-  
-  private List<List<String>> findCycles() {
-  
-     Map<String, List<String>> cyclesPerStart = new HashMap<String, List<String>>();
-
-     Map<String, String> align = new HashMap<String, String>();
-     HashSet<String> working = new HashSet<String>();
-     for (NID.WithName nwn : mapG1toG2_.keySet()) {
-       working.add(nwn.getName());
-       align.put(nwn.getName(), mapG1toG2_.get(nwn).getName());
-     }
-
-     System.out.println("working " + working.size());
-     while (!working.isEmpty()) {
-       String startKey = working.iterator().next();
-       working.remove(startKey);
-       ArrayList<String> cycle = new ArrayList<String>();
-       cyclesPerStart.put(startKey, cycle);
-       cycle.add(startKey);
-       String nextKey = align.get(startKey);
-       // Not every cycle closes itself, so nextKey can == null:
-       while ((nextKey != null) && !nextKey.equals(startKey)) {
-         List<String> existing = cyclesPerStart.get(nextKey);
-         if (existing != null) {
-           cycle.addAll(existing);
-           cyclesPerStart.remove(nextKey);
-           if (working.contains(nextKey)) {
-             throw new IllegalStateException();
-           }
-           break;
-         } else {
-           cycle.add(nextKey);
-           working.remove(nextKey);
-           nextKey = align.get(nextKey);
-         }
-       }
-       if (cycle.size() > 1) {
-         System.out.println(cycle);
-       }
-     }
-     ArrayList<List<String>> retval = new ArrayList<List<String>>();
-     for (List<String> cyc : cyclesPerStart.values()) {  
-       retval.add(cyc);
-     }
-     return (retval);
-   }
   
   /****************************************************************************
    **

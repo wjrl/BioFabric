@@ -17,7 +17,7 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.layouts;
+package org.systemsbiology.biofabric.plugin.core.align;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,6 +31,7 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
@@ -43,7 +44,7 @@ import org.systemsbiology.biofabric.util.NID;
 ** This is the default layout algorithm
 */
 
-public class DefaultLayout extends NodeLayout {
+public class AlignCycleLayout extends NodeLayout {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -62,7 +63,7 @@ public class DefaultLayout extends NodeLayout {
   ** Constructor
   */
 
-  public DefaultLayout() {
+  public AlignCycleLayout() {
 
   }
 
@@ -81,8 +82,7 @@ public class DefaultLayout extends NodeLayout {
   		                                   Params params,
   		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
       
-    List<NID.WithName> startNodeIDs = (params == null) ? null : ((DefaultParams)params).startNodes;
-    List<NID.WithName> targetIDs = defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs, startNodeIDs, monitor);
+    List<NID.WithName> targetIDs = doNodeOrder(rbd, params, monitor);
 
     //
     // Now have the ordered list of targets we are going to display.
@@ -92,23 +92,61 @@ public class DefaultLayout extends NodeLayout {
     installNodeOrder(targetIDs, rbd, monitor);
     return (targetIDs);
   }
-
+  
+  /***************************************************************************
+  **
+  ** Relayout the network!
+  */
+  
+  public List<NID.WithName> doNodeOrder(BuildData.RelayoutBuildData rbd, 
+                                        Params params,
+                                        BTProgressMonitor monitor) throws AsynchExitRequestException {
+      
+    List<NID.WithName> startNodeIDs = (params == null) ? null : ((DefaultParams)params).startNodes;
+    
+    NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
+    
+    Map<String, String> normal = normalizeAlignMap(narbd.mapG1toG2);
+    
+    
+    
+    Set<NID.WithName> allNodes = genAllNodes(narbd);
+    Map<NID.WithName, String> nodesToPathElem = genNodeToPathElem(allNodes);
+    Map<String, NID.WithName> pathElemToNode = genPathElemToNode(allNodes); 
+    Map<String, AlignPath> alignPaths = calcAlignPaths(normal);
+        
+    List<NID.WithName> targetIDs = alignPathNodeOrder(rbd.allLinks, rbd.loneNodeIDs, 
+                                                      startNodeIDs, alignPaths, 
+                                                      nodesToPathElem,
+                                                      pathElemToNode,
+                                                      monitor);
+    return (targetIDs);
+  }
+  
   /***************************************************************************
   ** 
-  ** Calculate default node order. Used by several other layout classes
+  ** Calculate alignPath node order.
   */
 
-  public List<NID.WithName> defaultNodeOrder(Set<FabricLink> allLinks,
-  		                                       Set<NID.WithName> loneNodes, 
-  		                                       List<NID.WithName> startNodes, 
-  		                                       BTProgressMonitor monitor) throws AsynchExitRequestException { 
+  private List<NID.WithName> alignPathNodeOrder(Set<FabricLink> allLinks,
+  		                                          Set<NID.WithName> loneNodes, 
+  		                                          List<NID.WithName> startNodes,
+  		                                          Map<String, AlignPath> alignPaths,
+  		                                          Map<NID.WithName, String> nodesToPathElem,
+  		                                          Map<String, NID.WithName> pathElemToNode,  		                                          
+  		                                          BTProgressMonitor monitor) throws AsynchExitRequestException { 
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
     //
+    // NOTE! If we are handed a perfect alignment, we can build cycles even if the network is not aligned
+    // to itself!
     //
-    // Build a target list, top to bottom, that adds the node with the most
-    // links first, and adds those link targets ASAP. If caller supplies a start node,
-    // we go there first:
+    // We are handed a data structure that points from each aligned node to the alignment cycle it belongs to.
+    // Working with a start node (highest degree or from list), order neighbors by decreasing degree, but instead
+    // adding unseen nodes in that order to the queue, we add ALL the nodes in the cycle to the list, in cycle order.
+    // Choice of doing straight cycle order, or alternating order. If it is a true cycle (i.e. does not terminate in
+    // an unaligned node) we can start the cycle at the neighbor. If it is not a cycle but a path, we need to start
+    // at the beginning.
     // 
     
     HashMap<NID.WithName, Integer> linkCounts = new HashMap<NID.WithName, Integer>();
@@ -177,15 +215,13 @@ public class DefaultLayout extends NodeLayout {
       targsToGo.removeAll(startNodes);
       targets.addAll(startNodes);
       queue.addAll(startNodes);
-      flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue, monitor, 0.50, 0.75);
+      flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue, 
+                 alignPaths, nodesToPathElem, pathElemToNode, monitor, 0.50, 0.75);
     }   
     
     //
     // Get all kids added in.  Now doing this without recursion; seeing blown
     // stacks for huge networks!
-    //
-    // While we still have nodes to place, find the highest degree *unplaced* node, add it to order list,
-    // then handle all its children:
     //
      
     while (!targsToGo.isEmpty()) {
@@ -200,7 +236,9 @@ public class DefaultLayout extends NodeLayout {
             ArrayList<NID.WithName> queue = new ArrayList<NID.WithName>();
             targsToGo.remove(node);
             targets.add(node);
-            addMyKidsNR(targets, targsPerSource, linkCounts, targsToGo, node, queue, monitor, 0.75, 1.0);
+            addMyKidsNR(targets, targsPerSource, linkCounts, targsToGo, 
+                        node, queue, alignPaths, nodesToPathElem,
+                        pathElemToNode, monitor, 0.75, 1.0);
           }
         }
       }
@@ -224,7 +262,7 @@ public class DefaultLayout extends NodeLayout {
         
   /***************************************************************************
   **
-  ** Ordering of neighbor nodes. 
+  ** Node ordering
   */
   
   private List<NID.WithName> orderMyKids(Map<NID.WithName, Set<NID.WithName>> targsPerSource, 
@@ -234,9 +272,6 @@ public class DefaultLayout extends NodeLayout {
     if (targs == null) {
     	return (new ArrayList<NID.WithName>());
     }
-    //
-    // Get the kids ordered highest degree to lowest, with lex ordering if equal degree:
-    //
     TreeMap<Integer, SortedSet<NID.WithName>> kidMap = new TreeMap<Integer, SortedSet<NID.WithName>>(Collections.reverseOrder());
     Iterator<NID.WithName> tait = targs.iterator();
     while (tait.hasNext()) {  
@@ -249,10 +284,6 @@ public class DefaultLayout extends NodeLayout {
       }
       perCount.add(nextTarg);
     }
-    
-    //
-    // Go through that map and return an ordered list of neighbors *that have not yet been placed!!*
-    //
     
     ArrayList<NID.WithName> myKidsToProc = new ArrayList<NID.WithName>();
     Iterator<SortedSet<NID.WithName>> kmit = kidMap.values().iterator();
@@ -271,16 +302,20 @@ public class DefaultLayout extends NodeLayout {
   
   /***************************************************************************
   **
-  ** Handle all kids of the given node by adding it to the queue and flushing the queue:
+  ** Node ordering, non-recursive:
   */
   
   private void addMyKidsNR(List<NID.WithName> targets, Map<NID.WithName, Set<NID.WithName>> targsPerSource, 
                            Map<NID.WithName, Integer> linkCounts, 
                            Set<NID.WithName> targsToGo, NID.WithName node, List<NID.WithName> queue,
+                           Map<String, AlignPath> alignPaths,
+                           Map<NID.WithName, String> nodesToPathElem,
+                           Map<String, NID.WithName> pathElemToNode,
                            BTProgressMonitor monitor, double startFrac, double endFrac) 
                           	 throws AsynchExitRequestException {
     queue.add(node);
-    flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue, monitor, startFrac, endFrac);
+    flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue, alignPaths, nodesToPathElem,
+               pathElemToNode, monitor, startFrac, endFrac);
     return;
   }
   
@@ -292,7 +327,10 @@ public class DefaultLayout extends NodeLayout {
   private void flushQueue(List<NID.WithName> targets, 
   		                    Map<NID.WithName, Set<NID.WithName>> targsPerSource, 
                           Map<NID.WithName, Integer> linkCounts, 
-                          Set<NID.WithName> targsToGo, List<NID.WithName> queue, 
+                          Set<NID.WithName> targsToGo, List<NID.WithName> queue,
+                          Map<String, AlignPath> alignPaths,
+                          Map<NID.WithName, String> nodesToPathElem,
+                          Map<String, NID.WithName> pathElemToNode,
                           BTProgressMonitor monitor, double startFrac, double endFrac) 
                             throws AsynchExitRequestException {
   	
@@ -308,16 +346,191 @@ public class DefaultLayout extends NodeLayout {
       while (ktpit.hasNext()) {  
         NID.WithName kid = ktpit.next();
         if (targsToGo.contains(kid)) {
-          targsToGo.remove(kid);
-          targets.add(kid);
-          queue.add(kid);
+          // here we add the entire cycle containing the kid. If kid is not in a cycle (unaligned), we just add
+          // kid. If not a cycle but a path, we add the first kid in the path, then all following kids. If a cycle,
+          // we start with the kid, and loop back around to the kid in front of us.
+          String kidKey = nodesToPathElem.get(kid);
+          AlignPath ac = alignPaths.get(kidKey);
+          if (ac == null) {
+            targsToGo.remove(kid);
+            targets.add(kid);
+            queue.add(kid);    
+          } else {
+            targsToGo.removeAll(ac.pathNodes);
+            List<String> unlooped = ac.getReorderedKidsStartingAtKidOrStart(kidKey);
+            for (String ulnode : unlooped) { 
+              NID.WithName daNode = pathElemToNode.get(ulnode);
+              targsToGo.remove(daNode);
+              targets.add(daNode);
+              queue.add(daNode);
+            }
+          }
         }
       }
     }
     lr.finish();
     return;
   }
+
+  /***************************************************************************
+  **
+  ** In the alignment map we are provided, nodes in G1 and G2 that have the same
+  ** name have different OIDs. Eliminate this difference.
+  */
   
+  private Map<String, String> normalizeAlignMap(Map<NID.WithName, NID.WithName> align) { 
+
+     Map<String, String> nameToName = new HashMap<String, String>();
+     
+     for (NID.WithName key : align.keySet()) {
+       NID.WithName matchNode = align.get(key);
+       // Gotta be unique:
+       if (nameToName.containsKey(key)) {
+         throw new IllegalStateException();
+       }
+       nameToName.put(key.getName(), matchNode.getName());
+     }
+     return (nameToName);
+   } 
+  
+  /***************************************************************************
+  **
+  ** Get all nodes
+  */
+  
+  private Set<NID.WithName> genAllNodes(NetworkAlignmentBuildData narbd) { 
+
+    Set<NID.WithName> allNodes = new HashSet<NID.WithName>();
+     
+     for (FabricLink link : narbd.allLinks) {
+       allNodes.add(link.getSrcID());
+       allNodes.add(link.getTrgID());
+     }
+     allNodes.addAll(narbd.loneNodeIDs);
+     return (allNodes);
+   } 
+   
+  /***************************************************************************
+  **
+  ** Get map from network NID.WithName (of form G1::G2) to path elem (G1)
+  */
+  
+  private Map<NID.WithName, String> genNodeToPathElem(Set<NID.WithName> allNodes) { 
+
+     Map<NID.WithName, String> n2pe = new HashMap<NID.WithName, String>();
+     
+     for (NID.WithName key : allNodes) {
+       String[] toks = key.getName().split("::");
+       if (toks.length == 2) {
+         n2pe.put(key, toks[0]);
+       }
+     }
+     return (n2pe);
+   } 
+  
+  
+  /***************************************************************************
+  **
+  ** Inverse of above
+  */
+  
+  private Map<String, NID.WithName> genPathElemToNode(Set<NID.WithName> allNodes) { 
+
+    Map<String, NID.WithName> pe2n = new HashMap<String, NID.WithName>();
+    
+    for (NID.WithName key : allNodes) {
+      String[] toks = key.getName().split("::");
+      if (toks.length == 2) {
+        pe2n.put(toks[0], key);
+      }
+    }
+    return (pe2n);
+  } 
+  
+  
+  /***************************************************************************
+  **
+  ** Extract the paths in the alignment network:
+  */
+  
+  private Map<String, AlignPath> calcAlignPaths(Map<String, String> align) { 
+
+     Map<String, AlignPath> pathsPerStart = new HashMap<String, AlignPath>();
+     
+     HashSet<String> working = new HashSet<String>(align.keySet());
+     while (!working.isEmpty()) {
+       String startKey = working.iterator().next();
+       working.remove(startKey);
+       AlignPath path = new AlignPath();
+       pathsPerStart.put(startKey, path);
+       path.pathNodes.add(startKey);
+       String nextKey = align.get(startKey);
+       // Not every cycle closes itself, so nextKey can == null:
+       while (nextKey != null) {
+         if (nextKey.equals(startKey)) {
+           path.isCycle = true;
+           break;
+         }
+         AlignPath existing = pathsPerStart.get(nextKey);
+         if (existing != null) {
+           path.pathNodes.addAll(existing.pathNodes);
+           pathsPerStart.remove(nextKey);
+           if (working.contains(nextKey)) {
+             throw new IllegalStateException();
+           }
+           if (existing.isCycle) {
+             throw new IllegalStateException();
+           }
+           break;
+         } else {
+           path.pathNodes.add(nextKey);
+           working.remove(nextKey);
+           nextKey = align.get(nextKey);
+         }
+       }
+     }
+     Map<String, AlignPath> pathsPerEveryNode = new HashMap<String, AlignPath>();
+     for (String keyName : pathsPerStart.keySet()) {
+       AlignPath path = pathsPerStart.get(keyName);
+       for (String nextName : path.pathNodes) {
+         pathsPerEveryNode.put(nextName, path); 
+       }
+     }
+     return (pathsPerEveryNode);
+   }
+
+  /***************************************************************************
+  **
+  ** For passing around layout path
+  */  
+  
+  private static class AlignPath  {
+        
+    List<String> pathNodes;
+    boolean isCycle;
+
+    AlignPath() {
+      pathNodes = new ArrayList<String>();
+      isCycle = false;
+    } 
+    
+    List<String> getReorderedKidsStartingAtKidOrStart(String start) {
+      // If we have a loop, unroll it starting at the provided start:
+      if (isCycle) {
+        int startIndex = pathNodes.indexOf(start);
+        int len = pathNodes.size();
+        List<String> retval = new ArrayList<String>();
+        for (int i = 0; i < len; i++) {
+          int index = (startIndex + i) % len;
+          retval.add(pathNodes.get(index));
+        }
+        return (retval);
+      } else {
+        return (pathNodes);
+      }
+    }
+  }
+ 
   /***************************************************************************
   **
   ** For passing around layout params

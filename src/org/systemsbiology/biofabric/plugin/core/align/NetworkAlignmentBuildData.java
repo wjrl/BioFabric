@@ -30,7 +30,6 @@ import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
@@ -42,22 +41,27 @@ import org.systemsbiology.biofabric.util.UniqueLabeller;
 
 public class NetworkAlignmentBuildData extends BuildData.RelayoutBuildData {
   
+  public enum ViewType {GROUP, ORPHAN, CYCLE};
+  
   public Map<NID.WithName, Boolean> mergedToCorrect, isAlignedNode;
   public NetworkAlignmentPlugIn.NetAlignStats netAlignStats;
-  public boolean forOrphans;
+  public ViewType view;
+  public Map<NID.WithName, NID.WithName> mapG1toG2;
 
   public NetworkAlignmentBuildData(UniqueLabeller idGen,
                                    Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
                                    Map<NID.WithName, Boolean> mergedToCorrect,
                                    Map<NID.WithName, Boolean> isAlignedNode,
                                    NetworkAlignmentPlugIn.NetAlignStats netAlignStats,
-                                   Map<NID.WithName, String> clustAssign, boolean forOrphans) {
+                                   Map<NID.WithName, String> clustAssign, ViewType view, 
+                                   Map<NID.WithName, NID.WithName> mapG1toG2) {
     super(idGen, allLinks, loneNodeIDs, clustAssign, null, BuildData.BuildMode.BUILD_FROM_PLUGIN);
     this.layoutMode = BioFabricNetwork.LayoutMode.PER_NETWORK_MODE;
-    this.forOrphans = forOrphans;
+    this.view = view;
     this.mergedToCorrect = mergedToCorrect;
     this.isAlignedNode = isAlignedNode;
     this.netAlignStats = netAlignStats;
+    this.mapG1toG2 = mapG1toG2;
   }
 
   @Override
