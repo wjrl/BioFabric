@@ -52,6 +52,7 @@ public class AlignCycleLayout extends NodeLayout {
   //
   ////////////////////////////////////////////////////////////////////////////
 
+    
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTRUCTORS
@@ -499,6 +500,8 @@ public class AlignCycleLayout extends NodeLayout {
      return (pathsPerEveryNode);
    }
 
+
+  
   /***************************************************************************
   **
   ** For passing around layout path

@@ -25,6 +25,8 @@ package org.systemsbiology.biofabric.plugin.core.align;
 import java.util.Map;
 import java.util.Set;
 
+import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
+import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.EdgeLayout;
 import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
@@ -66,12 +68,30 @@ public class NetworkAlignmentBuildData extends BuildData.RelayoutBuildData {
 
   @Override
   public NodeLayout getNodeLayout() {
-    return (new NetworkAlignmentLayout());  
+    switch (view) {
+      case GROUP:
+        return (new NetworkAlignmentLayout());
+      case ORPHAN:
+        return (new DefaultLayout());
+      case CYCLE:
+        return (new AlignCycleLayout());
+      default:
+        throw new IllegalStateException();
+    }
   }
 
   @Override
   public EdgeLayout getEdgeLayout() {
-    return (new NetworkAlignmentEdgeLayout());
+    switch (view) {
+      case GROUP:
+        return (new NetworkAlignmentEdgeLayout());
+      case ORPHAN:
+        return (new DefaultEdgeLayout());
+      case CYCLE:
+        return (new AlignCycleEdgeLayout());
+      default:
+        throw new IllegalStateException();
+    } 
   }
   
   @Override

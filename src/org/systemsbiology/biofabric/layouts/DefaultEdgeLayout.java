@@ -19,6 +19,7 @@
 
 package org.systemsbiology.biofabric.layouts;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -29,6 +30,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
@@ -37,6 +39,7 @@ import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -161,7 +164,76 @@ public class DefaultEdgeLayout implements EdgeLayout {
    
     SortedMap<Integer, FabricLink> retval = layoutEdges(rbd.nodeOrder, rbd.allLinks, rbd.linkGroups, rbd.layoutMode, monitor);
     rbd.setLinkOrder(retval);
+    installLinkAnnotations(rbd, monitor);
+    
     return;
+  }
+
+  /***************************************************************************
+  **
+  ** Install link annotations for 
+  */
+  
+  protected void installLinkAnnotations(BuildData.RelayoutBuildData rbd, BTProgressMonitor monitor)
+    throws AsynchExitRequestException {
+  
+    LoopReporter lr = new LoopReporter(rbd.linkOrder.size(), 20, monitor, 0, 1.0, "progress.linkAnnotationPrep");  
+    List<FabricLink> linkList = new ArrayList<FabricLink>();  
+    for (FabricLink link : rbd.linkOrder.values()) {   
+      linkList.add(link);
+      lr.report();
+    }
+    lr.finish();
+    
+    AnnotationSet nonShdwAnnots = calcGroupLinkAnnots(linkList, monitor, false);
+    AnnotationSet withShdwAnnots = calcGroupLinkAnnots(linkList, monitor, true);
+    
+    Map<Boolean, AnnotationSet> linkAnnots = new HashMap<Boolean, AnnotationSet>();
+    linkAnnots.put(true, withShdwAnnots);
+    linkAnnots.put(false, nonShdwAnnots);
+    
+    rbd.setLinkAnnotations(linkAnnots);
+    return;
+  }
+ 
+  /***************************************
+  **
+  ** Calculate link group link annotations 
+  */
+    
+  private AnnotationSet calcGroupLinkAnnots(List<FabricLink> links, BTProgressMonitor monitor, 
+                                            boolean shadow) throws AsynchExitRequestException {   
+    
+    String which = (shadow) ? "progress.linkAnnotationShad" : "progress.linkAnnotationNoShad";
+    LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0, 1.0, which);   
+
+    AnnotationSet retval = new AnnotationSet();
+    String lastType = null;
+    int startPos = 0;
+    int endPos = 0;
+    int numLink = links.size();
+    for (int i = 0; i < numLink; i++) {
+      FabricLink link = links.get(i);
+      lr.report();
+      if (link.isShadow() && !shadow) {
+        continue;
+      }
+      String thisType = link.getRelation();
+      if (lastType == null) {
+        lastType = thisType;      
+        startPos = i;
+      } else if (lastType.equals(thisType)) {
+        // do nothing              
+      } else {
+        retval.addAnnot(new AnnotationSet.Annot(lastType, startPos, endPos, 0, getColor(lastType)));
+        lastType = thisType;
+        startPos = i;
+      }
+      endPos = i;
+    }
+    retval.addAnnot(new AnnotationSet.Annot(lastType, startPos, endPos, 0, getColor(lastType)));
+    lr.finish();
+    return (retval);
   }
 
   /***************************************************************************
@@ -413,5 +485,24 @@ public class DefaultEdgeLayout implements EdgeLayout {
   		int relComp = link1Rel.compareTo(link2Rel);
   	  return (relComp);
    	}
+  } 
+ 
+  /***************************************
+  **
+  ** Get the color
+  */
+     
+  public String getColor(String type) {
+    UiUtil.fixMePrintout("This needs to be generalized to cycle!");
+    String trimmed = type.trim();
+    if (trimmed.equals("G12")) {
+      return ("Purple");
+    } else if (trimmed.equals("G1A")) {
+      return ("PowderBlue");
+    } else if (trimmed.equals("G2A")) {
+      return ("Pink");
+    } else {
+      return ("Pink");
+    }
   } 
 }
