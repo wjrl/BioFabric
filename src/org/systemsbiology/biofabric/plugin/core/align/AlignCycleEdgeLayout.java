@@ -21,9 +21,11 @@ package org.systemsbiology.biofabric.plugin.core.align;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
+import java.util.TreeMap;
 
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
@@ -34,6 +36,7 @@ import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -88,54 +91,85 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
   
   /***************************************
   **
-  ** Write out link annotation file
+  ** Calc link annotations
+  */ 
   
+  @Override
+  protected AnnotationSet calcGroupLinkAnnots(BuildData.RelayoutBuildData rbd, 
+                                              List<FabricLink> links, BTProgressMonitor monitor, 
+                                              boolean shadow, List<String> linkGroups) throws AsynchExitRequestException { 
     
-  private AnnotationSet writeLinkAnnotBlockCycle(List<String> links, List<NID.WithName> nodes, PrintWriter out, boolean shadow, List<String[]> bounds) throws IOException {    
-         
+    NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
+    TreeMap<Integer, NID.WithName> invert = new TreeMap<Integer, NID.WithName>();
+    for (NID.WithName node : rbd.nodeOrder.keySet()) {
+      invert.put(rbd.nodeOrder.get(node), node);
+    }
+    ArrayList<NID.WithName> order = new ArrayList<NID.WithName>(invert.values());
+    return (calcGroupLinkAnnotsCycle(links, order, monitor, 
+                                     shadow, narbd.cycleBounds, linkGroups));
+  }
+
+  /***************************************
+  **
+  ** Write out link annotation file
+  */
+    
+  private AnnotationSet calcGroupLinkAnnotsCycle(List<FabricLink> links, List<NID.WithName> nodes,
+                                                 BTProgressMonitor monitor, 
+                                                 boolean shadow, List<NID.WithName[]> bounds, 
+                                                 List<String> linkGroups) throws AsynchExitRequestException {
+  
+    String which = (shadow) ? "progress.linkAnnotationShad" : "progress.linkAnnotationNoShad";
+    LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0, 1.0, which); 
+      
     HashMap<NID.WithName, Integer> nodeOrder = new HashMap<NID.WithName, Integer>();
     for (int i = 0; i < nodes.size(); i++) {
       nodeOrder.put(nodes.get(i), Integer.valueOf(i));      
-    } 
-    String shadTag = (shadow) ? "isShadow" : "noShadow";
-    // Purple "853996-TRM11 (G12) 855782-TRM112"  "855114-YTA12 (G12) 853033-PHB1"  0 noShadow
-    String currZoner = null;
-    String[] currLooper = new String[2];
-    String startLink = null;
-    String endLink = null;
-    HashSet<String> seen = new HashSet<String>();
+    }
+    
+    NID.WithName currZoner = null;
+    NID.WithName[] currLooper = new NID.WithName[2];
+    HashSet<NID.WithName> seen = new HashSet<NID.WithName>();
     int cycle = 0;
-    for (String link : links) {
-      if ((link.indexOf("shdw") != -1) && !shadow) {
+
+    AnnotationSet retval = new AnnotationSet();
+    int startPos = 0;
+    int endPos = 0;
+    int numLink = links.size();
+    int count = 0;
+    for (int i = 0; i < numLink; i++) {
+      FabricLink link = links.get(i);
+      lr.report();
+      if (link.isShadow() && !shadow) {
         continue;
       }
-      String[] linodes = getNodes(link);
-      boolean linkIsShad = isShadow(link);
-      String zoner = getZoneNode(linodes, nodeOrder, linkIsShad);
+      UiUtil.fixMePrintout("FIRST CYCLE BEING MISSED (check via looper[1] != looper[0] test omitted");
+      NID.WithName zoner = getZoneNode(link, nodeOrder, link.isShadow());
       if ((currZoner == null) || !currZoner.equals(zoner)) { // New Zone
         if (currZoner != null) { // End the zone
-          System.out.println("CZ " + currZoner +  " zo " + zoner);
           if (currZoner.equals(currLooper[1])) {
-            String color = (cycle % 2 == 0) ? "PowderBlue" : "Pink";
-            out.println("cycle " + cycle++  + "\t\"" + startLink +  "\"\t\"" + endLink + "\"\t0\t" + shadTag + "\t" + color);
-            System.out.println("slel " + startLink +  " ::: " + endLink);
+            if (!currLooper[0].equals(currLooper[1])) {
+              String color = (cycle % 2 == 0) ? "Orange" : "Green";
+              retval.addAnnot(new AnnotationSet.Annot("cycle " + cycle++, startPos, endPos, 0, color));
+            }
           }
         }
         currZoner = zoner;
-        for (String[] bound : bounds) {
+        for (NID.WithName[] bound : bounds) {
           if (!seen.contains(bound[0]) && bound[0].equals(currZoner)) {
-            startLink = link;
+            startPos = count;
             seen.add(bound[0]);
             currLooper = bound;
-            System.out.println("CL " + currLooper[0] +  " 1: " + currLooper[1]);
           }
         }
       }
-      endLink = link;
+      endPos = count++;
     }
-    String color = (cycle % 2 == 0) ? "PowderBlue" : "Pink";
-    out.println("cycle " + cycle++  + "\t\"" + startLink +  "\"\t\"" + endLink + "\"\t0\t" + shadTag + "\t" + color);
-    return;
+    if (!currLooper[0].equals(currLooper[1])) {
+      String color = (cycle % 2 == 0) ? "Orange" : "Green";
+      retval.addAnnot(new AnnotationSet.Annot("cycle " + cycle++, startPos, endPos, 0, color));
+    }
+    return (retval);
   }
   
   /***************************************
@@ -144,14 +178,14 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
   ** a regular link
   */
     
-  private NID.WithName getZoneNode(NID.WithName[] linodes, Map<NID.WithName, Integer> nodes, boolean isShadow) {
-    int zeroIndex = nodes.get(linodes[0]).intValue();
-    int oneIndex = nodes.get(linodes[1]).intValue();
+  private NID.WithName getZoneNode(FabricLink link, Map<NID.WithName, Integer> nodes, boolean isShadow) {
+    int zeroIndex = nodes.get(link.getSrcID()).intValue();
+    int oneIndex = nodes.get(link.getTrgID()).intValue();
     if (isShadow) {
-      NID.WithName botnode = (zeroIndex < oneIndex) ? linodes[1] : linodes[0];
+      NID.WithName botnode = (zeroIndex < oneIndex) ? link.getTrgID() : link.getSrcID();
       return (botnode);
     } else {
-      NID.WithName topnode = (zeroIndex < oneIndex) ? linodes[0] : linodes[1];
+      NID.WithName topnode = (zeroIndex < oneIndex) ? link.getSrcID() : link.getTrgID();
       return (topnode); 
     }
   }
@@ -160,8 +194,9 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
   **
   ** Get the color
   */
-     
-  public String getColor(String type) {
+  
+  @Override
+  protected String getColor(String type, Map<String, String> colorMap) {
     String trimmed = type.trim();
     if (trimmed.equals("G12")) {
       return ("Purple");

@@ -22,6 +22,7 @@
 
 package org.systemsbiology.biofabric.plugin.core.align;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -49,6 +50,7 @@ public class NetworkAlignmentBuildData extends BuildData.RelayoutBuildData {
   public NetworkAlignmentPlugIn.NetAlignStats netAlignStats;
   public ViewType view;
   public Map<NID.WithName, NID.WithName> mapG1toG2;
+  public List<NID.WithName[]> cycleBounds;
 
   public NetworkAlignmentBuildData(UniqueLabeller idGen,
                                    Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,

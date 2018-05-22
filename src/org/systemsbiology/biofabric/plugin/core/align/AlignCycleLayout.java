@@ -109,18 +109,19 @@ public class AlignCycleLayout extends NodeLayout {
     
     Map<String, String> normal = normalizeAlignMap(narbd.mapG1toG2);
     
-    
-    
     Set<NID.WithName> allNodes = genAllNodes(narbd);
     Map<NID.WithName, String> nodesToPathElem = genNodeToPathElem(allNodes);
     Map<String, NID.WithName> pathElemToNode = genPathElemToNode(allNodes); 
     Map<String, AlignPath> alignPaths = calcAlignPaths(normal);
+    List<NID.WithName[]> cycleBounds = new ArrayList<NID.WithName[]>();
         
     List<NID.WithName> targetIDs = alignPathNodeOrder(rbd.allLinks, rbd.loneNodeIDs, 
                                                       startNodeIDs, alignPaths, 
                                                       nodesToPathElem,
                                                       pathElemToNode,
+                                                      cycleBounds,
                                                       monitor);
+    narbd.cycleBounds = cycleBounds;
     return (targetIDs);
   }
   
@@ -134,7 +135,8 @@ public class AlignCycleLayout extends NodeLayout {
   		                                          List<NID.WithName> startNodes,
   		                                          Map<String, AlignPath> alignPaths,
   		                                          Map<NID.WithName, String> nodesToPathElem,
-  		                                          Map<String, NID.WithName> pathElemToNode,  		                                          
+  		                                          Map<String, NID.WithName> pathElemToNode,
+  		                                          List<NID.WithName[]> cycleBounds,
   		                                          BTProgressMonitor monitor) throws AsynchExitRequestException { 
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
@@ -217,7 +219,7 @@ public class AlignCycleLayout extends NodeLayout {
       targets.addAll(startNodes);
       queue.addAll(startNodes);
       flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue, 
-                 alignPaths, nodesToPathElem, pathElemToNode, monitor, 0.50, 0.75);
+                 alignPaths, nodesToPathElem, pathElemToNode, cycleBounds, monitor, 0.50, 0.75);
     }   
     
     //
@@ -239,7 +241,7 @@ public class AlignCycleLayout extends NodeLayout {
             targets.add(node);
             addMyKidsNR(targets, targsPerSource, linkCounts, targsToGo, 
                         node, queue, alignPaths, nodesToPathElem,
-                        pathElemToNode, monitor, 0.75, 1.0);
+                        pathElemToNode, cycleBounds, monitor, 0.75, 1.0);
           }
         }
       }
@@ -312,11 +314,12 @@ public class AlignCycleLayout extends NodeLayout {
                            Map<String, AlignPath> alignPaths,
                            Map<NID.WithName, String> nodesToPathElem,
                            Map<String, NID.WithName> pathElemToNode,
+                           List<NID.WithName[]> cycleBounds,
                            BTProgressMonitor monitor, double startFrac, double endFrac) 
                           	 throws AsynchExitRequestException {
     queue.add(node);
     flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue, alignPaths, nodesToPathElem,
-               pathElemToNode, monitor, startFrac, endFrac);
+               pathElemToNode, cycleBounds, monitor, startFrac, endFrac);
     return;
   }
   
@@ -332,6 +335,7 @@ public class AlignCycleLayout extends NodeLayout {
                           Map<String, AlignPath> alignPaths,
                           Map<NID.WithName, String> nodesToPathElem,
                           Map<String, NID.WithName> pathElemToNode,
+                          List<NID.WithName[]> cycleBounds,
                           BTProgressMonitor monitor, double startFrac, double endFrac) 
                             throws AsynchExitRequestException {
   	
@@ -363,8 +367,13 @@ public class AlignCycleLayout extends NodeLayout {
               NID.WithName daNode = pathElemToNode.get(ulnode);
               targsToGo.remove(daNode);
               targets.add(daNode);
+              
               queue.add(daNode);
             }
+            NID.WithName[] bounds = new NID.WithName[2];
+            cycleBounds.add(bounds);
+            bounds[0] = pathElemToNode.get(unlooped.get(0));
+            bounds[1] = pathElemToNode.get(unlooped.get(unlooped.size() - 1));
           }
         }
       }
