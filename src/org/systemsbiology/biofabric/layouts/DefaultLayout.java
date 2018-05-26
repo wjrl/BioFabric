@@ -184,6 +184,9 @@ public class DefaultLayout extends NodeLayout {
     // Get all kids added in.  Now doing this without recursion; seeing blown
     // stacks for huge networks!
     //
+    // While we still have nodes to place, find the highest degree *unplaced* node, add it to order list,
+    // then handle all its children:
+    //
      
     while (!targsToGo.isEmpty()) {
       Iterator<Integer> crit = countRank.keySet().iterator();
@@ -221,7 +224,7 @@ public class DefaultLayout extends NodeLayout {
         
   /***************************************************************************
   **
-  ** Node ordering
+  ** Ordering of neighbor nodes. 
   */
   
   private List<NID.WithName> orderMyKids(Map<NID.WithName, Set<NID.WithName>> targsPerSource, 
@@ -231,6 +234,9 @@ public class DefaultLayout extends NodeLayout {
     if (targs == null) {
     	return (new ArrayList<NID.WithName>());
     }
+    //
+    // Get the kids ordered highest degree to lowest, with lex ordering if equal degree:
+    //
     TreeMap<Integer, SortedSet<NID.WithName>> kidMap = new TreeMap<Integer, SortedSet<NID.WithName>>(Collections.reverseOrder());
     Iterator<NID.WithName> tait = targs.iterator();
     while (tait.hasNext()) {  
@@ -243,6 +249,10 @@ public class DefaultLayout extends NodeLayout {
       }
       perCount.add(nextTarg);
     }
+    
+    //
+    // Go through that map and return an ordered list of neighbors *that have not yet been placed!!*
+    //
     
     ArrayList<NID.WithName> myKidsToProc = new ArrayList<NID.WithName>();
     Iterator<SortedSet<NID.WithName>> kmit = kidMap.values().iterator();
@@ -261,7 +271,7 @@ public class DefaultLayout extends NodeLayout {
   
   /***************************************************************************
   **
-  ** Node ordering, non-recursive:
+  ** Handle all kids of the given node by adding it to the queue and flushing the queue:
   */
   
   private void addMyKidsNR(List<NID.WithName> targets, Map<NID.WithName, Set<NID.WithName>> targsPerSource, 

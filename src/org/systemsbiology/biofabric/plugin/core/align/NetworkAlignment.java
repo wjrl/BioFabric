@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +50,7 @@ import org.systemsbiology.biofabric.util.UniqueLabeller;
  */
 
 public class NetworkAlignment {
-  
+   
   public static final String                // Ordered as in the default link group order
           COVERED_EDGE = "G12",             // Covered Edges
           GRAPH1 = "G1A",                   // G1 Edges w/ two aligned nodes (all non-covered G1 Edges)
@@ -74,7 +75,7 @@ public class NetworkAlignment {
   private HashSet<NID.WithName> lonersG1_;
   private ArrayList<FabricLink> linksG2_;
   private HashSet<NID.WithName> lonersG2_;
-  private boolean forOrphanEdges;
+  private NetworkAlignmentBuildData.ViewType outType_;
   private UniqueLabeller idGen_;
   private BTProgressMonitor monitor_;
   
@@ -108,7 +109,7 @@ public class NetworkAlignment {
                           ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
                           ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
                           Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
-                          boolean forOrphanEdges, UniqueLabeller idGen, BTProgressMonitor monitor) {
+                          NetworkAlignmentBuildData.ViewType outType, UniqueLabeller idGen, BTProgressMonitor monitor) {
     
     this.mapG1toG2_ = mapG1toG2;
     this.perfectG1toG2_ = perfectG1toG2_;
@@ -116,7 +117,7 @@ public class NetworkAlignment {
     this.lonersG1_ = lonersG1;
     this.linksG2_ = linksG2;
     this.lonersG2_ = lonersG2;
-    this.forOrphanEdges = forOrphanEdges;
+    this.outType_ = outType;
     this.idGen_ = idGen;
     this.monitor_ = monitor;
     
@@ -171,7 +172,7 @@ public class NetworkAlignment {
     // Orphan Edges: All unaligned edges; plus all of their endpoint nodes' edges
     //
     
-    if (forOrphanEdges) {
+    if (outType_ == NetworkAlignmentBuildData.ViewType.ORPHAN) {
       (new OrphanEdgeLayout()).process(mergedLinks_, mergedLoners_, monitor_);
     }
     
@@ -195,6 +196,9 @@ public class NetworkAlignment {
     largeToMergedID_ = new TreeMap<NID.WithName, NID.WithName>();
     mergedIDToSmall_ = new TreeMap<NID.WithName, NID.WithName>();
     
+    boolean doingPerfectGroup = (outType_ == NetworkAlignmentBuildData.ViewType.GROUP) && 
+                                (perfectG1toG2_ != null);
+     
     for (Map.Entry<NID.WithName, NID.WithName> entry : mapG1toG2_.entrySet()) {
       
       NID.WithName smallNode = entry.getKey(), largeNode = entry.getValue();
@@ -217,7 +221,7 @@ public class NetworkAlignment {
       // Nodes are correctly aligned map
       //
       
-      if (perfectG1toG2_ != null) { // perfect alignment must be provided
+      if (doingPerfectGroup) { // perfect alignment must be provided
         NID.WithName perfectLarge = perfectG1toG2_.get(smallNode);
         boolean alignedCorrect = perfectLarge.equals(largeNode);
         mergedToCorrect_.put(merged_node, alignedCorrect);
