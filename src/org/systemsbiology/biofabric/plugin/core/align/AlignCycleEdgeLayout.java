@@ -82,9 +82,12 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
                               BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     List<String> groupOrder = new ArrayList<String>();
-    groupOrder.add("G1A");
-    groupOrder.add("G12");
-    groupOrder.add("G2A");
+
+    groupOrder.add(NetworkAlignment.GRAPH1);
+    groupOrder.add(NetworkAlignment.COVERED_EDGE);
+    groupOrder.add(NetworkAlignment.INDUCED_GRAPH2);
+    groupOrder.add(NetworkAlignment.HALF_UNALIGNED_GRAPH2);
+    groupOrder.add(NetworkAlignment.FULL_UNALIGNED_GRAPH2);
     rbd.setGroupOrderAndMode(groupOrder, BioFabricNetwork.LayoutMode.PER_NODE_MODE);  
     return;
   } 
@@ -137,6 +140,8 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
     int endPos = 0;
     int numLink = links.size();
     int count = 0;
+    boolean first = true;
+    System.out.println("bound bound " + bounds.get(0)[0] + " " + bounds.get(0)[1]);
     for (int i = 0; i < numLink; i++) {
       FabricLink link = links.get(i);
       lr.report();
@@ -145,6 +150,10 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
       }
       UiUtil.fixMePrintout("FIRST CYCLE BEING MISSED (check via looper[1] != looper[0] test omitted");
       NID.WithName zoner = getZoneNode(link, nodeOrder, link.isShadow());
+      if (first) {
+        first = false;
+        System.out.println("zoner " + zoner);
+      }
       if ((currZoner == null) || !currZoner.equals(zoner)) { // New Zone
         if (currZoner != null) { // End the zone
           if (currZoner.equals(currLooper[1])) {

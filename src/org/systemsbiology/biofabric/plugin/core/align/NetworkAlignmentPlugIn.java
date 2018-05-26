@@ -382,7 +382,15 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     } else {
       perfectG1toG2 = null;
     }
-  
+    
+    //
+    // The CaseII cycle alignment can use the perfect alignment file, so we need to be more
+    // specific about when the perfect/Group analysis is being done:
+    //
+    
+    boolean doingPerfectGroup = (outType == NetworkAlignmentBuildData.ViewType.GROUP) && 
+                                (perfectG1toG2 != null);
+       
     File holdIt;
     try {
       holdIt = File.createTempFile("BioFabricHold", ".zip");
@@ -402,7 +410,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     SortedMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
     Set<FabricLink> reducedLinks = new HashSet<FabricLink>();
     Map<NID.WithName, Boolean> mergedToCorrect = null, isAlignedNode = new HashMap<NID.WithName, Boolean>();
-    if (perfectG1toG2 != null) {
+    if (doingPerfectGroup) {
       mergedToCorrect = new HashMap<NID.WithName, Boolean>();
     }
     
@@ -420,7 +428,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     Set<FabricLink> reducedLinksPerfect = null;
     Map<NID.WithName, Boolean> isAlignedNodePerfect = null;
     
-    if (finished && perfectG1toG2 != null) {
+    if (finished && doingPerfectGroup) {
       //
       // We now have to process the Perfect alignment so we can compare the links/nodes (topology, etc)
       // between the given alignment and the perfect alignment. The added -'Perfect' on the variable names
@@ -442,7 +450,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       finished = flf_.handleDirectionsDupsAndShadows(mergedLinks, mergedLoneNodeIDs, false, relMap, reducedLinks, holdIt);
     }
     
-    if (finished && perfectG1toG2 != null) { // for perfect alignment
+    if (finished && doingPerfectGroup) { // for perfect alignment
       finished = flf_.handleDirectionsDupsAndShadows(mergedLinksPerfect, mergedLoneNodeIDsPerfect, false, relMapPerfect, reducedLinksPerfect, holdIt);
     }
   
@@ -454,7 +462,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    
     if (finished) { // Load the alignments
       networkAlignmentStepFive(reducedLinks, mergedLoneNodeIDs, mergedToCorrect, isAlignedNode, 
-                               mapG1toG2, netAlignStats_, outType, idGen, nadi.align, holdIt);
+                               mapG1toG2, perfectG1toG2, netAlignStats_, outType, 
+                               idGen, nadi.align, holdIt);
     }
     return (true);
   }
@@ -491,6 +500,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
                                            Map<NID.WithName, Boolean> mergedToCorrect, 
                                            Map<NID.WithName, Boolean> isAlignedNode,
                                            Map<NID.WithName, NID.WithName> mapG1toG2,
+                                           Map<NID.WithName, NID.WithName> perfectMap,
                                            NetAlignStats report, 
                                            NetworkAlignmentBuildData.ViewType viewType, 
                                            UniqueLabeller idGen, File align, File holdIt) {
@@ -498,7 +508,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     HashMap<NID.WithName, String> emptyClustMap = new HashMap<NID.WithName, String>();
     NetworkAlignmentBuildData nabd = 
       new NetworkAlignmentBuildData(idGen, reducedLinks, loneNodeIDs, mergedToCorrect,
-                                    isAlignedNode, report, emptyClustMap, viewType, mapG1toG2);   
+                                    isAlignedNode, report, emptyClustMap, 
+                                    viewType, mapG1toG2, perfectMap);   
 
     try {
       flf_.buildNetworkForPlugIn(nabd, holdIt); 
@@ -583,7 +594,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
         return (false);
       }    
     
-      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame, false);
+      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame,  
+                                                              NetworkAlignmentBuildData.ViewType.GROUP);
       nad.setVisible(true);
       
       if(!nad.haveResult()) {
@@ -643,7 +655,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
         return (false);
       }    
     
-      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame, true);
+      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame, NetworkAlignmentBuildData.ViewType.CYCLE);
       nad.setVisible(true);
       
       if(!nad.haveResult()) {
@@ -699,7 +711,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
         return (false);
       }
       
-      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame, true);
+      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame, NetworkAlignmentBuildData.ViewType.ORPHAN);
       nad.setVisible(true);
       
       if(!nad.haveResult()) {

@@ -1894,6 +1894,10 @@ public class BioFabricNetwork {
       Integer rowObj = Integer.valueOf(currRow);
       rowToTargID_.put(rowObj, targetID);
       String colorKey = colGen.getGeneColor(currRow % numColors);
+      if (targetID == null) {
+        System.out.println("targetID is Null " + rowObj);
+      }
+
       NodeInfo nextNI = new NodeInfo(targetID.getNID(), targetID.getName(), currRow++, colorKey);
       if (clustAssign != null) {
       	nextNI.setCluster(clustAssign.get(targetID));

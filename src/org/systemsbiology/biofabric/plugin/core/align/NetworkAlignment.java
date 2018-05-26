@@ -196,6 +196,9 @@ public class NetworkAlignment {
     largeToMergedID_ = new TreeMap<NID.WithName, NID.WithName>();
     mergedIDToSmall_ = new TreeMap<NID.WithName, NID.WithName>();
     
+    boolean doingPerfectGroup = (outType_ == NetworkAlignmentBuildData.ViewType.GROUP) && 
+                                (perfectG1toG2_ != null);
+     
     for (Map.Entry<NID.WithName, NID.WithName> entry : mapG1toG2_.entrySet()) {
       
       NID.WithName smallNode = entry.getKey(), largeNode = entry.getValue();
@@ -218,7 +221,7 @@ public class NetworkAlignment {
       // Nodes are correctly aligned map
       //
       
-      if (perfectG1toG2_ != null) { // perfect alignment must be provided
+      if (doingPerfectGroup) { // perfect alignment must be provided
         NID.WithName perfectLarge = perfectG1toG2_.get(smallNode);
         boolean alignedCorrect = perfectLarge.equals(largeNode);
         mergedToCorrect_.put(merged_node, alignedCorrect);

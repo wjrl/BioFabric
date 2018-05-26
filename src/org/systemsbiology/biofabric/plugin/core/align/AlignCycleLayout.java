@@ -20,6 +20,7 @@
 package org.systemsbiology.biofabric.plugin.core.align;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,6 +32,7 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.systemsbiology.biofabric.layouts.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
@@ -38,6 +40,7 @@ import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -51,7 +54,8 @@ public class AlignCycleLayout extends NodeLayout {
   // PRIVATE INSTANCE MEMBERS
   //
   ////////////////////////////////////////////////////////////////////////////
-
+  
+  private NodeMaps maps_;
     
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -65,7 +69,7 @@ public class AlignCycleLayout extends NodeLayout {
   */
 
   public AlignCycleLayout() {
-
+    maps_ = null;
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -74,6 +78,37 @@ public class AlignCycleLayout extends NodeLayout {
   //
   ////////////////////////////////////////////////////////////////////////////
 
+  /***************************************************************************
+  **
+  ** Find out if the necessary conditions for this layout are met. For this layout, we either
+  ** need to have the source and target nodes of the alignment in the same namespace, or a
+  ** perfect alignment file to map the two namespaces.
+  ** If you reuse the same object, this layout will cache the calculation it uses to answer
+  ** the question for the actual layout!
+  */
+  
+  @Override
+  public boolean criteriaMet(BuildData.RelayoutBuildData rbd,
+                             BTProgressMonitor monitor) throws AsynchExitRequestException, 
+                                                               LayoutCriterionFailureException {
+    
+    NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
+    maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectMap);
+    return (true);
+  }
+  
+  /***************************************************************************
+  **
+  ** If you reuse the same object, this layout will cache the calculation it uses to answer
+  ** the question for the actual layout. If you need to clear the cache, use this:
+  */
+  
+  public void clearCache() {
+    maps_ = null;
+    return;
+  }
+  
+   
   /***************************************************************************
   **
   ** Relayout the network!
@@ -107,12 +142,14 @@ public class AlignCycleLayout extends NodeLayout {
     
     NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
     
-    Map<String, String> normal = normalizeAlignMap(narbd.mapG1toG2);
+    if (maps_ == null) {
+      maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectMap);
+    }
     
     Set<NID.WithName> allNodes = genAllNodes(narbd);
     Map<NID.WithName, String> nodesToPathElem = genNodeToPathElem(allNodes);
     Map<String, NID.WithName> pathElemToNode = genPathElemToNode(allNodes); 
-    Map<String, AlignPath> alignPaths = calcAlignPaths(normal);
+    Map<String, AlignPath> alignPaths = calcAlignPaths(maps_);
     List<NID.WithName[]> cycleBounds = new ArrayList<NID.WithName[]>();
         
     List<NID.WithName> targetIDs = alignPathNodeOrder(rbd.allLinks, rbd.loneNodeIDs, 
@@ -260,6 +297,7 @@ public class AlignCycleLayout extends NodeLayout {
     remains.removeAll(targets);
     System.err.println("remains now " + remains.size());
     targets.addAll(new TreeSet<NID.WithName>(remains));
+    
     return (targets);
   }
         
@@ -365,8 +403,17 @@ public class AlignCycleLayout extends NodeLayout {
             List<String> unlooped = ac.getReorderedKidsStartingAtKidOrStart(kidKey);
             for (String ulnode : unlooped) { 
               NID.WithName daNode = pathElemToNode.get(ulnode);
+              System.out.println("da node for " + ulnode + " is " + daNode);
+              if (daNode == null) {
+                // Seeing this with reduced to SC on 0.03 importance!
+                System.out.println("no node for " + ulnode);
+                UiUtil.fixMePrintout("NO! Gotta have perfect alignment file so we can go backwards to smaller network");
+                UiUtil.fixMePrintout("AND if there is no node BB for AA::BB, that's NORMAL");
+                throw new IllegalStateException();
+              }
               targsToGo.remove(daNode);
               targets.add(daNode);
+              
               
               queue.add(daNode);
             }
@@ -385,14 +432,55 @@ public class AlignCycleLayout extends NodeLayout {
   /***************************************************************************
   **
   ** In the alignment map we are provided, nodes in G1 and G2 that have the same
-  ** name have different OIDs. Eliminate this difference.
+  ** name have different OIDs. Eliminate this difference. Also, if the source and
+  ** target are not in the same namespace, we need to use the perfect alignment 
+  ** (if available) to create the cycle/path map. 
   */
   
-  private Map<String, String> normalizeAlignMap(Map<NID.WithName, NID.WithName> align) { 
+  private NodeMaps normalizeAlignMap(Map<NID.WithName, NID.WithName> align, 
+                                                Map<NID.WithName, NID.WithName> perfectAlign) { 
+    
+    //
+    // Build sets of names. If the names are not unique, this layout cannot proceed.
+    //
+    
+    HashSet<String> keyNames = new HashSet<String>();
+    for (NID.WithName key : align.keySet()) {
+      if (keyNames.contains(key.getName())) {
+        return (null); 
+      }
+      keyNames.add(key.getName());
+    }
+    
+    HashSet<String> valNames = new HashSet<String>();
+    for (NID.WithName value : align.values()) {
+      if (valNames.contains(value.getName())) {
+        return (null); 
+      }
+      valNames.add(value.getName());
+    }
+    
+    //
+    // If source, target name sets not the same, we gotta have a perfect alignment
+    // to work:
+    //
+    
+    Map<String, String> backMap = null;
+    if (!keyNames.equals(valNames)) {
+      if ((perfectAlign == null) || perfectAlign.isEmpty()) {
+        return (null);
+      } 
+      backMap = new HashMap<String, String>();
 
-     Map<String, String> nameToName = new HashMap<String, String>();
+      for (NID.WithName key : perfectAlign.keySet()) {
+        NID.WithName val = perfectAlign.get(key);
+        backMap.put(val.getName(), key.getName());
+      }
+    }
+    
+    Map<String, String> nameToName = new HashMap<String, String>();
      
-     for (NID.WithName key : align.keySet()) {
+    for (NID.WithName key : align.keySet()) {
        NID.WithName matchNode = align.get(key);
        // Gotta be unique:
        if (nameToName.containsKey(key)) {
@@ -400,8 +488,8 @@ public class AlignCycleLayout extends NodeLayout {
        }
        nameToName.put(key.getName(), matchNode.getName());
      }
-     return (nameToName);
-   } 
+     return (new NodeMaps(nameToName, backMap));
+  } 
   
   /***************************************************************************
   **
@@ -433,6 +521,8 @@ public class AlignCycleLayout extends NodeLayout {
        String[] toks = key.getName().split("::");
        if (toks.length == 2) {
          n2pe.put(key, toks[0]);
+       } else {
+         n2pe.put(key, key.getName());
        }
      }
      return (n2pe);
@@ -449,9 +539,17 @@ public class AlignCycleLayout extends NodeLayout {
     Map<String, NID.WithName> pe2n = new HashMap<String, NID.WithName>();
     
     for (NID.WithName key : allNodes) {
+      if (key.getName().indexOf("85062") != -1) {
+        System.out.println(" seeKey " + key.getName() + " " + key);
+      }
       String[] toks = key.getName().split("::");
       if (toks.length == 2) {
         pe2n.put(toks[0], key);
+      } else {
+        if (key.getName().indexOf("85062") == 0) {
+          System.out.println(" insert " + key.getName() + " " + key);
+        }
+        pe2n.put(key.getName(), key);
       }
     }
     return (pe2n);
@@ -463,20 +561,26 @@ public class AlignCycleLayout extends NodeLayout {
   ** Extract the paths in the alignment network:
   */
   
-  private Map<String, AlignPath> calcAlignPaths(Map<String, String> align) { 
+  private Map<String, AlignPath> calcAlignPaths(NodeMaps align) { 
 
      Map<String, AlignPath> pathsPerStart = new HashMap<String, AlignPath>();
      
-     HashSet<String> working = new HashSet<String>(align.keySet());
+     HashSet<String> working = new HashSet<String>(align.normalMap.keySet());
      while (!working.isEmpty()) {
        String startKey = working.iterator().next();
        working.remove(startKey);
        AlignPath path = new AlignPath();
        pathsPerStart.put(startKey, path);
        path.pathNodes.add(startKey);
-       String nextKey = align.get(startKey);
+       String nextKey = align.normalMap.get(startKey);
        // Not every cycle closes itself, so nextKey can == null:
        while (nextKey != null) {
+         if (align.backMap != null) {
+           nextKey = align.backMap.get(nextKey);
+           if (nextKey == null) {
+             break;
+           }
+         }
          if (nextKey.equals(startKey)) {
            path.isCycle = true;
            break;
@@ -495,7 +599,7 @@ public class AlignCycleLayout extends NodeLayout {
          } else {
            path.pathNodes.add(nextKey);
            working.remove(nextKey);
-           nextKey = align.get(nextKey);
+           nextKey = align.normalMap.get(nextKey);
          }
        }
      }
@@ -556,5 +660,27 @@ public class AlignCycleLayout extends NodeLayout {
       this.startNodes = startNodes;
     } 
   }
+  
+  /***************************************************************************
+  **
+  ** For passing around layout params
+  */  
+  
+  private static class NodeMaps  {
+        
+    Map<String, String> normalMap;
+    Map<String, String> backMap;
+
+    NodeMaps(Map<String, String> normalMap, Map<String, String> backMap) {
+      this.normalMap = normalMap;
+      this.backMap = backMap;
+    } 
+  }
+  
+  
+  
+  
+  
+  
 
 }
