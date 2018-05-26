@@ -66,7 +66,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
 
   
   public NetworkAlignmentDialog(JFrame parent, NetworkAlignmentBuildData.ViewType analysisType) {
-    super(parent, ResourceManager.getManager().getString("networkAlignment.title"), new Dimension(700, 400), 3);
+    super(parent, ResourceManager.getManager().getString("networkAlignment.title"), new Dimension(700, 450), 3);
     this.parent_ = parent;
     this.analysisType_ = analysisType;
     
