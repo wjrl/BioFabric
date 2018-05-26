@@ -30,9 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.systemsbiology.biofabric.model.BuildExtractor;
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
@@ -43,12 +41,12 @@ import org.systemsbiology.biofabric.util.UiUtil;
  ** Calculates topological scores of network alignments: Edge Coverage (EC),
  ** Symmetric Substructure score (S3), Induced Conserved Substructure (ICS);
  **
- ** Node Correctness (NC) is only if we know the perfect alignment.
- *
- ** We created Node Group (NG)/Link Group (LG) ratios distance score:
- ** Basically we find the euclidean distance (N-space) between the given
- ** alignment's vector and perfect alignment's vector, where vector has the
- ** percents of each node/link group size to the whole
+ ** Node Correctness (NC) and Jaccard Similarity (JS) are calculatable
+ ** only if we know the perfect alignment.
+ **
+ ** NGD and LGD are the cosine similarity between the normalized ratio vectors
+ ** of the respective node groups and link groups of the main
+ ** alignment and the perfect alignment.
  */
 
 public class NetworkAlignmentScorer {
@@ -80,12 +78,13 @@ public class NetworkAlignmentScorer {
   
   private Map<NID.WithName, Set<FabricLink>> nodeToLinksMain_, nodeToLinksPerfect_;
   private Map<NID.WithName, Set<NID.WithName>> nodeToNeighborsMain_, nodeToNeighborsPerfect_;
+  private NodeGroupMap groupMapMain_, groupMapPerfect_;
   
   //
   // The scores
   //
   
-  private Double EC, S3, ICS, NC, NGDist, LGDist, NGLGDist, JaccSim;
+  private Double EC, S3, ICS, NC, NGD, LGD, JaccSim;
   private NetworkAlignmentPlugIn.NetAlignStats netAlignStats_;
   
   public NetworkAlignmentScorer(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
@@ -114,6 +113,12 @@ public class NetworkAlignmentScorer {
     this.lonersLarge_ = lonersLarge;
     this.mapG1toG2_ = mapG1toG2;
     this.perfectG1toG2_ = perfectG1toG2;
+    this.groupMapMain_ = new NodeGroupMap(reducedLinks, loneNodeIDs, mergedToCorrect, isAlignedNode, false, NodeGroupMap.PerfectNGMode.NONE,
+            NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
+    if (mergedToCorrect != null) {
+      this.groupMapPerfect_ = new NodeGroupMap(linksPerfect, loneNodeIDsPerfect, mergedToCorrect, isAlignedNodePerfect, false, NodeGroupMap.PerfectNGMode.NONE,
+              NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
+    }
     
     removeDuplicateAndShadow();
     generateStructs(reducedLinks, loneNodeIDs, nodeToLinksMain_, nodeToNeighborsMain_);
@@ -122,6 +127,40 @@ public class NetworkAlignmentScorer {
     }
     calcScores();
     finalizeMeasures();
+    return;
+  }
+  
+  private void removeDuplicateAndShadow() {
+    Set<FabricLink> nonShdwLinks = new HashSet<FabricLink>();
+    for (FabricLink link : linksMain_) {
+      if (! link.isShadow()) { // remove shadow links
+        nonShdwLinks.add(link);
+      }
+    }
+    
+    //
+    // We have to remove synonymous links (a->b) same as (b->a), and keep one;
+    // Sort the names and concat into string (the key), so they are the same key in the map.
+    // This means (a->b) and (b->a) should make the same string key.
+    // If the key already has a value, we got a duplicate link.
+    //
+    
+    Map<String, FabricLink> map = new HashMap<String, FabricLink>();
+    for (FabricLink link : nonShdwLinks) {
+      
+      String[] arr1 = {link.getSrcID().getName(), link.getTrgID().getName()};
+      Arrays.sort(arr1);
+      String concat = String.format("%s___%s", arr1[0], arr1[1]);
+      
+      if (map.get(concat) == null) {
+        map.put(concat, link);
+      } // skip duplicates
+    }
+    
+    linksMain_.clear();
+    for (Map.Entry<String, FabricLink> entry : map.entrySet()) {
+      linksMain_.add(entry.getValue());
+    }
     return;
   }
   
@@ -161,23 +200,20 @@ public class NetworkAlignmentScorer {
   
     if (mergedToCorrect_ != null) { // must have perfect alignment for these measures
       calcNodeCorrectness();
-      calcNodeGroupValues();
-      calcLinkGroupValues();
-      calcBothGroupValues();
+      calcGroupDistance();
       calcJaccardSimilarity();
     }
   }
   
   private void finalizeMeasures() {
     NetworkAlignmentPlugIn.NetAlignMeasure[] possibleMeasures = {
-            new NetworkAlignmentPlugIn.NetAlignMeasure("EC", EC),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("S3", S3),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("ICS", ICS),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("NC", NC),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("NGDist", NGDist),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("LGDist", LGDist),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("NGLGDist", NGLGDist),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("JaccSim", JaccSim),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("Edge Coverage", EC),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("Symmetric Substructure Score", S3),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("Induced Conserved Structure", ICS),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("Node Correctness", NC),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("Node Group Distance", NGD),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("Link Group Distance", LGD),
+            new NetworkAlignmentPlugIn.NetAlignMeasure("Jaccard Similarity", JaccSim),
     };
   
     List<NetworkAlignmentPlugIn.NetAlignMeasure> measures = new ArrayList<NetworkAlignmentPlugIn.NetAlignMeasure>();
@@ -236,132 +272,20 @@ public class NetworkAlignmentScorer {
     return;
   }
   
-  private void calcNodeGroupValues() {
-    ScoreVector mainAlign = getNodeGroupRatios(linksMain_, loneNodeIDsMain_, mergedToCorrect_, isAlignedNodeMain_, monitor_);
-    ScoreVector perfectAlign = getNodeGroupRatios(linksPerfect_, loneNodeIDsPerfect_, null, isAlignedNodePerfect_, monitor_);
-    
-    NGDist = mainAlign.distance(perfectAlign);
+  private void calcGroupDistance() {
+    GroupDistance gd = new GroupDistance();
+    NGD = gd.calcNGD(groupMapMain_, groupMapPerfect_);
+    LGD = gd.calcLGD(groupMapMain_, groupMapPerfect_);
     return;
   }
   
-  private void calcLinkGroupValues() {
-    ScoreVector mainAlign = getLinkGroupRatios(linksMain_, monitor_);
-    ScoreVector perfectAlign = getLinkGroupRatios(linksPerfect_, monitor_);
-    
-    LGDist = mainAlign.distance(perfectAlign);
-    return;
-  }
-  
-  private void calcBothGroupValues() {
-    ScoreVector mainNG = getNodeGroupRatios(linksMain_, loneNodeIDsMain_, mergedToCorrect_, isAlignedNodeMain_, monitor_);
-    ScoreVector mainLG = getLinkGroupRatios(linksMain_, monitor_);
-    mainNG.concat(mainLG);
-  
-    ScoreVector perfectNG = getNodeGroupRatios(linksPerfect_, loneNodeIDsPerfect_, null, isAlignedNodePerfect_, monitor_);
-    ScoreVector perfectLG = getLinkGroupRatios(linksPerfect_, monitor_);
-    perfectNG.concat(perfectLG);
-    
-    NGLGDist = mainNG.distance(perfectNG);
-    return;
-  }
-  
-  private void removeDuplicateAndShadow() {
-    Set<FabricLink> nonShdwLinks = new HashSet<FabricLink>();
-    for (FabricLink link : linksMain_) {
-      if (! link.isShadow()) { // remove shadow links
-        nonShdwLinks.add(link);
-      }
-    }
-    
-    //
-    // We have to remove synonymous links (a->b) same as (b->a), and keep one;
-    // Sort the names and concat into string (the key), so they are the same key in the map.
-    // This means (a->b) and (b->a) should make the same string key.
-    // If the key already has a value, we got a duplicate link.
-    //
-    
-    Map<String, FabricLink> map = new HashMap<String, FabricLink>();
-    for (FabricLink link : nonShdwLinks) {
-      
-      String[] arr1 = {link.getSrcID().getName(), link.getTrgID().getName()};
-      Arrays.sort(arr1);
-      String concat = String.format("%s___%s", arr1[0], arr1[1]);
-      
-      if (map.get(concat) != null) {
-        continue; // skip the duplicate
-      } else {
-        map.put(concat, link);
-      }
-    }
-    
-    linksMain_.clear();
-    for (Map.Entry<String, FabricLink> entry : map.entrySet()) {
-      linksMain_.add(entry.getValue());
-    }
-    
+  private void calcJaccardSimilarity() {
+    this.JaccSim = new JaccardSimilarity().calcScore(mapG1toG2_, perfectG1toG2_, linksLarge_, lonersLarge_);
     return;
   }
   
   public NetworkAlignmentPlugIn.NetAlignStats getNetAlignStats() {
     return (netAlignStats_);
-  }
-  
-  private static ScoreVector getNodeGroupRatios(Set<FabricLink> links, Set<NID.WithName> loneNodeIDs,
-                                                Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
-                                                BTProgressMonitor monitor) {
-    
-    NodeGroupMap map = new NodeGroupMap(links, loneNodeIDs, mergedToCorrect, isAlignedNode,
-            NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
-    
-    Set<NID.WithName> allNodes;
-    try {
-      allNodes = BuildExtractor.extractNodes(links, loneNodeIDs, monitor);
-    } catch (AsynchExitRequestException aere) {
-      throw new IllegalStateException();
-    }
-    
-    int[] groupCounter = new int[map.numGroups()];
-    
-    for (NID.WithName node : allNodes) {
-      int index = map.getIndex(node);
-      groupCounter[index]++;
-    }
-    
-    ScoreVector scoreNG = new ScoreVector(map.numGroups());
-    for (int i = 0; i < groupCounter.length; i++) {
-      scoreNG.values_[i] = ((double)groupCounter[i]) / ((double)allNodes.size());
-    }
-    return (scoreNG);
-  }
-  
-  private static ScoreVector getLinkGroupRatios(Set<FabricLink> links, BTProgressMonitor monitor) {
-    int[] counts = new int[NodeGroupMap.NUMBER_LINK_GROUPS];
-    
-    for (FabricLink link : links) {
-      if (link.getRelation().equals(NetworkAlignment.COVERED_EDGE)) {
-        counts[0]++;
-      } else if (link.getRelation().equals(NetworkAlignment.GRAPH1)) {
-        counts[1]++;
-      } else if (link.getRelation().equals(NetworkAlignment.INDUCED_GRAPH2)) {
-        counts[2]++;
-      } else if (link.getRelation().equals(NetworkAlignment.HALF_UNALIGNED_GRAPH2)) {
-        counts[3]++;
-      } else if (link.getRelation().equals(NetworkAlignment.FULL_UNALIGNED_GRAPH2)) {
-        counts[4]++;
-      }
-    }
-    
-    ScoreVector scoreLG = new ScoreVector(NodeGroupMap.NUMBER_LINK_GROUPS);
-    
-    for (int i = 0; i < counts.length; i++) {
-      scoreLG.values_[i] = ((double)counts[i]) / ((double)links.size());
-    }
-    return (scoreLG);
-  }
-  
-  private  void calcJaccardSimilarity() {
-    this.JaccSim = new JaccardSimilarity().calcScore(mapG1toG2_, perfectG1toG2_, linksLarge_, lonersLarge_);
-    return;
   }
   
   ////////////////////////////////////////////////////////////////////////////
@@ -370,32 +294,38 @@ public class NetworkAlignmentScorer {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-
-  
   /****************************************************************************
    **
    ** N-dimensional vector used for scores
    */
+
+  private static class VectorND {
   
-  private static class ScoreVector {
-    
-    public double[] values_;
-    
-    public ScoreVector(int size) {
+    private double[] values_;
+  
+    public VectorND(int size) {
       this.values_ = new double[size];
+    }
+  
+    public double get(int index) {
+      return (values_[index]);
+    }
+  
+    public void set(int index, double val) {
+      values_[index] = val;
+      return;
     }
   
     /****************************************************************************
      **
      ** Euclidean distance between two vectors
      */
-    
-    public double distance(ScoreVector vector) {
+  
+    public double distance(VectorND vector) {
       if (this.values_.length!= vector.values_.length) {
         throw new IllegalArgumentException("score vector length not equal");
       }
       double ret = 0;
-  
       for (int i = 0; i < values_.length; i++) {
         ret += (this.values_[i] - vector.values_[i]) * (this.values_[i] - vector.values_[i]);
       }
@@ -405,24 +335,165 @@ public class NetworkAlignmentScorer {
   
     /****************************************************************************
      **
-     ** Concatenating two vectors: [A,B,C] + [D,E] -> [A,B,C,D,E]
+     ** Magnitude
+     */
+  
+    public double magnitude() {
+      double ret = this.dot(this);
+      ret = Math.sqrt(ret);
+      return (ret);
+    }
+  
+    /****************************************************************************
+     **
+     ** Normalize
+     */
+  
+    public void normalize() {
+      double mag = magnitude();
+      if (mag == 0) {
+        return;
+      }
+      for (int i = 0; i < values_.length; i++) {
+        values_[i] /= mag;
+      }
+      return;
+    }
+  
+    /****************************************************************************
+     **
+     ** Dot product
+     */
+  
+    public double dot(VectorND vector) {
+      if (this.values_.length != vector.values_.length) {
+        throw new IllegalArgumentException("score vector length not equal");
+      }
+      double ret = 0;
+      for (int i = 0; i < this.values_.length; i++) {
+        ret += this.values_[i] * vector.values_[i];
+      }
+      return (ret);
+    }
+  
+    /****************************************************************************
+     **
+     ** Cosine similarity = returns cos(angle)
+     */
+  
+    public double cosSim(VectorND vector) {
+      double cosTheta = dot(vector) / (this.magnitude() * vector.magnitude());
+      return (cosTheta);
+    }
+  
+    /****************************************************************************
+     **
+     ** Angular Similarity = 1 - (2 * arccos(similarity) / pi)
+     **
+     ** similarity = cos(angle)
      */
     
-    public void concat(ScoreVector vector) {
-      
-      double[] concated = new double[this.values_.length + vector.values_.length];
+    public double angSim(VectorND vector) {
+      double sim = 1 - (2 * Math.acos(cosSim(vector)) / Math.PI);
+      return (sim);
+    }
+    
+    @Override
+    public String toString() {
+      return "VectorND{" +
+              "values_=" + Arrays.toString(values_) +
+              '}';
+    }
   
-      int count = 0;
-      for (int i = 0; i < this.values_.length; i++) {
-        concated[i] = this.values_[i];
-        count++;
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return (true);
+      if (! (o instanceof VectorND)) {
+        return (false);
       }
-      for (int i = 0; i < vector.values_.length; i++) {
-        concated[count] = vector.values_[i];
-        count++;
+      VectorND vectorND = (VectorND) o;
+      if (! Arrays.equals(values_, vectorND.values_)) {
+        return (false);
       }
-      this.values_ = concated;
-      return;
+      return (true);
+    }
+  
+    @Override
+    public int hashCode() {
+      return (Arrays.hashCode(values_));
+    }
+    
+  }
+  
+  /****************************************************************************
+   **
+   ** NGD and LGD
+   */
+  
+  private static class GroupDistance {
+  
+    /***************************************************************************
+     **
+     ** Calculated the score
+     */
+  
+    double calcNGD(NodeGroupMap groupMapMain, NodeGroupMap groupMapPerfect) {
+      VectorND main = getNGVector(groupMapMain), perfect = getNGVector(groupMapPerfect);
+      double score = main.angSim(perfect);
+      return (score);
+    }
+  
+    /***************************************************************************
+     **
+     ** Convert ratio to vector
+     */
+    
+    private VectorND getNGVector(NodeGroupMap groupMap) {
+      VectorND vector = new VectorND(groupMap.numGroups());
+      Map<String, Double> ngRatios = groupMap.getNodeGroupRatios();
+  
+      for (Map.Entry<String, Double> entry : ngRatios.entrySet()) {
+        int index = groupMap.getIndex(entry.getKey());
+        vector.set(index, entry.getValue());
+      }
+      vector.normalize();
+      return (vector);
+    }
+  
+    /***************************************************************************
+     **
+     ** Calculated the score
+     */
+  
+    double calcLGD(NodeGroupMap groupMapMain, NodeGroupMap groupMapPerfect) {
+      VectorND main = getLGVector(groupMapMain), perfect = getLGVector(groupMapPerfect);
+      double score = main.angSim(perfect);
+      return (score);
+    }
+  
+    /***************************************************************************
+     **
+     ** Convert ratio to vector
+     */
+    
+    private VectorND getLGVector(NodeGroupMap groupMap) {
+
+      Map<String, Integer> relToIndex = new HashMap<String, Integer>();
+      relToIndex.put(NetworkAlignment.COVERED_EDGE, NodeGroupMap.PURPLE_EDGES);
+      relToIndex.put(NetworkAlignment.GRAPH1, NodeGroupMap.BLUE_EDGES);
+      relToIndex.put(NetworkAlignment.INDUCED_GRAPH2, NodeGroupMap.RED_EDGES);
+      relToIndex.put(NetworkAlignment.HALF_UNALIGNED_GRAPH2, NodeGroupMap.ORANGE_EDGES);
+      relToIndex.put(NetworkAlignment.FULL_UNALIGNED_GRAPH2, NodeGroupMap.YELLOW_EDGES);
+      
+      VectorND vector = new VectorND(NodeGroupMap.NUMBER_LINK_GROUPS);
+      Map<String, Double> lgRatios = groupMap.getLinkGroupRatios();
+      
+      for (Map.Entry<String, Double> entry : lgRatios.entrySet()) {
+        int index = relToIndex.get(entry.getKey());
+        vector.set(index, entry.getValue());
+      }
+      vector.normalize();
+      return (vector);
     }
     
   }

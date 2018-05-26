@@ -52,6 +52,8 @@ public class NetworkAlignmentBuildData extends BuildData.RelayoutBuildData {
   public Map<NID.WithName, NID.WithName> mapG1toG2;
   public Map<NID.WithName, NID.WithName> perfectMap;
   public List<NID.WithName[]> cycleBounds;
+  public boolean forPerfectNG;
+  public NodeGroupMap.PerfectNGMode mode;
 
   public NetworkAlignmentBuildData(UniqueLabeller idGen,
                                    Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
@@ -60,7 +62,9 @@ public class NetworkAlignmentBuildData extends BuildData.RelayoutBuildData {
                                    NetworkAlignmentPlugIn.NetAlignStats netAlignStats,
                                    Map<NID.WithName, String> clustAssign, ViewType view, 
                                    Map<NID.WithName, NID.WithName> mapG1toG2,
-                                   Map<NID.WithName, NID.WithName> perfectMap) {
+                                   Map<NID.WithName, NID.WithName> perfectMap,
+                                   boolean forPerfectNG, NodeGroupMap.PerfectNGMode mode) {
+
     super(idGen, allLinks, loneNodeIDs, clustAssign, null, BuildData.BuildMode.BUILD_FROM_PLUGIN);
     this.layoutMode = BioFabricNetwork.LayoutMode.PER_NETWORK_MODE;
     this.view = view;
@@ -69,6 +73,8 @@ public class NetworkAlignmentBuildData extends BuildData.RelayoutBuildData {
     this.netAlignStats = netAlignStats;
     this.mapG1toG2 = mapG1toG2;
     this.perfectMap = perfectMap;
+    this.forPerfectNG = forPerfectNG;
+    this.mode = mode;
   }
 
   @Override

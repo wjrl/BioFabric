@@ -462,8 +462,10 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    
     if (finished) { // Load the alignments
       networkAlignmentStepFive(reducedLinks, mergedLoneNodeIDs, mergedToCorrect, isAlignedNode, 
-                               mapG1toG2, perfectG1toG2, netAlignStats_, outType, 
+                               mapG1toG2, perfectG1toG2, netAlignStats_, outType,
+                               nadi.forPerfectNG, nadi.mode,
                                idGen, nadi.align, holdIt);
+ 
     }
     return (true);
   }
@@ -503,13 +505,15 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
                                            Map<NID.WithName, NID.WithName> perfectMap,
                                            NetAlignStats report, 
                                            NetworkAlignmentBuildData.ViewType viewType, 
+                                           boolean forPerfectNG,
+                                           NodeGroupMap.PerfectNGMode mode,
                                            UniqueLabeller idGen, File align, File holdIt) {
 
     HashMap<NID.WithName, String> emptyClustMap = new HashMap<NID.WithName, String>();
     NetworkAlignmentBuildData nabd = 
       new NetworkAlignmentBuildData(idGen, reducedLinks, loneNodeIDs, mergedToCorrect,
                                     isAlignedNode, report, emptyClustMap, 
-                                    viewType, mapG1toG2, perfectMap);   
+                                    viewType, mapG1toG2, perfectMap, forPerfectNG, mode);   
 
     try {
       flf_.buildNetworkForPlugIn(nabd, holdIt); 
