@@ -22,15 +22,17 @@
 
 package org.systemsbiology.biofabric.plugin.core.align;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
+import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.EdgeLayout;
 import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
@@ -42,9 +44,15 @@ import org.systemsbiology.biofabric.util.UniqueLabeller;
 
 public class NetworkAlignmentBuildData extends BuildData.RelayoutBuildData {
   
+  public enum ViewType {GROUP, ORPHAN, CYCLE};
+  
   public Map<NID.WithName, Boolean> mergedToCorrect, isAlignedNode;
   public NetworkAlignmentPlugIn.NetAlignStats netAlignStats;
-  public boolean forOrphans, forPerfectNG;
+  public ViewType view;
+  public Map<NID.WithName, NID.WithName> mapG1toG2;
+  public Map<NID.WithName, NID.WithName> perfectMap;
+  public List<NID.WithName[]> cycleBounds;
+  public boolean forPerfectNG;
   public NodeGroupMap.PerfectNGMode mode;
 
   public NetworkAlignmentBuildData(UniqueLabeller idGen,
@@ -52,25 +60,49 @@ public class NetworkAlignmentBuildData extends BuildData.RelayoutBuildData {
                                    Map<NID.WithName, Boolean> mergedToCorrect,
                                    Map<NID.WithName, Boolean> isAlignedNode,
                                    NetworkAlignmentPlugIn.NetAlignStats netAlignStats,
-                                   Map<NID.WithName, String> clustAssign, boolean forOrphans, boolean forPerfectNG, NodeGroupMap.PerfectNGMode mode) {
+                                   Map<NID.WithName, String> clustAssign, ViewType view, 
+                                   Map<NID.WithName, NID.WithName> mapG1toG2,
+                                   Map<NID.WithName, NID.WithName> perfectMap,
+                                   boolean forPerfectNG, NodeGroupMap.PerfectNGMode mode) {
+
     super(idGen, allLinks, loneNodeIDs, clustAssign, null, BuildData.BuildMode.BUILD_FROM_PLUGIN);
     this.layoutMode = BioFabricNetwork.LayoutMode.PER_NETWORK_MODE;
-    this.forOrphans = forOrphans;
+    this.view = view;
     this.mergedToCorrect = mergedToCorrect;
     this.isAlignedNode = isAlignedNode;
     this.netAlignStats = netAlignStats;
+    this.mapG1toG2 = mapG1toG2;
+    this.perfectMap = perfectMap;
     this.forPerfectNG = forPerfectNG;
     this.mode = mode;
   }
 
   @Override
   public NodeLayout getNodeLayout() {
-    return (new NetworkAlignmentLayout());  
+    switch (view) {
+      case GROUP:
+        return (new NetworkAlignmentLayout());
+      case ORPHAN:
+        return (new DefaultLayout());
+      case CYCLE:
+        return (new AlignCycleLayout());
+      default:
+        throw new IllegalStateException();
+    }
   }
 
   @Override
   public EdgeLayout getEdgeLayout() {
-    return (new NetworkAlignmentEdgeLayout());
+    switch (view) {
+      case GROUP:
+        return (new NetworkAlignmentEdgeLayout());
+      case ORPHAN:
+        return (new DefaultEdgeLayout());
+      case CYCLE:
+        return (new AlignCycleEdgeLayout());
+      default:
+        throw new IllegalStateException();
+    } 
   }
   
   @Override

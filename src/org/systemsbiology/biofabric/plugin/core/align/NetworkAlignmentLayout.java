@@ -91,10 +91,18 @@ public class NetworkAlignmentLayout extends NodeLayout {
     
     List<NID.WithName> targetIDs;
     
-    if (nabd.forOrphans) {
-      targetIDs = (new DefaultLayout()).defaultNodeOrder(nabd.allLinks, nabd.loneNodeIDs, null, monitor);
-    } else {
-      targetIDs = bfsNodeGroupLayout(nabd, monitor);
+    switch (nabd.view) {
+      case GROUP:
+        targetIDs = bfsNodeGroupLayout(nabd, monitor);
+        break;
+      case ORPHAN:
+        targetIDs = (new DefaultLayout()).defaultNodeOrder(nabd.allLinks, nabd.loneNodeIDs, null, monitor);
+        break;
+      case CYCLE:
+        targetIDs = (new AlignCycleLayout()).doNodeOrder(rbd, params, monitor);
+        break;
+      default:
+        throw new IllegalStateException();
     }
     
     installNodeOrder(targetIDs, nabd, monitor);

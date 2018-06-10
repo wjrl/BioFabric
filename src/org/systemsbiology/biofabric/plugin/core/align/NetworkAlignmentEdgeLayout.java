@@ -119,7 +119,7 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
    ** Install Link Annotations (link order must be calculated prior to this)
    */
   
-  private void installLinkAnnotations(BuildData.RelayoutBuildData rbd, BTProgressMonitor monitor)
+  protected void installLinkAnnotations(BuildData.RelayoutBuildData rbd, BTProgressMonitor monitor)
     throws AsynchExitRequestException {
   
     LoopReporter lr = new LoopReporter(rbd.linkOrder.size(), 20, monitor, 0, .25, "progress.linkAnnotationSifting");
