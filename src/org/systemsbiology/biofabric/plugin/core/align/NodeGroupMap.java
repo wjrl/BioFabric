@@ -29,9 +29,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.systemsbiology.biofabric.model.BuildExtractor;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.NID;
-import org.systemsbiology.biofabric.util.UiUtil;
 
 /***************************************************************************
  **
@@ -67,7 +68,7 @@ public class NodeGroupMap {
   private final PerfectNGMode mode_;
   private Set<FabricLink> links_;
   private Set<NID.WithName> loners_;
-  private Map<NID.WithName, Boolean> mergedToCorrect_, isAlignedNode_;
+  private Map<NID.WithName, Boolean> mergedToCorrectNC_, isAlignedNode_;
   
   private Map<NID.WithName, Set<FabricLink>> nodeToLinks_;
   private Map<NID.WithName, Set<NID.WithName>> nodeToNeighbors_;
@@ -78,6 +79,7 @@ public class NodeGroupMap {
   private final int numGroups_;
   
   private Map<String, Double> nodeGroupRatios_, linkGroupRatios_;
+  private JaccardSimilarityFunc funcJS_;
   
   public static final int
           PURPLE_EDGES = 0,
@@ -93,20 +95,23 @@ public class NodeGroupMap {
   }
   
   public NodeGroupMap(NetworkAlignmentBuildData nabd, String[] nodeGroupOrder, String[][] colorMap) {
-    this(nabd.allLinks, nabd.loneNodeIDs, nabd.mergedToCorrect, nabd.isAlignedNode, nabd.forPerfectNG, nabd.mode,
-            nodeGroupOrder, colorMap);
+    this(nabd.allLinks, nabd.loneNodeIDs, nabd.mapG1toG2, nabd.perfectMap, nabd.linksLarge, nabd.lonersLarge,
+            nabd.mergedToCorrectNC, nabd.isAlignedNode, nabd.forPerfectNG, nabd.mode, nodeGroupOrder, colorMap);
   }
   
   public NodeGroupMap(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
-                      Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
+                      Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2,
+                      ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                      Map<NID.WithName, Boolean> mergedToCorrectNC, Map<NID.WithName, Boolean> isAlignedNode,
                       boolean forPerfectNG, PerfectNGMode mode, String[] nodeGroupOrder, String[][] colorMap) {
     this.links_ = allLinks;
     this.loners_ = loneNodeIDs;
-    this.mergedToCorrect_ = mergedToCorrect;
+    this.mergedToCorrectNC_ = mergedToCorrectNC;
     this.isAlignedNode_ = isAlignedNode;
     this.forPerfectNG_ = forPerfectNG;
     this.numGroups_ = nodeGroupOrder.length;
     this.mode_ = mode;
+    this.funcJS_ = new JaccardSimilarityFunc(mapG1toG2, perfectG1toG2, linksLarge, lonersLarge);
     generateStructs(allLinks, loneNodeIDs);
     generateOrderMap(nodeGroupOrder);
     generateColorMap(colorMap);
@@ -225,18 +230,20 @@ public class NodeGroupMap {
       }
     }
     
-//    if (mergedToCorrect_ != null && forPerfectNG_) {  // perfect alignment given and user wants perfect NGs
-    
-    if (mergedToCorrect_ != null && mode_ == PerfectNGMode.NODE_CORRECTNESS ||
-            mode_ == PerfectNGMode.JACCARD_SIMILARITY) {  // perfect alignment given and user wants perfect NGs
-      sb.append("/");                                     // For now, JS just uses NC because JC hasnt been implemented
-      if (mergedToCorrect_.get(node) == null) {       // red node
+    if (mode_ != PerfectNGMode.NONE) {   // perfect NG mode is activated
+      sb.append("/");
+      if (mergedToCorrectNC_.get(node) == null) {   // red node
         sb.append(0);
       } else {
-        sb.append((mergedToCorrect_.get(node)) ? 1 : 0);
+        if (mode_ == PerfectNGMode.NODE_CORRECTNESS) {
+          boolean isCorrect = mergedToCorrectNC_.get(node);
+          sb.append((isCorrect) ? 1 : 0);
+        } else if (mode_ == PerfectNGMode.JACCARD_SIMILARITY) {
+          boolean isCorrect = funcJS_.isCorrectJS(node);
+          sb.append((isCorrect) ? 1 : 0);
+        }
       }
     }
-    
     sb.append(")");
     
     return (new GroupID(sb.toString()));
@@ -423,16 +430,128 @@ public class NodeGroupMap {
     
   }
   
-//  private static class Equivalent {
-//
-//    private static boolean NodeCorrectness(Map<NID.WithName, Boolean> mergedToCorrect, NID.WithName node) {
-//      return (mergedToCorrect.get(node));
-//    }
-//
-//    private static boolean JaccardSimilarity() {
-//      return (true);
-//    }
-//
-//  }
-
+  /***************************************************************************
+   **
+   ** Functions for Jaccard Similarity
+   */
+  
+  static class JaccardSimilarityFunc {
+  
+    private Map<NID.WithName, NID.WithName> mapG1toG2;
+    private Map<NID.WithName, NID.WithName> perfectG1toG2;
+    private ArrayList<FabricLink> linksLarge;
+    private HashSet<NID.WithName> lonersLarge;
+    private Map<String, NID.WithName> nameToLarge;
+    
+    Map<NID.WithName, NID.WithName> entrezAlign;
+    Map<NID.WithName, Set<NID.WithName>> nodeToNeighL;
+    
+    JaccardSimilarityFunc(Map<NID.WithName, NID.WithName> mapG1toG2,
+                          Map<NID.WithName, NID.WithName> perfectG1toG2,
+                          ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge) {
+      this.mapG1toG2 = mapG1toG2;
+      this.perfectG1toG2 = perfectG1toG2;
+      this.entrezAlign = new HashMap<NID.WithName, NID.WithName>();
+      this.nodeToNeighL = new HashMap<NID.WithName, Set<NID.WithName>>();
+      this.linksLarge = linksLarge;
+      this.lonersLarge = lonersLarge;
+      this.nameToLarge = new HashMap<String, NID.WithName>();
+      makeNodeToNeigh();
+      constructEntrezAlign();
+      constructLargeMap();
+    }
+  
+    /***************************************************************************
+     **
+     ** @param node must be a Merged Node
+     ** Checks if two aligned-'large graph'-nodes have same neighbors
+     */
+    
+    boolean isCorrectJS(NID.WithName node) {
+      
+      String largeName = (node.getName().split("::"))[1];
+      
+      NID.WithName largeNode = nameToLarge.get(largeName);
+      if (largeNode == null) {
+        throw new IllegalStateException("Large node not found for Jaccard Similarity");
+      }
+      NID.WithName match = entrezAlign.get(largeNode);
+      
+      Set<NID.WithName> nodeNeigh = nodeToNeighL.get(largeNode);
+      Set<NID.WithName> matchNeigh = nodeToNeighL.get(match);
+      
+      if (nodeNeigh.contains(match)) {
+        nodeNeigh.remove(match);
+      }
+      if (matchNeigh.contains(largeNode)) {
+        match.compareTo(largeNode);
+      }
+      return (nodeNeigh.equals(matchNeigh));
+    }
+  
+    /***************************************************************************
+     **
+     ** Make Large Graph "node's name" to "node" map
+     */
+    
+    private void constructLargeMap() {
+      Set<NID.WithName> nodesLarge = null;
+      try {
+        nodesLarge = BuildExtractor.extractNodes(linksLarge, lonersLarge, null);
+      } catch (AsynchExitRequestException aere) {
+        // should not happen; which thread?
+      }
+      for (NID.WithName nodeL : nodesLarge) {
+        nameToLarge.put(nodeL.getName(), nodeL);
+      }
+      return;
+    }
+  
+    /***************************************************************************
+     **
+     ** Match up G2-aligned nodes with G2-aligned nodes in perfect alignment
+     */
+  
+    private void constructEntrezAlign() {
+      for (NID.WithName node : mapG1toG2.keySet()) {
+        NID.WithName converted = perfectG1toG2.get(node);
+        if (converted == null) {
+          //System.err.println("no Entrez match for " + node);
+          continue;
+        }
+        NID.WithName matchedWith = mapG1toG2.get(node);
+        entrezAlign.put(converted, matchedWith);
+      }
+      return;
+    }
+  
+    /***************************************************************************
+     **
+     ** Construct node to neighbor map
+     */
+  
+    private void makeNodeToNeigh() {
+      nodeToNeighL = new HashMap<NID.WithName, Set<NID.WithName>>();
+    
+      for (FabricLink link : linksLarge) {
+        NID.WithName src = link.getSrcID(), trg = link.getTrgID();
+      
+        if (nodeToNeighL.get(src) == null) {
+          nodeToNeighL.put(src, new HashSet<NID.WithName>());
+        }
+        if (nodeToNeighL.get(trg) == null) {
+          nodeToNeighL.put(trg, new HashSet<NID.WithName>());
+        }
+        nodeToNeighL.get(src).add(trg);
+        nodeToNeighL.get(trg).add(src);
+      }
+    
+      for (NID.WithName node : lonersLarge) {
+        nodeToNeighL.put(node, new HashSet<NID.WithName>());
+      }
+      return;
+    }
+    
+  }
+  
 }

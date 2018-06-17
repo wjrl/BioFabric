@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -93,7 +92,7 @@ public class NetworkAlignment {
   
   private ArrayList<FabricLink> mergedLinks_;
   private Set<NID.WithName> mergedLoners_;
-  private Map<NID.WithName, Boolean> mergedToCorrect_, isAlignedNode_;
+  private Map<NID.WithName, Boolean> mergedToCorrectNC_, isAlignedNode_;
   
   private enum Graph {SMALL, LARGE}
   
@@ -108,7 +107,7 @@ public class NetworkAlignment {
                           Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2_,
                           ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
                           ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
-                          Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
+                          Map<NID.WithName, Boolean> mergedToCorrectNC, Map<NID.WithName, Boolean> isAlignedNode,
                           NetworkAlignmentBuildData.ViewType outType, UniqueLabeller idGen, BTProgressMonitor monitor) {
     
     this.mapG1toG2_ = mapG1toG2;
@@ -123,7 +122,7 @@ public class NetworkAlignment {
     
     this.mergedLinks_ = mergedLinks;
     this.mergedLoners_ = mergedLoneNodeIDs;
-    this.mergedToCorrect_ = mergedToCorrect;
+    this.mergedToCorrectNC_ = mergedToCorrectNC;
     this.isAlignedNode_ = isAlignedNode;
   }
   
@@ -224,7 +223,7 @@ public class NetworkAlignment {
       if (doingPerfectGroup) { // perfect alignment must be provided
         NID.WithName perfectLarge = perfectG1toG2_.get(smallNode);
         boolean alignedCorrect = perfectLarge.equals(largeNode);
-        mergedToCorrect_.put(merged_node, alignedCorrect);
+        mergedToCorrectNC_.put(merged_node, alignedCorrect);
       }
     }
     return;
