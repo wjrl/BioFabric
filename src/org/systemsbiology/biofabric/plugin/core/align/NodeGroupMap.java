@@ -64,7 +64,6 @@ public class NodeGroupMap {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  private final boolean forPerfectNG_;
   private final PerfectNGMode mode_;
   private Set<FabricLink> links_;
   private Set<NID.WithName> loners_;
@@ -95,20 +94,19 @@ public class NodeGroupMap {
   }
   
   public NodeGroupMap(NetworkAlignmentBuildData nabd, String[] nodeGroupOrder, String[][] colorMap) {
-    this(nabd.allLinks, nabd.loneNodeIDs, nabd.mapG1toG2, nabd.perfectMap, nabd.linksLarge, nabd.lonersLarge,
-            nabd.mergedToCorrectNC, nabd.isAlignedNode, nabd.forPerfectNG, nabd.mode, nodeGroupOrder, colorMap);
+    this(nabd.allLinks, nabd.loneNodeIDs, nabd.mapG1toG2, nabd.perfectG1toG2, nabd.linksLarge, nabd.lonersLarge,
+            nabd.mergedToCorrectNC, nabd.isAlignedNode, nabd.mode, nodeGroupOrder, colorMap);
   }
   
   public NodeGroupMap(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
                       Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2,
                       ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
                       Map<NID.WithName, Boolean> mergedToCorrectNC, Map<NID.WithName, Boolean> isAlignedNode,
-                      boolean forPerfectNG, PerfectNGMode mode, String[] nodeGroupOrder, String[][] colorMap) {
+                      PerfectNGMode mode, String[] nodeGroupOrder, String[][] colorMap) {
     this.links_ = allLinks;
     this.loners_ = loneNodeIDs;
     this.mergedToCorrectNC_ = mergedToCorrectNC;
     this.isAlignedNode_ = isAlignedNode;
-    this.forPerfectNG_ = forPerfectNG;
     this.numGroups_ = nodeGroupOrder.length;
     this.mode_ = mode;
     this.funcJS_ = new JaccardSimilarityFunc(mapG1toG2, perfectG1toG2, linksLarge, lonersLarge);

@@ -114,11 +114,11 @@ public class NetworkAlignmentScorer {
     this.mapG1toG2_ = mapG1toG2;
     this.perfectG1toG2_ = perfectG1toG2;
     this.groupMapMain_ = new NodeGroupMap(reducedLinks, loneNodeIDs, mapG1toG2, perfectG1toG2, linksLarge, lonersLarge,
-            mergedToCorrectNC, isAlignedNode, false, NodeGroupMap.PerfectNGMode.NONE,
+            mergedToCorrectNC, isAlignedNode, NodeGroupMap.PerfectNGMode.NONE,
             NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
     if (mergedToCorrectNC != null) {
       this.groupMapPerfect_ = new NodeGroupMap(linksPerfect, loneNodeIDsPerfect, mapG1toG2, perfectG1toG2, linksLarge,
-              lonersLarge, mergedToCorrectNC, isAlignedNodePerfect, false, NodeGroupMap.PerfectNGMode.NONE,
+              lonersLarge, mergedToCorrectNC, isAlignedNodePerfect, NodeGroupMap.PerfectNGMode.NONE,
               NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
     }
     removeDuplicateAndShadow();
@@ -281,7 +281,7 @@ public class NetworkAlignmentScorer {
   }
   
   private void calcJaccardSimilarity() {
-    this.JaccSim = new JaccardSimilarity().calcScore(mapG1toG2_, perfectG1toG2_, linksLarge_, lonersLarge_);
+    this.JaccSim = new JaccardSimilarityScore().calcScore(mapG1toG2_, perfectG1toG2_, linksLarge_, lonersLarge_);
     return;
   }
   
@@ -504,7 +504,7 @@ public class NetworkAlignmentScorer {
    ** Jaccard Similarity Measure - Adapted from NodeEQC.java
    */
   
-  private static class JaccardSimilarity {
+  private static class JaccardSimilarityScore {
   
     /***************************************************************************
      **

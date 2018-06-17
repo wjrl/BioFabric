@@ -59,7 +59,6 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   private FixedJButton buttonOK_;
   private JCheckBox undirectedConfirm_;
   private static final long serialVersionUID = 1L;
-  private JCheckBox buttonPerfectNG_;
   private JComboBox perfectNGsCombo_;
   
   private final int NONE_INDEX = 0, NC_INDEX = 1, JS_INDEX = 2; // indices on combo box
@@ -204,9 +203,6 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     addWidgetFullRow(panG2, true);
     addWidgetFullRow(panAlign, true);
   
-    buttonPerfectNG_ = new JCheckBox(rMan.getString("networkAlignment.perfectNodeGroups"));
-    buttonPerfectNG_.setEnabled(false);
-    
     JLabel perfectNGLabel = new JLabel(rMan.getString("networkAlignment.perfectNodeGroups"));
     String[] choices = new String[3];
     choices[NONE_INDEX] = rMan.getString("networkAlignment.none");
@@ -225,9 +221,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     
     if (analysisType_ != NetworkAlignmentBuildData.ViewType.ORPHAN) { // add perfect alignment button
       addWidgetFullRow(panPerfect, true);
-//      addWidgetFullRow(buttonPerfectNG_, true);
       addLabeledWidget(perfectNGLabel, perfectNGsCombo_, true, true);
-//      addWidgetFullRow(perfectNGsCombo_, true);
     }
     
     //
@@ -297,7 +291,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
         throw (new IllegalStateException("Illegal perfect NG mode"));
     }
   
-    return (new NetworkAlignmentDialogInfo(graph1File_, graph2File_, alignmentFile_, perfectAlignFile_, analysisType_, buttonPerfectNG_.isSelected(), mode));
+    return (new NetworkAlignmentDialogInfo(graph1File_, graph2File_, alignmentFile_, perfectAlignFile_, analysisType_, mode));
   }
   
   /**
@@ -344,8 +338,6 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
       case PERFECT_FILE:
         perfectField_.setText(file.getAbsolutePath());
         perfectAlignFile_ = file;
-        buttonPerfectNG_.setVisible(true);  // enable check box
-        buttonPerfectNG_.setSelected(true);
         perfectNGsCombo_.setEnabled(true);
         break;
       default:
@@ -367,16 +359,15 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     public final File graphA, graphB, align, perfect; // graph1 and graph2 can be out of order (size), hence graphA and graphB
 
     public final NetworkAlignmentBuildData.ViewType analysisType;
-    public final boolean forPerfectNG;
     public final NodeGroupMap.PerfectNGMode mode;
     
-    public NetworkAlignmentDialogInfo(File graph1, File graph2, File align, File perfect, NetworkAlignmentBuildData.ViewType analysisType, boolean forPerfectNG, NodeGroupMap.PerfectNGMode mode) {
+    public NetworkAlignmentDialogInfo(File graph1, File graph2, File align, File perfect,
+                                      NetworkAlignmentBuildData.ViewType analysisType, NodeGroupMap.PerfectNGMode mode) {
       this.graphA = graph1;
       this.graphB = graph2;
       this.align = align;
       this.perfect = perfect;
       this.analysisType = analysisType;
-      this.forPerfectNG = forPerfectNG;
       this.mode = mode;
     }
     

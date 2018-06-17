@@ -165,9 +165,9 @@ public class NetworkAlignmentLayout extends NodeLayout {
     //
     
     NodeGroupMap grouper;
-//    if (nabd.forPerfectNG) {
     
-    if (nabd.mode == NodeGroupMap.PerfectNGMode.NODE_CORRECTNESS || nabd.mode == NodeGroupMap.PerfectNGMode.JACCARD_SIMILARITY) {
+    if (nabd.mode == NodeGroupMap.PerfectNGMode.NODE_CORRECTNESS ||
+            nabd.mode == NodeGroupMap.PerfectNGMode.JACCARD_SIMILARITY) {
       grouper = new NodeGroupMap(nabd, defaultNGOrderWithCorrect, ngAnnotcolorsWithCorrect);
     } else {
       grouper = new NodeGroupMap(nabd, defaultNGOrderWithoutCorrect, ngAnnotColorsWithoutCorrect);
