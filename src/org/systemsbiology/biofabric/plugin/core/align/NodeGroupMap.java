@@ -109,7 +109,9 @@ public class NodeGroupMap {
     this.isAlignedNode_ = isAlignedNode;
     this.numGroups_ = nodeGroupOrder.length;
     this.mode_ = mode;
-    this.funcJS_ = new JaccardSimilarityFunc(mapG1toG2, perfectG1toG2, linksLarge, lonersLarge);
+    if (mode == PerfectNGMode.JACCARD_SIMILARITY) {
+      this.funcJS_ = new JaccardSimilarityFunc(mapG1toG2, perfectG1toG2, linksLarge, lonersLarge);
+    }
     generateStructs(allLinks, loneNodeIDs);
     generateOrderMap(nodeGroupOrder);
     generateColorMap(colorMap);

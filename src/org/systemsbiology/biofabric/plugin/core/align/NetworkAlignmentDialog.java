@@ -24,6 +24,8 @@ package org.systemsbiology.biofabric.plugin.core.align;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagLayout;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -82,12 +84,16 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     JButton graph2Browse = new JButton(rMan.getString("networkAlignment.browse"));
     JButton alignmentBrowse = new JButton(rMan.getString("networkAlignment.browse"));
     JButton perfectBrowse = new JButton(rMan.getString("networkAlignment.browse"));
+    
+    initBrowseButtons(graph1Browse, graph2Browse, alignmentBrowse, perfectBrowse);
   
     graph1Field_ = new JTextField(30);
     graph2Field_= new JTextField(30);
     alignField_ = new JTextField(30);
     perfectField_ = new JTextField(30);
     undirectedConfirm_ = new JCheckBox(rMan.getString("networkAlignment.confirmUndirected"));
+    
+    initTextFields();
 
     MatchingJLabel graph1FileMatch, graph2FileMatch, alignFileMatch, perfectFileMatch;
     JLabel perfectFileName = new JLabel(rMan.getString("networkAlignment.perfect")); // only to use as a reference, not in dialog
@@ -107,46 +113,6 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
           if (hasRequiredFiles()) { // enable OK button
             buttonOK_.setEnabled(true);
           }
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
-        }
-      }
-    });
-    
-    graph1Browse.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent e) {
-        try {
-          loadFromFile(FileIndex.GRAPH_ONE_FILE);
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
-        }
-      }
-    });
-    
-    graph2Browse.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent e) {
-        try {
-          loadFromFile(FileIndex.GRAPH_TWO_FILE);
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
-        }
-      }
-    });
-    
-    alignmentBrowse.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent e) {
-        try {
-          loadFromFile(FileIndex.ALIGNMENT_FILE);
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
-        }
-      }
-    });
-  
-    perfectBrowse.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent e) {
-        try {
-          loadFromFile(FileIndex.PERFECT_FILE);
         } catch (Exception ex) {
           ExceptionHandler.getHandler().displayException(ex);
         }
@@ -236,9 +202,121 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     setLocationRelativeTo(parent);
   }
   
+  /**
+   *  Add Action Listeners to Browse Buttons
+   */
+  
+  private void initBrowseButtons(JButton graph1Browse, JButton graph2Browse, JButton alignmentBrowse, JButton perfectBrowse) {
+    graph1Browse.addActionListener(new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+        try {
+          loadFromFile(FileIndex.GRAPH_ONE_FILE);
+        } catch (Exception ex) {
+          ExceptionHandler.getHandler().displayException(ex);
+        }
+      }
+    });
+    graph2Browse.addActionListener(new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+        try {
+          loadFromFile(FileIndex.GRAPH_TWO_FILE);
+        } catch (Exception ex) {
+          ExceptionHandler.getHandler().displayException(ex);
+        }
+      }
+    });
+    alignmentBrowse.addActionListener(new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+        try {
+          loadFromFile(FileIndex.ALIGNMENT_FILE);
+        } catch (Exception ex) {
+          ExceptionHandler.getHandler().displayException(ex);
+        }
+      }
+    });
+    perfectBrowse.addActionListener(new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+        try {
+          loadFromFile(FileIndex.PERFECT_FILE);
+        } catch (Exception ex) {
+          ExceptionHandler.getHandler().displayException(ex);
+        }
+      }
+    });
+    return;
+  }
+  
+  /**
+   * Add KeyListeners to TextFields - uses keyTyped and manageOkButton
+   */
+  
+  private void initTextFields() {
+    
+    graph1Field_.addKeyListener(new KeyListener() {
+      @Override
+      public void keyTyped(KeyEvent e) { // only care about characters typed
+        System.out.println(graph1Field_.getText());
+        if (hasRequiredFiles()) { // enable OK button
+          buttonOK_.setEnabled(true);
+        }
+        manageOKButton();
+      }
+      @Override
+      public void keyPressed(KeyEvent e) {}
+      @Override
+      public void keyReleased(KeyEvent e) {
+      }
+    });
+  
+    graph2Field_.addKeyListener(new KeyListener() {
+      @Override
+      public void keyTyped(KeyEvent e) {
+        if (hasRequiredFiles()) {
+          buttonOK_.setEnabled(true);
+        }
+        manageOKButton();
+  
+      }
+      @Override
+      public void keyPressed(KeyEvent e) {}
+      @Override
+      public void keyReleased(KeyEvent e) {}
+    });
+    alignField_.addKeyListener(new KeyListener() {
+      @Override
+      public void keyTyped(KeyEvent e) {
+        if (hasRequiredFiles()) {
+          buttonOK_.setEnabled(true);
+        }
+        manageOKButton();
+  
+      }
+      @Override
+      public void keyPressed(KeyEvent e) {}
+      @Override
+      public void keyReleased(KeyEvent e) {}
+    });
+    perfectField_.addKeyListener(new KeyListener() {
+      @Override
+      public void keyTyped(KeyEvent e) {
+        if (hasRequiredFiles()) {
+          buttonOK_.setEnabled(true);
+        }
+        manageOKButton();
+        managePerfectNGButton();
+      }
+      @Override
+      public void keyPressed(KeyEvent e) {}
+      @Override
+      public void keyReleased(KeyEvent e) {}
+    });
+    return;
+  }
+  
   @Override
   public void okAction() {
     try {
+      manageFieldToFile();
       super.okAction();
     } catch (Exception ex) {
       // should never happen because OK button is disabled without correct files.
@@ -262,11 +340,58 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   }
   
   /**
-   * If user entered in minimum required files
+   * Check whether OK button should be activated or deactivated
+   */
+  
+  private void manageOKButton () {
+    if (hasRequiredFiles()) {
+      buttonOK_.setEnabled(true);
+    } else {
+      buttonOK_.setEnabled(false);
+    }
+    return;
+  }
+  
+  /**
+   * Check whether Perfect NG drop-down button should be activated or deactivated
+   */
+  
+  private void managePerfectNGButton() {
+    if (perfectField_.getText().isEmpty()) {
+      perfectNGsCombo_.setEnabled(false);
+      perfectNGsCombo_.setSelectedIndex(NONE_INDEX);
+    } else {
+      perfectNGsCombo_.setEnabled(true); // activate perfect NG drop-down
+    }
+    return;
+  }
+  
+  /**
+   * Check whether any text entered in field should be made into a File
+   */
+  
+  private void manageFieldToFile() {
+    if (graph1File_ == null && !graph1Field_.getText().isEmpty()) {
+      graph1File_ = new File(graph1Field_.getText().trim());
+    }
+    if (graph2File_ == null && !graph2Field_.getText().isEmpty()) {
+      graph2File_ = new File(graph2Field_.getText().trim());
+    }
+    if (alignmentFile_ == null && !alignField_.getText().isEmpty()) {
+      alignmentFile_ = new File(alignField_.getText().trim());
+    }
+    if (perfectAlignFile_ == null && !perfectField_.getText().isEmpty()) {
+      perfectAlignFile_ = new File(perfectField_.getText().trim());
+    }
+    return;
+  }
+  
+  /**
+   * If user entered in minimum required files in terms of text-fields and nondirected confirmation
    */
   
   private boolean hasRequiredFiles() {
-    return (graph1File_ != null) && (graph2File_ != null) && (alignmentFile_ != null) && undirectedConfirm_.isSelected();
+    return (!graph1Field_.getText().isEmpty()) && (!graph2Field_.getText().isEmpty()) && (!alignField_.getText().isEmpty()) && undirectedConfirm_.isSelected();
   }
   
   public NetworkAlignmentDialogInfo getNAInfo() {
@@ -295,7 +420,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   }
   
   /**
-   * * Loads the file
+   * * Loads the file and update UI
    */
   
   private void loadFromFile(FileIndex mode) {
@@ -338,15 +463,12 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
       case PERFECT_FILE:
         perfectField_.setText(file.getAbsolutePath());
         perfectAlignFile_ = file;
-        perfectNGsCombo_.setEnabled(true);
+        managePerfectNGButton();
         break;
       default:
         throw new IllegalArgumentException();
     }
-    
-    if (hasRequiredFiles()) { // enable OK button
-      buttonOK_.setEnabled(true);
-    }
+    manageOKButton();
     return;
   }
   
