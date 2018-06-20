@@ -33,6 +33,7 @@ import java.util.Set;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 
 
@@ -44,7 +45,7 @@ import org.systemsbiology.biofabric.util.UiUtil;
  ** Node Correctness (NC) and Jaccard Similarity (JS) are calculatable
  ** only if we know the perfect alignment.
  **
- ** NGD and LGD are the cosine similarity between the normalized ratio vectors
+ ** NGS and LGS are the angular similarity between the normalized ratio vectors
  ** of the respective node groups and link groups of the main
  ** alignment and the perfect alignment.
  */
@@ -84,7 +85,7 @@ public class NetworkAlignmentScorer {
   // The scores
   //
   
-  private Double EC, S3, ICS, NC, NGD, LGD, JaccSim;
+  private Double EC, S3, ICS, NC, NGS, LGS, JaccSim;
   private NetworkAlignmentPlugIn.NetAlignStats netAlignStats_;
   
   public NetworkAlignmentScorer(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
@@ -165,6 +166,11 @@ public class NetworkAlignmentScorer {
     return;
   }
   
+  /****************************************************************************
+   **
+   ** Create structures (node-to-neighbors and node-to-inks
+   */
+  
   private void generateStructs(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Set<FabricLink>> nodeToLinks_, Map<NID.WithName, Set<NID.WithName>> nodeToNeighbors_) {
     
     for (FabricLink link : allLinks) {
@@ -196,25 +202,45 @@ public class NetworkAlignmentScorer {
     return;
   }
   
+  /****************************************************************************
+   **
+   ** Calculate the scores!
+   */
+  
   private void calcScores() {
     calcTopologicalScores();
   
     if (mergedToCorrectNC_ != null) { // must have perfect alignment for these measures
       calcNodeCorrectness();
-      calcGroupDistance();
+      calcGroupSimilarity();
       calcJaccardSimilarity();
     }
   }
   
+  /****************************************************************************
+   **
+   ** Create the Measure list and filter out 'null' measures
+   */
+  
   private void finalizeMeasures() {
+    ResourceManager rMan = ResourceManager.getManager();
+    String
+            ECn = rMan.getString("networkAlignment.edgeCoverage"),
+            S3n = rMan.getString("networkAlignment.symmetricSubstructureScore"),
+            ICSn = rMan.getString("networkAlignment.inducedConservedStructure"),
+            NCn = rMan.getString("networkAlignment.nodeCorrectness"),
+            NGSn = rMan.getString("networkAlignment.nodeGroupSimilarity"),
+            LGSn = rMan.getString("networkAlignment.linkGroupSimilarity"),
+            JSn = rMan.getString("networkAlignment.jaccardSimilarity");
+    
     NetworkAlignmentPlugIn.NetAlignMeasure[] possibleMeasures = {
-            new NetworkAlignmentPlugIn.NetAlignMeasure("Edge Coverage", EC),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("Symmetric Substructure Score", S3),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("Induced Conserved Structure", ICS),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("Node Correctness", NC),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("Node Group Distance", NGD),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("Link Group Distance", LGD),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("Jaccard Similarity", JaccSim),
+            new NetworkAlignmentPlugIn.NetAlignMeasure(ECn, EC),
+            new NetworkAlignmentPlugIn.NetAlignMeasure(S3n, S3),
+            new NetworkAlignmentPlugIn.NetAlignMeasure(ICSn, ICS),
+            new NetworkAlignmentPlugIn.NetAlignMeasure(NCn, NC),
+            new NetworkAlignmentPlugIn.NetAlignMeasure(NGSn, NGS),
+            new NetworkAlignmentPlugIn.NetAlignMeasure(LGSn, LGS),
+            new NetworkAlignmentPlugIn.NetAlignMeasure(JSn, JaccSim),
     };
   
     List<NetworkAlignmentPlugIn.NetAlignMeasure> measures = new ArrayList<NetworkAlignmentPlugIn.NetAlignMeasure>();
@@ -273,10 +299,10 @@ public class NetworkAlignmentScorer {
     return;
   }
   
-  private void calcGroupDistance() {
-    GroupDistance gd = new GroupDistance();
-    NGD = gd.calcNGD(groupMapMain_, groupMapPerfect_);
-    LGD = gd.calcLGD(groupMapMain_, groupMapPerfect_);
+  private void calcGroupSimilarity() {
+    GroupSimilarity gd = new GroupSimilarity();
+    NGS = gd.calcNGS(groupMapMain_, groupMapPerfect_);
+    LGS = gd.calcLGS(groupMapMain_, groupMapPerfect_);
     return;
   }
   
@@ -428,17 +454,17 @@ public class NetworkAlignmentScorer {
   
   /****************************************************************************
    **
-   ** NGD and LGD - with Angular similarity
+   ** NGS and LGS - with Angular similarity
    */
   
-  private static class GroupDistance {
+  private static class GroupSimilarity {
   
     /***************************************************************************
      **
      ** Calculated the score
      */
   
-    double calcNGD(NodeGroupMap groupMapMain, NodeGroupMap groupMapPerfect) {
+    double calcNGS(NodeGroupMap groupMapMain, NodeGroupMap groupMapPerfect) {
       VectorND main = getNGVector(groupMapMain), perfect = getNGVector(groupMapPerfect);
       double score = main.angSim(perfect);
       return (score);
@@ -466,7 +492,7 @@ public class NetworkAlignmentScorer {
      ** Calculated the score
      */
   
-    double calcLGD(NodeGroupMap groupMapMain, NodeGroupMap groupMapPerfect) {
+    double calcLGS(NodeGroupMap groupMapMain, NodeGroupMap groupMapPerfect) {
       VectorND main = getLGVector(groupMapMain), perfect = getLGVector(groupMapPerfect);
       double score = main.angSim(perfect);
       return (score);

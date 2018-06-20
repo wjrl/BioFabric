@@ -463,7 +463,7 @@ public class NodeGroupMap {
   
     /***************************************************************************
      **
-     ** @param node must be a Merged Node
+     ** @param node must be an Aligned Node
      ** Checks if two aligned-'large graph'-nodes have same neighbors
      */
     
@@ -473,7 +473,7 @@ public class NodeGroupMap {
       
       NID.WithName largeNode = nameToLarge.get(largeName);
       if (largeNode == null) {
-        throw new IllegalStateException("Large node not found for Jaccard Similarity");
+        throw new IllegalStateException("Large node for " + node.getName() + " not found for Jaccard Similarity");
       }
       NID.WithName match = entrezAlign.get(largeNode);
       
@@ -499,7 +499,7 @@ public class NodeGroupMap {
       try {
         nodesLarge = BuildExtractor.extractNodes(linksLarge, lonersLarge, null);
       } catch (AsynchExitRequestException aere) {
-        // should not happen; which thread?
+        // should not happen;
       }
       for (NID.WithName nodeL : nodesLarge) {
         nameToLarge.put(nodeL.getName(), nodeL);

@@ -255,7 +255,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     graph1Field_.addKeyListener(new KeyListener() {
       @Override
       public void keyTyped(KeyEvent e) { // only care about characters typed
-        System.out.println(graph1Field_.getText());
+//        System.out.println(graph1Field_.getText());
         if (hasRequiredFiles()) { // enable OK button
           buttonOK_.setEnabled(true);
         }
@@ -267,7 +267,6 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
       public void keyReleased(KeyEvent e) {
       }
     });
-  
     graph2Field_.addKeyListener(new KeyListener() {
       @Override
       public void keyTyped(KeyEvent e) {

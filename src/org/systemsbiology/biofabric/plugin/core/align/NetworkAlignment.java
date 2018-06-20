@@ -195,7 +195,7 @@ public class NetworkAlignment {
     largeToMergedID_ = new TreeMap<NID.WithName, NID.WithName>();
     mergedIDToSmall_ = new TreeMap<NID.WithName, NID.WithName>();
     
-    boolean doingPerfectGroup = (outType_ == NetworkAlignmentBuildData.ViewType.GROUP) && 
+    boolean doingPerfectGroup = (outType_ == NetworkAlignmentBuildData.ViewType.GROUP) &&
                                 (perfectG1toG2_ != null);
      
     for (Map.Entry<NID.WithName, NID.WithName> entry : mapG1toG2_.entrySet()) {
@@ -336,7 +336,7 @@ public class NetworkAlignment {
       }
       lr.report();
     }
-    return; // This method is not ideal. . .
+    return; // This method is not ideal. . . but shall stay (6/19/18)
   }
   
   /****************************************************************************
@@ -350,6 +350,7 @@ public class NetworkAlignment {
     
     mergedLinks_.add(newMergedLink);
     mergedLinks_.add(newMergedLinkShadow);
+    return;
   }
   
   /****************************************************************************
@@ -427,7 +428,7 @@ public class NetworkAlignment {
       Set<NID.WithName> blueNodesG1 = new TreeSet<NID.WithName>();
       for (FabricLink link : mergedLinks) { // find the nodes of interest
         if (link.getRelation().equals(GRAPH1)) {
-          blueNodesG1.add(link.getSrcID()); // it's a set- so with shadows no duplicates
+          blueNodesG1.add(link.getSrcID()); // it's a set - so with shadows no duplicates
           blueNodesG1.add(link.getTrgID());
         }
         reporter.report();
@@ -488,9 +489,7 @@ public class NetworkAlignment {
       String concat2 = String.format("%s___%s", arr2[0], arr2[1]);
       
       //
-      // Meant to be temporary (7/16/17) but will stay (1/27/18)
-      // It cuts the merge lists algorithm to O(nlogn) because I can use
-      // binary search
+      // This cuts the merge-lists algorithm to O(eloge) because binary search
       //
       
       return concat1.compareTo(concat2);
