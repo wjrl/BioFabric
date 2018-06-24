@@ -92,7 +92,7 @@ public class AlignCycleLayout extends NodeLayout {
                                                                LayoutCriterionFailureException {
     
     NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
-    maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectMap, monitor);
+    maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectG1toG2, monitor);
     if (maps_ == null) {
       throw new LayoutCriterionFailureException();
     }
@@ -145,7 +145,7 @@ public class AlignCycleLayout extends NodeLayout {
     NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
     
     if (maps_ == null) {
-      maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectMap, monitor);
+      maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectG1toG2, monitor);
     }
     
     Set<NID.WithName> allNodes = genAllNodes(narbd);
