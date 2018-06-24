@@ -22,10 +22,11 @@
 
 package org.systemsbiology.biofabric.plugin.core.align;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.EdgeLayout;
@@ -44,36 +45,39 @@ import org.systemsbiology.biofabric.util.UniqueLabeller;
 
 public class NetworkAlignmentBuildData extends BuildData.RelayoutBuildData {
   
-  public enum ViewType {GROUP, ORPHAN, CYCLE};
+  public enum ViewType {GROUP, ORPHAN, CYCLE}
   
-  public Map<NID.WithName, Boolean> mergedToCorrect, isAlignedNode;
+  public ArrayList<FabricLink> linksLarge;
+  public HashSet<NID.WithName> lonersLarge;
+  public Map<NID.WithName, Boolean> mergedToCorrectNC, isAlignedNode;
   public NetworkAlignmentPlugIn.NetAlignStats netAlignStats;
   public ViewType view;
   public Map<NID.WithName, NID.WithName> mapG1toG2;
-  public Map<NID.WithName, NID.WithName> perfectMap;
+  public Map<NID.WithName, NID.WithName> perfectG1toG2;
   public List<NID.WithName[]> cycleBounds;
-  public boolean forPerfectNG;
   public NodeGroupMap.PerfectNGMode mode;
 
   public NetworkAlignmentBuildData(UniqueLabeller idGen,
                                    Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
-                                   Map<NID.WithName, Boolean> mergedToCorrect,
+                                   Map<NID.WithName, Boolean> mergedToCorrectNC,
                                    Map<NID.WithName, Boolean> isAlignedNode,
                                    NetworkAlignmentPlugIn.NetAlignStats netAlignStats,
-                                   Map<NID.WithName, String> clustAssign, ViewType view, 
+                                   Map<NID.WithName, String> clustAssign, ViewType view,
                                    Map<NID.WithName, NID.WithName> mapG1toG2,
-                                   Map<NID.WithName, NID.WithName> perfectMap,
-                                   boolean forPerfectNG, NodeGroupMap.PerfectNGMode mode) {
+                                   Map<NID.WithName, NID.WithName> perfectG1toG2,
+                                   ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                                   NodeGroupMap.PerfectNGMode mode) {
 
     super(idGen, allLinks, loneNodeIDs, clustAssign, null, BuildData.BuildMode.BUILD_FROM_PLUGIN);
     this.layoutMode = BioFabricNetwork.LayoutMode.PER_NETWORK_MODE;
     this.view = view;
-    this.mergedToCorrect = mergedToCorrect;
+    this.linksLarge = linksLarge;
+    this.lonersLarge = lonersLarge;
+    this.mergedToCorrectNC = mergedToCorrectNC;
     this.isAlignedNode = isAlignedNode;
     this.netAlignStats = netAlignStats;
     this.mapG1toG2 = mapG1toG2;
-    this.perfectMap = perfectMap;
-    this.forPerfectNG = forPerfectNG;
+    this.perfectG1toG2 = perfectG1toG2;
     this.mode = mode;
   }
 

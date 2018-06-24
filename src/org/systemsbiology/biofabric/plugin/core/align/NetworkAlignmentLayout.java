@@ -165,9 +165,9 @@ public class NetworkAlignmentLayout extends NodeLayout {
     //
     
     NodeGroupMap grouper;
-//    if (nabd.forPerfectNG) {
     
-    if (nabd.mode == NodeGroupMap.PerfectNGMode.NODE_CORRECTNESS || nabd.mode == NodeGroupMap.PerfectNGMode.JACCARD_SIMILARITY) {
+    if (nabd.mode == NodeGroupMap.PerfectNGMode.NODE_CORRECTNESS ||
+            nabd.mode == NodeGroupMap.PerfectNGMode.JACCARD_SIMILARITY) {
       grouper = new NodeGroupMap(nabd, defaultNGOrderWithCorrect, ngAnnotcolorsWithCorrect);
     } else {
       grouper = new NodeGroupMap(nabd, defaultNGOrderWithoutCorrect, ngAnnotColorsWithoutCorrect);
@@ -399,14 +399,14 @@ public class NetworkAlignmentLayout extends NodeLayout {
   
   public static final String[] defaultNGOrderWithoutCorrect = {
           "(P:0)",
-          "(P:P)",            // FIRST THREE LINK GROUPS
+          "(P:P)",
           "(P:B)",
           "(P:pRp)",
           "(P:P/B)",
           "(P:P/pRp)",
           "(P:B/pRp)",
           "(P:P/B/pRp)",
-          "(P:pRr)",          // PURPLE NODES IN LINK GROUP 3
+          "(P:pRr)",
           "(P:P/pRr)",
           "(P:B/pRr)",
           "(P:pRp/pRr)",
@@ -414,7 +414,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
           "(P:P/pRp/pRr)",
           "(P:B/pRp/pRr)",
           "(P:P/B/pRp/pRr)",
-          "(R:pRr)",          // RED NODES IN LINK GROUP 5
+          "(R:pRr)",
           "(R:rRr)",
           "(R:pRr/rRr)",
           "(R:0)"

@@ -409,12 +409,12 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     Set<NID.WithName> mergedLoneNodeIDs = new HashSet<NID.WithName>();
     SortedMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
     Set<FabricLink> reducedLinks = new HashSet<FabricLink>();
-    Map<NID.WithName, Boolean> mergedToCorrect = null, isAlignedNode = new HashMap<NID.WithName, Boolean>();
+    Map<NID.WithName, Boolean> mergedToCorrectNC = null, isAlignedNode = new HashMap<NID.WithName, Boolean>();
     if (doingPerfectGroup) {
-      mergedToCorrect = new HashMap<NID.WithName, Boolean>();
+      mergedToCorrectNC = new HashMap<NID.WithName, Boolean>();
     }
     
-    boolean finished = nab.processNetAlign(mergedLinks, mergedLoneNodeIDs, mapG1toG2, perfectG1toG2, mergedToCorrect,
+    boolean finished = nab.processNetAlign(mergedLinks, mergedLoneNodeIDs, mapG1toG2, perfectG1toG2, mergedToCorrectNC,
             isAlignedNode, linksSmall, lonersSmall, linksLarge, lonersLarge, relMap, outType, idGen, holdIt);
   
     //
@@ -455,16 +455,15 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
   
     if (finished) { // Score Report
-      finished = networkAlignmentStepFour(reducedLinks, mergedLoneNodeIDs, isAlignedNode, mergedToCorrect,
+      finished = networkAlignmentStepFour(reducedLinks, mergedLoneNodeIDs, isAlignedNode, mergedToCorrectNC,
               reducedLinksPerfect, mergedLoneNodeIDsPerfect, isAlignedNodePerfect, netAlignStats_,
               linksSmall, lonersSmall, linksLarge, lonersLarge, mapG1toG2, perfectG1toG2);
     }
    
     if (finished) { // Load the alignments
-      networkAlignmentStepFive(reducedLinks, mergedLoneNodeIDs, mergedToCorrect, isAlignedNode, 
-                               mapG1toG2, perfectG1toG2, netAlignStats_, outType,
-                               nadi.forPerfectNG, nadi.mode,
-                               idGen, nadi.align, holdIt);
+      networkAlignmentStepFive(reducedLinks, mergedLoneNodeIDs, mergedToCorrectNC, isAlignedNode,
+                               mapG1toG2, perfectG1toG2, linksLarge, lonersLarge, netAlignStats_, outType,
+              nadi.mode, idGen, nadi.align, holdIt);
  
     }
     return (true);
@@ -478,14 +477,14 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    */
   
   private boolean networkAlignmentStepFour(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Boolean> isAlignedNode,
-                                           Map<NID.WithName, Boolean> mergedToCorrect, Set<FabricLink> reducedLinksPerfect,
+                                           Map<NID.WithName, Boolean> mergedToCorrectNC, Set<FabricLink> reducedLinksPerfect,
                                            Set<NID.WithName> loneNodeIDsPerfect, Map<NID.WithName, Boolean> isAlignedNodePerfect,
                                            NetAlignStats report,
                                            ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
                                            ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
                                            Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2) {
   
-    NetworkAlignmentScorer scorer = new NetworkAlignmentScorer(reducedLinks, loneNodeIDs, mergedToCorrect,
+    NetworkAlignmentScorer scorer = new NetworkAlignmentScorer(reducedLinks, loneNodeIDs, mergedToCorrectNC,
             isAlignedNode, isAlignedNodePerfect, reducedLinksPerfect, loneNodeIDsPerfect,
             linksSmall, lonersSmall, linksLarge, lonersLarge, mapG1toG2, perfectG1toG2, null);
 
@@ -503,17 +502,17 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
                                            Map<NID.WithName, Boolean> isAlignedNode,
                                            Map<NID.WithName, NID.WithName> mapG1toG2,
                                            Map<NID.WithName, NID.WithName> perfectMap,
+                                           ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
                                            NetAlignStats report, 
                                            NetworkAlignmentBuildData.ViewType viewType, 
-                                           boolean forPerfectNG,
                                            NodeGroupMap.PerfectNGMode mode,
                                            UniqueLabeller idGen, File align, File holdIt) {
 
     HashMap<NID.WithName, String> emptyClustMap = new HashMap<NID.WithName, String>();
     NetworkAlignmentBuildData nabd = 
       new NetworkAlignmentBuildData(idGen, reducedLinks, loneNodeIDs, mergedToCorrect,
-                                    isAlignedNode, report, emptyClustMap, 
-                                    viewType, mapG1toG2, perfectMap, forPerfectNG, mode);   
+                                    isAlignedNode, report, emptyClustMap,
+                                    viewType, mapG1toG2, perfectMap, linksLarge, lonersLarge, mode);
 
     try {
       flf_.buildNetworkForPlugIn(nabd, holdIt); 

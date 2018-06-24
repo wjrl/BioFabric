@@ -33,6 +33,7 @@ import java.util.Set;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 
 
@@ -44,7 +45,7 @@ import org.systemsbiology.biofabric.util.UiUtil;
  ** Node Correctness (NC) and Jaccard Similarity (JS) are calculatable
  ** only if we know the perfect alignment.
  **
- ** NGD and LGD are the cosine similarity between the normalized ratio vectors
+ ** NGS and LGS are the angular similarity between the normalized ratio vectors
  ** of the respective node groups and link groups of the main
  ** alignment and the perfect alignment.
  */
@@ -64,7 +65,7 @@ public class NetworkAlignmentScorer {
   private Set<FabricLink> linksMain_, linksPerfect_;
   private Set<NID.WithName> loneNodeIDsMain_, loneNodeIDsPerfect_;
   private Map<NID.WithName, Boolean> isAlignedNodeMain_, isAlignedNodePerfect_;
-  private Map<NID.WithName, Boolean> mergedToCorrect_;
+  private Map<NID.WithName, Boolean> mergedToCorrectNC_;
   
   //
   // This are from original untouched graphs and alignments
@@ -84,11 +85,11 @@ public class NetworkAlignmentScorer {
   // The scores
   //
   
-  private Double EC, S3, ICS, NC, NGD, LGD, JaccSim;
+  private Double EC, S3, ICS, NC, NGS, LGS, JaccSim;
   private NetworkAlignmentPlugIn.NetAlignStats netAlignStats_;
   
   public NetworkAlignmentScorer(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
-                                Map<NID.WithName, Boolean> mergedToCorrect, Map<NID.WithName, Boolean> isAlignedNode,
+                                Map<NID.WithName, Boolean> mergedToCorrectNC, Map<NID.WithName, Boolean> isAlignedNode,
                                 Map<NID.WithName, Boolean> isAlignedNodePerfect,
                                 Set<FabricLink> linksPerfect, Set<NID.WithName> loneNodeIDsPerfect,
                                 ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
@@ -97,7 +98,7 @@ public class NetworkAlignmentScorer {
                                 BTProgressMonitor monitor) {
     this.linksMain_ = new HashSet<FabricLink>(reducedLinks);
     this.loneNodeIDsMain_ = new HashSet<NID.WithName>(loneNodeIDs);
-    this.mergedToCorrect_ = mergedToCorrect;
+    this.mergedToCorrectNC_ = mergedToCorrectNC;
     this.linksPerfect_ = linksPerfect;
     this.loneNodeIDsPerfect_ = loneNodeIDsPerfect;
     this.isAlignedNodeMain_ = isAlignedNode;
@@ -113,16 +114,17 @@ public class NetworkAlignmentScorer {
     this.lonersLarge_ = lonersLarge;
     this.mapG1toG2_ = mapG1toG2;
     this.perfectG1toG2_ = perfectG1toG2;
-    this.groupMapMain_ = new NodeGroupMap(reducedLinks, loneNodeIDs, mergedToCorrect, isAlignedNode, false, NodeGroupMap.PerfectNGMode.NONE,
+    this.groupMapMain_ = new NodeGroupMap(reducedLinks, loneNodeIDs, mapG1toG2, perfectG1toG2, linksLarge, lonersLarge,
+            mergedToCorrectNC, isAlignedNode, NodeGroupMap.PerfectNGMode.NONE,
             NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
-    if (mergedToCorrect != null) {
-      this.groupMapPerfect_ = new NodeGroupMap(linksPerfect, loneNodeIDsPerfect, mergedToCorrect, isAlignedNodePerfect, false, NodeGroupMap.PerfectNGMode.NONE,
+    if (mergedToCorrectNC != null) {
+      this.groupMapPerfect_ = new NodeGroupMap(linksPerfect, loneNodeIDsPerfect, mapG1toG2, perfectG1toG2, linksLarge,
+              lonersLarge, mergedToCorrectNC, isAlignedNodePerfect, NodeGroupMap.PerfectNGMode.NONE,
               NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
     }
-    
     removeDuplicateAndShadow();
     generateStructs(reducedLinks, loneNodeIDs, nodeToLinksMain_, nodeToNeighborsMain_);
-    if (mergedToCorrect != null) {
+    if (mergedToCorrectNC != null) {
       generateStructs(linksPerfect, loneNodeIDsPerfect, nodeToLinksPerfect_, nodeToNeighborsPerfect_);
     }
     calcScores();
@@ -164,6 +166,11 @@ public class NetworkAlignmentScorer {
     return;
   }
   
+  /****************************************************************************
+   **
+   ** Create structures (node-to-neighbors and node-to-inks
+   */
+  
   private void generateStructs(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Set<FabricLink>> nodeToLinks_, Map<NID.WithName, Set<NID.WithName>> nodeToNeighbors_) {
     
     for (FabricLink link : allLinks) {
@@ -195,25 +202,45 @@ public class NetworkAlignmentScorer {
     return;
   }
   
+  /****************************************************************************
+   **
+   ** Calculate the scores!
+   */
+  
   private void calcScores() {
     calcTopologicalScores();
   
-    if (mergedToCorrect_ != null) { // must have perfect alignment for these measures
+    if (mergedToCorrectNC_ != null) { // must have perfect alignment for these measures
       calcNodeCorrectness();
-      calcGroupDistance();
+      calcGroupSimilarity();
       calcJaccardSimilarity();
     }
   }
   
+  /****************************************************************************
+   **
+   ** Create the Measure list and filter out 'null' measures
+   */
+  
   private void finalizeMeasures() {
+    ResourceManager rMan = ResourceManager.getManager();
+    String
+            ECn = rMan.getString("networkAlignment.edgeCoverage"),
+            S3n = rMan.getString("networkAlignment.symmetricSubstructureScore"),
+            ICSn = rMan.getString("networkAlignment.inducedConservedStructure"),
+            NCn = rMan.getString("networkAlignment.nodeCorrectness"),
+            NGSn = rMan.getString("networkAlignment.nodeGroupSimilarity"),
+            LGSn = rMan.getString("networkAlignment.linkGroupSimilarity"),
+            JSn = rMan.getString("networkAlignment.jaccardSimilarity");
+    
     NetworkAlignmentPlugIn.NetAlignMeasure[] possibleMeasures = {
-            new NetworkAlignmentPlugIn.NetAlignMeasure("Edge Coverage", EC),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("Symmetric Substructure Score", S3),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("Induced Conserved Structure", ICS),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("Node Correctness", NC),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("Node Group Distance", NGD),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("Link Group Distance", LGD),
-            new NetworkAlignmentPlugIn.NetAlignMeasure("Jaccard Similarity", JaccSim),
+            new NetworkAlignmentPlugIn.NetAlignMeasure(ECn, EC),
+            new NetworkAlignmentPlugIn.NetAlignMeasure(S3n, S3),
+            new NetworkAlignmentPlugIn.NetAlignMeasure(ICSn, ICS),
+            new NetworkAlignmentPlugIn.NetAlignMeasure(NCn, NC),
+            new NetworkAlignmentPlugIn.NetAlignMeasure(NGSn, NGS),
+            new NetworkAlignmentPlugIn.NetAlignMeasure(LGSn, LGS),
+            new NetworkAlignmentPlugIn.NetAlignMeasure(JSn, JaccSim),
     };
   
     List<NetworkAlignmentPlugIn.NetAlignMeasure> measures = new ArrayList<NetworkAlignmentPlugIn.NetAlignMeasure>();
@@ -257,30 +284,30 @@ public class NetworkAlignmentScorer {
   }
   
   private void calcNodeCorrectness() {
-    if (mergedToCorrect_ == null) {
+    if (mergedToCorrectNC_ == null) {
       NC = null;
       return;
     }
     
     int numCorrect = 0;
-    for (Map.Entry<NID.WithName, Boolean> node : mergedToCorrect_.entrySet()) {
+    for (Map.Entry<NID.WithName, Boolean> node : mergedToCorrectNC_.entrySet()) {
       if (node.getValue()) {
         numCorrect++;
       }
     }
-    NC = ((double)numCorrect) / (mergedToCorrect_.size());
+    NC = ((double)numCorrect) / (mergedToCorrectNC_.size());
     return;
   }
   
-  private void calcGroupDistance() {
-    GroupDistance gd = new GroupDistance();
-    NGD = gd.calcNGD(groupMapMain_, groupMapPerfect_);
-    LGD = gd.calcLGD(groupMapMain_, groupMapPerfect_);
+  private void calcGroupSimilarity() {
+    GroupSimilarity gd = new GroupSimilarity();
+    NGS = gd.calcNGS(groupMapMain_, groupMapPerfect_);
+    LGS = gd.calcLGS(groupMapMain_, groupMapPerfect_);
     return;
   }
   
   private void calcJaccardSimilarity() {
-    this.JaccSim = new JaccardSimilarity().calcScore(mapG1toG2_, perfectG1toG2_, linksLarge_, lonersLarge_);
+    this.JaccSim = new JaccardSimilarityScore().calcScore(mapG1toG2_, perfectG1toG2_, linksLarge_, lonersLarge_);
     return;
   }
   
@@ -427,17 +454,17 @@ public class NetworkAlignmentScorer {
   
   /****************************************************************************
    **
-   ** NGD and LGD
+   ** NGS and LGS - with Angular similarity
    */
   
-  private static class GroupDistance {
+  private static class GroupSimilarity {
   
     /***************************************************************************
      **
      ** Calculated the score
      */
   
-    double calcNGD(NodeGroupMap groupMapMain, NodeGroupMap groupMapPerfect) {
+    double calcNGS(NodeGroupMap groupMapMain, NodeGroupMap groupMapPerfect) {
       VectorND main = getNGVector(groupMapMain), perfect = getNGVector(groupMapPerfect);
       double score = main.angSim(perfect);
       return (score);
@@ -465,7 +492,7 @@ public class NetworkAlignmentScorer {
      ** Calculated the score
      */
   
-    double calcLGD(NodeGroupMap groupMapMain, NodeGroupMap groupMapPerfect) {
+    double calcLGS(NodeGroupMap groupMapMain, NodeGroupMap groupMapPerfect) {
       VectorND main = getLGVector(groupMapMain), perfect = getLGVector(groupMapPerfect);
       double score = main.angSim(perfect);
       return (score);
@@ -503,7 +530,7 @@ public class NetworkAlignmentScorer {
    ** Jaccard Similarity Measure - Adapted from NodeEQC.java
    */
   
-  private static class JaccardSimilarity {
+  private static class JaccardSimilarityScore {
   
     /***************************************************************************
      **
@@ -513,9 +540,11 @@ public class NetworkAlignmentScorer {
     double calcScore(Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2,
                      ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge) {
   
-      Map<NID.WithName, NID.WithName> entrezAlign = constructEntrezAlign(mapG1toG2, perfectG1toG2);
-      Map<NID.WithName, Set<NID.WithName>> nodeToNeigh = makeNodeToNeigh(linksLarge, lonersLarge);
-    
+      NodeGroupMap.JaccardSimilarityFunc funcJS =
+              new NodeGroupMap.JaccardSimilarityFunc(mapG1toG2, perfectG1toG2, linksLarge, lonersLarge);
+      Map<NID.WithName, NID.WithName> entrezAlign = funcJS.entrezAlign;
+      Map<NID.WithName, Set<NID.WithName>> nodeToNeigh = funcJS.nodeToNeighL;
+  
       HashSet<NID.WithName> union = new HashSet<NID.WithName>();
       HashSet<NID.WithName> intersect = new HashSet<NID.WithName>();
       HashSet<NID.WithName> scratchNode = new HashSet<NID.WithName>();
@@ -552,54 +581,6 @@ public class NetworkAlignmentScorer {
       return (score);
     }
   
-    /***************************************************************************
-     **
-     ** Match up G2-aligned nodes with G2-aligned nodes in perfect alignment
-     */
-    
-    private Map<NID.WithName, NID.WithName> constructEntrezAlign(Map<NID.WithName, NID.WithName> mapG1toG2,
-                                                                 Map<NID.WithName, NID.WithName> perfectG1toG2) {
-      Map<NID.WithName, NID.WithName> ret = new HashMap<NID.WithName, NID.WithName>();
-      for (NID.WithName node : mapG1toG2.keySet()) {
-        NID.WithName converted = perfectG1toG2.get(node);
-        if (converted == null) {
-          //System.err.println("no Entrez match for " + node);
-          continue;
-        }
-        NID.WithName matchedWith = mapG1toG2.get(node);
-        ret.put(converted, matchedWith);
-      }
-      return (ret);
-    }
-    
-    /***************************************************************************
-     **
-     ** Construct node to neighbor map
-     */
-    
-    private Map<NID.WithName, Set<NID.WithName>> makeNodeToNeigh(ArrayList<FabricLink> links, HashSet<NID.WithName> loners) {
-  
-      Map<NID.WithName, Set<NID.WithName>> ret = new HashMap<NID.WithName, Set<NID.WithName>>();
-  
-      for (FabricLink link : links) {
-        NID.WithName src = link.getSrcID(), trg = link.getTrgID();
-  
-        if (ret.get(src) == null) {
-          ret.put(src, new HashSet<NID.WithName>());
-        }
-        if (ret.get(trg) == null) {
-          ret.put(trg, new HashSet<NID.WithName>());
-        }
-        ret.get(src).add(trg);
-        ret.get(trg).add(src);
-      }
-      
-      for (NID.WithName node : loners) {
-        ret.put(node, new HashSet<NID.WithName>());
-      }
-      return (ret);
-    }
-    
     /***************************************************************************
      **
      ** Set intersection helper

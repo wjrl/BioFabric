@@ -148,7 +148,7 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
   
   /***************************************************************************
    **
-   ** Find link group intervals (same algorithm as Drain Zone calculator
+   ** Find link group intervals (same algorithm as Drain Zone calculator)
    */
   
   private AnnotationSet findLinkGroupIntervals(List<FabricLink> linkSet, BTProgressMonitor monitor)
@@ -209,19 +209,19 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
     private int getIndex(String rel) {
       
       if(rel.equals(NetworkAlignment.COVERED_EDGE)) {
-        return 1;
+        return NodeGroupMap.PURPLE_EDGES;
         
       } else if (rel.equals(NetworkAlignment.GRAPH1)) {
-        return 2;
+        return NodeGroupMap.BLUE_EDGES;
         
       } else if (rel.equals(NetworkAlignment.INDUCED_GRAPH2)) {
-        return 3;
+        return NodeGroupMap.RED_EDGES;
         
       } else if (rel.equals(NetworkAlignment.HALF_UNALIGNED_GRAPH2)) {
-        return 4;
+        return NodeGroupMap.ORANGE_EDGES;
         
       } else if (rel.equals(NetworkAlignment.FULL_UNALIGNED_GRAPH2)) {
-        return 5;
+        return NodeGroupMap.YELLOW_EDGES;
         
       } else {
         throw new IllegalArgumentException();

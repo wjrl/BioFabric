@@ -20,7 +20,6 @@
 package org.systemsbiology.biofabric.plugin.core.align;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -93,7 +92,7 @@ public class AlignCycleLayout extends NodeLayout {
                                                                LayoutCriterionFailureException {
     
     NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
-    maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectMap);
+    maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectG1toG2);
     return (true);
   }
   
@@ -143,7 +142,7 @@ public class AlignCycleLayout extends NodeLayout {
     NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
     
     if (maps_ == null) {
-      maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectMap);
+      maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectG1toG2);
     }
     
     Set<NID.WithName> allNodes = genAllNodes(narbd);
