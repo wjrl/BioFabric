@@ -199,7 +199,20 @@ public class RelationDirectionDialog extends BTStashResultsDialog {
     }   
     return (returnMap_);
   }   
-     
+ 
+  /***************************************************************************
+  **
+  ** Provide a function to force all relations to undirected
+  */
+  
+  public static SortedMap<FabricLink.AugRelation, Boolean> forceAllUndirected(SortedMap<FabricLink.AugRelation, Boolean> relationMap) {
+    TreeMap<FabricLink.AugRelation, Boolean> returnMap = new TreeMap<FabricLink.AugRelation, Boolean>();
+    for (FabricLink.AugRelation aug : relationMap.keySet()) {
+      returnMap.put(aug, Boolean.FALSE); 
+    } 
+    return (returnMap); 
+  }
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // INNER CLASSES

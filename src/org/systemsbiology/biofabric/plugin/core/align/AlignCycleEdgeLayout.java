@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
@@ -40,8 +39,7 @@ import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
-** This is the default layout algorithm for edges. Actually usable in combination 
-** with a wide variety of different node layout algorithms, not just the default
+** Like the default, but also calculates cycle bounds
 */
 
 public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
@@ -155,7 +153,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
         System.out.println("zoner " + zoner);
       }
       if ((currZoner == null) || !currZoner.equals(zoner)) { // New Zone
-        if (currZoner != null) { // End the zone
+        if (currZoner != null) { // i.e. currZoner != zoner
           if (currZoner.equals(currLooper[1])) {
             if (!currLooper[0].equals(currLooper[1])) {
               String color = (cycle % 2 == 0) ? "Orange" : "Green";
@@ -174,6 +172,9 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
       }
       endPos = count++;
     }
+    //
+    // Close out the last pending annotation
+    //
     if (!currLooper[0].equals(currLooper[1])) {
       String color = (cycle % 2 == 0) ? "Orange" : "Green";
       retval.addAnnot(new AnnotationSet.Annot("cycle " + cycle++, startPos, endPos, 0, color));

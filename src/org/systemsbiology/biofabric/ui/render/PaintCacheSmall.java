@@ -619,9 +619,7 @@ public class PaintCacheSmall {
       lr3.report();
       nodeIndex_[node.nodeRow - nodeIndexOffset_] = i;
     }
-    
-    
-    
+      
     int annotCount = 0;
     if (nodeAnnot != null) {
     	LoopReporter lr4 = new LoopReporter(nodeAnnot.size(), 20, monitor, 0.0, 1.0, "progress.buildNodeAnnots");
@@ -645,6 +643,7 @@ public class PaintCacheSmall {
           col = (acol == null) ? annotColors_[annotCount++ % annotColors_.length].getColor() : acol.getColor();
         }  
         lr5.report();
+        System.out.println(an);
         buildAnAnnotationRect(an.getRange(), an.getName(), col, false, linkExtents, frc, nodeRows, qtpc);
       }
     }
@@ -948,11 +947,12 @@ public class PaintCacheSmall {
     } else {
       nameKeyToPaintOneQuarter_.put(nkk, npp);
     }
-     
+    
     TextPath.FontSizes useFont = null;
     Rectangle2D useBounds = null;
     Rectangle2D bounds = null;
     boolean rotate = false;
+
     for (TextPath.FontSizes size : bigToLittle_) {  
       bounds = fonts_.get(size).getStringBounds(name, frc);
       double h = bounds.getHeight();

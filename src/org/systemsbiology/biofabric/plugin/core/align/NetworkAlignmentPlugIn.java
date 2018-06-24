@@ -447,11 +447,11 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
   
     if (finished) { // for main alignment      
-      finished = flf_.handleDirectionsDupsAndShadows(mergedLinks, mergedLoneNodeIDs, false, relMap, reducedLinks, holdIt);
+      finished = flf_.handleDirectionsDupsAndShadows(mergedLinks, mergedLoneNodeIDs, false, relMap, reducedLinks, holdIt, true);
     }
     
     if (finished && doingPerfectGroup) { // for perfect alignment
-      finished = flf_.handleDirectionsDupsAndShadows(mergedLinksPerfect, mergedLoneNodeIDsPerfect, false, relMapPerfect, reducedLinksPerfect, holdIt);
+      finished = flf_.handleDirectionsDupsAndShadows(mergedLinksPerfect, mergedLoneNodeIDsPerfect, false, relMapPerfect, reducedLinksPerfect, holdIt, true);
     }
   
     if (finished) { // Score Report
