@@ -20,7 +20,6 @@
 package org.systemsbiology.biofabric.plugin.core.align;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -93,7 +92,10 @@ public class AlignCycleLayout extends NodeLayout {
                                                                LayoutCriterionFailureException {
     
     NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
-    maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectMap);
+    maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectMap, monitor);
+    if (maps_ == null) {
+      throw new LayoutCriterionFailureException();
+    }
     return (true);
   }
   
@@ -143,7 +145,7 @@ public class AlignCycleLayout extends NodeLayout {
     NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
     
     if (maps_ == null) {
-      maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectMap);
+      maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectMap, monitor);
     }
     
     Set<NID.WithName> allNodes = genAllNodes(narbd);
@@ -403,10 +405,9 @@ public class AlignCycleLayout extends NodeLayout {
             List<String> unlooped = ac.getReorderedKidsStartingAtKidOrStart(kidKey);
             for (String ulnode : unlooped) { 
               NID.WithName daNode = pathElemToNode.get(ulnode);
-              System.out.println("da node for " + ulnode + " is " + daNode);
               if (daNode == null) {
                 // Seeing this with reduced to SC on 0.03 importance!
-                System.out.println("no node for " + ulnode);
+                System.err.println("no node for " + ulnode);
                 UiUtil.fixMePrintout("NO! Gotta have perfect alignment file so we can go backwards to smaller network");
                 UiUtil.fixMePrintout("AND if there is no node BB for AA::BB, that's NORMAL");
                 throw new IllegalStateException();
@@ -419,6 +420,7 @@ public class AlignCycleLayout extends NodeLayout {
             }
             NID.WithName[] bounds = new NID.WithName[2];
             cycleBounds.add(bounds);
+            
             bounds[0] = pathElemToNode.get(unlooped.get(0));
             bounds[1] = pathElemToNode.get(unlooped.get(unlooped.size() - 1));
           }
@@ -438,11 +440,15 @@ public class AlignCycleLayout extends NodeLayout {
   */
   
   private NodeMaps normalizeAlignMap(Map<NID.WithName, NID.WithName> align, 
-                                                Map<NID.WithName, NID.WithName> perfectAlign) { 
+                                     Map<NID.WithName, NID.WithName> perfectAlign,
+                                     BTProgressMonitor monitor)  throws AsynchExitRequestException {
     
     //
     // Build sets of names. If the names are not unique, this layout cannot proceed.
     //
+    
+    LoopReporter lr = new LoopReporter(align.size(), 20, monitor, 0.0, 1.00, "progress.normalizeAlignMap");
+    UiUtil.fixMePrintout("Actually check loop progress");
     
     HashSet<String> keyNames = new HashSet<String>();
     for (NID.WithName key : align.keySet()) {
@@ -461,20 +467,30 @@ public class AlignCycleLayout extends NodeLayout {
     }
     
     //
-    // If source, target name sets not the same, we gotta have a perfect alignment
-    // to work:
+    // Alignment map L takes all the nodes in set A into some subset of the nodes in B. To do the cycle 
+    // layout, we need to have an inverse map L' from B to A such that the domain of L' covers A. If the 
+    // namespaces are the same, this is easy: the identity map. If that does not do the trick, user must
+    // provide one (via the perfect alignment file).
+    // 
+    // So, is the set of keys a subset of the set of targets?
     //
     
     Map<String, String> backMap = null;
-    if (!keyNames.equals(valNames)) {
+    Map<String, String> correctMap = null;
+        
+    HashSet<String> intersect = new HashSet<String>(valNames);
+    intersect.retainAll(keyNames);
+    if (!keyNames.equals(intersect)) {
+      System.out.println("perfectAlign " + perfectAlign);
       if ((perfectAlign == null) || perfectAlign.isEmpty()) {
         return (null);
       } 
       backMap = new HashMap<String, String>();
-
+      correctMap = new HashMap<String, String>();
       for (NID.WithName key : perfectAlign.keySet()) {
         NID.WithName val = perfectAlign.get(key);
         backMap.put(val.getName(), key.getName());
+        correctMap.put(key.getName(), val.getName());
       }
     }
     
@@ -488,7 +504,9 @@ public class AlignCycleLayout extends NodeLayout {
        }
        nameToName.put(key.getName(), matchNode.getName());
      }
-     return (new NodeMaps(nameToName, backMap));
+    
+     lr.finish();
+     return (new NodeMaps(nameToName, backMap, correctMap));
   } 
   
   /***************************************************************************
@@ -558,7 +576,14 @@ public class AlignCycleLayout extends NodeLayout {
   
   /***************************************************************************
   **
-  ** Extract the paths in the alignment network:
+  ** Extract the paths in the alignment network.
+  ** Four cases from two orthogonal issues: Are nodes in same namespace, and are there more
+  ** nodes in the larger network. With different namespaces, we need a reverse map. If the
+  ** larger network has more nodes, there might not be a reverse mapping, so not every path
+  ** will be a cycle. Note that while A->A is an obvious correct match, A->1234 is not so
+  ** clear. A->B B->A is a swap that needs to be annotated as a cycle, but A->B should obviously
+  ** also be marked as a path if B is in the larger net and not aligned. Similarly, A->1234 should
+  ** be unmarked if it is correct, but marked if is incorrect.
   */
   
   private Map<String, AlignPath> calcAlignPaths(NodeMaps align) { 
@@ -575,14 +600,16 @@ public class AlignCycleLayout extends NodeLayout {
        String nextKey = align.normalMap.get(startKey);
        // Not every cycle closes itself, so nextKey can == null:
        while (nextKey != null) {
+         // Back map is used when the two networks have different node namespaces...
          if (align.backMap != null) {
            nextKey = align.backMap.get(nextKey);
-           if (nextKey == null) {
+           if (nextKey == null) { // Node in larger net has no partner in smaller
              break;
            }
          }
          if (nextKey.equals(startKey)) {
            path.isCycle = true;
+           path.correct = (path.pathNodes.size() == 1);
            break;
          }
          AlignPath existing = pathsPerStart.get(nextKey);
@@ -624,10 +651,12 @@ public class AlignCycleLayout extends NodeLayout {
         
     List<String> pathNodes;
     boolean isCycle;
+    boolean correct;
 
     AlignPath() {
       pathNodes = new ArrayList<String>();
       isCycle = false;
+      correct = false;
     } 
     
     List<String> getReorderedKidsStartingAtKidOrStart(String start) {
@@ -670,17 +699,12 @@ public class AlignCycleLayout extends NodeLayout {
         
     Map<String, String> normalMap;
     Map<String, String> backMap;
+    Map<String, String> correctMap;
 
-    NodeMaps(Map<String, String> normalMap, Map<String, String> backMap) {
+    NodeMaps(Map<String, String> normalMap, Map<String, String> backMap, Map<String, String> correctMap) {
       this.normalMap = normalMap;
       this.backMap = backMap;
+      this.correctMap = correctMap;
     } 
   }
-  
-  
-  
-  
-  
-  
-
 }

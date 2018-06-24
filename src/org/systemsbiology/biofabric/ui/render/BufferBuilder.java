@@ -617,6 +617,7 @@ public class BufferBuilder {
     synchronized (this) {
     	WorldPieceOffering wpo = allWorldsToImageName_.get(worldPiece);
       if (didDraw) {
+        UiUtil.fixMePrintout("saw an NPE here. wpo must have been null!");
         if ((wpo.cacheHandle == null) || wpo.cacheHandle.equals("")) {
           wpo.cacheHandle = cache_.cacheAnImage(bi, bis_);
         } else {

@@ -244,7 +244,9 @@ public class DefaultEdgeLayout implements EdgeLayout {
       }
       endPos = count++;
     }
-    retval.addAnnot(new AnnotationSet.Annot(lastType, startPos, endPos, 0, getColor(lastType, colorMap)));
+    if (lastType != null) {
+      retval.addAnnot(new AnnotationSet.Annot(lastType, startPos, endPos, 0, getColor(lastType, colorMap)));
+    }
     lr.finish();
     return (retval);
   }
