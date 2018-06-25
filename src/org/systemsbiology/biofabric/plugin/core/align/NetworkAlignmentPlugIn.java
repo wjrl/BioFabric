@@ -319,12 +319,12 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     //
   
     // small graph
-    ArrayList<FabricLink> linksSmall = new ArrayList<FabricLink>();
-    HashSet<NID.WithName> lonersSmall = new HashSet<NID.WithName>();
+    ArrayList<FabricLink> linksSmall;
+    HashSet<NID.WithName> lonersSmall;
   
     // large graph
-    ArrayList<FabricLink> linksLarge = new ArrayList<FabricLink>();
-    HashSet<NID.WithName> lonersLarge = new HashSet<NID.WithName>();
+    ArrayList<FabricLink> linksLarge;
+    HashSet<NID.WithName> lonersLarge;
   
     try {
       int numNodesA = BuildExtractor.extractNodes(linksGraphA, loneNodeIDsGraphA, null).size();
@@ -483,13 +483,20 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
                                            ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
                                            ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
                                            Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2) {
-  
-    NetworkAlignmentScorer scorer = new NetworkAlignmentScorer(reducedLinks, loneNodeIDs, mergedToCorrectNC,
-            isAlignedNode, isAlignedNodePerfect, reducedLinksPerfect, loneNodeIDsPerfect,
-            linksSmall, lonersSmall, linksLarge, lonersLarge, mapG1toG2, perfectG1toG2, null);
-
-    report.replaceValuesTo(scorer.getNetAlignStats());
-    return (true);
+    File holdIt;
+    try {
+      holdIt = File.createTempFile("BioFabricHold", ".zip");
+      holdIt.deleteOnExit();
+    } catch (IOException ioex) {
+      holdIt = null;
+    }
+    NetAlignMeasureBuilder namb = new NetAlignMeasureBuilder();
+    
+    boolean finished = namb.processNetAlignMeasures(reducedLinks, loneNodeIDs, isAlignedNode, mergedToCorrectNC,
+            reducedLinksPerfect, loneNodeIDsPerfect, isAlignedNodePerfect, report, linksSmall, lonersSmall,
+            linksLarge, lonersLarge, mapG1toG2, perfectG1toG2, holdIt);
+    
+    return (finished);
   }
   
   /***************************************************************************
@@ -864,7 +871,6 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       return (finished_);
     }
     
-    // NOT SURE IF ALL OF THE METHODS BELOW ARE CORRECT
     public boolean handleRemoteException(Exception remoteEx) {
       finished_ = false;
       return (false);
@@ -939,6 +945,129 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     
     public Object postRunCore() {
       return null;
+    }
+  }
+  
+  /***************************************************************************
+   **
+   ** Class for calculating network alignment measures
+   */
+  
+  private class NetAlignMeasureBuilder implements BackgroundWorkerOwner {
+    
+    private File holdIt_;
+    private boolean finished_;
+    
+    public boolean processNetAlignMeasures(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Boolean> isAlignedNode,
+                                           Map<NID.WithName, Boolean> mergedToCorrectNC, Set<FabricLink> reducedLinksPerfect,
+                                           Set<NID.WithName> loneNodeIDsPerfect, Map<NID.WithName, Boolean> isAlignedNodePerfect,
+                                           NetAlignStats report,
+                                           ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
+                                           ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                                           Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2, File holdIt) {
+      finished_ = true;
+      holdIt_ = holdIt;
+      try {
+        NetAlignMeasureRunner runner = new NetAlignMeasureRunner(reducedLinks, loneNodeIDs, isAlignedNode, mergedToCorrectNC, reducedLinksPerfect,
+                loneNodeIDsPerfect, isAlignedNodePerfect, report, linksSmall, lonersSmall, linksLarge, lonersLarge, mapG1toG2, perfectG1toG2);
+    
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bwcm_,
+                "fileLoad.waitTitle", "fileLoad.wait", true);
+    
+        runner.setClient(bwc);
+        bwc.launchWorker();
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }
+      return (finished_);
+    }
+    
+    @Override
+    public boolean handleRemoteException(Exception remoteEx) {
+      finished_ = false;
+      return (false);
+    }
+  
+    @Override
+    public void handleCancellation() {
+      finished_ = false;
+      flf_.cancelAndRestore(holdIt_);
+      return;
+    }
+  
+    @Override
+    public void cleanUpPreEnable(Object result) {
+      return;
+    }
+  
+    @Override
+    public void cleanUpPostRepaint(Object result) {
+      return;
+    }
+  }
+  
+  /***************************************************************************
+   **
+   ** Background network alignment measure processing
+   */
+  
+  private class NetAlignMeasureRunner extends BackgroundWorker {
+  
+    private Map<NID.WithName, NID.WithName> mapG1toG2_;
+    private Set<FabricLink> reducedLinks_;
+    private Set<NID.WithName> loneNodeIDs_;
+    private Map<NID.WithName, Boolean> isAlignedNode_;
+    private Map<NID.WithName, Boolean> mergedToCorrectNC_;
+    private Map<NID.WithName, NID.WithName> perfectG1toG2_;
+    private Set<FabricLink> reducedLinksPerfect_;
+    private Set<NID.WithName> loneNodeIDsPerfect_;
+    private Map<NID.WithName, Boolean> isAlignedNodePerfect_;
+  
+    private ArrayList<FabricLink> linksSmall_, linksLarge_;
+    private HashSet<NID.WithName> lonersSmall_, lonersLarge_;
+    private NetAlignStats report_;
+    
+    
+    public NetAlignMeasureRunner(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Boolean> isAlignedNode,
+                                 Map<NID.WithName, Boolean> mergedToCorrectNC, Set<FabricLink> reducedLinksPerfect,
+                                 Set<NID.WithName> loneNodeIDsPerfect, Map<NID.WithName, Boolean> isAlignedNodePerfect,
+                                 NetAlignStats report,
+                                 ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
+                                 ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                                 Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2) {
+      super(new Boolean(false));
+      
+      this.reducedLinks_ = reducedLinks;
+      this.loneNodeIDs_ = loneNodeIDs;
+      this.isAlignedNode_ = isAlignedNode;
+      this.mergedToCorrectNC_ = mergedToCorrectNC;
+      this.reducedLinksPerfect_ = reducedLinksPerfect;
+      this.loneNodeIDsPerfect_ = loneNodeIDsPerfect;
+      this.isAlignedNodePerfect_ = isAlignedNodePerfect;
+      this.report_ = report;
+      this.linksSmall_ = linksSmall;
+      this.lonersSmall_ = lonersSmall;
+      this.linksLarge_ = linksLarge;
+      this.lonersLarge_ = lonersLarge;
+      this.mapG1toG2_ = mapG1toG2;
+      this.perfectG1toG2_ = perfectG1toG2;
+    }
+  
+    @Override
+    public Object runCore() throws AsynchExitRequestException {
+  
+      NetworkAlignmentScorer scorer = new NetworkAlignmentScorer(reducedLinks_, loneNodeIDs_, mergedToCorrectNC_,
+              isAlignedNode_, isAlignedNodePerfect_, reducedLinksPerfect_, loneNodeIDsPerfect_,
+              linksSmall_, lonersSmall_, linksLarge_, lonersLarge_, mapG1toG2_, perfectG1toG2_, this);
+  
+      this.report_.replaceValuesTo(scorer.getNetAlignStats());
+      
+      return (new Boolean(true));
+    }
+  
+    @Override
+    public Object postRunCore() {
+      return (null);
     }
   }
   

@@ -32,6 +32,8 @@ import java.util.Set;
 import org.systemsbiology.biofabric.model.BuildExtractor;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
+import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
 
 /***************************************************************************
@@ -79,6 +81,7 @@ public class NodeGroupMap {
   
   private Map<String, Double> nodeGroupRatios_, linkGroupRatios_;
   private JaccardSimilarityFunc funcJS_;
+  private BTProgressMonitor monitor_;
   
   public static final int
           PURPLE_EDGES = 0,
@@ -93,16 +96,18 @@ public class NodeGroupMap {
     NONE, NODE_CORRECTNESS, JACCARD_SIMILARITY
   }
   
-  public NodeGroupMap(NetworkAlignmentBuildData nabd, String[] nodeGroupOrder, String[][] colorMap) {
+  public NodeGroupMap(NetworkAlignmentBuildData nabd, String[] nodeGroupOrder, String[][] colorMap,
+                      BTProgressMonitor monitor) throws AsynchExitRequestException {
     this(nabd.allLinks, nabd.loneNodeIDs, nabd.mapG1toG2, nabd.perfectG1toG2, nabd.linksLarge, nabd.lonersLarge,
-            nabd.mergedToCorrectNC, nabd.isAlignedNode, nabd.mode, nodeGroupOrder, colorMap);
+            nabd.mergedToCorrectNC, nabd.isAlignedNode, nabd.mode, nodeGroupOrder, colorMap, monitor);
   }
   
   public NodeGroupMap(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
                       Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2,
                       ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
                       Map<NID.WithName, Boolean> mergedToCorrectNC, Map<NID.WithName, Boolean> isAlignedNode,
-                      PerfectNGMode mode, String[] nodeGroupOrder, String[][] colorMap) {
+                      PerfectNGMode mode, String[] nodeGroupOrder, String[][] colorMap,
+                      BTProgressMonitor monitor) throws AsynchExitRequestException {
     this.links_ = allLinks;
     this.loners_ = loneNodeIDs;
     this.mergedToCorrectNC_ = mergedToCorrectNC;
@@ -110,8 +115,9 @@ public class NodeGroupMap {
     this.numGroups_ = nodeGroupOrder.length;
     this.mode_ = mode;
     if (mode == PerfectNGMode.JACCARD_SIMILARITY) {
-      this.funcJS_ = new JaccardSimilarityFunc(mapG1toG2, perfectG1toG2, linksLarge, lonersLarge);
+      this.funcJS_ = new JaccardSimilarityFunc(mapG1toG2, perfectG1toG2, linksLarge, lonersLarge, monitor);
     }
+    this.monitor_ = monitor;
     generateStructs(allLinks, loneNodeIDs);
     generateOrderMap(nodeGroupOrder);
     generateColorMap(colorMap);
@@ -120,12 +126,13 @@ public class NodeGroupMap {
     return;
   }
   
-  private void generateStructs(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs) {
-    
+  private void generateStructs(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs) throws AsynchExitRequestException {
+    LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor_, 0.0, 1.0, "progress.generatingStructures");
     nodeToLinks_ = new HashMap<NID.WithName, Set<FabricLink>>();
     nodeToNeighbors_ = new HashMap<NID.WithName, Set<NID.WithName>>();
     
     for (FabricLink link : allLinks) {
+      lr.report();
       NID.WithName src = link.getSrcID(), trg = link.getTrgID();
       
       if (nodeToLinks_.get(src) == null) {
@@ -283,7 +290,7 @@ public class NodeGroupMap {
    ** Calculate link group size to total #links for each group
    */
   
-  private void calcLGRatios() {
+  private void calcLGRatios() throws AsynchExitRequestException {
     
     String[] rels = {NetworkAlignment.COVERED_EDGE, NetworkAlignment.GRAPH1,
             NetworkAlignment.INDUCED_GRAPH2, NetworkAlignment.HALF_UNALIGNED_GRAPH2, NetworkAlignment.FULL_UNALIGNED_GRAPH2};
@@ -294,7 +301,9 @@ public class NodeGroupMap {
       counts.put(rel, 0);
     }
     
+    LoopReporter lr = new LoopReporter(links_.size(), 20, monitor_, 0.0, 1.0, "progress.calculatingLinkRatios");
     for (FabricLink link : links_) {
+      lr.report();
       String rel = link.getRelation();
       counts.put(rel, counts.get(rel) + 1);
     }
@@ -437,26 +446,29 @@ public class NodeGroupMap {
   
   static class JaccardSimilarityFunc {
   
-    private Map<NID.WithName, NID.WithName> mapG1toG2;
-    private Map<NID.WithName, NID.WithName> perfectG1toG2;
-    private ArrayList<FabricLink> linksLarge;
-    private HashSet<NID.WithName> lonersLarge;
-    private Map<String, NID.WithName> nameToLarge;
+    private Map<NID.WithName, NID.WithName> mapG1toG2_;
+    private Map<NID.WithName, NID.WithName> perfectG1toG2_;
+    private ArrayList<FabricLink> linksLarge_;
+    private HashSet<NID.WithName> lonersLarge_;
+    private Map<String, NID.WithName> nameToLarge_;
+    private BTProgressMonitor monitor_;
     
     Map<NID.WithName, NID.WithName> entrezAlign;
     Map<NID.WithName, Set<NID.WithName>> nodeToNeighL;
     
     JaccardSimilarityFunc(Map<NID.WithName, NID.WithName> mapG1toG2,
                           Map<NID.WithName, NID.WithName> perfectG1toG2,
-                          ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge) {
-      this.mapG1toG2 = mapG1toG2;
-      this.perfectG1toG2 = perfectG1toG2;
+                          ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                          BTProgressMonitor monitor) throws AsynchExitRequestException {
+      this.mapG1toG2_ = mapG1toG2;
+      this.perfectG1toG2_ = perfectG1toG2;
       this.entrezAlign = new HashMap<NID.WithName, NID.WithName>();
       this.nodeToNeighL = new HashMap<NID.WithName, Set<NID.WithName>>();
-      this.linksLarge = linksLarge;
-      this.lonersLarge = lonersLarge;
-      this.nameToLarge = new HashMap<String, NID.WithName>();
-      makeNodeToNeigh();
+      this.linksLarge_ = linksLarge;
+      this.lonersLarge_ = lonersLarge;
+      this.nameToLarge_ = new HashMap<String, NID.WithName>();
+      this.monitor_ = monitor;
+      makeNodeToNeighL();
       constructEntrezAlign();
       constructLargeMap();
     }
@@ -471,7 +483,7 @@ public class NodeGroupMap {
       
       String largeName = (node.getName().split("::"))[1];
       
-      NID.WithName largeNode = nameToLarge.get(largeName);
+      NID.WithName largeNode = nameToLarge_.get(largeName);
       if (largeNode == null) {
         throw new IllegalStateException("Large node for " + node.getName() + " not found for Jaccard Similarity");
       }
@@ -497,12 +509,12 @@ public class NodeGroupMap {
     private void constructLargeMap() {
       Set<NID.WithName> nodesLarge = null;
       try {
-        nodesLarge = BuildExtractor.extractNodes(linksLarge, lonersLarge, null);
+        nodesLarge = BuildExtractor.extractNodes(linksLarge_, lonersLarge_, monitor_);
       } catch (AsynchExitRequestException aere) {
         // should not happen;
       }
       for (NID.WithName nodeL : nodesLarge) {
-        nameToLarge.put(nodeL.getName(), nodeL);
+        nameToLarge_.put(nodeL.getName(), nodeL);
       }
       return;
     }
@@ -513,13 +525,13 @@ public class NodeGroupMap {
      */
   
     private void constructEntrezAlign() {
-      for (NID.WithName node : mapG1toG2.keySet()) {
-        NID.WithName converted = perfectG1toG2.get(node);
+      for (NID.WithName node : mapG1toG2_.keySet()) {
+        NID.WithName converted = perfectG1toG2_.get(node);
         if (converted == null) {
           //System.err.println("no Entrez match for " + node);
           continue;
         }
-        NID.WithName matchedWith = mapG1toG2.get(node);
+        NID.WithName matchedWith = mapG1toG2_.get(node);
         entrezAlign.put(converted, matchedWith);
       }
       return;
@@ -530,10 +542,12 @@ public class NodeGroupMap {
      ** Construct node to neighbor map
      */
   
-    private void makeNodeToNeigh() {
+    private void makeNodeToNeighL() throws AsynchExitRequestException {
+      LoopReporter lr = new LoopReporter(linksLarge_.size(), 20, monitor_, 0.0, 1.0, "progress.jaccardSimilarity");
       nodeToNeighL = new HashMap<NID.WithName, Set<NID.WithName>>();
     
-      for (FabricLink link : linksLarge) {
+      for (FabricLink link : linksLarge_) {
+        lr.report();
         NID.WithName src = link.getSrcID(), trg = link.getTrgID();
       
         if (nodeToNeighL.get(src) == null) {
@@ -546,7 +560,7 @@ public class NodeGroupMap {
         nodeToNeighL.get(trg).add(src);
       }
     
-      for (NID.WithName node : lonersLarge) {
+      for (NID.WithName node : lonersLarge_) {
         nodeToNeighL.put(node, new HashSet<NID.WithName>());
       }
       return;
