@@ -49,15 +49,19 @@ public class NetworkAlignmentBuildData extends BuildData.RelayoutBuildData {
   
   public ArrayList<FabricLink> linksLarge;
   public HashSet<NID.WithName> lonersLarge;
+  public Set<NID.WithName> allLargerNodes;
+  public Set<NID.WithName> allSmallerNodes;
   public Map<NID.WithName, Boolean> mergedToCorrectNC, isAlignedNode;
   public NetworkAlignmentPlugIn.NetAlignStats netAlignStats;
   public ViewType view;
   public Map<NID.WithName, NID.WithName> mapG1toG2;
   public Map<NID.WithName, NID.WithName> perfectG1toG2;
-  public List<NID.WithName[]> cycleBounds;
+  public List<AlignCycleLayout.CycleBounds> cycleBounds;
   public NodeGroupMap.PerfectNGMode mode;
 
   public NetworkAlignmentBuildData(UniqueLabeller idGen,
+                                   Set<NID.WithName> allLargerNodes,
+                                   Set<NID.WithName> allSmallerNodes,
                                    Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
                                    Map<NID.WithName, Boolean> mergedToCorrectNC,
                                    Map<NID.WithName, Boolean> isAlignedNode,
@@ -70,6 +74,8 @@ public class NetworkAlignmentBuildData extends BuildData.RelayoutBuildData {
 
     super(idGen, allLinks, loneNodeIDs, clustAssign, null, BuildData.BuildMode.BUILD_FROM_PLUGIN);
     this.layoutMode = BioFabricNetwork.LayoutMode.PER_NETWORK_MODE;
+    this.allLargerNodes = allLargerNodes;
+    this.allSmallerNodes = allSmallerNodes;
     this.view = view;
     this.linksLarge = linksLarge;
     this.lonersLarge = lonersLarge;

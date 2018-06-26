@@ -461,9 +461,28 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
    
     if (finished) { // Load the alignments
-      networkAlignmentStepFive(reducedLinks, mergedLoneNodeIDs, mergedToCorrectNC, isAlignedNode,
+      
+      //
+      // If we are doing a CaseII Cycle layout, we want to have a full list of the nodes in both
+      // networks:
+      //
+      
+      Set<NID.WithName> allLargerNodes = new HashSet<NID.WithName>(lonersLarge);
+      for (FabricLink ll: linksLarge) {
+        allLargerNodes.add(ll.getSrcID());
+        allLargerNodes.add(ll.getTrgID());
+      }
+      
+      Set<NID.WithName> allSmallerNodes = new HashSet<NID.WithName>(lonersSmall);
+      for (FabricLink ll: linksSmall) {
+        allSmallerNodes.add(ll.getSrcID());
+        allSmallerNodes.add(ll.getTrgID());
+      }
+  
+      networkAlignmentStepFive(allLargerNodes, allSmallerNodes, reducedLinks, mergedLoneNodeIDs, 
+                               mergedToCorrectNC, isAlignedNode,
                                mapG1toG2, perfectG1toG2, linksLarge, lonersLarge, netAlignStats_, outType,
-              nadi.mode, idGen, nadi.align, holdIt);
+                               nadi.mode, idGen, nadi.align, holdIt);
  
     }
     return (true);
@@ -497,7 +516,9 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    ** Build the network alignment
    */
   
-  private boolean networkAlignmentStepFive(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
+  private boolean networkAlignmentStepFive(Set<NID.WithName> allLargerNodes,
+                                           Set<NID.WithName> allSmallerNodes,
+                                           Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
                                            Map<NID.WithName, Boolean> mergedToCorrect, 
                                            Map<NID.WithName, Boolean> isAlignedNode,
                                            Map<NID.WithName, NID.WithName> mapG1toG2,
@@ -510,7 +531,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
 
     HashMap<NID.WithName, String> emptyClustMap = new HashMap<NID.WithName, String>();
     NetworkAlignmentBuildData nabd = 
-      new NetworkAlignmentBuildData(idGen, reducedLinks, loneNodeIDs, mergedToCorrect,
+      new NetworkAlignmentBuildData(idGen, allLargerNodes, allSmallerNodes, reducedLinks, loneNodeIDs, mergedToCorrect,
                                     isAlignedNode, report, emptyClustMap,
                                     viewType, mapG1toG2, perfectMap, linksLarge, lonersLarge, mode);
 
