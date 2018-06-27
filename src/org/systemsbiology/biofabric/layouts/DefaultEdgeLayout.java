@@ -165,8 +165,11 @@ public class DefaultEdgeLayout implements EdgeLayout {
    
     SortedMap<Integer, FabricLink> retval = layoutEdges(rbd.nodeOrder, rbd.allLinks, rbd.linkGroups, rbd.layoutMode, monitor);
     rbd.setLinkOrder(retval);
-    installLinkAnnotations(rbd, monitor);
     
+    // only install link annots if 'preprocessed' link groups are installed
+    if (rbd.linkGroups != null  && !rbd.linkGroups.isEmpty()) {
+      installLinkAnnotations(rbd, monitor);
+    }
     return;
   }
 
