@@ -141,7 +141,13 @@ public class AlignCycleLayout extends NodeLayout {
                                         Params params,
                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
       
-    List<NID.WithName> startNodeIDs = (params == null) ? null : ((DefaultParams)params).startNodes;
+    
+    //
+    // The actual start node might be different since we unroll paths to find the first node.
+    // Thus, skip allowing the user to mess with this for now.
+    //
+    
+    List<NID.WithName> startNodeIDs = null;
     
     NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
     
@@ -253,19 +259,6 @@ public class AlignCycleLayout extends NodeLayout {
     lr.finish();
     
     //
-    // Handle the specified starting nodes case:
-    //
-    
-    if ((startNodes != null) && !startNodes.isEmpty()) {
-      ArrayList<NID.WithName> queue = new ArrayList<NID.WithName>();
-      targsToGo.removeAll(startNodes);
-      targets.addAll(startNodes);
-      queue.addAll(startNodes);
-      flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue, 
-                 alignPaths, nodesToPathElem, pathElemToNode, cycleBounds, monitor, 0.50, 0.75);
-    }   
-    
-    //
     // Get all kids added in.  Now doing this without recursion; seeing blown
     // stacks for huge networks!
     //
@@ -279,12 +272,27 @@ public class AlignCycleLayout extends NodeLayout {
         while (pcit.hasNext()) {
           NID.WithName node = pcit.next();
           if (targsToGo.contains(node)) {
+            String nodeKey = nodesToPathElem.get(node);
+            AlignPath ac = alignPaths.get(nodeKey);
             ArrayList<NID.WithName> queue = new ArrayList<NID.WithName>();
-            targsToGo.remove(node);
-            targets.add(node);
-            addMyKidsNR(targets, targsPerSource, linkCounts, targsToGo, 
-                        node, queue, alignPaths, nodesToPathElem,
-                        pathElemToNode, cycleBounds, monitor, 0.75, 1.0);
+            if (ac == null) {
+              targsToGo.remove(node);
+              targets.add(node);
+              queue.add(node); 
+            } else {
+              List<String> unlooped = ac.getReorderedKidsStartingAtKidOrStart(nodeKey);
+              for (String ulnode : unlooped) { 
+                NID.WithName daNode = pathElemToNode.get(ulnode);
+                targsToGo.remove(daNode);
+                targets.add(daNode);
+                queue.add(daNode);
+              }
+              NID.WithName boundsStart = pathElemToNode.get(unlooped.get(0));
+              NID.WithName boundsEnd = pathElemToNode.get(unlooped.get(unlooped.size() - 1));
+              cycleBounds.add(new CycleBounds(boundsStart, boundsEnd, ac.correct, ac.isCycle));
+            }
+            flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue, alignPaths, nodesToPathElem,
+                       pathElemToNode, cycleBounds, monitor,  0.75, 1.0);
           }
         }
       }
@@ -352,26 +360,6 @@ public class AlignCycleLayout extends NodeLayout {
   ** Node ordering, non-recursive:
   */
   
-  private void addMyKidsNR(List<NID.WithName> targets, Map<NID.WithName, Set<NID.WithName>> targsPerSource, 
-                           Map<NID.WithName, Integer> linkCounts, 
-                           Set<NID.WithName> targsToGo, NID.WithName node, List<NID.WithName> queue,
-                           Map<String, AlignPath> alignPaths,
-                           Map<NID.WithName, String> nodesToPathElem,
-                           Map<String, NID.WithName> pathElemToNode,
-                           List<CycleBounds> cycleBounds,
-                           BTProgressMonitor monitor, double startFrac, double endFrac) 
-                          	 throws AsynchExitRequestException {
-    queue.add(node);
-    flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue, alignPaths, nodesToPathElem,
-               pathElemToNode, cycleBounds, monitor, startFrac, endFrac);
-    return;
-  }
-  
-  /***************************************************************************
-  **
-  ** Node ordering, non-recursive:
-  */
-  
   private void flushQueue(List<NID.WithName> targets, 
   		                    Map<NID.WithName, Set<NID.WithName>> targsPerSource, 
                           Map<NID.WithName, Integer> linkCounts, 
@@ -410,13 +398,6 @@ public class AlignCycleLayout extends NodeLayout {
             List<String> unlooped = ac.getReorderedKidsStartingAtKidOrStart(kidKey);
             for (String ulnode : unlooped) { 
               NID.WithName daNode = pathElemToNode.get(ulnode);
-              if (daNode == null) {
-                // Seeing this with reduced to SC on 0.03 importance!
-                System.err.println("no node for " + ulnode);
-                UiUtil.fixMePrintout("NO! Gotta have perfect alignment file so we can go backwards to smaller network");
-                UiUtil.fixMePrintout("AND if there is no node BB for AA::BB, that's NORMAL");
-                throw new IllegalStateException();
-              }
               targsToGo.remove(daNode);
               targets.add(daNode);
               queue.add(daNode);

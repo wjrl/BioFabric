@@ -301,9 +301,11 @@ public class FileLoadFlows {
   */ 
      
   public void doLinkGroupRelayout(BioFabricNetwork bfn, List<String> groupOrder, 
-                                  BioFabricNetwork.LayoutMode mode, BuildData.BuildMode bmode) {
+                                  BioFabricNetwork.LayoutMode mode, 
+                                  boolean showGroupLinkAnnotations, 
+                                  BuildData.BuildMode bmode) {
     NetworkRelayout nb = new NetworkRelayout();
-    nb.setGroupOrderAndMode(groupOrder, mode);
+    nb.setGroupOrderAndMode(groupOrder, mode, showGroupLinkAnnotations);
     nb.doNetworkRelayout(bfn, bmode);
     return;
   }
@@ -2057,8 +2059,9 @@ public class FileLoadFlows {
       runner_ = new NetworkRelayoutRunner();             
     }
     
-    public void setGroupOrderAndMode(List<String> groupOrder, BioFabricNetwork.LayoutMode mode) {
-      runner_.setGroupOrderAndMode(groupOrder, mode);
+    public void setGroupOrderAndMode(List<String> groupOrder, BioFabricNetwork.LayoutMode mode, 
+                                     boolean showGroupLinkAnnotations) {
+      runner_.setGroupOrderAndMode(groupOrder, mode, showGroupLinkAnnotations);
       return;
     }
 
@@ -2172,6 +2175,7 @@ public class FileLoadFlows {
     private ControlTopLayout.CtrlMode cMode_; 
     private ControlTopLayout.TargMode tMode_; 
     private List<String> fixedList_;
+    private boolean showLinkGroupAnnotations_;
   
     NetworkRelayoutRunner() {
       super(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)); 
@@ -2184,9 +2188,12 @@ public class FileLoadFlows {
       return;
     }
 
-    void setGroupOrderAndMode(List<String> groupOrder, BioFabricNetwork.LayoutMode mode) {
+    void setGroupOrderAndMode(List<String> groupOrder, 
+                              BioFabricNetwork.LayoutMode mode, 
+                              boolean showGroupLinkAnnotations) {
       groupOrder_ = groupOrder;
       layMode_ = mode;
+      showLinkGroupAnnotations_ = showGroupLinkAnnotations;
       return;
     }
 
@@ -2225,7 +2232,7 @@ public class FileLoadFlows {
       if (nodeAttrib_ != null) {
         rbd_.setNodeOrderFromAttrib(nodeAttrib_);   
       } else if ((groupOrder_ != null) && (layMode_ != null)) {
-        rbd_.setGroupOrderAndMode(groupOrder_, layMode_);
+        rbd_.setGroupOrderAndMode(groupOrder_, layMode_, showLinkGroupAnnotations_);
       } else if (linkOrder_ != null) {
         rbd_.setLinkOrder(linkOrder_);
       }

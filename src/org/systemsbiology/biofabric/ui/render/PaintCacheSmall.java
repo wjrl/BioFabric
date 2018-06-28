@@ -901,7 +901,21 @@ public class PaintCacheSmall {
     nameKeyToPaintFirst_.put(nkk, npp);
     return;
   }
-  
+ 
+  /***************************************************************************
+  **
+  ** Let others know how big we make annotation pads
+  */
+
+  public static int calcAnnotationPad(MinMax fullExtents) {  
+    int minExtent = fullExtents.min; //Integer.MAX_VALUE;
+    int maxExtent = fullExtents.max; //Integer.MIN_VALUE;
+    int diff = maxExtent - minExtent;
+    int pad = (int)(diff * BioFabricPanel.GRID_SIZE * 0.05);
+    pad = UiUtil.forceToGridValueInt(Math.max(pad, 200), BioFabricPanel.GRID_SIZE);
+    return (pad);
+  }
+
   /***************************************************************************
   **
   ** Build an annotation backRect
@@ -910,13 +924,10 @@ public class PaintCacheSmall {
   private void buildAnAnnotationRect(MinMax dzmm, String name, Color col, boolean isHoriz, 
                                      Map<Integer, MinMax> extents, FontRenderContext frc, 
                                      MinMax fullExtents, ArrayList<QuadTree.Payload> payloadCache) {  
-
     
     int minExtent = fullExtents.min; //Integer.MAX_VALUE;
     int maxExtent = fullExtents.max; //Integer.MIN_VALUE;
-    int diff = maxExtent - minExtent;
-    int pad = (int)(diff * BioFabricPanel.GRID_SIZE * 0.05);
-    pad = UiUtil.forceToGridValueInt(Math.max(pad, 200), BioFabricPanel.GRID_SIZE); 
+    int pad = calcAnnotationPad(fullExtents);
       
     int rectLeft;
     int rectRight;

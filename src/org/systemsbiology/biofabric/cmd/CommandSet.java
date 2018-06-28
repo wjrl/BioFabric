@@ -2252,6 +2252,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           
       BioFabricNetwork bfn = bfp_.getNetwork();
       List<String> currentTags = bfn.getLinkGroups();
+      boolean showGroupAnnot = bfn.getShowLinkGroupAnnotations();
       ArrayList<FabricLink> links = new ArrayList<FabricLink>(bfn.getAllLinks(true));
       TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
       try {
@@ -2260,13 +2261,16 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       	// Should not happen...
       }
       Set<FabricLink.AugRelation> allRelations = relMap.keySet(); 
-      LinkGroupingSetupDialog lgsd = new LinkGroupingSetupDialog(topWindow_, currentTags, allRelations, bfn);
+      BioFabricNetwork.LayoutMode currMode = bfn.getLayoutMode();
+      LinkGroupingSetupDialog lgsd = 
+        new LinkGroupingSetupDialog(topWindow_, currentTags, showGroupAnnot, currMode, allRelations);
       lgsd.setVisible(true);
       if (!lgsd.haveResult()) {
         return (false);
       }
 
       BioFabricNetwork.LayoutMode mode = lgsd.getChosenMode();
+      boolean showLinkAnnotations = lgsd.showLinkAnnotations();
 
       BuildData.BuildMode bmode; 
       if (mode == BioFabricNetwork.LayoutMode.PER_NODE_MODE) {
@@ -2277,7 +2281,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         throw new IllegalStateException();
       }
 
-      flf_.doLinkGroupRelayout(bfn, lgsd.getGroups(), mode, bmode);
+      flf_.doLinkGroupRelayout(bfn, lgsd.getGroups(), mode, showLinkAnnotations, bmode);
       
       return (true);
     }
