@@ -409,6 +409,7 @@ public class BucketRenderer implements BufBuildDrawer {
 	  int bufOffset = (bam.ulInV.y * bam.scrnWidth) + bam.ulInV.x;	  
 	  
 	  MinMax linkCols = ext_.allLinkFullRange.get(Boolean.valueOf(showShadows_));
+	  int pad = PaintCacheSmall.calcAnnotationPad(linkCols);
 	  
 	  int colNum = 0;
     for (AnnotationSet.Annot annot : this.nodeAnnot_) {
@@ -466,13 +467,16 @@ public class BucketRenderer implements BufBuildDrawer {
   ** Drawing core
   */
   
-  private boolean drawLinkAnnotsForBuffer(BufferedImage bi, Rectangle2D clip, Dimension screenDim, Rectangle2D worldRec, int heightPad, double lpp) {
+  private boolean drawLinkAnnotsForBuffer(BufferedImage bi, Rectangle2D clip, 
+                                          Dimension screenDim, Rectangle2D worldRec, 
+                                          int heightPad, double lpp) {
   
   	BufAndMeta bam = new BufAndMeta(bi, clip, screenDim, worldRec, heightPad, lpp, bis_);
 
 	  int bufOffset = (bam.ulInV.y * bam.scrnWidth) + bam.ulInV.x;	  
 	  
 	  MinMax nodeRows = ext_.allNodeFullRange.get(Boolean.valueOf(showShadows_));
+	  int pad = PaintCacheSmall.calcAnnotationPad(nodeRows);
 	  
 	  Color[] useColors = ((nodeAnnot_ != null) && (nodeAnnot_.size() > 0)) ? linkAnnotGrays_ : annotColors_;
 	  
@@ -488,8 +492,11 @@ public class BucketRenderer implements BufBuildDrawer {
 		    }
 		    int bufStart = (bam.startPtInV.y * bam.scrnWidth) + bam.startPtInV.x - bufOffset;
 		    int bufEnd = (bam.endPtInV.y * bam.scrnWidth) + bam.endPtInV.x - bufOffset;
-		       
-		    bam.transColorToBuf(bufStart, bufEnd, colNum);
+		      
+        PaintCacheSmall.AnnotColor acol = annot.getColor();
+        int useColorNum = (acol == null) ? colNum : acol.getCycle();
+
+		    bam.transColorToBuf(bufStart, bufEnd, useColorNum);
       }
       colNum = (colNum + 1) % useColors.length;
     }

@@ -86,7 +86,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
     groupOrder.add(NetworkAlignment.INDUCED_GRAPH2);
     groupOrder.add(NetworkAlignment.HALF_UNALIGNED_GRAPH2);
     groupOrder.add(NetworkAlignment.FULL_UNALIGNED_GRAPH2);
-    rbd.setGroupOrderAndMode(groupOrder, BioFabricNetwork.LayoutMode.PER_NODE_MODE);  
+    rbd.setGroupOrderAndMode(groupOrder, BioFabricNetwork.LayoutMode.PER_NODE_MODE, true);  
     return;
   } 
   

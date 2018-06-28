@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2016 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -19,6 +19,7 @@
 
 package org.systemsbiology.biofabric.ui.dialogs;
 
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -66,6 +67,8 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
   private JFrame parent_;
   private Set<FabricLink.AugRelation> allRelations_;
   private JComboBox comboBox;
+  private JCheckBox showAnnotationsBox_;
+  private boolean showAnnotations_;
   private BioFabricNetwork.LayoutMode chosenMode;
   
    private static final long serialVersionUID = 1L;
@@ -81,13 +84,20 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
    * * Constructor
    */
 
-  public LinkGroupingSetupDialog(JFrame parent, List<String> currentTags, Set<FabricLink.AugRelation> allRelations, BioFabricNetwork bfn) {
+  public LinkGroupingSetupDialog(JFrame parent, List<String> currentTags, boolean showGroupAnnot, 
+                                 BioFabricNetwork.LayoutMode mode,
+                                 Set<FabricLink.AugRelation> allRelations) {
     super(parent, ResourceManager.getManager().getString("linkGroupEdit.title"), new Dimension(650, 450), 2);
     parent_ = parent;
     allRelations_ = allRelations;
 
     // bfn is only for pre-selecting the JComboBox to current LayoutMode
-    installJComboBox(bfn);
+    installJComboBox(mode);
+    UiUtil.fixMePrintout("Link group annotations being set to per network for CaseII layout. NO!");
+       
+    showAnnotationsBox_ = new JCheckBox(rMan_.getString("linkGroupEdit.showLinkAnnotations"));
+    addWidgetFullRow(showAnnotationsBox_, true, true);
+    showAnnotationsBox_.setSelected(showGroupAnnot);
 
     FixedJButton fileButton =
             new FixedJButton(rMan_.getString("linkGroupEdit.loadFromFile"));
@@ -110,7 +120,7 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
     JPanel tablePan = est_.buildEditableTable(etp);
 
     addTable(tablePan, 4);
-    	
+
     List<LinkGroupingTableModel.TableRow> initRows = initTableRows((currentTags == null) ? new ArrayList<String>() : currentTags);
     
     est_.getModel().extractValues(initRows);
@@ -124,7 +134,7 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
    * * current layoutMode
    */
 
-  private void installJComboBox(BioFabricNetwork bfn) {
+  private void installJComboBox(BioFabricNetwork.LayoutMode mode) {
     JLabel boxLabel = new JLabel(rMan_.getString("linkGroupEdit.mode"));
 
     String[] choices = new String[2];
@@ -133,7 +143,6 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
 
     comboBox = new JComboBox(choices);
 
-    BioFabricNetwork.LayoutMode mode = bfn.getLayoutMode();
     if (mode == BioFabricNetwork.LayoutMode.UNINITIALIZED_MODE ||
             mode == BioFabricNetwork.LayoutMode.PER_NODE_MODE) {
       comboBox.setSelectedIndex(CHOICE_PER_NODE);
@@ -166,6 +175,15 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
   }
   
   /***************************************************************************
+  ** 
+  ** Return the choice to show link annotations or not 
+  */  
+  
+  public boolean showLinkAnnotations() {
+    return showAnnotations_;
+  } 
+  
+  /***************************************************************************
    * *
    * * Stash our results for later interrogation.
    */
@@ -187,6 +205,9 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
       ExceptionHandler.getHandler()
               .displayException(new IllegalArgumentException("Illegal Selected Index"));
     }
+    
+    showAnnotations_ = showAnnotationsBox_.isSelected();
+    
     return (true);
   }
 
