@@ -92,7 +92,11 @@ public class AlignCycleLayout extends NodeLayout {
                                                                LayoutCriterionFailureException {
     
     NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
-    maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectG1toG2);
+    maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectG1toG2, narbd.allLargerNodes, 
+                              narbd.allSmallerNodes, monitor);
+    if (maps_ == null) {
+      throw new LayoutCriterionFailureException();
+    }
     return (true);
   }
   
@@ -137,19 +141,26 @@ public class AlignCycleLayout extends NodeLayout {
                                         Params params,
                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
       
-    List<NID.WithName> startNodeIDs = (params == null) ? null : ((DefaultParams)params).startNodes;
+    
+    //
+    // The actual start node might be different since we unroll paths to find the first node.
+    // Thus, skip allowing the user to mess with this for now.
+    //
+    
+    List<NID.WithName> startNodeIDs = null;
     
     NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
     
     if (maps_ == null) {
-      maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectG1toG2);
+      maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectG1toG2, narbd.allLargerNodes, 
+                                narbd.allSmallerNodes, monitor);
     }
     
     Set<NID.WithName> allNodes = genAllNodes(narbd);
     Map<NID.WithName, String> nodesToPathElem = genNodeToPathElem(allNodes);
     Map<String, NID.WithName> pathElemToNode = genPathElemToNode(allNodes); 
     Map<String, AlignPath> alignPaths = calcAlignPaths(maps_);
-    List<NID.WithName[]> cycleBounds = new ArrayList<NID.WithName[]>();
+    List<CycleBounds> cycleBounds = new ArrayList<CycleBounds>();
         
     List<NID.WithName> targetIDs = alignPathNodeOrder(rbd.allLinks, rbd.loneNodeIDs, 
                                                       startNodeIDs, alignPaths, 
@@ -172,7 +183,7 @@ public class AlignCycleLayout extends NodeLayout {
   		                                          Map<String, AlignPath> alignPaths,
   		                                          Map<NID.WithName, String> nodesToPathElem,
   		                                          Map<String, NID.WithName> pathElemToNode,
-  		                                          List<NID.WithName[]> cycleBounds,
+  		                                          List<CycleBounds> cycleBounds,
   		                                          BTProgressMonitor monitor) throws AsynchExitRequestException { 
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
@@ -183,9 +194,11 @@ public class AlignCycleLayout extends NodeLayout {
     // We are handed a data structure that points from each aligned node to the alignment cycle it belongs to.
     // Working with a start node (highest degree or from list), order neighbors by decreasing degree, but instead
     // adding unseen nodes in that order to the queue, we add ALL the nodes in the cycle to the list, in cycle order.
-    // Choice of doing straight cycle order, or alternating order. If it is a true cycle (i.e. does not terminate in
-    // an unaligned node) we can start the cycle at the neighbor. If it is not a cycle but a path, we need to start
-    // at the beginning.
+    // If it is a true cycle (i.e. does not terminate in an unaligned node) we can start the cycle at the neighbor. 
+    // If it is not a cycle but a path, we need to start at the beginning.
+    //
+    // PLUS, since the start node of a path is unaligned, the unaligned node gets stuck at the front,
+    
     // 
     
     HashMap<NID.WithName, Integer> linkCounts = new HashMap<NID.WithName, Integer>();
@@ -246,19 +259,6 @@ public class AlignCycleLayout extends NodeLayout {
     lr.finish();
     
     //
-    // Handle the specified starting nodes case:
-    //
-    
-    if ((startNodes != null) && !startNodes.isEmpty()) {
-      ArrayList<NID.WithName> queue = new ArrayList<NID.WithName>();
-      targsToGo.removeAll(startNodes);
-      targets.addAll(startNodes);
-      queue.addAll(startNodes);
-      flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue, 
-                 alignPaths, nodesToPathElem, pathElemToNode, cycleBounds, monitor, 0.50, 0.75);
-    }   
-    
-    //
     // Get all kids added in.  Now doing this without recursion; seeing blown
     // stacks for huge networks!
     //
@@ -272,12 +272,27 @@ public class AlignCycleLayout extends NodeLayout {
         while (pcit.hasNext()) {
           NID.WithName node = pcit.next();
           if (targsToGo.contains(node)) {
+            String nodeKey = nodesToPathElem.get(node);
+            AlignPath ac = alignPaths.get(nodeKey);
             ArrayList<NID.WithName> queue = new ArrayList<NID.WithName>();
-            targsToGo.remove(node);
-            targets.add(node);
-            addMyKidsNR(targets, targsPerSource, linkCounts, targsToGo, 
-                        node, queue, alignPaths, nodesToPathElem,
-                        pathElemToNode, cycleBounds, monitor, 0.75, 1.0);
+            if (ac == null) {
+              targsToGo.remove(node);
+              targets.add(node);
+              queue.add(node); 
+            } else {
+              List<String> unlooped = ac.getReorderedKidsStartingAtKidOrStart(nodeKey);
+              for (String ulnode : unlooped) { 
+                NID.WithName daNode = pathElemToNode.get(ulnode);
+                targsToGo.remove(daNode);
+                targets.add(daNode);
+                queue.add(daNode);
+              }
+              NID.WithName boundsStart = pathElemToNode.get(unlooped.get(0));
+              NID.WithName boundsEnd = pathElemToNode.get(unlooped.get(unlooped.size() - 1));
+              cycleBounds.add(new CycleBounds(boundsStart, boundsEnd, ac.correct, ac.isCycle));
+            }
+            flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue, alignPaths, nodesToPathElem,
+                       pathElemToNode, cycleBounds, monitor,  0.75, 1.0);
           }
         }
       }
@@ -345,26 +360,6 @@ public class AlignCycleLayout extends NodeLayout {
   ** Node ordering, non-recursive:
   */
   
-  private void addMyKidsNR(List<NID.WithName> targets, Map<NID.WithName, Set<NID.WithName>> targsPerSource, 
-                           Map<NID.WithName, Integer> linkCounts, 
-                           Set<NID.WithName> targsToGo, NID.WithName node, List<NID.WithName> queue,
-                           Map<String, AlignPath> alignPaths,
-                           Map<NID.WithName, String> nodesToPathElem,
-                           Map<String, NID.WithName> pathElemToNode,
-                           List<NID.WithName[]> cycleBounds,
-                           BTProgressMonitor monitor, double startFrac, double endFrac) 
-                          	 throws AsynchExitRequestException {
-    queue.add(node);
-    flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue, alignPaths, nodesToPathElem,
-               pathElemToNode, cycleBounds, monitor, startFrac, endFrac);
-    return;
-  }
-  
-  /***************************************************************************
-  **
-  ** Node ordering, non-recursive:
-  */
-  
   private void flushQueue(List<NID.WithName> targets, 
   		                    Map<NID.WithName, Set<NID.WithName>> targsPerSource, 
                           Map<NID.WithName, Integer> linkCounts, 
@@ -372,7 +367,7 @@ public class AlignCycleLayout extends NodeLayout {
                           Map<String, AlignPath> alignPaths,
                           Map<NID.WithName, String> nodesToPathElem,
                           Map<String, NID.WithName> pathElemToNode,
-                          List<NID.WithName[]> cycleBounds,
+                          List<CycleBounds> cycleBounds,
                           BTProgressMonitor monitor, double startFrac, double endFrac) 
                             throws AsynchExitRequestException {
   	
@@ -391,6 +386,7 @@ public class AlignCycleLayout extends NodeLayout {
           // here we add the entire cycle containing the kid. If kid is not in a cycle (unaligned), we just add
           // kid. If not a cycle but a path, we add the first kid in the path, then all following kids. If a cycle,
           // we start with the kid, and loop back around to the kid in front of us.
+          // nodesToPathElem is of form NID.WithName(G1:G2) -> "G1"
           String kidKey = nodesToPathElem.get(kid);
           AlignPath ac = alignPaths.get(kidKey);
           if (ac == null) {
@@ -402,24 +398,14 @@ public class AlignCycleLayout extends NodeLayout {
             List<String> unlooped = ac.getReorderedKidsStartingAtKidOrStart(kidKey);
             for (String ulnode : unlooped) { 
               NID.WithName daNode = pathElemToNode.get(ulnode);
-              System.out.println("da node for " + ulnode + " is " + daNode);
-              if (daNode == null) {
-                // Seeing this with reduced to SC on 0.03 importance!
-                System.out.println("no node for " + ulnode);
-                UiUtil.fixMePrintout("NO! Gotta have perfect alignment file so we can go backwards to smaller network");
-                UiUtil.fixMePrintout("AND if there is no node BB for AA::BB, that's NORMAL");
-                throw new IllegalStateException();
-              }
               targsToGo.remove(daNode);
               targets.add(daNode);
-              
-              
               queue.add(daNode);
             }
-            NID.WithName[] bounds = new NID.WithName[2];
-            cycleBounds.add(bounds);
-            bounds[0] = pathElemToNode.get(unlooped.get(0));
-            bounds[1] = pathElemToNode.get(unlooped.get(unlooped.size() - 1));
+            
+            NID.WithName boundsStart = pathElemToNode.get(unlooped.get(0));
+            NID.WithName boundsEnd = pathElemToNode.get(unlooped.get(unlooped.size() - 1));
+            cycleBounds.add(new CycleBounds(boundsStart, boundsEnd, ac.correct, ac.isCycle));
           }
         }
       }
@@ -437,11 +423,17 @@ public class AlignCycleLayout extends NodeLayout {
   */
   
   private NodeMaps normalizeAlignMap(Map<NID.WithName, NID.WithName> align, 
-                                                Map<NID.WithName, NID.WithName> perfectAlign) { 
+                                     Map<NID.WithName, NID.WithName> perfectAlign,
+                                     Set<NID.WithName> allLargerNodes,
+                                     Set<NID.WithName> allSmallerNodes,                                     
+                                     BTProgressMonitor monitor)  throws AsynchExitRequestException {
     
     //
     // Build sets of names. If the names are not unique, this layout cannot proceed.
     //
+    
+    LoopReporter lr = new LoopReporter(align.size(), 20, monitor, 0.0, 1.00, "progress.normalizeAlignMap");
+    UiUtil.fixMePrintout("Actually check loop progress");
     
     HashSet<String> keyNames = new HashSet<String>();
     for (NID.WithName key : align.keySet()) {
@@ -460,20 +452,49 @@ public class AlignCycleLayout extends NodeLayout {
     }
     
     //
-    // If source, target name sets not the same, we gotta have a perfect alignment
-    // to work:
+    // Reminder: a map takes elements in range and spits out values in the domain.
+    // Alignment map A takes all the nodes in smallNodes set S into some subset of the nodes 
+    // in largeNodes set L. To do the cycle layout, we need to have some inverse map F from L to S such 
+    // the domain of F is a subset of L, and the range of F completely covers S. If the nodes are in the
+    // same namespace, the identity map on the elements of L is sufficient. If not, the inverse of the
+    // perfect alignment map does the trick. Check first if the identity map can work.
+    //
+    
+    HashSet<String> largeNames = new HashSet<String>();
+    for (NID.WithName large : allLargerNodes) {
+      if (largeNames.contains(large.getName())) {
+        return (null); 
+      }
+      largeNames.add(large.getName());
+    }
+    
+    HashSet<String> smallNames = new HashSet<String>();
+    for (NID.WithName small : allSmallerNodes) {
+      if (smallNames.contains(small.getName())) {
+        return (null); 
+      }
+      smallNames.add(small.getName());
+    }
+    
+    boolean identityOK = largeNames.containsAll(smallNames);
+ 
+    // 
+    // If identity map does not work, we need to build maps from the perfect alignment:
     //
     
     Map<String, String> backMap = null;
-    if (!keyNames.equals(valNames)) {
+    Map<String, String> correctMap = null;
+
+    if (!identityOK) {
       if ((perfectAlign == null) || perfectAlign.isEmpty()) {
         return (null);
       } 
       backMap = new HashMap<String, String>();
-
+      correctMap = new HashMap<String, String>();
       for (NID.WithName key : perfectAlign.keySet()) {
         NID.WithName val = perfectAlign.get(key);
         backMap.put(val.getName(), key.getName());
+        correctMap.put(key.getName(), val.getName());
       }
     }
     
@@ -487,7 +508,9 @@ public class AlignCycleLayout extends NodeLayout {
        }
        nameToName.put(key.getName(), matchNode.getName());
      }
-     return (new NodeMaps(nameToName, backMap));
+    
+     lr.finish();
+     return (new NodeMaps(nameToName, backMap, correctMap));
   } 
   
   /***************************************************************************
@@ -538,16 +561,10 @@ public class AlignCycleLayout extends NodeLayout {
     Map<String, NID.WithName> pe2n = new HashMap<String, NID.WithName>();
     
     for (NID.WithName key : allNodes) {
-      if (key.getName().indexOf("85062") != -1) {
-        System.out.println(" seeKey " + key.getName() + " " + key);
-      }
       String[] toks = key.getName().split("::");
       if (toks.length == 2) {
         pe2n.put(toks[0], key);
       } else {
-        if (key.getName().indexOf("85062") == 0) {
-          System.out.println(" insert " + key.getName() + " " + key);
-        }
         pe2n.put(key.getName(), key);
       }
     }
@@ -557,7 +574,14 @@ public class AlignCycleLayout extends NodeLayout {
   
   /***************************************************************************
   **
-  ** Extract the paths in the alignment network:
+  ** Extract the paths in the alignment network.
+  ** We have two orthogonal issues: 1) are nodes in same namespace, and 2) are there more
+  ** nodes in the larger network? With different namespaces, we need a reverse map. If the
+  ** larger network has more nodes, there might not be a reverse mapping, so not every path
+  ** will be a cycle. Note that while A->A is an obvious correct match, A->1234 is not so
+  ** clear. A->B B->A is a swap that needs to be annotated as a cycle, but A->B should obviously
+  ** also be marked as a path if B is in the larger net and not aligned. Similarly, A->1234 should
+  ** be unmarked if it is correct, but marked if is incorrect.
   */
   
   private Map<String, AlignPath> calcAlignPaths(NodeMaps align) { 
@@ -574,17 +598,23 @@ public class AlignCycleLayout extends NodeLayout {
        String nextKey = align.normalMap.get(startKey);
        // Not every cycle closes itself, so nextKey can == null:
        while (nextKey != null) {
+         // Back map is used when the two networks have different node namespaces...
          if (align.backMap != null) {
            nextKey = align.backMap.get(nextKey);
-           if (nextKey == null) {
+           if (nextKey == null) { // Node in larger net has no partner in smaller
              break;
            }
          }
          if (nextKey.equals(startKey)) {
            path.isCycle = true;
+           path.correct = (path.pathNodes.size() == 1);
            break;
          }
          AlignPath existing = pathsPerStart.get(nextKey);
+         // If there is an existing path for the next key, we just glue that
+         // existing path onto the end of this new path head. Note we do not
+         // bother with then getting the "nextKey", as we have already 
+         // traversed that path tail.
          if (existing != null) {
            path.pathNodes.addAll(existing.pathNodes);
            pathsPerStart.remove(nextKey);
@@ -598,13 +628,36 @@ public class AlignCycleLayout extends NodeLayout {
          } else {
            path.pathNodes.add(nextKey);
            working.remove(nextKey);
+           // Go set next key, which may well be null, i.e. we deadend.
            nextKey = align.normalMap.get(nextKey);
          }
        }
      }
+     
+     //
+     // For each AlignPath, if it is not a cycle, we look for the unaligned node corresponding to the first
+     // element of the path, and glue it on the front.
+     //
+     
+     Map<String, AlignPath> completePathsPerStart = new HashMap<String, AlignPath>();
+     for (String start : pathsPerStart.keySet()) {
+       AlignPath apfs = pathsPerStart.get(start);
+       if (apfs.isCycle) {
+         completePathsPerStart.put(start, apfs);
+         continue;
+       }
+       String unaligned = (align.correctMap == null) ? start : align.correctMap.get(start);
+       List<String> replace = new ArrayList<String>();
+       replace.add(unaligned);
+       replace.addAll(apfs.pathNodes);
+       apfs.pathNodes.clear();
+       apfs.pathNodes.addAll(replace);
+       completePathsPerStart.put(unaligned, apfs);       
+     }
+
      Map<String, AlignPath> pathsPerEveryNode = new HashMap<String, AlignPath>();
-     for (String keyName : pathsPerStart.keySet()) {
-       AlignPath path = pathsPerStart.get(keyName);
+     for (String keyName : completePathsPerStart.keySet()) {
+       AlignPath path = completePathsPerStart.get(keyName);
        for (String nextName : path.pathNodes) {
          pathsPerEveryNode.put(nextName, path); 
        }
@@ -623,10 +676,12 @@ public class AlignCycleLayout extends NodeLayout {
         
     List<String> pathNodes;
     boolean isCycle;
+    boolean correct;
 
     AlignPath() {
       pathNodes = new ArrayList<String>();
       isCycle = false;
+      correct = false;
     } 
     
     List<String> getReorderedKidsStartingAtKidOrStart(String start) {
@@ -669,17 +724,34 @@ public class AlignCycleLayout extends NodeLayout {
         
     Map<String, String> normalMap;
     Map<String, String> backMap;
+    Map<String, String> correctMap;
 
-    NodeMaps(Map<String, String> normalMap, Map<String, String> backMap) {
+    NodeMaps(Map<String, String> normalMap, Map<String, String> backMap, Map<String, String> correctMap) {
       this.normalMap = normalMap;
       this.backMap = backMap;
+      this.correctMap = correctMap;
     } 
   }
   
+  /***************************************************************************
+  **
+  ** For passing around cycles. A cycle that starts and ends on the same node
+  ** might be incorrect if a smaller network is overlaid on a larger one.
+  */  
   
-  
-  
-  
-  
+  public static class CycleBounds  {
+        
+    public NID.WithName boundStart;
+    public NID.WithName boundEnd;
+    public boolean isCorrect;
+    public boolean isCycle;
 
+    CycleBounds(NID.WithName boundStart, NID.WithName boundEnd, boolean isCorrect, boolean isCycle) {
+      this.boundStart = boundStart;
+      this.boundEnd = boundEnd;
+      this.isCorrect = isCorrect;
+      this.isCycle = isCycle;
+    } 
+  }
+ 
 }

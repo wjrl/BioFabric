@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
@@ -40,8 +39,7 @@ import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
-** This is the default layout algorithm for edges. Actually usable in combination 
-** with a wide variety of different node layout algorithms, not just the default
+** Like the default, but also calculates cycle bounds
 */
 
 public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
@@ -88,7 +86,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
     groupOrder.add(NetworkAlignment.INDUCED_GRAPH2);
     groupOrder.add(NetworkAlignment.HALF_UNALIGNED_GRAPH2);
     groupOrder.add(NetworkAlignment.FULL_UNALIGNED_GRAPH2);
-    rbd.setGroupOrderAndMode(groupOrder, BioFabricNetwork.LayoutMode.PER_NODE_MODE);  
+    rbd.setGroupOrderAndMode(groupOrder, BioFabricNetwork.LayoutMode.PER_NODE_MODE, true);  
     return;
   } 
   
@@ -119,7 +117,8 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
     
   private AnnotationSet calcGroupLinkAnnotsCycle(List<FabricLink> links, List<NID.WithName> nodes,
                                                  BTProgressMonitor monitor, 
-                                                 boolean shadow, List<NID.WithName[]> bounds, 
+                                                 boolean shadow, 
+                                                 List<AlignCycleLayout.CycleBounds> bounds, 
                                                  List<String> linkGroups) throws AsynchExitRequestException {
   
     String which = (shadow) ? "progress.linkAnnotationShad" : "progress.linkAnnotationNoShad";
@@ -131,7 +130,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
     }
     
     NID.WithName currZoner = null;
-    NID.WithName[] currLooper = new NID.WithName[2];
+    AlignCycleLayout.CycleBounds currLooper = new AlignCycleLayout.CycleBounds(null, null, false, false);
     HashSet<NID.WithName> seen = new HashSet<NID.WithName>();
     int cycle = 0;
 
@@ -141,7 +140,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
     int numLink = links.size();
     int count = 0;
     boolean first = true;
-    System.out.println("bound bound " + bounds.get(0)[0] + " " + bounds.get(0)[1]);
+    System.out.println("bound bound " + bounds.get(0).boundStart + " " + bounds.get(0).boundEnd);
     for (int i = 0; i < numLink; i++) {
       FabricLink link = links.get(i);
       lr.report();
@@ -155,28 +154,33 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
         System.out.println("zoner " + zoner);
       }
       if ((currZoner == null) || !currZoner.equals(zoner)) { // New Zone
-        if (currZoner != null) { // End the zone
-          if (currZoner.equals(currLooper[1])) {
-            if (!currLooper[0].equals(currLooper[1])) {
+        if (currZoner != null) { // i.e. currZoner != zoner
+          if (currZoner.equals(currLooper.boundEnd)) {
+            if (!currLooper.boundStart.equals(currLooper.boundEnd) || !currLooper.isCorrect) {
               String color = (cycle % 2 == 0) ? "Orange" : "Green";
-              retval.addAnnot(new AnnotationSet.Annot("cycle " + cycle++, startPos, endPos, 0, color));
+              String type = currLooper.isCycle ? "cycle " : "path ";
+              retval.addAnnot(new AnnotationSet.Annot(type + cycle++, startPos, endPos, 0, color));
             }
           }
         }
         currZoner = zoner;
-        for (NID.WithName[] bound : bounds) {
-          if (!seen.contains(bound[0]) && bound[0].equals(currZoner)) {
+        for (AlignCycleLayout.CycleBounds bound : bounds) {
+          if (!seen.contains(bound.boundStart) && bound.boundStart.equals(currZoner)) {
             startPos = count;
-            seen.add(bound[0]);
+            seen.add(bound.boundStart);
             currLooper = bound;
           }
         }
       }
       endPos = count++;
     }
-    if (!currLooper[0].equals(currLooper[1])) {
+    //
+    // Close out the last pending annotation
+    //
+    if (!currLooper.boundStart.equals(currLooper.boundEnd) || !currLooper.isCorrect) {
       String color = (cycle % 2 == 0) ? "Orange" : "Green";
-      retval.addAnnot(new AnnotationSet.Annot("cycle " + cycle++, startPos, endPos, 0, color));
+      String type = currLooper.isCycle ? "cycle " : "path ";
+      retval.addAnnot(new AnnotationSet.Annot(type + cycle++, startPos, endPos, 0, color));
     }
     return (retval);
   }

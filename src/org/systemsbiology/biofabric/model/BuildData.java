@@ -145,6 +145,7 @@ public abstract class BuildData {
     public List<NID.WithName> existingIDOrder;
     public SortedMap<Integer, FabricLink> linkOrder;
     public List<String> linkGroups;
+    public boolean showLinkGroupAnnotations;
     public Set<NID.WithName> allNodeIDs;
     public Map<NID.WithName, String> clustAssign;
     public BioFabricNetwork.LayoutMode layoutMode;
@@ -265,9 +266,11 @@ public abstract class BuildData {
       return;
     }
       
-    public void setGroupOrderAndMode(List<String> groupOrder, BioFabricNetwork.LayoutMode mode) {
+    public void setGroupOrderAndMode(List<String> groupOrder, BioFabricNetwork.LayoutMode mode, 
+                                     boolean showLinkGroupAnnotations) {
       this.linkGroups = groupOrder;
       this.layoutMode = mode;
+      this.showLinkGroupAnnotations = showLinkGroupAnnotations;
       return;
     }
     

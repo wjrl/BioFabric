@@ -619,9 +619,7 @@ public class PaintCacheSmall {
       lr3.report();
       nodeIndex_[node.nodeRow - nodeIndexOffset_] = i;
     }
-    
-    
-    
+      
     int annotCount = 0;
     if (nodeAnnot != null) {
     	LoopReporter lr4 = new LoopReporter(nodeAnnot.size(), 20, monitor, 0.0, 1.0, "progress.buildNodeAnnots");
@@ -645,6 +643,7 @@ public class PaintCacheSmall {
           col = (acol == null) ? annotColors_[annotCount++ % annotColors_.length].getColor() : acol.getColor();
         }  
         lr5.report();
+        System.out.println(an);
         buildAnAnnotationRect(an.getRange(), an.getName(), col, false, linkExtents, frc, nodeRows, qtpc);
       }
     }
@@ -902,7 +901,21 @@ public class PaintCacheSmall {
     nameKeyToPaintFirst_.put(nkk, npp);
     return;
   }
-  
+ 
+  /***************************************************************************
+  **
+  ** Let others know how big we make annotation pads
+  */
+
+  public static int calcAnnotationPad(MinMax fullExtents) {  
+    int minExtent = fullExtents.min; //Integer.MAX_VALUE;
+    int maxExtent = fullExtents.max; //Integer.MIN_VALUE;
+    int diff = maxExtent - minExtent;
+    int pad = (int)(diff * BioFabricPanel.GRID_SIZE * 0.05);
+    pad = UiUtil.forceToGridValueInt(Math.max(pad, 200), BioFabricPanel.GRID_SIZE);
+    return (pad);
+  }
+
   /***************************************************************************
   **
   ** Build an annotation backRect
@@ -911,13 +924,10 @@ public class PaintCacheSmall {
   private void buildAnAnnotationRect(MinMax dzmm, String name, Color col, boolean isHoriz, 
                                      Map<Integer, MinMax> extents, FontRenderContext frc, 
                                      MinMax fullExtents, ArrayList<QuadTree.Payload> payloadCache) {  
-
     
     int minExtent = fullExtents.min; //Integer.MAX_VALUE;
     int maxExtent = fullExtents.max; //Integer.MIN_VALUE;
-    int diff = maxExtent - minExtent;
-    int pad = (int)(diff * BioFabricPanel.GRID_SIZE * 0.05);
-    pad = UiUtil.forceToGridValueInt(Math.max(pad, 200), BioFabricPanel.GRID_SIZE); 
+    int pad = calcAnnotationPad(fullExtents);
       
     int rectLeft;
     int rectRight;
@@ -948,11 +958,12 @@ public class PaintCacheSmall {
     } else {
       nameKeyToPaintOneQuarter_.put(nkk, npp);
     }
-     
+    
     TextPath.FontSizes useFont = null;
     Rectangle2D useBounds = null;
     Rectangle2D bounds = null;
     boolean rotate = false;
+
     for (TextPath.FontSizes size : bigToLittle_) {  
       bounds = fonts_.get(size).getStringBounds(name, frc);
       double h = bounds.getHeight();

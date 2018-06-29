@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.Collection;
 
 import org.xml.sax.Attributes;
 
@@ -136,6 +135,7 @@ public class BioFabricNetwork {
   //
   
   private List<String> linkGrouping_;
+  private boolean showLinkGroupAnnotations_;
   
   //
   // Columns assignments, shadow and non-shadow states:
@@ -204,7 +204,6 @@ public class BioFabricNetwork {
         standardBuildDataInit(bd);
         rbd = (BuildData.RelayoutBuildData)bd;
         transferRelayoutBuildData(rbd);
-        this.transferAnnotations(rbd);
         bd.processSpecialtyBuildData();
         processLinks(rbd, monitor);
         break;
@@ -212,6 +211,7 @@ public class BioFabricNetwork {
         BuildData.SelectBuildData sbd = (BuildData.SelectBuildData)bd;
         colGen_ = sbd.fullNet.colGen_;
         this.linkGrouping_ = new ArrayList<String>(sbd.fullNet.linkGrouping_);
+        this.showLinkGroupAnnotations_ = sbd.fullNet.showLinkGroupAnnotations_;
         this.layoutMode_ = sbd.fullNet.layoutMode_;
         fillSubModel(sbd.fullNet, sbd.subNodes, sbd.subLinks);
         break;
@@ -224,6 +224,7 @@ public class BioFabricNetwork {
         standardBuildDataInit(bd);
         BuildData.RelayoutBuildData obd = (BuildData.RelayoutBuildData)bd;
         linkGrouping_ = new ArrayList<String>();
+        showLinkGroupAnnotations_ = false;
         layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
         colGen_ = obd.colGen;
         processLinks(obd, monitor);
@@ -261,18 +262,7 @@ public class BioFabricNetwork {
   
   private void transferRelayoutBuildData(BuildData.RelayoutBuildData bd) { 
     this.linkGrouping_ = new ArrayList<String>(bd.linkGroups);
-    this.colGen_ = bd.colGen;
-    this.layoutMode_ = bd.layoutMode;
-    return;
-  }
- 
-  /***************************************************************************
-  ** 
-  ** Build support
-  */
-  
-  private void transferAnnotations(BuildData.RelayoutBuildData bd) { 
-    this.linkGrouping_ = new ArrayList<String>(bd.linkGroups);
+    this.showLinkGroupAnnotations_ = bd.showLinkGroupAnnotations;
     this.colGen_ = bd.colGen;
     this.layoutMode_ = bd.layoutMode;
     return;
@@ -293,6 +283,7 @@ public class BioFabricNetwork {
     this.colGen_ = built.colGen_;
     this.rowCount_ = built.rowCount_;
     this.linkGrouping_ = built.linkGrouping_;
+    this.showLinkGroupAnnotations_ = built.showLinkGroupAnnotations_;
     this.layoutMode_ = built.layoutMode_;
     this.nodeAnnot_ = built.nodeAnnot_;
     this.linkAnnots_= built.linkAnnots_;
@@ -402,13 +393,32 @@ public class BioFabricNetwork {
   
   /***************************************************************************
   ** 
+  ** Set if link groups get annotations
+  */
+
+  public void setShowLinkGroupAnnotations(boolean show) {    
+    showLinkGroupAnnotations_ = show;
+    return;
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Get if link groups get annotations
+  */
+
+  public boolean getShowLinkGroupAnnotations() {    
+    return (showLinkGroupAnnotations_);
+  }
+
+  /***************************************************************************
+  ** 
   ** Get link grouping
   */
 
   public List<String> getLinkGroups() {    
     return (linkGrouping_);
   }
-  
+
   /***************************************************************************
   ** 
   ** Given an attribute list giving node order, confirm it is valid:
@@ -671,6 +681,7 @@ public class BioFabricNetwork {
   private void relayoutNetwork(BuildData.RelayoutBuildData rbd, BTProgressMonitor monitor) throws AsynchExitRequestException {
     BuildData.BuildMode mode = rbd.getMode();
     installLinkGroups(rbd.linkGroups);
+    setShowLinkGroupAnnotations(rbd.showLinkGroupAnnotations);
     setLayoutMode(rbd.layoutMode);
     boolean specifiedNodeOrder = (mode == BuildData.BuildMode.NODE_ATTRIB_LAYOUT) || 
                                  (mode == BuildData.BuildMode.DEFAULT_LAYOUT) ||
@@ -975,6 +986,7 @@ public class BioFabricNetwork {
     while (r2tit.hasNext()) {
       Integer row = r2tit.next();
       lr.report();
+      UiUtil.fixMePrintout("y2kr-SC-s3-0.010-importance-0.990.0.bif has GPI8::852755 nid=9655 duplicated");
       NID.WithName nodeID = rowToTargID_.get(row);
       NodeInfo ni = getNodeDefinition(nodeID);
       ni.writeXML(out, ind, row.intValue());
@@ -987,6 +999,8 @@ public class BioFabricNetwork {
       ind.indent();
       out.print("<linkGroups mode=\"");
       out.print(layoutMode_.getText());
+      out.print("\" annots=\"");
+      out.print(showLinkGroupAnnotations_);
       out.println("\">");
       ind.up();
       while (lgit.hasNext()) {
@@ -1065,7 +1079,6 @@ public class BioFabricNetwork {
     if (linkAnnots_ != null) {
       for (AnnotationSet.Annot an : linkAnnots_.get(Boolean.FALSE)) {
         lr.report();
-        ind.indent();
         an.writeXML(out, ind);
       }
     }
@@ -1078,7 +1091,6 @@ public class BioFabricNetwork {
     if (linkAnnots_ != null) {
       for (AnnotationSet.Annot an : linkAnnots_.get(Boolean.TRUE)) {
         lr.report();
-        ind.indent();
         an.writeXML(out, ind);
       }
     }
@@ -2150,6 +2162,7 @@ public class BioFabricNetwork {
     nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
     nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
     linkGrouping_ = new ArrayList<String>();
+    showLinkGroupAnnotations_ = false;
     colGen_ = null;
   }
   
@@ -2631,12 +2644,16 @@ public class BioFabricNetwork {
       LayoutMode retval = null;
       if (elemName.equals("linkGroups")) {
         String target = AttributeExtractor.extractAttribute(elemName, attrs, "linkGroups", "mode", false);
+        String annots = AttributeExtractor.extractAttribute(elemName, attrs, "linkGroups", "view", false);
         if (target == null) {
         	target = LayoutMode.PER_NODE_MODE.getText();   	
         }
+        boolean showAnnots = (annots != null) ? Boolean.valueOf(annots) : false; 
+  
         FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard)this.sharedWhiteboard_;
         retval = LayoutMode.fromString(target);
         board.bfn.setLayoutMode(retval);
+        board.bfn.setShowLinkGroupAnnotations(showAnnots);
 
       }
       return (retval);     
@@ -2780,6 +2797,7 @@ public class BioFabricNetwork {
     private NodeInfo buildFromXML(String elemName, Attributes attrs, FabricFactory.FactoryWhiteboard board) throws IOException {
       String name = AttributeExtractor.extractAttribute(elemName, attrs, "node", "name", true);
       name = CharacterEntityMapper.unmapEntities(name, false);
+      System.out.println(name);
       String nidStr = AttributeExtractor.extractAttribute(elemName, attrs, "node", "nid", false);
 
       NID nid;

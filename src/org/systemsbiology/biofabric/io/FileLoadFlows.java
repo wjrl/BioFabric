@@ -301,9 +301,11 @@ public class FileLoadFlows {
   */ 
      
   public void doLinkGroupRelayout(BioFabricNetwork bfn, List<String> groupOrder, 
-                                  BioFabricNetwork.LayoutMode mode, BuildData.BuildMode bmode) {
+                                  BioFabricNetwork.LayoutMode mode, 
+                                  boolean showGroupLinkAnnotations, 
+                                  BuildData.BuildMode bmode) {
     NetworkRelayout nb = new NetworkRelayout();
-    nb.setGroupOrderAndMode(groupOrder, mode);
+    nb.setGroupOrderAndMode(groupOrder, mode, showGroupLinkAnnotations);
     nb.doNetworkRelayout(bfn, bmode);
     return;
   }
@@ -446,7 +448,7 @@ public class FileLoadFlows {
       //
       if (finished) {
         announceBadLines(sss);
-        finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt);
+        finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);
       }
       
       if (finished) {
@@ -458,7 +460,7 @@ public class FileLoadFlows {
         sss = (new SIFImportLoader()).importFabric(file, idGen, links, loneNodes, nodeNames, magBins, null);
         BuildExtractor.extractRelations(links, relMap, null);
         announceBadLines(sss);
-        boolean finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt);
+        boolean finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);
         if (finished) {
         	buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
         }
@@ -527,7 +529,7 @@ public class FileLoadFlows {
     // This looks for dups to toss and prep work:
     //
 
-    finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt);   
+    finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);   
     
     if (finished) {
       buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
@@ -589,61 +591,66 @@ public class FileLoadFlows {
     
   public boolean handleDirectionsDupsAndShadows(List<FabricLink> links, Set<NID.WithName> loneNodeIDs, 
   		                                           boolean binMag, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
-  		                                           Set<FabricLink> reducedLinks, File holdIt) {
-    ResourceManager rMan = ResourceManager.getManager();
-    try {
-      
-      if (headlessOracle_ == null) {
-        RelationDirectionDialog rdd = new RelationDirectionDialog(topWindow_, relaMap);
-        rdd.setVisible(true);
-        if (!rdd.haveResult()) {
-          return (false);
-        }
-        if (rdd.getFromFile()) {
-          File fileEda = getTheFile(".rda", ".txt", "AttribDirectory", "filterName.rda");
-          if (fileEda == null) {
-            return (true);
-          }
-          Map<AttributeLoader.AttributeKey, String> relAttributes = loadTheFile(fileEda, null, true);  // Use the simple a = b format of node attributes
-          if (relAttributes == null) {
-            return (true);
-          }
-          
-          HashSet<FabricLink.AugRelation> needed = new HashSet<FabricLink.AugRelation>(relaMap.keySet());
-        
-          boolean tooMany = false;
-          Iterator<AttributeLoader.AttributeKey> rit = relAttributes.keySet().iterator();
-          while (rit.hasNext()) {
-            AttributeLoader.StringKey sKey = (AttributeLoader.StringKey)rit.next();
-            String key = sKey.key;
-            String val = relAttributes.get(sKey);
-            Boolean dirVal = Boolean.valueOf(val);
-            FabricLink.AugRelation forNorm = new FabricLink.AugRelation(key, false);
-            FabricLink.AugRelation forShad = new FabricLink.AugRelation(key, true);
-            boolean matched = false;
-            if (needed.contains(forNorm)) {
-              matched = true;
-              relaMap.put(forNorm, dirVal);
-              needed.remove(forNorm);
-            }
-            if (needed.contains(forShad)) {
-              matched = true;
-              relaMap.put(forShad, dirVal);
-              needed.remove(forShad);
-            }
-            if (!matched) {
-              tooMany = true;
-              break;
-            }          
-          }
-          if (!needed.isEmpty() || tooMany) {
-            JOptionPane.showMessageDialog(topWindow_, rMan.getString("fabricRead.directionMapLoadFailure"),
-                                          rMan.getString("fabricRead.directionMapLoadFailureTitle"),
-                                          JOptionPane.ERROR_MESSAGE);
+  		                                           Set<FabricLink> reducedLinks, File holdIt, boolean doForceUndirected) {
+    
+    
+    ResourceManager rMan = ResourceManager.getManager(); 
+    try {     
+      if (doForceUndirected) {
+        relaMap = RelationDirectionDialog.forceAllUndirected(relaMap);
+      } else {
+        if (headlessOracle_ == null) {
+          RelationDirectionDialog rdd = new RelationDirectionDialog(topWindow_, relaMap);
+          rdd.setVisible(true);
+          if (!rdd.haveResult()) {
             return (false);
           }
-        } else {
-          relaMap = rdd.getRelationMap();
+          if (rdd.getFromFile()) {
+            File fileEda = getTheFile(".rda", ".txt", "AttribDirectory", "filterName.rda");
+            if (fileEda == null) {
+              return (true);
+            }
+            Map<AttributeLoader.AttributeKey, String> relAttributes = loadTheFile(fileEda, null, true);  // Use the simple a = b format of node attributes
+            if (relAttributes == null) {
+              return (true);
+            }
+            
+            HashSet<FabricLink.AugRelation> needed = new HashSet<FabricLink.AugRelation>(relaMap.keySet());
+          
+            boolean tooMany = false;
+            Iterator<AttributeLoader.AttributeKey> rit = relAttributes.keySet().iterator();
+            while (rit.hasNext()) {
+              AttributeLoader.StringKey sKey = (AttributeLoader.StringKey)rit.next();
+              String key = sKey.key;
+              String val = relAttributes.get(sKey);
+              Boolean dirVal = Boolean.valueOf(val);
+              FabricLink.AugRelation forNorm = new FabricLink.AugRelation(key, false);
+              FabricLink.AugRelation forShad = new FabricLink.AugRelation(key, true);
+              boolean matched = false;
+              if (needed.contains(forNorm)) {
+                matched = true;
+                relaMap.put(forNorm, dirVal);
+                needed.remove(forNorm);
+              }
+              if (needed.contains(forShad)) {
+                matched = true;
+                relaMap.put(forShad, dirVal);
+                needed.remove(forShad);
+              }
+              if (!matched) {
+                tooMany = true;
+                break;
+              }          
+            }
+            if (!needed.isEmpty() || tooMany) {
+              JOptionPane.showMessageDialog(topWindow_, rMan.getString("fabricRead.directionMapLoadFailure"),
+                                            rMan.getString("fabricRead.directionMapLoadFailureTitle"),
+                                            JOptionPane.ERROR_MESSAGE);
+              return (false);
+            }
+          } else {
+            relaMap = rdd.getRelationMap();
+          }
         }
       }
       
@@ -789,7 +796,7 @@ public class FileLoadFlows {
     // This looks for dups to toss and prep work:
     //
 
-    finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt);   
+    finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);   
     
     if (finished) {
       buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
@@ -2052,8 +2059,9 @@ public class FileLoadFlows {
       runner_ = new NetworkRelayoutRunner();             
     }
     
-    public void setGroupOrderAndMode(List<String> groupOrder, BioFabricNetwork.LayoutMode mode) {
-      runner_.setGroupOrderAndMode(groupOrder, mode);
+    public void setGroupOrderAndMode(List<String> groupOrder, BioFabricNetwork.LayoutMode mode, 
+                                     boolean showGroupLinkAnnotations) {
+      runner_.setGroupOrderAndMode(groupOrder, mode, showGroupLinkAnnotations);
       return;
     }
 
@@ -2167,6 +2175,7 @@ public class FileLoadFlows {
     private ControlTopLayout.CtrlMode cMode_; 
     private ControlTopLayout.TargMode tMode_; 
     private List<String> fixedList_;
+    private boolean showLinkGroupAnnotations_;
   
     NetworkRelayoutRunner() {
       super(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)); 
@@ -2179,9 +2188,12 @@ public class FileLoadFlows {
       return;
     }
 
-    void setGroupOrderAndMode(List<String> groupOrder, BioFabricNetwork.LayoutMode mode) {
+    void setGroupOrderAndMode(List<String> groupOrder, 
+                              BioFabricNetwork.LayoutMode mode, 
+                              boolean showGroupLinkAnnotations) {
       groupOrder_ = groupOrder;
       layMode_ = mode;
+      showLinkGroupAnnotations_ = showGroupLinkAnnotations;
       return;
     }
 
@@ -2220,7 +2232,7 @@ public class FileLoadFlows {
       if (nodeAttrib_ != null) {
         rbd_.setNodeOrderFromAttrib(nodeAttrib_);   
       } else if ((groupOrder_ != null) && (layMode_ != null)) {
-        rbd_.setGroupOrderAndMode(groupOrder_, layMode_);
+        rbd_.setGroupOrderAndMode(groupOrder_, layMode_, showLinkGroupAnnotations_);
       } else if (linkOrder_ != null) {
         rbd_.setLinkOrder(linkOrder_);
       }

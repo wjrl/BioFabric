@@ -109,7 +109,7 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
     // trivial operation (group order is at most length 5)
     Collections.sort(groupOrder, new NetAlignLinkGroupLocator());
   
-    rbd.setGroupOrderAndMode(groupOrder, BioFabricNetwork.LayoutMode.PER_NETWORK_MODE);
+    rbd.setGroupOrderAndMode(groupOrder, BioFabricNetwork.LayoutMode.PER_NETWORK_MODE, true);
   
     return;
   }
