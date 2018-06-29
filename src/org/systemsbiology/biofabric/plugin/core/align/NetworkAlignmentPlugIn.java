@@ -446,6 +446,14 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
               NetworkAlignmentBuildData.ViewType.GROUP, idGen, holdIt);
     }
   
+    // i.e. same 2 graphs and perfect alignment yield an empty network
+    if (mergedLinks.isEmpty()) {
+      JOptionPane.showMessageDialog(topWindow_, (ResourceManager.getManager()).getString("networkAlignment.emptyNetwork"),
+              (ResourceManager.getManager()).getString("networkAlignment.emptyNetworkTitle"),
+              JOptionPane.WARNING_MESSAGE);
+      return (false);
+    }
+  
     if (finished) { // for main alignment      
       finished = flf_.handleDirectionsDupsAndShadows(mergedLinks, mergedLoneNodeIDs, false, relMap, reducedLinks, holdIt, true);
     }
