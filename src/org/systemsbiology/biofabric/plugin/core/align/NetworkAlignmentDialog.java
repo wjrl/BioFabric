@@ -24,8 +24,8 @@ package org.systemsbiology.biofabric.plugin.core.align;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagLayout;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -34,8 +34,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.utils.DialogSupport;
@@ -58,7 +56,6 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   
   private final NetworkAlignmentBuildData.ViewType analysisType_;
   private JFrame parent_;
-  private JButton perfectBrowse;
   private JTextField graph1Field_, graph2Field_, alignField_, perfectField_;
   private File graph1File_, graph2File_, alignmentFile_, perfectAlignFile_; // perfect Alignment is optional
   private FixedJButton buttonOK_;
@@ -66,7 +63,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   private static final long serialVersionUID = 1L;
   private JComboBox perfectNGsCombo_;
   
-  private final int NO_PERFECT = 0, NONE_WITH_PERFECT = 1, NC_INDEX = 2, JS_INDEX = 3; // indices on combo box
+  private final int NONE_INDEX = 0, NC_INDEX = 1, JS_INDEX = 2; // indices on combo box
 
   
   public NetworkAlignmentDialog(JFrame parent, NetworkAlignmentBuildData.ViewType analysisType) {
@@ -86,7 +83,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     JButton graph1Browse = new JButton(rMan.getString("networkAlignment.browse"));
     JButton graph2Browse = new JButton(rMan.getString("networkAlignment.browse"));
     JButton alignmentBrowse = new JButton(rMan.getString("networkAlignment.browse"));
-    perfectBrowse = new JButton(rMan.getString("networkAlignment.browse"));
+    JButton perfectBrowse = new JButton(rMan.getString("networkAlignment.browse"));
     
     initBrowseButtons(graph1Browse, graph2Browse, alignmentBrowse, perfectBrowse);
   
@@ -113,7 +110,9 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     undirectedConfirm_.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
         try {
-          manageOKButton();
+          if (hasRequiredFiles()) { // enable OK button
+            buttonOK_.setEnabled(true);
+          }
         } catch (Exception ex) {
           ExceptionHandler.getHandler().displayException(ex);
         }
@@ -171,34 +170,15 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     addWidgetFullRow(panAlign, true);
   
     JLabel perfectNGLabel = new JLabel(rMan.getString("networkAlignment.perfectNodeGroups"));
-    String[] choices = new String[4];
-    choices[NO_PERFECT] = rMan.getString("networkAlignment.nonePerfect");
-    choices[NONE_WITH_PERFECT] = rMan.getString("networkAlignment.noneWithPerfect");
+    String[] choices = new String[3];
+    choices[NONE_INDEX] = rMan.getString("networkAlignment.none");
     choices[NC_INDEX] = rMan.getString("networkAlignment.nodeCorrectness");
     choices[JS_INDEX] = rMan.getString("networkAlignment.jaccardSimilarity");
     
     perfectNGsCombo_ = new JComboBox(choices); // have to use unchecked for v1.6
-    
-    //
-    // Perfect File and Combo box functionality
-    //
-    
-    perfectNGsCombo_.setEnabled(true);
-    perfectNGsCombo_.setSelectedIndex(NO_PERFECT);
-    perfectNGsCombo_.addItemListener(new ItemListener() {
-      @Override
-      public void itemStateChanged(ItemEvent e) {
-        try {
-          managePerfectFieldButton();
-          manageOKButton();
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
-        }
-      }
-    });
-    perfectBrowse.setEnabled(false);
-    perfectField_.setEnabled(false);
-    
+    perfectNGsCombo_.setEnabled(false);
+    perfectNGsCombo_.setSelectedIndex(NONE_INDEX);
+  
     //
     // No Perfect Alignment for Orphan Layout
     //
@@ -206,8 +186,8 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     //
     
     if (analysisType_ != NetworkAlignmentBuildData.ViewType.ORPHAN) { // add perfect alignment button
-      addLabeledWidget(perfectNGLabel, perfectNGsCombo_, true, true);
       addWidgetFullRow(panPerfect, true);
+      addLabeledWidget(perfectNGLabel, perfectNGsCombo_, true, true);
     }
     
     //
@@ -267,97 +247,67 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   }
   
   /**
-   * Add DocumentListeners to TextFields
+   * Add KeyListeners to TextFields - uses keyTyped and manageOkButton
    */
   
   private void initTextFields() {
-    graph1Field_.getDocument().addDocumentListener(new DocumentListener() {
+    
+    graph1Field_.addKeyListener(new KeyListener() {
       @Override
-      public void insertUpdate(DocumentEvent e) {
-        try {
-          manageOKButton();
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
+      public void keyTyped(KeyEvent e) { // only care about characters typed
+//        System.out.println(graph1Field_.getText());
+        if (hasRequiredFiles()) { // enable OK button
+          buttonOK_.setEnabled(true);
         }
+        manageOKButton();
       }
+      @Override
+      public void keyPressed(KeyEvent e) {}
+      @Override
+      public void keyReleased(KeyEvent e) {
+      }
+    });
+    graph2Field_.addKeyListener(new KeyListener() {
+      @Override
+      public void keyTyped(KeyEvent e) {
+        if (hasRequiredFiles()) {
+          buttonOK_.setEnabled(true);
+        }
+        manageOKButton();
   
-      @Override
-      public void removeUpdate(DocumentEvent e) {
-        try {
-          manageOKButton();
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
-        }
       }
+      @Override
+      public void keyPressed(KeyEvent e) {}
+      @Override
+      public void keyReleased(KeyEvent e) {}
+    });
+    alignField_.addKeyListener(new KeyListener() {
+      @Override
+      public void keyTyped(KeyEvent e) {
+        if (hasRequiredFiles()) {
+          buttonOK_.setEnabled(true);
+        }
+        manageOKButton();
   
+      }
       @Override
-      public void changedUpdate(DocumentEvent e) {}
+      public void keyPressed(KeyEvent e) {}
+      @Override
+      public void keyReleased(KeyEvent e) {}
     });
-    graph2Field_.getDocument().addDocumentListener(new DocumentListener() {
+    perfectField_.addKeyListener(new KeyListener() {
       @Override
-      public void insertUpdate(DocumentEvent e) {
-        try {
-          manageOKButton();
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
+      public void keyTyped(KeyEvent e) {
+        if (hasRequiredFiles()) {
+          buttonOK_.setEnabled(true);
         }
+        manageOKButton();
+        managePerfectNGButton();
       }
-    
       @Override
-      public void removeUpdate(DocumentEvent e) {
-        try {
-          manageOKButton();
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
-        }
-      }
-    
+      public void keyPressed(KeyEvent e) {}
       @Override
-      public void changedUpdate(DocumentEvent e) {}
-    });
-    alignField_.getDocument().addDocumentListener(new DocumentListener() {
-      @Override
-      public void insertUpdate(DocumentEvent e) {
-        try {
-          manageOKButton();
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
-        }
-      }
-    
-      @Override
-      public void removeUpdate(DocumentEvent e) {
-        try {
-          manageOKButton();
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
-        }
-      }
-    
-      @Override
-      public void changedUpdate(DocumentEvent e) {}
-    });
-    perfectField_.getDocument().addDocumentListener(new DocumentListener() {
-      @Override
-      public void insertUpdate(DocumentEvent e) {
-        try {
-          manageOKButton();
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
-        }
-      }
-    
-      @Override
-      public void removeUpdate(DocumentEvent e) {
-        try {
-          manageOKButton();
-        } catch (Exception ex) {
-          ExceptionHandler.getHandler().displayException(ex);
-        }
-      }
-    
-      @Override
-      public void changedUpdate(DocumentEvent e) {}
+      public void keyReleased(KeyEvent e) {}
     });
     return;
   }
@@ -385,7 +335,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   
   @Override
   protected boolean stashForOK() {
-    return (hasMinRequirements());
+    return (hasRequiredFiles());
   }
   
   /**
@@ -393,7 +343,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
    */
   
   private void manageOKButton () {
-    if (hasMinRequirements()) {
+    if (hasRequiredFiles()) {
       buttonOK_.setEnabled(true);
     } else {
       buttonOK_.setEnabled(false);
@@ -402,16 +352,15 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   }
   
   /**
-   * Check whether Perfect text-field and browse should be activated or deactivated
+   * Check whether Perfect NG drop-down button should be activated or deactivated
    */
   
-  private void managePerfectFieldButton() {
-    if (perfectNGsCombo_.getSelectedIndex() == NO_PERFECT) {
-      perfectField_.setEnabled(false);
-      perfectBrowse.setEnabled(false);
+  private void managePerfectNGButton() {
+    if (perfectField_.getText().isEmpty()) {
+      perfectNGsCombo_.setEnabled(false);
+      perfectNGsCombo_.setSelectedIndex(NONE_INDEX);
     } else {
-      perfectField_.setEnabled(true);
-      perfectBrowse.setEnabled(true);
+      perfectNGsCombo_.setEnabled(true); // activate perfect NG drop-down
     }
     return;
   }
@@ -421,54 +370,38 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
    */
   
   private void manageFieldToFile() {
-    String g1Field = graph1Field_.getText().trim(), g2Field = graph2Field_.getText().trim(),
-            alignField = alignField_.getText().trim(), perfectField = perfectField_.getText().trim();
-    
-    // if user used only text-field OR entered file through browse but then typed something else in text-field
-    if (graph1File_ == null || !g1Field.equals(graph1File_.getAbsolutePath())) {
-      graph1File_ = new File(g1Field);
+    if (graph1File_ == null && !graph1Field_.getText().isEmpty()) {
+      graph1File_ = new File(graph1Field_.getText().trim());
     }
-    if (graph2File_ == null || !g2Field.equals(graph2File_.getAbsolutePath())) {
-      graph2File_ = new File(g2Field);
+    if (graph2File_ == null && !graph2Field_.getText().isEmpty()) {
+      graph2File_ = new File(graph2Field_.getText().trim());
     }
-    if (alignmentFile_ == null || !alignField.equals(alignmentFile_.getAbsolutePath())) {
-      alignmentFile_ = new File(alignField);
+    if (alignmentFile_ == null && !alignField_.getText().isEmpty()) {
+      alignmentFile_ = new File(alignField_.getText().trim());
     }
-    // if user used only text-field after activating drop-down OR
-    // entered file through browse but then typed something else in text-field
-    if ((perfectNGsCombo_.getSelectedIndex() != NO_PERFECT && perfectAlignFile_ == null) ||
-            perfectAlignFile_ != null && !perfectField.equals(perfectAlignFile_.getAbsolutePath())) {
-      perfectAlignFile_ = new File(perfectField);
+    if (perfectAlignFile_ == null && !perfectField_.getText().isEmpty()) {
+      perfectAlignFile_ = new File(perfectField_.getText().trim());
     }
     return;
   }
   
   /**
-   * If user entered in minimum required files in terms of text-fields and non-directed confirmation
+   * If user entered in minimum required files in terms of text-fields and nondirected confirmation
    */
   
-  private boolean hasMinRequirements() {
-    boolean ret = undirectedConfirm_.isSelected();
-    // text-field should have text whether or not user typed in text-field or used browse
-    ret = ret && (!graph1Field_.getText().isEmpty()) && (!graph2Field_.getText().isEmpty()) && (!alignField_.getText().isEmpty());
-  
-    // if a perfect NG mode is activated but no perfect alignment is entered yet (through text-field or browse)
-    if (perfectNGsCombo_.getSelectedIndex() != NO_PERFECT && perfectField_.getText().isEmpty()) {
-      ret = false;
-    }
-    return (ret);
+  private boolean hasRequiredFiles() {
+    return (!graph1Field_.getText().isEmpty()) && (!graph2Field_.getText().isEmpty()) && (!alignField_.getText().isEmpty()) && undirectedConfirm_.isSelected();
   }
   
   public NetworkAlignmentDialogInfo getNAInfo() {
-    if (! hasMinRequirements()) {
+    if (! hasRequiredFiles()) {
       // should never happen
       throw new IllegalStateException("Graph file(s) or alignment file missing.");
     }
     
     NodeGroupMap.PerfectNGMode mode;
     switch (perfectNGsCombo_.getSelectedIndex()) {
-      case NO_PERFECT:
-      case NONE_WITH_PERFECT:
+      case NONE_INDEX:
         mode = NodeGroupMap.PerfectNGMode.NONE;
         break;
       case NC_INDEX:
@@ -481,6 +414,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
         // should never happen
         throw (new IllegalStateException("Illegal perfect NG mode"));
     }
+  
     return (new NetworkAlignmentDialogInfo(graph1File_, graph2File_, alignmentFile_, perfectAlignFile_, analysisType_, mode));
   }
   
@@ -528,6 +462,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
       case PERFECT_FILE:
         perfectField_.setText(file.getAbsolutePath());
         perfectAlignFile_ = file;
+        managePerfectNGButton();
         break;
       default:
         throw new IllegalArgumentException();
@@ -537,7 +472,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   }
   
   /**
-   * The unread files for G1, G2, main alignment, and (possibly) perfect alignment
+   * The unread files for G1, G2, and the Alignment
    */
   
   public static class NetworkAlignmentDialogInfo {
