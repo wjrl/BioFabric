@@ -66,7 +66,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   private static final long serialVersionUID = 1L;
   private JComboBox perfectNGsCombo_;
   
-  private final int NO_PERFECT = 0, NONE_WITH_PERFECT = 1, NC_INDEX = 2, JS_INDEX = 3; // indices on combo box
+  private final int NO_PERFECT = 0, WITH_PERFECT = 1, NC_INDEX = 2, JS_INDEX = 3; // indices on combo box
 
   
   public NetworkAlignmentDialog(JFrame parent, NetworkAlignmentBuildData.ViewType analysisType) {
@@ -173,7 +173,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     JLabel perfectNGLabel = new JLabel(rMan.getString("networkAlignment.perfectNodeGroups"));
     String[] choices = new String[4];
     choices[NO_PERFECT] = rMan.getString("networkAlignment.nonePerfect");
-    choices[NONE_WITH_PERFECT] = rMan.getString("networkAlignment.noneWithPerfect");
+    choices[WITH_PERFECT] = rMan.getString("networkAlignment.noneWithPerfect");
     choices[NC_INDEX] = rMan.getString("networkAlignment.nodeCorrectness");
     choices[JS_INDEX] = rMan.getString("networkAlignment.jaccardSimilarity");
     
@@ -468,7 +468,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     NodeGroupMap.PerfectNGMode mode;
     switch (perfectNGsCombo_.getSelectedIndex()) {
       case NO_PERFECT:
-      case NONE_WITH_PERFECT:
+      case WITH_PERFECT:
         mode = NodeGroupMap.PerfectNGMode.NONE;
         break;
       case NC_INDEX:

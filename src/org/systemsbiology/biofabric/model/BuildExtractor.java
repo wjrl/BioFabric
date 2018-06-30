@@ -62,7 +62,6 @@ public class BuildExtractor {
       retval.add(link.getTrgID());
       lr.report();
     }
-    lr.finish();  // DO I NEED THIS lr.finish() HERE? THE OTHER STATIC METHODS DON'T HAVE IT
     return (retval);
   }
  

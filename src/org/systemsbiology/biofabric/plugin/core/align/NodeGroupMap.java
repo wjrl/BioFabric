@@ -528,11 +528,11 @@ public class NodeGroupMap {
       for (NID.WithName node : mapG1toG2_.keySet()) {
         NID.WithName converted = perfectG1toG2_.get(node);
         if (converted == null) {
-          //System.err.println("no Entrez match for " + node);
+//          System.err.println("no Entrez match for " + node);
           continue;
         }
         NID.WithName matchedWith = mapG1toG2_.get(node);
-        entrezAlign.put(converted, matchedWith);
+        entrezAlign.put(matchedWith, converted);
       }
       return;
     }
@@ -543,7 +543,7 @@ public class NodeGroupMap {
      */
   
     private void makeNodeToNeighL() throws AsynchExitRequestException {
-      LoopReporter lr = new LoopReporter(linksLarge_.size(), 20, monitor_, 0.0, 1.0, "progress.jaccardSimilarity");
+      LoopReporter lr = new LoopReporter(linksLarge_.size(), 20, monitor_, 0.0, 1.0, "progress.generatingJaccardStructures");
       nodeToNeighL = new HashMap<NID.WithName, Set<NID.WithName>>();
     
       for (FabricLink link : linksLarge_) {

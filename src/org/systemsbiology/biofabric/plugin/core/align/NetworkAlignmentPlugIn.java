@@ -591,7 +591,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       
     public String getCommandName() {
       ResourceManager rMan = ResourceManager.getManager();  // DOES NOT BELONG HERE
-      return (rMan.getString("command.netAlignScores"));  
+      return (rMan.getString("command.netAlignMeasures"));
     }   
     
     public boolean performOperation(JFrame topFrame) {
@@ -599,7 +599,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
         return (false);
       }    
     
-      NetAlignScoreDialog scoreDialog = new NetAlignScoreDialog(topFrame, netAlignStats_);
+      NetAlignMeasureDialog scoreDialog = new NetAlignMeasureDialog(topFrame, netAlignStats_);
       scoreDialog.setVisible(true);
       return (true);
     }
