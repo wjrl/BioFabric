@@ -96,6 +96,12 @@ public class NodeGroupMap {
     NONE, NODE_CORRECTNESS, JACCARD_SIMILARITY
   }
   
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // CONSTRUCTORS
+  //
+  ////////////////////////////////////////////////////////////////////////////
+  
   public NodeGroupMap(NetworkAlignmentBuildData nabd, String[] nodeGroupOrder, String[][] colorMap,
                       BTProgressMonitor monitor) throws AsynchExitRequestException {
     this(nabd.allLinks, nabd.loneNodeIDs, nabd.mapG1toG2, nabd.perfectG1toG2, nabd.linksLarge, nabd.lonersLarge,
@@ -125,6 +131,12 @@ public class NodeGroupMap {
     calcLGRatios();
     return;
   }
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PRIVATE METHODS
+  //
+  ////////////////////////////////////////////////////////////////////////////
   
   private void generateStructs(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs) throws AsynchExitRequestException {
     LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor_, 0.0, 1.0, "progress.generatingStructures");
@@ -316,6 +328,12 @@ public class NodeGroupMap {
     }
     return;
   }
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC METHODS
+  //
+  ////////////////////////////////////////////////////////////////////////////
   
   /***************************************************************************
    **

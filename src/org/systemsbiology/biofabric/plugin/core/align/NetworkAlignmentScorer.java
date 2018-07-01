@@ -90,6 +90,12 @@ public class NetworkAlignmentScorer {
   private Double EC, S3, ICS, NC, NGS, LGS, JaccSim;
   private NetworkAlignmentPlugIn.NetAlignStats netAlignStats_;
   
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // CONSTRUCTOR
+  //
+  ////////////////////////////////////////////////////////////////////////////
+  
   public NetworkAlignmentScorer(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
                                 Map<NID.WithName, Boolean> mergedToCorrectNC, Map<NID.WithName, Boolean> isAlignedNode,
                                 Map<NID.WithName, Boolean> isAlignedNodePerfect,
@@ -133,6 +139,12 @@ public class NetworkAlignmentScorer {
     finalizeMeasures();
     return;
   }
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PRIVATE METHODS
+  //
+  ////////////////////////////////////////////////////////////////////////////
   
   private void removeDuplicateAndShadow() throws AsynchExitRequestException {
     LoopReporter lr = new LoopReporter(linksMain_.size(), 20, monitor_, 0.0, 1.0, "progress.filteringLinksA");

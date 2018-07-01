@@ -35,8 +35,20 @@ import org.systemsbiology.biofabric.util.ResourceManager;
 
 public class NetAlignMeasureDialog extends BTStashResultsDialog {
   
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PRIVATE FIELDS
+  //
+  ////////////////////////////////////////////////////////////////////////////
+  
   private JFrame parent_;
   private NetworkAlignmentPlugIn.NetAlignStats netAlignStats_;
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // CONSTRUCTOR
+  //
+  ////////////////////////////////////////////////////////////////////////////
   
   public NetAlignMeasureDialog(JFrame parent, NetworkAlignmentPlugIn.NetAlignStats stats) {
     super(parent, ResourceManager.getManager().getString("networkAlignment.measures"), new Dimension(700, 400), 2);

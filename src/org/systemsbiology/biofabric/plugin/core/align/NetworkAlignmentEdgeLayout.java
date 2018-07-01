@@ -77,33 +77,6 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
     return;
   }
   
-  /***************************************************************************
-  **
-  ** Install Link groups for network alignments in this order:
-  ** 1) All Covered Edges  2) uncovered G1  3) induced G2  4) half aligned half unaligned G2  5) full unaligned G2
-  ** Note: some link groups may not be present.
-  */
-
-  private void installLinkGroups(BuildData.RelayoutBuildData rbd, BTProgressMonitor monitor)
-          throws AsynchExitRequestException {
-  
-    LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.orderingLinkGroups");
-    Set<String> relations = new HashSet<String>();
-    for (FabricLink link : rbd.allLinks) {
-      relations.add(link.getRelation());
-      lr.report();
-    }
-    lr.finish();
-  
-    List<String> groupOrder = new ArrayList<String>(relations);
-  
-    // trivial operation (group order is at most length 5)
-    Collections.sort(groupOrder, new NetAlignLinkGroupLocator());
-  
-    rbd.setGroupOrderAndMode(groupOrder, BioFabricNetwork.LayoutMode.PER_NETWORK_MODE, true);
-    return;
-  }
-  
   /***************************************
    **
    ** Get the color
@@ -111,7 +84,34 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
   
   @Override
   protected String getColor(String type, Map<String, String> colorMap) {
-    return (null); // because there are node annots already, only grays allowed
+    return (null); // because there are node annots already, only grays link annots allowed
+  }
+  
+  /***************************************************************************
+   **
+   ** Install Link groups for network alignments in this order:
+   ** 1) All Covered Edges  2) uncovered G1  3) induced G2  4) half aligned half unaligned G2  5) full unaligned G2
+   ** Note: some link groups may not be present.
+   */
+  
+  private void installLinkGroups(BuildData.RelayoutBuildData rbd, BTProgressMonitor monitor)
+          throws AsynchExitRequestException {
+    
+    LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.orderingLinkGroups");
+    Set<String> relations = new HashSet<String>();
+    for (FabricLink link : rbd.allLinks) {
+      relations.add(link.getRelation());
+      lr.report();
+    }
+    lr.finish();
+    
+    List<String> groupOrder = new ArrayList<String>(relations);
+    
+    // trivial operation (group order is at most length 5)
+    Collections.sort(groupOrder, new NetAlignLinkGroupLocator());
+    
+    rbd.setGroupOrderAndMode(groupOrder, BioFabricNetwork.LayoutMode.PER_NETWORK_MODE, true);
+    return;
   }
   
   /***************************************************************************

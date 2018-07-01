@@ -223,7 +223,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       }
       
       flushQueue(targetsGroup, targsPerSource, linkCounts, targsToGo, targsLeftToGoGroup, queueGroup,
-              monitor, .25, .50, currGroup, grouper);
+              monitor, .25, 1.00, currGroup, grouper);
     }
     
     //
@@ -396,6 +396,12 @@ public class NetworkAlignmentLayout extends NodeLayout {
     nabd.setNodeAnnotations(annots);
     return;
   }
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC CONSTANTS
+  //
+  ////////////////////////////////////////////////////////////////////////////
   
   public static final String[] defaultNGOrderWithoutCorrect = {
           "(P:0)",
