@@ -61,7 +61,7 @@ public class FabricDisplayOptions implements Cloneable {
   private static final double DEFAULT_LINK_DARKER_LEVEL_ = 0.43;
   private static final boolean DEFAULT_DISPLAY_SHADOWS_ = false;
   private static final boolean DEFAULT_SHADE_NODES_ = false;
-//  private static final int DEFAULT_MIN_DRAIN_ZONE = 1;
+  private static final int DEFAULT_MIN_DRAIN_ZONE = 1;
   private static final boolean DEFAULT_OFFER_NODE_BROWSER_ = false;
   private static final boolean DEFAULT_OFFER_LINK_BROWSER_ = false;
   private static final boolean DEFAULT_OFFER_MOUSEOVER_VIEW_ = false;
@@ -88,7 +88,7 @@ public class FabricDisplayOptions implements Cloneable {
   private String browserURL_;
   private String browserLinkURL_;
   private String mouseOverURL_;
-//  private int minDrainZone_;
+  private int minDrainZone_;
  
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -107,7 +107,7 @@ public class FabricDisplayOptions implements Cloneable {
     linkDarkerLevel_ = DEFAULT_LINK_DARKER_LEVEL_;
     displayShadows_ = DEFAULT_DISPLAY_SHADOWS_;
     shadeNodes_ = DEFAULT_SHADE_NODES_;
-//    minDrainZone_ = DEFAULT_MIN_DRAIN_ZONE;
+    minDrainZone_ = DEFAULT_MIN_DRAIN_ZONE;
     browserURL_ = DEFAULT_BROWSER_URL_;
     browserLinkURL_ = DEFAULT_LINK_BROWSER_URL_;
     minShadSubLinks_ = DEFAULT_MINIMIZE_SHADOW_SUBMODEL_LINKS_;
@@ -400,15 +400,24 @@ public class FabricDisplayOptions implements Cloneable {
     return;
   }
   
-//  /***************************************************************************
-//   **
-//   ** Set if we are changing min drain zone size
-//   */
-//
-//  public void setMinDrainZone(int size) {
-//    minDrainZone_ = size;
-//    return;
-//  }
+  /***************************************************************************
+   **
+   ** Get if we are changing min drain zone size
+   */
+  
+  public int getMinDrainZone() {
+    return (minDrainZone_);
+  }
+  
+  /***************************************************************************
+   **
+   ** Set if we are changing min drain zone size
+   */
+
+  public void setMinDrainZone(int size) {
+    minDrainZone_ = size;
+    return;
+  }
   
   /***************************************************************************
   **

@@ -55,7 +55,7 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
  
 	private static final long serialVersionUID = 1L;
 	
-//	private final Integer[] minDrainZoneChoices = {1, 2, 3, 4, 5, 10, 20};
+	private final Integer[] minDrainZoneChoices = {1, 2, 3, 4, 5, 10, 20};
 	  
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -69,7 +69,7 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
   private JCheckBox displayShadowsBox_;
   private JCheckBox minShadSublinksBox_;
   private JCheckBox shadeNodesBox_;
-//  private JComboBox minDrainZoneBox_;
+  private JComboBox minDrainZoneBox_;
   private JCheckBox offerNodeBrowser_;
   private JTextField browserURLField_;
   private JCheckBox offerLinkBrowser_;
@@ -136,10 +136,10 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
     shadeNodesBox_.setSelected(options.getShadeNodes());
     addWidgetFullRow(shadeNodesBox_, false);
   
-//    minDrainZoneBox_ = new JComboBox(minDrainZoneChoices);  // have to use unchecked for v1.6
-//    minDrainZoneBox_.setSelectedIndex(0);
-//    label = new JLabel(rMan.getString("displayOptions.minDrainZone"));
-//    addLabeledWidget(label, minDrainZoneBox_, false, false);
+    minDrainZoneBox_ = new JComboBox(minDrainZoneChoices);  // have to use unchecked for v1.6
+    minDrainZoneBox_.setSelectedIndex(getMinDrainZoneIndex(options.getMinDrainZone()));
+    label = new JLabel(rMan.getString("displayOptions.minDrainZone"));
+    addLabeledWidget(label, minDrainZoneBox_, false, false);
     
     offerNodeBrowser_ = new JCheckBox(rMan.getString("displayOptions.offerNodeBrowser"));
     offerNodeBrowser_.setSelected(options.getOfferNodeBrowser());
@@ -275,8 +275,9 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
     newOpts_.setShadeNodes(currShade);
     needRecolor_ = needRecolor_ || (oldOpts.getShadeNodes() != newOpts_.getShadeNodes());
     
-//    int newMinDrainZone = minDrainZoneChoices[minDrainZoneBox_.getSelectedIndex()];
-//    newOpts_.setMinDrainZone(newMinDrainZone);
+    int newMinDrainZone = minDrainZoneChoices[minDrainZoneBox_.getSelectedIndex()];
+    newOpts_.setMinDrainZone(newMinDrainZone);
+    needRecolor_ = needRecolor_ || (oldOpts.getMinDrainZone() != newOpts_.getMinDrainZone());
     
     boolean offerNode = offerNodeBrowser_.isSelected();
     newOpts_.setOfferNodeBrowser(offerNode);
@@ -388,6 +389,19 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
     return (new Double(levelVal));
   }
   
+  /***************************************************************************
+   **
+   **
+   */
+  
+  private int getMinDrainZoneIndex(int choice) {
+    for (int i = 0; i < minDrainZoneChoices.length; i++) {
+      if (choice == minDrainZoneChoices[i]) {
+        return (i);
+      }
+    }
+    throw new IllegalArgumentException("Wrong argument: " + choice + " for min drain zone index request");
+  }
  
   /***************************************************************************
   **
