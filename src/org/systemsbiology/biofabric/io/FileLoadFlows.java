@@ -744,6 +744,52 @@ public class FileLoadFlows {
     boolean didFinish = pn.doNetworkPreprocess(links, relMap, reducedLinks, culledLinks, holdIt);
     return (didFinish);
   }
+  
+  /***************************************************************************
+   **
+   ** Common load operations.
+   */
+  
+  public boolean loadFromGWSource(File file, Map<AttributeLoader.AttributeKey, String> nameMap,
+                                  Integer magBins, UniqueLabeller idGen) {
+
+    HashMap<String, String> nodeNames = null;
+    if (nameMap != null) {
+      nodeNames = new HashMap<String, String>();
+      for (AttributeLoader.AttributeKey key : nameMap.keySet()) {
+        nodeNames.put(((AttributeLoader.StringKey)key).key, nameMap.get(key));
+      }
+    }
+    
+    File holdIt;
+    try {
+      holdIt = File.createTempFile("BioFabricHold", ".zip");
+      holdIt.deleteOnExit();
+    } catch (IOException ioex) {
+      holdIt = null;
+    }
+    // always read gw on background thread
+    ArrayList<FabricLink> links = new ArrayList<FabricLink>();
+    HashSet<NID.WithName> loneNodes = new HashSet<NID.WithName>();
+    TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
+    FabricImportLoader.FileImportStats sss = new FabricImportLoader.FileImportStats();
+    
+    BackgroundFileReader br = new BackgroundFileReader();
+
+    boolean finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
+    //
+    // This looks for dups to toss and prep work:
+    //
+    HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
+    if (finished) {
+      announceBadLines(sss);
+      finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);
+    }
+    if (finished) {
+      buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
+    }
+    return (true);
+  }
      
   /***************************************************************************
   **
