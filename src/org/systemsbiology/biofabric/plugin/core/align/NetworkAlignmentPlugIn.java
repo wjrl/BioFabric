@@ -315,58 +315,24 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
                                           ArrayList<FabricLink> linksGraphB, HashSet<NID.WithName> loneNodeIDsGraphB,
                                           UniqueLabeller idGen, NetworkAlignmentBuildData.ViewType outType) {
     //
-    // Decide which graph has more nodes - graph 1 is smaller (#nodes) than graph 2 from here on
+    // Assign GraphA and GraphB to Graph1 and Graph2
     //
-  
-    // small graph
-    ArrayList<FabricLink> linksSmall;
-    HashSet<NID.WithName> lonersSmall;
-  
-    // large graph
-    ArrayList<FabricLink> linksLarge;
-    HashSet<NID.WithName> lonersLarge;
-  
-    try {
-      int numNodesA = BuildExtractor.extractNodes(linksGraphA, loneNodeIDsGraphA, null).size();
-      int numNodesB = BuildExtractor.extractNodes(linksGraphB, loneNodeIDsGraphB, null).size();
-      
-      if (numNodesA > numNodesB) { // We compare #nodes
-        linksLarge = linksGraphA;
-        lonersLarge = loneNodeIDsGraphA;
-        linksSmall = linksGraphB;
-        lonersSmall = loneNodeIDsGraphB;
-      } else if (numNodesA < numNodesB) {
-        linksLarge = linksGraphB;
-        lonersLarge = loneNodeIDsGraphB;
-        linksSmall = linksGraphA;
-        lonersSmall = loneNodeIDsGraphA;
-      } else { // now we compare #links
-
-        UiUtil.fixMePrintout("figure out G1/G2 from .align if networks have same # of nodes");
-        int numLinksA = linksGraphA.size();
-        int numLinksB = linksGraphB.size();
-
-        if (numLinksA >= numLinksB) { // if #links are still equal, we do choose graphA as larger
-          linksLarge = linksGraphA;   // We don't take the alignment file into consideration. . .
-          lonersLarge = loneNodeIDsGraphA;
-          linksSmall = linksGraphB;
-          lonersSmall = loneNodeIDsGraphB;
-        } else {
-          linksLarge = linksGraphB;
-          lonersLarge = loneNodeIDsGraphB;
-          linksSmall = linksGraphA;
-          lonersSmall = loneNodeIDsGraphA;
-        }
-      }
-    } catch (AsynchExitRequestException aere) {
-      // should never happen
-      return (false);
+    
+    NetAlignGraphStructure struct = new NetAlignGraphStructure();
+    boolean worked = assignGraphs(linksGraphA, loneNodeIDsGraphA, linksGraphB, loneNodeIDsGraphB, nadi.align, struct);
+    if (! worked) {
+      return (true);
     }
   
-    //
-    // read alignment and process
-    //
+    // small graph G1
+    ArrayList<FabricLink> linksSmall = struct.linksSmall;
+    HashSet<NID.WithName> lonersSmall = struct.lonersSmall;
   
+    // large graph G2
+    ArrayList<FabricLink> linksLarge = struct.linksLarge;
+    HashSet<NID.WithName> lonersLarge = struct.lonersLarge;
+
+    // Alignment processing
     Map<NID.WithName, NID.WithName> mapG1toG2 =
             loadTheAlignmentFile(nadi.align, linksSmall, lonersSmall, linksLarge, lonersLarge);
     if (mapG1toG2 == null) {
@@ -561,7 +527,118 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     flf_.manageWindowTitle(align.getName());
     return true;
   }
-
+  
+  /***************************************************************************
+   **
+   ** Assign GraphA and GraphB to Graph1 and Graph2 using comparisons
+   */
+  
+  private boolean assignGraphs(ArrayList<FabricLink> linksGraphA, HashSet<NID.WithName> loneNodeIDsGraphA,
+                               ArrayList<FabricLink> linksGraphB, HashSet<NID.WithName> loneNodeIDsGraphB,
+                               File align, NetAlignGraphStructure struct) {
+  
+    Set<NID.WithName> nodesA = null, nodesB = null;
+    try {
+      nodesA = BuildExtractor.extractNodes(linksGraphA, loneNodeIDsGraphA, null);
+      nodesB = BuildExtractor.extractNodes(linksGraphB, loneNodeIDsGraphB, null);
+    } catch (AsynchExitRequestException aere) {
+      // should never happen
+    }
+    int numNodesA = nodesA.size();
+    int numNodesB = nodesB.size();
+    // First compare node number
+    if (numNodesA > numNodesB) {
+      // G1 = B, G2 = A
+      struct.linksLarge = linksGraphA;
+      struct.lonersLarge = loneNodeIDsGraphA;
+      struct.linksSmall = linksGraphB;
+      struct.lonersSmall = loneNodeIDsGraphB;
+      return (true);
+    } else if (numNodesA < numNodesB) {
+      // G1 = A, G2 = B
+      struct.linksLarge = linksGraphB;
+      struct.lonersLarge = loneNodeIDsGraphB;
+      struct.linksSmall = linksGraphA;
+      struct.lonersSmall = loneNodeIDsGraphA;
+      return (true);
+    }
+    
+    //
+    // Now use the columns from the alignment file for insight
+    //
+    // Generate necessary structures for comparison
+    //
+    
+    AlignmentLoader alod = new AlignmentLoader();
+    Map<String, String> mapG1ToG2Str;
+    try {
+      mapG1ToG2Str = alod.readAlignment(align, new AlignmentLoader.NetAlignFileStats());
+    } catch (IOException ioe) {
+      flf_.displayFileInputError(ioe);
+      return (false);
+    }
+  
+    Set<String> namesG1 = new HashSet<String>(), namesG2 = new HashSet<String>();
+    for (Map.Entry<String, String> match : mapG1ToG2Str.entrySet()) {
+      namesG1.add(match.getKey());
+      namesG2.add(match.getValue());
+    }
+  
+    Set<String> namesA = new HashSet<String>(), namesB = new HashSet<String>();
+    for (NID.WithName node : nodesA) {
+      namesA.add(node.getName());
+    }
+    for (NID.WithName node : nodesB) {
+      namesB.add(node.getName());
+    }
+    
+    //
+    // Can only test cases of equality here because nearly all error checking
+    // is done in the main read.
+    //
+  
+    if (! namesA.equals(namesB)) { // if node sets are equal, cannot distinguish without link # comparison
+      if (namesG1.equals(namesA) && namesG2.equals(namesB)) {
+        // G1 = A, G2 = B
+        struct.linksLarge = linksGraphB;
+        struct.lonersLarge = loneNodeIDsGraphB;
+        struct.linksSmall = linksGraphA;
+        struct.lonersSmall = loneNodeIDsGraphA;
+        return (true);
+      } else if (namesG1.equals(namesB) && namesG2.equals(namesA)) {
+        // G1 = B, G2 = A
+        struct.linksLarge = linksGraphA;
+        struct.lonersLarge = loneNodeIDsGraphA;
+        struct.linksSmall = linksGraphB;
+        struct.lonersSmall = loneNodeIDsGraphB;
+        return (true);
+      }
+    }
+    
+    //
+    // If both graphs still have same node sets, link size is the only option
+    //
+  
+    int numLinksA = linksGraphA.size();
+    int numLinksB = linksGraphB.size();
+    // if #links are still equal, we choose graphA as smaller (G1) and graphB as larger (G2)
+    if (numLinksA > numLinksB) {
+      // G1 = B, G2 = A
+      struct.linksLarge = linksGraphA;
+      struct.lonersLarge = loneNodeIDsGraphA;
+      struct.linksSmall = linksGraphB;
+      struct.lonersSmall = loneNodeIDsGraphB;
+      return (true);
+    } else {
+      // G1 = A, G2 = B
+      struct.linksLarge = linksGraphB;
+      struct.lonersLarge = loneNodeIDsGraphB;
+      struct.linksSmall = linksGraphA;
+      struct.lonersSmall = loneNodeIDsGraphA;
+      return (true);
+    }
+  }
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // INNER CLASSES
@@ -1193,4 +1270,17 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       return (retval);
     }  
   }
+  
+  /***************************************************************************
+   **
+   ** For transferring objects when assigning Graph1 and Graph2 ONLY
+   */
+  
+  private static final class NetAlignGraphStructure {
+    ArrayList<FabricLink> linksSmall;   // G1
+    HashSet<NID.WithName> lonersSmall;
+    ArrayList<FabricLink> linksLarge;   // G2
+    HashSet<NID.WithName> lonersLarge;
+  }
+  
 }
