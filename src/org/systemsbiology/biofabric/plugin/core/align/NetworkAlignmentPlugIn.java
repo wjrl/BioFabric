@@ -245,9 +245,9 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     HashSet<NID.WithName> lonersGraphA = new HashSet<NID.WithName>();
     
     if (GWImportLoader.isGWFile(nadi.graphA)) {
-      flf_.loadFromGWSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
+      flf_.loadFromASource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true, FileLoadFlows.FileLoadType.GW);
     } else {
-      flf_.loadFromSifSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
+      flf_.loadFromASource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true, FileLoadFlows.FileLoadType.SIF);
     } // assume it's sif if it's not gw
     
     
@@ -255,13 +255,12 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     HashSet<NID.WithName> lonersGraphB = new HashSet<NID.WithName>();
     
     if (GWImportLoader.isGWFile(nadi.graphB)) {
-      flf_.loadFromGWSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
+      flf_.loadFromASource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true, FileLoadFlows.FileLoadType.GW);
     } else {
-      flf_.loadFromSifSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
+      flf_.loadFromASource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true, FileLoadFlows.FileLoadType.SIF);
     }
     
-    return (networkAlignmentStepTwo(nadi, linksGraphA, lonersGraphA, 
-                                    linksGraphB, lonersGraphB, idGen, outType));
+    return (networkAlignmentStepTwo(nadi, linksGraphA, lonersGraphA, linksGraphB, lonersGraphB, idGen, outType));
   }
   
   /**************************************************************************

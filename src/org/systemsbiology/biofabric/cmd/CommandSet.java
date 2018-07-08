@@ -757,7 +757,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     public boolean performOperation(Object[] args) {
-      return (flf_.loadFromSifSource(inputFile_, null, null, new UniqueLabeller()));
+      return (flf_.loadFromASource(inputFile_, null, null, new UniqueLabeller(), FileLoadFlows.FileLoadType.SIF));
     }
   }
   
@@ -2365,7 +2365,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         }
       }
       Integer magBins = (doWeights_) ? Integer.valueOf(4) : null;
-      return (flf_.loadFromSifSource(file, null, magBins, new UniqueLabeller()));
+      return (flf_.loadFromASource(file, null, magBins, new UniqueLabeller(), FileLoadFlows.FileLoadType.SIF));
     }
   }
   
@@ -2432,7 +2432,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           continue;
         }
       }
-      return (flf_.loadFromGWSource(file, null, null, new UniqueLabeller()));
+      return (flf_.loadFromASource(file, null, null, new UniqueLabeller(), FileLoadFlows.FileLoadType.GW));
     }
   
   }
@@ -2587,7 +2587,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         return (true);
       }
  
-      return (flf_.loadFromSifSource(file, attribs, null, new UniqueLabeller()));
+      return (flf_.loadFromASource(file, attribs, null, new UniqueLabeller(), FileLoadFlows.FileLoadType.SIF));
     }
   }
   
