@@ -52,6 +52,12 @@ import java.io.File;
 
 public class NetworkAlignmentDialog extends BTStashResultsDialog {
   
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PRIVATE INSTANCE MEMBERS
+  //
+  ////////////////////////////////////////////////////////////////////////////
+  
   private enum FileIndex {
     GRAPH_ONE_FILE, GRAPH_TWO_FILE, ALIGNMENT_FILE, PERFECT_FILE
   }
@@ -66,7 +72,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   private static final long serialVersionUID = 1L;
   private JComboBox perfectNGsCombo_;
   
-  private final int NO_PERFECT = 0, NONE_WITH_PERFECT = 1, NC_INDEX = 2, JS_INDEX = 3; // indices on combo box
+  private final int NO_PERFECT_IDX = 0, WITH_PERFECT_IDX = 1, NC_IDX = 2, JS_IDX = 3; // indices on combo box
 
   
   public NetworkAlignmentDialog(JFrame parent, NetworkAlignmentBuildData.ViewType analysisType) {
@@ -172,10 +178,10 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   
     JLabel perfectNGLabel = new JLabel(rMan.getString("networkAlignment.perfectNodeGroups"));
     String[] choices = new String[4];
-    choices[NO_PERFECT] = rMan.getString("networkAlignment.nonePerfect");
-    choices[NONE_WITH_PERFECT] = rMan.getString("networkAlignment.noneWithPerfect");
-    choices[NC_INDEX] = rMan.getString("networkAlignment.nodeCorrectness");
-    choices[JS_INDEX] = rMan.getString("networkAlignment.jaccardSimilarity");
+    choices[NO_PERFECT_IDX] = rMan.getString("networkAlignment.nonePerfect");
+    choices[WITH_PERFECT_IDX] = rMan.getString("networkAlignment.noneWithPerfect");
+    choices[NC_IDX] = rMan.getString("networkAlignment.nodeCorrectness");
+    choices[JS_IDX] = rMan.getString("networkAlignment.jaccardSimilarity");
     
     perfectNGsCombo_ = new JComboBox(choices); // have to use unchecked for v1.6
     
@@ -184,7 +190,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     //
     
     perfectNGsCombo_.setEnabled(true);
-    perfectNGsCombo_.setSelectedIndex(NO_PERFECT);
+    perfectNGsCombo_.setSelectedIndex(NO_PERFECT_IDX);
     perfectNGsCombo_.addItemListener(new ItemListener() {
       @Override
       public void itemStateChanged(ItemEvent e) {
@@ -362,32 +368,6 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     return;
   }
   
-  @Override
-  public void okAction() {
-    try {
-      manageFieldToFile();
-      super.okAction();
-    } catch (Exception ex) {
-      // should never happen because OK button is disabled without correct files.
-      ExceptionHandler.getHandler().displayException(ex);
-    }
-    return;
-  }
-  
-  @Override
-  public void closeAction() {
-    try {
-      super.closeAction();
-    } catch (Exception ex) {
-      ExceptionHandler.getHandler().displayException(ex);
-    }
-  }
-  
-  @Override
-  protected boolean stashForOK() {
-    return (hasMinRequirements());
-  }
-  
   /**
    * Check whether OK button should be activated or deactivated
    */
@@ -406,7 +386,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
    */
   
   private void managePerfectFieldButton() {
-    if (perfectNGsCombo_.getSelectedIndex() == NO_PERFECT) {
+    if (perfectNGsCombo_.getSelectedIndex() == NO_PERFECT_IDX) {
       perfectField_.setEnabled(false);
       perfectBrowse.setEnabled(false);
     } else {
@@ -436,7 +416,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     }
     // if user used only text-field after activating drop-down OR
     // entered file through browse but then typed something else in text-field
-    if ((perfectNGsCombo_.getSelectedIndex() != NO_PERFECT && perfectAlignFile_ == null) ||
+    if ((perfectNGsCombo_.getSelectedIndex() != NO_PERFECT_IDX && perfectAlignFile_ == null) ||
             perfectAlignFile_ != null && !perfectField.equals(perfectAlignFile_.getAbsolutePath())) {
       perfectAlignFile_ = new File(perfectField);
     }
@@ -453,35 +433,10 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     ret = ret && (!graph1Field_.getText().isEmpty()) && (!graph2Field_.getText().isEmpty()) && (!alignField_.getText().isEmpty());
   
     // if a perfect NG mode is activated but no perfect alignment is entered yet (through text-field or browse)
-    if (perfectNGsCombo_.getSelectedIndex() != NO_PERFECT && perfectField_.getText().isEmpty()) {
+    if (perfectNGsCombo_.getSelectedIndex() != NO_PERFECT_IDX && perfectField_.getText().isEmpty()) {
       ret = false;
     }
     return (ret);
-  }
-  
-  public NetworkAlignmentDialogInfo getNAInfo() {
-    if (! hasMinRequirements()) {
-      // should never happen
-      throw new IllegalStateException("Graph file(s) or alignment file missing.");
-    }
-    
-    NodeGroupMap.PerfectNGMode mode;
-    switch (perfectNGsCombo_.getSelectedIndex()) {
-      case NO_PERFECT:
-      case NONE_WITH_PERFECT:
-        mode = NodeGroupMap.PerfectNGMode.NONE;
-        break;
-      case NC_INDEX:
-        mode = NodeGroupMap.PerfectNGMode.NODE_CORRECTNESS;
-        break;
-      case JS_INDEX:
-        mode = NodeGroupMap.PerfectNGMode.JACCARD_SIMILARITY;
-        break;
-      default:
-        // should never happen
-        throw (new IllegalStateException("Illegal perfect NG mode"));
-    }
-    return (new NetworkAlignmentDialogInfo(graph1File_, graph2File_, alignmentFile_, perfectAlignFile_, analysisType_, mode));
   }
   
   /**
@@ -534,6 +489,63 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     }
     manageOKButton();
     return;
+  }
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC METHODS AND CLASSES
+  //
+  ////////////////////////////////////////////////////////////////////////////
+  
+  @Override
+  public void okAction() {
+    try {
+      manageFieldToFile();
+      super.okAction();
+    } catch (Exception ex) {
+      // should never happen because OK button is disabled without correct files.
+      ExceptionHandler.getHandler().displayException(ex);
+    }
+    return;
+  }
+  
+  @Override
+  public void closeAction() {
+    try {
+      super.closeAction();
+    } catch (Exception ex) {
+      ExceptionHandler.getHandler().displayException(ex);
+    }
+  }
+  
+  @Override
+  protected boolean stashForOK() {
+    return (hasMinRequirements());
+  }
+  
+  public NetworkAlignmentDialogInfo getNAInfo() {
+    if (! hasMinRequirements()) {
+      // should never happen
+      throw new IllegalStateException("Graph file(s) or alignment file missing.");
+    }
+    
+    NodeGroupMap.PerfectNGMode mode;
+    switch (perfectNGsCombo_.getSelectedIndex()) {
+      case NO_PERFECT_IDX:
+      case WITH_PERFECT_IDX:
+        mode = NodeGroupMap.PerfectNGMode.NONE;
+        break;
+      case NC_IDX:
+        mode = NodeGroupMap.PerfectNGMode.NODE_CORRECTNESS;
+        break;
+      case JS_IDX:
+        mode = NodeGroupMap.PerfectNGMode.JACCARD_SIMILARITY;
+        break;
+      default:
+        // should never happen
+        throw (new IllegalStateException("Illegal perfect NG mode"));
+    }
+    return (new NetworkAlignmentDialogInfo(graph1File_, graph2File_, alignmentFile_, perfectAlignFile_, analysisType_, mode));
   }
   
   /**

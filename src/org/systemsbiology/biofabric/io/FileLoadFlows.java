@@ -110,7 +110,7 @@ public class FileLoadFlows {
   //////////////////////////////////////////////////////////////////////////// 
 
   public static final int LINK_COUNT_FOR_BACKGROUND_WRITE = 5000;
-  public static final int FILE_LENGTH_FOR_BACKGROUND_SIF_READ = 500000;
+  public static final int FILE_LENGTH_FOR_BACKGROUND_FILE_READ = 500000;
   public static final int SIZE_TO_ASK_ABOUT_SHADOWS = 100000;
   public static final int XML_SIZE_FOR_BACKGROUND_READ = 1000000;
   
@@ -135,7 +135,9 @@ public class FileLoadFlows {
   public static final boolean FILE_CAN_WRITE            = true;
   
   public static final boolean FILE_CAN_READ_DONT_CARE   = false;
-  public static final boolean FILE_CAN_READ             = true;  
+  public static final boolean FILE_CAN_READ             = true;
+  
+  public static enum FileLoadType {GW, SIF};
       
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -406,135 +408,6 @@ public class FileLoadFlows {
     }
     FabricCommands.setPreference("LoadDirectory", file.getAbsoluteFile().getParent());
     return;
-  }   
-    
-  /***************************************************************************
-  **
-  ** Common load operations.  Take your pick of input sources
-  */ 
-    
-  public boolean loadFromSifSource(File file, Map<AttributeLoader.AttributeKey, String> nameMap, Integer magBins, 
-  		                             UniqueLabeller idGen) {  
-    ArrayList<FabricLink> links = new ArrayList<FabricLink>();
-    HashSet<NID.WithName> loneNodes = new HashSet<NID.WithName>();
-    HashMap<String, String> nodeNames = null;
-    if (nameMap != null) {
-      nodeNames = new HashMap<String, String>();
-      for (AttributeLoader.AttributeKey key : nameMap.keySet()) {
-        nodeNames.put(((AttributeLoader.StringKey)key).key, nameMap.get(key));
-      }
-    }
-    
-    File holdIt;  
-    try {
-    	holdIt = File.createTempFile("BioFabricHold", ".zip");
-    	holdIt.deleteOnExit();
-    } catch (IOException ioex) {
-    	holdIt = null;
-    }
-
-    HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
-    TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
-    FabricImportLoader.FileImportStats sss;
-    if ((file.length() > FILE_LENGTH_FOR_BACKGROUND_SIF_READ) && (headlessOracle_ == null)) {
-      sss = new FabricImportLoader.FileImportStats();
-      BackgroundFileReader br = new BackgroundFileReader();
-      //
-      // This gets file file in:
-      //
-      boolean finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
-      //
-      // This looks for dups to toss and prep work:
-      //
-      if (finished) {
-        announceBadLines(sss);
-        finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);
-      }
-      
-      if (finished) {
-        buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
-      }
-      return (true);
-    } else {
-      try { 
-        sss = (new SIFImportLoader()).importFabric(file, idGen, links, loneNodes, nodeNames, magBins, null);
-        BuildExtractor.extractRelations(links, relMap, null);
-        announceBadLines(sss);
-        boolean finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);
-        if (finished) {
-        	buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
-        }
-        return (true);
-      } catch (AsynchExitRequestException axex) {
-      	// Should never happen
-        return (false);              
-      } catch (IOException ioe) {
-        displayFileInputError(ioe);
-        return (false);              
-      } catch (OutOfMemoryError oom) {
-        ExceptionHandler.getHandler().displayOutOfMemory(oom);
-        return (false);  
-      }
-    }   
-  }
-  
-  /***************************************************************************
-   **
-   ** Load from sif file and directly receive link set
-   */
-  
-  public boolean loadFromSifSource(File file, ArrayList<FabricLink> links,
-                                   HashSet<NID.WithName> loneNodes, Integer magBins,
-                                   UniqueLabeller idGen, boolean loadOnly) {
-    
-    HashMap<String, String> nodeNames = null;
-  
-    File holdIt;
-    try {
-      holdIt = File.createTempFile("BioFabricHold", ".zip");
-      holdIt.deleteOnExit();
-    } catch (IOException ioex) {
-      holdIt = null;
-    }
-    
-    HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
-    TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
-    FabricImportLoader.FileImportStats sss = new FabricImportLoader.FileImportStats();
-    
-    BackgroundFileReader br = new BackgroundFileReader();
-    //
-    // This gets file in:
-    //
-    boolean finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
-   
-    if (!finished) {
-      return (true);  
-    }
-    
-    //
-    // Let user know if there were formatting problems (but keep going...)
-    //
-    
-    announceBadLines(sss);
-    
-    //
-    // If caller just wants to get the file in without followup, exit now:
-    //
-    
-    if (loadOnly) {
-      return (true);
-    }
-
-    //
-    // This looks for dups to toss and prep work:
-    //
-
-    finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);   
-    
-    if (finished) {
-      buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
-    }
-    return (true);
   }
   
   /***************************************************************************
@@ -744,18 +617,97 @@ public class FileLoadFlows {
     boolean didFinish = pn.doNetworkPreprocess(links, relMap, reducedLinks, culledLinks, holdIt);
     return (didFinish);
   }
-     
+  
   /***************************************************************************
-  **
-  ** First step for loading from GW
-  */
+   **
+   ** Common load operation for gw or sif
+   */
   
-  public boolean loadFromGWSource(File file, ArrayList<FabricLink> links,
-                                  HashSet<NID.WithName> loneNodes, Integer magBins,
-                                  UniqueLabeller idGen, boolean loadOnly) {
-  
-  
+  public boolean loadFromASource(File file, Map<AttributeLoader.AttributeKey, String> nameMap,
+                                 Integer magBins, UniqueLabeller idGen, FileLoadType type) {
+    
     HashMap<String, String> nodeNames = null;
+    if (nameMap != null) {
+      nodeNames = new HashMap<String, String>();
+      for (AttributeLoader.AttributeKey key : nameMap.keySet()) {
+        nodeNames.put(((AttributeLoader.StringKey)key).key, nameMap.get(key));
+      }
+    }
+  
+    File holdIt;
+    try {
+      holdIt = File.createTempFile("BioFabricHold", ".zip");
+      holdIt.deleteOnExit();
+    } catch (IOException ioex) {
+      holdIt = null;
+    }
+  
+    ArrayList<FabricLink> links = new ArrayList<FabricLink>();
+    HashSet<NID.WithName> loneNodes = new HashSet<NID.WithName>();
+    TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
+    HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
+    FabricImportLoader.FileImportStats sss;
+    
+    if ((file.length() > FILE_LENGTH_FOR_BACKGROUND_FILE_READ) && (headlessOracle_ == null)) {
+      sss = new FabricImportLoader.FileImportStats();
+      BackgroundFileReader br = new BackgroundFileReader();
+      //
+      // This gets file in:
+      //
+      boolean finished;
+      if (type == FileLoadType.SIF) {
+        finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
+      } else if (type == FileLoadType.GW) {
+        finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
+      } else {
+        throw (new IllegalArgumentException("File type not identified"));
+      }
+      if (!finished) { // do not continue if failed
+        return (true);
+      }
+      return (true);
+    } else {
+      try {
+        if (type == FileLoadType.SIF) {
+          sss = (new SIFImportLoader()).importFabric(file, idGen, links, loneNodes, nodeNames, magBins, null);
+        } else if (type == FileLoadType.GW) {
+          sss = (new GWImportLoader()).importFabric(file, idGen, links, loneNodes, nodeNames, magBins, null);
+        } else {
+          throw (new IllegalArgumentException("File type not identified"));
+        }
+        BuildExtractor.extractRelations(links, relMap, null);
+      } catch (AsynchExitRequestException axex) {
+        // Should never happen
+        return (false);
+      } catch (IOException ioe) {
+        displayFileInputError(ioe);
+        return (false);
+      } catch (OutOfMemoryError oom) {
+        ExceptionHandler.getHandler().displayOutOfMemory(oom);
+        return (false);
+      }
+    }
+  
+    //
+    // This looks for dups to toss and prep work:
+    //
+    
+    announceBadLines(sss);
+    boolean finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);
+    if (finished) {
+      buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
+    }
+    return (true);
+  }
+  
+  /***************************************************************************
+   **
+   ** Load from file and directly receive link set and loners set
+   */
+  
+  public boolean loadFromASource(File file, ArrayList<FabricLink> links,
+                                 HashSet<NID.WithName> loneNodes, Integer magBins,
+                                 UniqueLabeller idGen, boolean loadOnly, FileLoadType type) {
     
     File holdIt;
     try {
@@ -768,44 +720,49 @@ public class FileLoadFlows {
     HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
     TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
     FabricImportLoader.FileImportStats sss = new FabricImportLoader.FileImportStats();
-    
+  
+    // Always do background read- not worth checking file size- most files will likely be large
     BackgroundFileReader br = new BackgroundFileReader();
-    // This gets file file in:
-
-    boolean finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
-     
-    if (!finished) {
-      return (true);  
+    // This gets file in:
+    boolean finished;
+    if (type == FileLoadType.SIF) {
+      finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, null, sss, magBins, relMap, holdIt);
+    } else if (type == FileLoadType.GW) {
+      finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, null, sss, magBins, relMap, holdIt);
+    } else {
+      throw (new IllegalArgumentException("File type not identified"));
     }
-    
+  
+    if (!finished) {
+      return (true);
+    }
+  
     //
     // Let user know if there were formatting problems (but keep going...)
     //
-    
+  
     announceBadLines(sss);
-    
+  
     //
     // If caller just wants to get the file in without followup, exit now:
     //
-    
+  
     if (loadOnly) {
       return (true);
     }
-
+  
     //
     // This looks for dups to toss and prep work:
     //
-
-    finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);   
-    
+  
+    finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);
+  
     if (finished) {
       buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
     }
-    
-    return (true);     
+    return (true);
   }
   
- 
   /***************************************************************************
   **
   ** Preprocess ops that are either run in forground or background:

@@ -245,9 +245,9 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     HashSet<NID.WithName> lonersGraphA = new HashSet<NID.WithName>();
     
     if (GWImportLoader.isGWFile(nadi.graphA)) {
-      flf_.loadFromGWSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
+      flf_.loadFromASource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true, FileLoadFlows.FileLoadType.GW);
     } else {
-      flf_.loadFromSifSource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true);
+      flf_.loadFromASource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true, FileLoadFlows.FileLoadType.SIF);
     } // assume it's sif if it's not gw
     
     
@@ -255,13 +255,12 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     HashSet<NID.WithName> lonersGraphB = new HashSet<NID.WithName>();
     
     if (GWImportLoader.isGWFile(nadi.graphB)) {
-      flf_.loadFromGWSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
+      flf_.loadFromASource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true, FileLoadFlows.FileLoadType.GW);
     } else {
-      flf_.loadFromSifSource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true);
+      flf_.loadFromASource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true, FileLoadFlows.FileLoadType.SIF);
     }
     
-    return (networkAlignmentStepTwo(nadi, linksGraphA, lonersGraphA, 
-                                    linksGraphB, lonersGraphB, idGen, outType));
+    return (networkAlignmentStepTwo(nadi, linksGraphA, lonersGraphA, linksGraphB, lonersGraphB, idGen, outType));
   }
   
   /**************************************************************************
@@ -315,58 +314,24 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
                                           ArrayList<FabricLink> linksGraphB, HashSet<NID.WithName> loneNodeIDsGraphB,
                                           UniqueLabeller idGen, NetworkAlignmentBuildData.ViewType outType) {
     //
-    // Decide which graph has more nodes - graph 1 is smaller (#nodes) than graph 2 from here on
+    // Assign GraphA and GraphB to Graph1 and Graph2
     //
-  
-    // small graph
-    ArrayList<FabricLink> linksSmall = new ArrayList<FabricLink>();
-    HashSet<NID.WithName> lonersSmall = new HashSet<NID.WithName>();
-  
-    // large graph
-    ArrayList<FabricLink> linksLarge = new ArrayList<FabricLink>();
-    HashSet<NID.WithName> lonersLarge = new HashSet<NID.WithName>();
-  
-    try {
-      int numNodesA = BuildExtractor.extractNodes(linksGraphA, loneNodeIDsGraphA, null).size();
-      int numNodesB = BuildExtractor.extractNodes(linksGraphB, loneNodeIDsGraphB, null).size();
-      
-      if (numNodesA > numNodesB) { // We compare #nodes
-        linksLarge = linksGraphA;
-        lonersLarge = loneNodeIDsGraphA;
-        linksSmall = linksGraphB;
-        lonersSmall = loneNodeIDsGraphB;
-      } else if (numNodesA < numNodesB) {
-        linksLarge = linksGraphB;
-        lonersLarge = loneNodeIDsGraphB;
-        linksSmall = linksGraphA;
-        lonersSmall = loneNodeIDsGraphA;
-      } else { // now we compare #links
-
-        UiUtil.fixMePrintout("figure out G1/G2 from .align if networks have same # of nodes");
-        int numLinksA = linksGraphA.size();
-        int numLinksB = linksGraphB.size();
-
-        if (numLinksA >= numLinksB) { // if #links are still equal, we do choose graphA as larger
-          linksLarge = linksGraphA;   // We don't take the alignment file into consideration. . .
-          lonersLarge = loneNodeIDsGraphA;
-          linksSmall = linksGraphB;
-          lonersSmall = loneNodeIDsGraphB;
-        } else {
-          linksLarge = linksGraphB;
-          lonersLarge = loneNodeIDsGraphB;
-          linksSmall = linksGraphA;
-          lonersSmall = loneNodeIDsGraphA;
-        }
-      }
-    } catch (AsynchExitRequestException aere) {
-      // should never happen
-      return (false);
+    
+    NetAlignGraphStructure struct = new NetAlignGraphStructure();
+    boolean worked = assignGraphs(linksGraphA, loneNodeIDsGraphA, linksGraphB, loneNodeIDsGraphB, nadi.align, struct);
+    if (! worked) {
+      return (true);
     }
   
-    //
-    // read alignment and process
-    //
+    // small graph G1
+    ArrayList<FabricLink> linksSmall = struct.linksSmall;
+    HashSet<NID.WithName> lonersSmall = struct.lonersSmall;
   
+    // large graph G2
+    ArrayList<FabricLink> linksLarge = struct.linksLarge;
+    HashSet<NID.WithName> lonersLarge = struct.lonersLarge;
+
+    // Alignment processing
     Map<NID.WithName, NID.WithName> mapG1toG2 =
             loadTheAlignmentFile(nadi.align, linksSmall, lonersSmall, linksLarge, lonersLarge);
     if (mapG1toG2 == null) {
@@ -446,6 +411,14 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
               NetworkAlignmentBuildData.ViewType.GROUP, idGen, holdIt);
     }
   
+    // i.e. same 2 graphs and perfect alignment yield an empty network
+    if (mergedLinks.isEmpty()) {
+      JOptionPane.showMessageDialog(topWindow_, (ResourceManager.getManager()).getString("networkAlignment.emptyNetwork"),
+              (ResourceManager.getManager()).getString("networkAlignment.emptyNetworkTitle"),
+              JOptionPane.WARNING_MESSAGE);
+      return (false);
+    }
+  
     if (finished) { // for main alignment      
       finished = flf_.handleDirectionsDupsAndShadows(mergedLinks, mergedLoneNodeIDs, false, relMap, reducedLinks, holdIt, true);
     }
@@ -502,13 +475,20 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
                                            ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
                                            ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
                                            Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2) {
-  
-    NetworkAlignmentScorer scorer = new NetworkAlignmentScorer(reducedLinks, loneNodeIDs, mergedToCorrectNC,
-            isAlignedNode, isAlignedNodePerfect, reducedLinksPerfect, loneNodeIDsPerfect,
-            linksSmall, lonersSmall, linksLarge, lonersLarge, mapG1toG2, perfectG1toG2, null);
-
-    report.replaceValuesTo(scorer.getNetAlignStats());
-    return (true);
+    File holdIt;
+    try {
+      holdIt = File.createTempFile("BioFabricHold", ".zip");
+      holdIt.deleteOnExit();
+    } catch (IOException ioex) {
+      holdIt = null;
+    }
+    NetAlignMeasureBuilder namb = new NetAlignMeasureBuilder();
+    
+    boolean finished = namb.processNetAlignMeasures(reducedLinks, loneNodeIDs, isAlignedNode, mergedToCorrectNC,
+            reducedLinksPerfect, loneNodeIDsPerfect, isAlignedNodePerfect, report, linksSmall, lonersSmall,
+            linksLarge, lonersLarge, mapG1toG2, perfectG1toG2, holdIt);
+    
+    return (finished);
   }
   
   /***************************************************************************
@@ -546,7 +526,118 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     flf_.manageWindowTitle(align.getName());
     return true;
   }
-
+  
+  /***************************************************************************
+   **
+   ** Assign GraphA and GraphB to Graph1 and Graph2 using comparisons
+   */
+  
+  private boolean assignGraphs(ArrayList<FabricLink> linksGraphA, HashSet<NID.WithName> loneNodeIDsGraphA,
+                               ArrayList<FabricLink> linksGraphB, HashSet<NID.WithName> loneNodeIDsGraphB,
+                               File align, NetAlignGraphStructure struct) {
+  
+    Set<NID.WithName> nodesA = null, nodesB = null;
+    try {
+      nodesA = BuildExtractor.extractNodes(linksGraphA, loneNodeIDsGraphA, null);
+      nodesB = BuildExtractor.extractNodes(linksGraphB, loneNodeIDsGraphB, null);
+    } catch (AsynchExitRequestException aere) {
+      // should never happen
+    }
+    int numNodesA = nodesA.size();
+    int numNodesB = nodesB.size();
+    // First compare node number
+    if (numNodesA > numNodesB) {
+      // G1 = B, G2 = A
+      struct.linksLarge = linksGraphA;
+      struct.lonersLarge = loneNodeIDsGraphA;
+      struct.linksSmall = linksGraphB;
+      struct.lonersSmall = loneNodeIDsGraphB;
+      return (true);
+    } else if (numNodesA < numNodesB) {
+      // G1 = A, G2 = B
+      struct.linksLarge = linksGraphB;
+      struct.lonersLarge = loneNodeIDsGraphB;
+      struct.linksSmall = linksGraphA;
+      struct.lonersSmall = loneNodeIDsGraphA;
+      return (true);
+    }
+    
+    //
+    // Now use the columns from the alignment file for insight
+    //
+    // Generate necessary structures for comparison
+    //
+    
+    AlignmentLoader alod = new AlignmentLoader();
+    Map<String, String> mapG1ToG2Str;
+    try {
+      mapG1ToG2Str = alod.readAlignment(align, new AlignmentLoader.NetAlignFileStats());
+    } catch (IOException ioe) {
+      flf_.displayFileInputError(ioe);
+      return (false);
+    }
+  
+    Set<String> namesG1 = new HashSet<String>(), namesG2 = new HashSet<String>();
+    for (Map.Entry<String, String> match : mapG1ToG2Str.entrySet()) {
+      namesG1.add(match.getKey());
+      namesG2.add(match.getValue());
+    }
+  
+    Set<String> namesA = new HashSet<String>(), namesB = new HashSet<String>();
+    for (NID.WithName node : nodesA) {
+      namesA.add(node.getName());
+    }
+    for (NID.WithName node : nodesB) {
+      namesB.add(node.getName());
+    }
+    
+    //
+    // Can only test cases of equality here because nearly all error checking
+    // is done in the main read.
+    //
+  
+    if (! namesA.equals(namesB)) { // if node sets are equal, cannot distinguish without link # comparison
+      if (namesG1.equals(namesA) && namesG2.equals(namesB)) {
+        // G1 = A, G2 = B
+        struct.linksLarge = linksGraphB;
+        struct.lonersLarge = loneNodeIDsGraphB;
+        struct.linksSmall = linksGraphA;
+        struct.lonersSmall = loneNodeIDsGraphA;
+        return (true);
+      } else if (namesG1.equals(namesB) && namesG2.equals(namesA)) {
+        // G1 = B, G2 = A
+        struct.linksLarge = linksGraphA;
+        struct.lonersLarge = loneNodeIDsGraphA;
+        struct.linksSmall = linksGraphB;
+        struct.lonersSmall = loneNodeIDsGraphB;
+        return (true);
+      }
+    }
+    
+    //
+    // If both graphs still have same node sets, link size is the only option
+    //
+  
+    int numLinksA = linksGraphA.size();
+    int numLinksB = linksGraphB.size();
+    // if #links are still equal, we choose graphA as smaller (G1) and graphB as larger (G2)
+    if (numLinksA > numLinksB) {
+      // G1 = B, G2 = A
+      struct.linksLarge = linksGraphA;
+      struct.lonersLarge = loneNodeIDsGraphA;
+      struct.linksSmall = linksGraphB;
+      struct.lonersSmall = loneNodeIDsGraphB;
+      return (true);
+    } else {
+      // G1 = A, G2 = B
+      struct.linksLarge = linksGraphB;
+      struct.lonersLarge = loneNodeIDsGraphB;
+      struct.linksSmall = linksGraphA;
+      struct.lonersSmall = loneNodeIDsGraphA;
+      return (true);
+    }
+  }
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // INNER CLASSES
@@ -576,7 +667,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       
     public String getCommandName() {
       ResourceManager rMan = ResourceManager.getManager();  // DOES NOT BELONG HERE
-      return (rMan.getString("command.netAlignScores"));  
+      return (rMan.getString("command.netAlignMeasures"));
     }   
     
     public boolean performOperation(JFrame topFrame) {
@@ -584,7 +675,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
         return (false);
       }    
     
-      NetAlignScoreDialog scoreDialog = new NetAlignScoreDialog(topFrame, netAlignStats_);
+      NetAlignMeasureDialog scoreDialog = new NetAlignMeasureDialog(topFrame, netAlignStats_);
       scoreDialog.setVisible(true);
       return (true);
     }
@@ -885,7 +976,6 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       return (finished_);
     }
     
-    // NOT SURE IF ALL OF THE METHODS BELOW ARE CORRECT
     public boolean handleRemoteException(Exception remoteEx) {
       finished_ = false;
       return (false);
@@ -960,6 +1050,129 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     
     public Object postRunCore() {
       return null;
+    }
+  }
+  
+  /***************************************************************************
+   **
+   ** Class for calculating network alignment measures
+   */
+  
+  private class NetAlignMeasureBuilder implements BackgroundWorkerOwner {
+    
+    private File holdIt_;
+    private boolean finished_;
+    
+    public boolean processNetAlignMeasures(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Boolean> isAlignedNode,
+                                           Map<NID.WithName, Boolean> mergedToCorrectNC, Set<FabricLink> reducedLinksPerfect,
+                                           Set<NID.WithName> loneNodeIDsPerfect, Map<NID.WithName, Boolean> isAlignedNodePerfect,
+                                           NetAlignStats report,
+                                           ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
+                                           ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                                           Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2, File holdIt) {
+      finished_ = true;
+      holdIt_ = holdIt;
+      try {
+        NetAlignMeasureRunner runner = new NetAlignMeasureRunner(reducedLinks, loneNodeIDs, isAlignedNode, mergedToCorrectNC, reducedLinksPerfect,
+                loneNodeIDsPerfect, isAlignedNodePerfect, report, linksSmall, lonersSmall, linksLarge, lonersLarge, mapG1toG2, perfectG1toG2);
+    
+        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bwcm_,
+                "fileLoad.waitTitle", "fileLoad.wait", true);
+    
+        runner.setClient(bwc);
+        bwc.launchWorker();
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }
+      return (finished_);
+    }
+    
+    @Override
+    public boolean handleRemoteException(Exception remoteEx) {
+      finished_ = false;
+      return (false);
+    }
+  
+    @Override
+    public void handleCancellation() {
+      finished_ = false;
+      flf_.cancelAndRestore(holdIt_);
+      return;
+    }
+  
+    @Override
+    public void cleanUpPreEnable(Object result) {
+      return;
+    }
+  
+    @Override
+    public void cleanUpPostRepaint(Object result) {
+      return;
+    }
+  }
+  
+  /***************************************************************************
+   **
+   ** Background network alignment measure processing
+   */
+  
+  private class NetAlignMeasureRunner extends BackgroundWorker {
+  
+    private Map<NID.WithName, NID.WithName> mapG1toG2_;
+    private Set<FabricLink> reducedLinks_;
+    private Set<NID.WithName> loneNodeIDs_;
+    private Map<NID.WithName, Boolean> isAlignedNode_;
+    private Map<NID.WithName, Boolean> mergedToCorrectNC_;
+    private Map<NID.WithName, NID.WithName> perfectG1toG2_;
+    private Set<FabricLink> reducedLinksPerfect_;
+    private Set<NID.WithName> loneNodeIDsPerfect_;
+    private Map<NID.WithName, Boolean> isAlignedNodePerfect_;
+  
+    private ArrayList<FabricLink> linksSmall_, linksLarge_;
+    private HashSet<NID.WithName> lonersSmall_, lonersLarge_;
+    private NetAlignStats report_;
+    
+    
+    public NetAlignMeasureRunner(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Boolean> isAlignedNode,
+                                 Map<NID.WithName, Boolean> mergedToCorrectNC, Set<FabricLink> reducedLinksPerfect,
+                                 Set<NID.WithName> loneNodeIDsPerfect, Map<NID.WithName, Boolean> isAlignedNodePerfect,
+                                 NetAlignStats report,
+                                 ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
+                                 ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                                 Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2) {
+      super(new Boolean(false));
+      
+      this.reducedLinks_ = reducedLinks;
+      this.loneNodeIDs_ = loneNodeIDs;
+      this.isAlignedNode_ = isAlignedNode;
+      this.mergedToCorrectNC_ = mergedToCorrectNC;
+      this.reducedLinksPerfect_ = reducedLinksPerfect;
+      this.loneNodeIDsPerfect_ = loneNodeIDsPerfect;
+      this.isAlignedNodePerfect_ = isAlignedNodePerfect;
+      this.report_ = report;
+      this.linksSmall_ = linksSmall;
+      this.lonersSmall_ = lonersSmall;
+      this.linksLarge_ = linksLarge;
+      this.lonersLarge_ = lonersLarge;
+      this.mapG1toG2_ = mapG1toG2;
+      this.perfectG1toG2_ = perfectG1toG2;
+    }
+  
+    @Override
+    public Object runCore() throws AsynchExitRequestException {
+  
+      NetworkAlignmentScorer scorer = new NetworkAlignmentScorer(reducedLinks_, loneNodeIDs_, mergedToCorrectNC_,
+              isAlignedNode_, isAlignedNodePerfect_, reducedLinksPerfect_, loneNodeIDsPerfect_,
+              linksSmall_, lonersSmall_, linksLarge_, lonersLarge_, mapG1toG2_, perfectG1toG2_, this);
+  
+      this.report_.replaceValuesTo(scorer.getNetAlignStats());
+      
+      return (new Boolean(true));
+    }
+  
+    @Override
+    public Object postRunCore() {
+      return (null);
     }
   }
   
@@ -1056,4 +1269,17 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       return (retval);
     }  
   }
+  
+  /***************************************************************************
+   **
+   ** For transferring objects when assigning Graph1 and Graph2 ONLY
+   */
+  
+  private static final class NetAlignGraphStructure {
+    ArrayList<FabricLink> linksSmall;   // G1
+    HashSet<NID.WithName> lonersSmall;
+    ArrayList<FabricLink> linksLarge;   // G2
+    HashSet<NID.WithName> lonersLarge;
+  }
+  
 }

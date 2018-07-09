@@ -134,7 +134,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
 
   public static final int EMPTY_NETWORK     = 0; 
   public static final int CLOSE             = 1; 
-  public static final int LOAD              = 2; 
+  public static final int LOAD_FROM_SIF = 2;
   public static final int SEARCH            = 3; 
   public static final int ZOOM_OUT          = 4; 
   public static final int ZOOM_IN           = 5; 
@@ -161,7 +161,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public static final int LAYOUT_NODES_VIA_ATTRIBUTES  = 28;
   public static final int LAYOUT_LINKS_VIA_ATTRIBUTES  = 29;
   public static final int LOAD_WITH_NODE_ATTRIBUTES = 30;
-  public static final int LOAD_XML                  = 31; 
+  public static final int LOAD_XML                  = 31;
   public static final int RELAYOUT_USING_CONNECTIVITY  = 32;
   public static final int RELAYOUT_USING_SHAPE_MATCH   = 33;
   public static final int SET_LINK_GROUPS              = 34;
@@ -187,9 +187,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public static final int LOAD_NET_ALIGN_GROUPS        = 54;
   public static final int LOAD_NET_ALIGN_ORPHAN_EDGES  = 55;
   public static final int NET_ALIGN_SCORES             = 56;
+  public static final int LOAD_FROM_GW                 = 57;
   
-  public static final int ADD_NODE_ANNOTATIONS         = 57;
-  public static final int ADD_LINK_ANNOTATIONS         = 58;
+  public static final int ADD_NODE_ANNOTATIONS         = 58;
+  public static final int ADD_LINK_ANNOTATIONS         = 59;
  
   public static final int GENERAL_PUSH   = 0x01;
   public static final int ALLOW_NAV_PUSH = 0x02;
@@ -405,7 +406,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         case LOAD_XML:
           retval = new LoadXMLAction(withIcon); 
           break;
-        case LOAD:
+        case LOAD_FROM_SIF:
           retval = new ImportSIFAction(withIcon, false); 
           break;
         case LOAD_WITH_EDGE_WEIGHTS:
@@ -413,6 +414,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           break;          
         case LOAD_WITH_NODE_ATTRIBUTES:
           retval = new LoadWithNodeAttributesAction(withIcon); 
+          break;
+        case LOAD_FROM_GW:
+          retval = new ImportGWAction(withIcon);
           break;
         case SAVE_AS:
           retval = new SaveAsAction(withIcon); 
@@ -753,7 +757,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     public boolean performOperation(Object[] args) {
-      return (flf_.loadFromSifSource(inputFile_, null, null, new UniqueLabeller()));
+      return (flf_.loadFromASource(inputFile_, null, null, new UniqueLabeller(), FileLoadFlows.FileLoadType.SIF));
     }
   }
   
@@ -2329,10 +2333,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     private boolean performOperation(Object[] args) {
  
-      File file = null;      
+      File file = null;
       String filename = FabricCommands.getPreference("LoadDirectory");
       while (file == null) {
-        JFileChooser chooser = new JFileChooser(); 
+        JFileChooser chooser = new JFileChooser();
         FileExtensionFilters.SimpleFilter sf = new FileExtensionFilters.SimpleFilter(".sif", "filterName.sif");
         chooser.addChoosableFileFilter(sf);
         chooser.setAcceptAllFileFilterUsed(true);
@@ -2341,7 +2345,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         if (filename != null) {
           File startDir = new File(filename);
           if (startDir.exists()) {
-            chooser.setCurrentDirectory(startDir);  
+            chooser.setCurrentDirectory(startDir);
           }
         }
 
@@ -2353,16 +2357,84 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         if (file == null) {
           return (true);
         }
-        if (!flf_.standardFileChecks(file, FileLoadFlows.FILE_MUST_EXIST, FileLoadFlows.FILE_CAN_CREATE_DONT_CARE, 
-                                           FileLoadFlows.FILE_DONT_CHECK_OVERWRITE, FileLoadFlows.FILE_MUST_BE_FILE, 
+        if (!flf_.standardFileChecks(file, FileLoadFlows.FILE_MUST_EXIST, FileLoadFlows.FILE_CAN_CREATE_DONT_CARE,
+                                           FileLoadFlows.FILE_DONT_CHECK_OVERWRITE, FileLoadFlows.FILE_MUST_BE_FILE,
                                            FileLoadFlows.FILE_CAN_WRITE_DONT_CARE, FileLoadFlows.FILE_CAN_READ)) {
           file = null;
-          continue; 
+          continue;
         }
       }
       Integer magBins = (doWeights_) ? Integer.valueOf(4) : null;
-      return (flf_.loadFromSifSource(file, null, magBins, new UniqueLabeller()));
+      return (flf_.loadFromASource(file, null, magBins, new UniqueLabeller(), FileLoadFlows.FileLoadType.SIF));
     }
+  }
+  
+  /***************************************************************************
+   **
+   ** Command
+   */
+  
+  private class ImportGWAction extends ChecksForEnabled {
+  
+    private static final long serialVersionUID = 1L;
+  
+    ImportGWAction(boolean doIcon) {
+      ResourceManager rMan = ResourceManager.getManager();
+      putValue(Action.NAME, rMan.getString("command.LoadGW"));
+      if (doIcon) {
+        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.LoadGW"));
+        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/FIXME24.gif");
+        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
+      } else {
+        char mnem = rMan.getChar("command.LoadGWMnem");
+        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
+      }
+    }
+  
+    public void actionPerformed(ActionEvent e) {
+      try {
+        performOperation(null);
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }
+      return;
+    }
+  
+    private boolean performOperation(Object[] args) {
+      File file = null;
+      String filename = FabricCommands.getPreference("LoadDirectory");
+      while (file == null) {
+        JFileChooser chooser = new JFileChooser();
+        FileExtensionFilters.SimpleFilter sf = new FileExtensionFilters.SimpleFilter(".gw", "filterName.gw");
+        chooser.addChoosableFileFilter(sf);
+        chooser.setAcceptAllFileFilterUsed(true);
+        chooser.setFileFilter(sf);
+    
+        if (filename != null) {
+          File startDir = new File(filename);
+          if (startDir.exists()) {
+            chooser.setCurrentDirectory(startDir);
+          }
+        }
+    
+        int option = chooser.showOpenDialog(topWindow_);
+        if (option != JFileChooser.APPROVE_OPTION) {
+          return (true);
+        }
+        file = chooser.getSelectedFile();
+        if (file == null) {
+          return (true);
+        }
+        if (!flf_.standardFileChecks(file, FileLoadFlows.FILE_MUST_EXIST, FileLoadFlows.FILE_CAN_CREATE_DONT_CARE,
+                FileLoadFlows.FILE_DONT_CHECK_OVERWRITE, FileLoadFlows.FILE_MUST_BE_FILE,
+                FileLoadFlows.FILE_CAN_WRITE_DONT_CARE, FileLoadFlows.FILE_CAN_READ)) {
+          file = null;
+          continue;
+        }
+      }
+      return (flf_.loadFromASource(file, null, null, new UniqueLabeller(), FileLoadFlows.FileLoadType.GW));
+    }
+  
   }
   
   /***************************************************************************
@@ -2515,7 +2587,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         return (true);
       }
  
-      return (flf_.loadFromSifSource(file, attribs, null, new UniqueLabeller()));
+      return (flf_.loadFromASource(file, attribs, null, new UniqueLabeller(), FileLoadFlows.FileLoadType.SIF));
     }
   }
   

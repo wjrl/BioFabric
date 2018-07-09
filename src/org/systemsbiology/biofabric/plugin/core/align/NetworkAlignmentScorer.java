@@ -31,7 +31,9 @@ import java.util.Map;
 import java.util.Set;
 
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
@@ -88,6 +90,12 @@ public class NetworkAlignmentScorer {
   private Double EC, S3, ICS, NC, NGS, LGS, JaccSim;
   private NetworkAlignmentPlugIn.NetAlignStats netAlignStats_;
   
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // CONSTRUCTOR
+  //
+  ////////////////////////////////////////////////////////////////////////////
+  
   public NetworkAlignmentScorer(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
                                 Map<NID.WithName, Boolean> mergedToCorrectNC, Map<NID.WithName, Boolean> isAlignedNode,
                                 Map<NID.WithName, Boolean> isAlignedNodePerfect,
@@ -95,7 +103,7 @@ public class NetworkAlignmentScorer {
                                 ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
                                 ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
                                 Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2,
-                                BTProgressMonitor monitor) {
+                                BTProgressMonitor monitor) throws AsynchExitRequestException {
     this.linksMain_ = new HashSet<FabricLink>(reducedLinks);
     this.loneNodeIDsMain_ = new HashSet<NID.WithName>(loneNodeIDs);
     this.mergedToCorrectNC_ = mergedToCorrectNC;
@@ -116,11 +124,11 @@ public class NetworkAlignmentScorer {
     this.perfectG1toG2_ = perfectG1toG2;
     this.groupMapMain_ = new NodeGroupMap(reducedLinks, loneNodeIDs, mapG1toG2, perfectG1toG2, linksLarge, lonersLarge,
             mergedToCorrectNC, isAlignedNode, NodeGroupMap.PerfectNGMode.NONE,
-            NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
+            NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect, monitor);
     if (mergedToCorrectNC != null) {
       this.groupMapPerfect_ = new NodeGroupMap(linksPerfect, loneNodeIDsPerfect, mapG1toG2, perfectG1toG2, linksLarge,
               lonersLarge, mergedToCorrectNC, isAlignedNodePerfect, NodeGroupMap.PerfectNGMode.NONE,
-              NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect);
+              NetworkAlignmentLayout.defaultNGOrderWithoutCorrect, NetworkAlignmentLayout.ngAnnotColorsWithoutCorrect, monitor);
     }
     removeDuplicateAndShadow();
     generateStructs(reducedLinks, loneNodeIDs, nodeToLinksMain_, nodeToNeighborsMain_);
@@ -132,9 +140,17 @@ public class NetworkAlignmentScorer {
     return;
   }
   
-  private void removeDuplicateAndShadow() {
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PRIVATE METHODS
+  //
+  ////////////////////////////////////////////////////////////////////////////
+  
+  private void removeDuplicateAndShadow() throws AsynchExitRequestException {
+    LoopReporter lr = new LoopReporter(linksMain_.size(), 20, monitor_, 0.0, 1.0, "progress.filteringLinksA");
     Set<FabricLink> nonShdwLinks = new HashSet<FabricLink>();
     for (FabricLink link : linksMain_) {
+      lr.report();
       if (! link.isShadow()) { // remove shadow links
         nonShdwLinks.add(link);
       }
@@ -146,10 +162,11 @@ public class NetworkAlignmentScorer {
     // This means (a->b) and (b->a) should make the same string key.
     // If the key already has a value, we got a duplicate link.
     //
-    
+  
+    lr = new LoopReporter(nonShdwLinks.size(), 20, monitor_, 0.0, 1.0, "progress.filteringLinksB");
     Map<String, FabricLink> map = new HashMap<String, FabricLink>();
     for (FabricLink link : nonShdwLinks) {
-      
+      lr.report();
       String[] arr1 = {link.getSrcID().getName(), link.getTrgID().getName()};
       Arrays.sort(arr1);
       String concat = String.format("%s___%s", arr1[0], arr1[1]);
@@ -171,9 +188,12 @@ public class NetworkAlignmentScorer {
    ** Create structures (node-to-neighbors and node-to-inks
    */
   
-  private void generateStructs(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Set<FabricLink>> nodeToLinks_, Map<NID.WithName, Set<NID.WithName>> nodeToNeighbors_) {
+  private void generateStructs(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName,
+          Set<FabricLink>> nodeToLinks_, Map<NID.WithName, Set<NID.WithName>> nodeToNeighbors_) throws AsynchExitRequestException {
     
+    LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor_, 0.0, 1.0, "progress.generatingStructures");
     for (FabricLink link : allLinks) {
+      lr.report();
       NID.WithName src = link.getSrcID(), trg = link.getTrgID();
       
       if (nodeToLinks_.get(src) == null) {
@@ -207,7 +227,7 @@ public class NetworkAlignmentScorer {
    ** Calculate the scores!
    */
   
-  private void calcScores() {
+  private void calcScores() throws AsynchExitRequestException {
     calcTopologicalScores();
   
     if (mergedToCorrectNC_ != null) { // must have perfect alignment for these measures
@@ -253,10 +273,12 @@ public class NetworkAlignmentScorer {
     return;
   }
   
-  private void calcTopologicalScores() {
+  private void calcTopologicalScores() throws AsynchExitRequestException{
+    LoopReporter lr = new LoopReporter(linksMain_.size(), 20, monitor_, 0.0, 1.0, "progress.topologicalMeasures");
     int numCoveredEdge = 0, numGraph1 = 0, numInducedGraph2 = 0;
     
     for (FabricLink link : linksMain_) {
+      lr.report();
       if (link.getRelation().equals(NetworkAlignment.COVERED_EDGE)) {
         numCoveredEdge++;
       } else if (link.getRelation().equals(NetworkAlignment.GRAPH1)) {
@@ -266,19 +288,14 @@ public class NetworkAlignmentScorer {
       }
     }
     
-    if (numCoveredEdge == 0) {
-      return;
-    }
-    
     try {
       EC = ((double) numCoveredEdge) / (numCoveredEdge + numGraph1);
       S3 = ((double) numCoveredEdge) / (numCoveredEdge + numGraph1 + numInducedGraph2);
-      ICS = ((double) numCoveredEdge) / (numCoveredEdge + numInducedGraph2); // this is correct right?
+      ICS = ((double) numCoveredEdge) / (numCoveredEdge + numInducedGraph2);
     } catch (ArithmeticException ae) {
       EC = null;
       S3 = null;
-      ICS = null; // add better error catching
-      UiUtil.fixMePrintout("Needs better Net-Align score calculator");
+      ICS = null;
     }
     return;
   }
@@ -306,8 +323,8 @@ public class NetworkAlignmentScorer {
     return;
   }
   
-  private void calcJaccardSimilarity() {
-    this.JaccSim = new JaccardSimilarityScore().calcScore(mapG1toG2_, perfectG1toG2_, linksLarge_, lonersLarge_);
+  private void calcJaccardSimilarity() throws AsynchExitRequestException {
+    this.JaccSim = new JaccardSimilarityScore().calcScore(mapG1toG2_, perfectG1toG2_, linksLarge_, lonersLarge_, monitor_);
     return;
   }
   
@@ -538,10 +555,11 @@ public class NetworkAlignmentScorer {
      */
   
     double calcScore(Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2,
-                     ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge) {
+                     ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                     BTProgressMonitor monitor) throws AsynchExitRequestException {
   
       NodeGroupMap.JaccardSimilarityFunc funcJS =
-              new NodeGroupMap.JaccardSimilarityFunc(mapG1toG2, perfectG1toG2, linksLarge, lonersLarge);
+              new NodeGroupMap.JaccardSimilarityFunc(mapG1toG2, perfectG1toG2, linksLarge, lonersLarge, monitor);
       Map<NID.WithName, NID.WithName> entrezAlign = funcJS.entrezAlign;
       Map<NID.WithName, Set<NID.WithName>> nodeToNeigh = funcJS.nodeToNeighL;
   

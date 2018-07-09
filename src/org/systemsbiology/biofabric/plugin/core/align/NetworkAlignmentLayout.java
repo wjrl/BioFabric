@@ -168,26 +168,24 @@ public class NetworkAlignmentLayout extends NodeLayout {
     
     if (nabd.mode == NodeGroupMap.PerfectNGMode.NODE_CORRECTNESS ||
             nabd.mode == NodeGroupMap.PerfectNGMode.JACCARD_SIMILARITY) {
-      grouper = new NodeGroupMap(nabd, defaultNGOrderWithCorrect, ngAnnotcolorsWithCorrect);
+      grouper = new NodeGroupMap(nabd, defaultNGOrderWithCorrect, ngAnnotcolorsWithCorrect, monitor);
     } else {
-      grouper = new NodeGroupMap(nabd, defaultNGOrderWithoutCorrect, ngAnnotColorsWithoutCorrect);
+      grouper = new NodeGroupMap(nabd, defaultNGOrderWithoutCorrect, ngAnnotColorsWithoutCorrect, monitor);
     }
     
     // master list of nodes in each group
     SortedMap<Integer, List<NID.WithName>> classToGroup = new TreeMap<Integer, List<NID.WithName>>();
-    
     for (int i = 0; i < grouper.numGroups(); i++) {
       classToGroup.put(i, new ArrayList<NID.WithName>());
     }
-    
+    // fill the master list with nodes
     Set<NID.WithName> allNodes = BuildExtractor.extractNodes(nabd.allLinks, nabd.loneNodeIDs, monitor);
     for (NID.WithName node : allNodes) {
       int nodeClass = grouper.getIndex(node);
       classToGroup.get(nodeClass).add(node);
     }
-    
-    for (List<NID.WithName> group : classToGroup.values()) { // sort by decreasing degree
-//      grouper.sortByDecrDegree(group);
+    // sort by decreasing degree
+    for (List<NID.WithName> group : classToGroup.values()) {
       Collections.sort(group, grouper.sortDecrDegree());
     }
     
@@ -223,7 +221,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       }
       
       flushQueue(targetsGroup, targsPerSource, linkCounts, targsToGo, targsLeftToGoGroup, queueGroup,
-              monitor, .25, .50, currGroup, grouper);
+              monitor, .25, 1.00, currGroup, grouper);
     }
     
     //
@@ -242,7 +240,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       throw new IllegalStateException("target numGroups not equal to all-nodes numGroups");
     }
 
-    installAnnotations(nabd, targetsGroup, targets, grouper);
+    installAnnotations(nabd, targetsGroup, grouper);
     
     UiUtil.fixMePrintout("Loop Reporter all messed up in NetworkAlignmentLayout.FlushQueue");
     return (targets);
@@ -262,11 +260,12 @@ public class NetworkAlignmentLayout extends NodeLayout {
                           NodeGroupMap grouper)
           throws AsynchExitRequestException {
     
-    LoopReporter lr = new LoopReporter(targsToGo.size(), 20, monitor, startFrac, endFrac, "progress.nodeOrdering");
-    int lastSize = targsToGo.size();
     List<NID.WithName> queue = queuesGroup.get(currGroup);
     List<NID.WithName> leftToGo = targsLeftToGoGroup.get(currGroup);
     
+    LoopReporter lr = new LoopReporter(leftToGo.size(), 20, monitor, startFrac, endFrac, "progress.nodeOrdering");
+    int lastSize = leftToGo.size();
+  
     while (! queue.isEmpty()) {
       
       NID.WithName node = queue.remove(0);
@@ -355,47 +354,32 @@ public class NetworkAlignmentLayout extends NodeLayout {
    */
   
   private void installAnnotations(NetworkAlignmentBuildData nabd,
-                                  SortedMap<Integer, List<NID.WithName>> targetsGroup,
-                                  List<NID.WithName> targets, NodeGroupMap grouper) {
+                                  SortedMap<Integer, List<NID.WithName>> targetsGroup, NodeGroupMap grouper) {
     
-    Map<Integer, List<NID.WithName>> layerZeroAnnot = new TreeMap<Integer, List<NID.WithName>>();
-
-    for (int i = 0; i < grouper.numGroups(); i++) { // include singletons
+    AnnotationSet layerZeroAnnots = new AnnotationSet();
+    int min = 0;
+    
+    for (int i = 0; i < grouper.numGroups(); i++) {
       List<NID.WithName> group = targetsGroup.get(i);
       if (group.isEmpty()) {
         continue;
       }
-      layerZeroAnnot.put(i, new ArrayList<NID.WithName>()); // add first and last node in each group
-      layerZeroAnnot.get(i).add(group.get(0));
-      layerZeroAnnot.get(i).add(group.get(group.size() - 1));
+      int max = min + group.size() - 1;
+  
+      AnnotationSet.Annot annot = new AnnotationSet.Annot(grouper.getKey(i), min, max, 0, grouper.getColor(i));
+      layerZeroAnnots.addAnnot(annot);
+  
+      min += group.size(); // update current minimum
     }
-    
-    AnnotationSet annots = new AnnotationSet();
-    for (Map.Entry<Integer, List<NID.WithName>> entry : layerZeroAnnot.entrySet()) {
-      
-      int nodeGroup = entry.getKey();
-      String start = entry.getValue().get(0).toString(), end = entry.getValue().get(1).toString();
-      int min = - 1, max = - 1;
-      
-      // make more efficient
-      for (int i = 0; i < targets.size(); i++) {
-        if (start.equals(targets.get(i).toString())) {
-          min = i;
-        }
-        if (end.equals(targets.get(i).toString())) {
-          max = i;
-        }
-      }
-      if (min > max || min < 0) {
-        throw new IllegalStateException("Annotation min max error in NetAlign Layout");
-      }
-      
-      AnnotationSet.Annot annot = new AnnotationSet.Annot(grouper.getKey(nodeGroup), min, max, 0, grouper.getColor(nodeGroup));
-      annots.addAnnot(annot);
-    }
-    nabd.setNodeAnnotations(annots);
+    nabd.setNodeAnnotations(layerZeroAnnots);
     return;
   }
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC CONSTANTS
+  //
+  ////////////////////////////////////////////////////////////////////////////
   
   public static final String[] defaultNGOrderWithoutCorrect = {
           "(P:0)",
@@ -484,41 +468,41 @@ public class NetworkAlignmentLayout extends NodeLayout {
   
   public static final String[][] ngAnnotcolorsWithCorrect = {
           {"(P:0/1)",          "GrayBlue"},
-          {"(P:0/0)",          "GrayBlue"},
-          {"(P:P/1)",          "GrayBlue"},
-          {"(P:P/0)",          "GrayBlue"},
-          {"(P:B/1)",          "GrayBlue"},
-          {"(P:B/0)",          "GrayBlue"},
-          {"(P:pRp/1)",        "GrayBlue"},
-          {"(P:pRp/0)",        "GrayBlue"},
-          {"(P:P/B/1)",        "GrayBlue"},
-          {"(P:P/B/0)",        "GrayBlue"},
-          {"(P:P/pRp/1)",      "GrayBlue"},
-          {"(P:P/pRp/0)",      "GrayBlue"},
-          {"(P:B/pRp/1)",      "GrayBlue"},
-          {"(P:B/pRp/0)",      "GrayBlue"},
-          {"(P:P/B/pRp/1)",    "GrayBlue"},
-          {"(P:P/B/pRp/0)",    "GrayBlue"},
+          {"(P:0/0)",          "DarkGrayBlue"},
+          {"(P:P/1)",          "Orange"},
+          {"(P:P/0)",          "DarkOrange"},
+          {"(P:B/1)",          "Yellow"},
+          {"(P:B/0)",          "DarkYellow"},
+          {"(P:pRp/1)",        "Green"},
+          {"(P:pRp/0)",        "DarkGreen"},
+          {"(P:P/B/1)",        "Purple"},
+          {"(P:P/B/0)",        "DarkPurple"},
+          {"(P:P/pRp/1)",      "Pink"},
+          {"(P:P/pRp/0)",      "DarkPink"},
+          {"(P:B/pRp/1)",      "PowderBlue"},
+          {"(P:B/pRp/0)",      "DarkPowderBlue"},
+          {"(P:P/B/pRp/1)",    "Peach"},
+          {"(P:P/B/pRp/0)",    "DarkPeach"},
           {"(P:pRr/1)",        "GrayBlue"},
-          {"(P:pRr/0)",        "GrayBlue"},
-          {"(P:P/pRr/1)",      "GrayBlue"},
-          {"(P:P/pRr/0)",      "GrayBlue"},
-          {"(P:B/pRr/1)",      "GrayBlue"},
-          {"(P:B/pRr/0)",      "GrayBlue"},
-          {"(P:pRp/pRr/1)",    "GrayBlue"},
-          {"(P:pRp/pRr/0)",    "GrayBlue"},
-          {"(P:P/B/pRr/1)",    "GrayBlue"},
-          {"(P:P/B/pRr/0)",    "GrayBlue"},
-          {"(P:P/pRp/pRr/1)",  "GrayBlue"},
-          {"(P:P/pRp/pRr/0)",  "GrayBlue"},
-          {"(P:B/pRp/pRr/1)",  "GrayBlue"},
-          {"(P:B/pRp/pRr/0)",  "GrayBlue"},
-          {"(P:P/B/pRp/pRr/1)","GrayBlue"},
-          {"(P:P/B/pRp/pRr/0)","GrayBlue"},
-          {"(R:pRr/0)",        "GrayBlue"},
-          {"(R:rRr/0)",        "GrayBlue"},
-          {"(R:pRr/rRr/0)",    "GrayBlue"},
-          {"(R:0/0)",          "GrayBlue"}
+          {"(P:pRr/0)",        "DarkGrayBlue"},
+          {"(P:P/pRr/1)",      "Orange"},
+          {"(P:P/pRr/0)",      "DarkOrange"},
+          {"(P:B/pRr/1)",      "Yellow"},
+          {"(P:B/pRr/0)",      "DarkYellow"},
+          {"(P:pRp/pRr/1)",    "Green"},
+          {"(P:pRp/pRr/0)",    "DarkGreen"},
+          {"(P:P/B/pRr/1)",    "Purple"},
+          {"(P:P/B/pRr/0)",    "DarkPurple"},
+          {"(P:P/pRp/pRr/1)",  "Pink"},
+          {"(P:P/pRp/pRr/0)",  "DarkPink"},
+          {"(P:B/pRp/pRr/1)",  "PowderBlue"},
+          {"(P:B/pRp/pRr/0)",  "DarkPowderBlue"},
+          {"(P:P/B/pRp/pRr/1)","Peach"},
+          {"(P:P/B/pRp/pRr/0)","DarkPeach"},
+          {"(R:pRr/0)",        "DarkGrayBlue"},
+          {"(R:rRr/0)",        "DarkOrange"},
+          {"(R:pRr/rRr/0)",    "DarkYellow"},
+          {"(R:0/0)",          "DarkGreen"}
   };
   
 }

@@ -33,13 +33,25 @@ import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.utils.DialogSupport;
 import org.systemsbiology.biofabric.util.ResourceManager;
 
-public class NetAlignScoreDialog extends BTStashResultsDialog {
+public class NetAlignMeasureDialog extends BTStashResultsDialog {
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PRIVATE FIELDS
+  //
+  ////////////////////////////////////////////////////////////////////////////
   
   private JFrame parent_;
   private NetworkAlignmentPlugIn.NetAlignStats netAlignStats_;
   
-  public NetAlignScoreDialog(JFrame parent, NetworkAlignmentPlugIn.NetAlignStats stats) {
-    super(parent, ResourceManager.getManager().getString("networkAlignment.measures"), new Dimension(300, 400), 2);
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // CONSTRUCTOR
+  //
+  ////////////////////////////////////////////////////////////////////////////
+  
+  public NetAlignMeasureDialog(JFrame parent, NetworkAlignmentPlugIn.NetAlignStats stats) {
+    super(parent, ResourceManager.getManager().getString("networkAlignment.measures"), new Dimension(700, 400), 2);
     this.parent_ = parent;
     this.netAlignStats_ = stats;
   
@@ -47,7 +59,7 @@ public class NetAlignScoreDialog extends BTStashResultsDialog {
     cp.setBorder(new EmptyBorder(20, 20, 20, 20));
     cp.setLayout(new GridBagLayout());
   
-    String msg = ResourceManager.getManager().getString("networkAlignment.scoreMessage");
+    String msg = ResourceManager.getManager().getString("networkAlignment.measureMessage");
     addWidgetFullRow(new JLabel(msg), false);
     
     for (NetworkAlignmentPlugIn.NetAlignMeasure measure : netAlignStats_.getMeasures()) {
@@ -56,6 +68,7 @@ public class NetAlignScoreDialog extends BTStashResultsDialog {
     }
     
     if (!netAlignStats_.hasStats()) {
+      // should not happen because all topological measures are always calculable
       String noM = ResourceManager.getManager().getString("networkAlignment.noMeasuresAvailable");
       addWidgetFullRow(new JLabel(noM), false);
     }

@@ -240,23 +240,26 @@ public class NetworkAlignment {
     List<FabricLink> oldLinks;
     Set<NID.WithName> oldLoners;
     Map<NID.WithName, NID.WithName> oldToNewID;
+    String msg;
     
     switch (graph) {
       case SMALL:
         oldLinks = linksG1_;
         oldLoners = lonersG1_;
         oldToNewID = smallToMergedID_;
+        msg = "progress.mergingSmallLinks";
         break;
       case LARGE:
         oldLinks = linksG2_;
         oldLoners = lonersG2_;
         oldToNewID = largeToMergedID_;
+        msg = "progress.mergingLargeLinks";
         break;
       default:
         throw new IllegalArgumentException();
     }
     
-    LoopReporter lr = new LoopReporter(oldLinks.size(), 20, monitor_, 0.0, 1.0, "progress.mergingLinks");
+    LoopReporter lr = new LoopReporter(oldLinks.size(), 20, monitor_, 0.0, 1.0, msg);
     Set<FabricLink> newLinkSet = new HashSet<FabricLink>();
     
     for (FabricLink oldLink : oldLinks) {
