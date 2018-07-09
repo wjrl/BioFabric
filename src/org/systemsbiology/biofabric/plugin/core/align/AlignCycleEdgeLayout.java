@@ -26,16 +26,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.Network;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
+import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.worker.LoopReporter;
 
 /****************************************************************************
 **
@@ -86,7 +86,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
     groupOrder.add(NetworkAlignment.INDUCED_GRAPH2);
     groupOrder.add(NetworkAlignment.HALF_UNALIGNED_GRAPH2);
     groupOrder.add(NetworkAlignment.FULL_UNALIGNED_GRAPH2);
-    rbd.setGroupOrderAndMode(groupOrder, BioFabricNetwork.LayoutMode.PER_NODE_MODE, true);  
+    rbd.setGroupOrderAndMode(groupOrder, Network.LayoutMode.PER_NODE_MODE, true);  
     return;
   } 
   
@@ -97,7 +97,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
   
   @Override
   protected AnnotationSet calcGroupLinkAnnots(BuildData.RelayoutBuildData rbd, 
-                                              List<FabricLink> links, BTProgressMonitor monitor, 
+                                              List<NetLink> links, BTProgressMonitor monitor, 
                                               boolean shadow, List<String> linkGroups) throws AsynchExitRequestException { 
     
     NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
@@ -115,7 +115,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
   ** Write out link annotation file
   */
     
-  private AnnotationSet calcGroupLinkAnnotsCycle(List<FabricLink> links, List<NID.WithName> nodes,
+  private AnnotationSet calcGroupLinkAnnotsCycle(List<NetLink> links, List<NID.WithName> nodes,
                                                  BTProgressMonitor monitor, 
                                                  boolean shadow, 
                                                  List<AlignCycleLayout.CycleBounds> bounds, 
@@ -142,7 +142,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
     boolean first = true;
     System.out.println("bound bound " + bounds.get(0).boundStart + " " + bounds.get(0).boundEnd);
     for (int i = 0; i < numLink; i++) {
-      FabricLink link = links.get(i);
+      NetLink link = links.get(i);
       lr.report();
       if (link.isShadow() && !shadow) {
         continue;
@@ -191,7 +191,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
   ** a regular link
   */
     
-  private NID.WithName getZoneNode(FabricLink link, Map<NID.WithName, Integer> nodes, boolean isShadow) {
+  private NID.WithName getZoneNode(NetLink link, Map<NID.WithName, Integer> nodes, boolean isShadow) {
     int zeroIndex = nodes.get(link.getSrcID()).intValue();
     int oneIndex = nodes.get(link.getTrgID()).intValue();
     if (isShadow) {

@@ -17,7 +17,7 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.util;
+package org.systemsbiology.biofabric.worker;
 
 
 import java.awt.Container;
@@ -30,6 +30,13 @@ import java.awt.event.WindowEvent;
 import java.util.SortedMap;
 import javax.swing.JDialog;
 import javax.swing.JProgressBar;
+
+import org.systemsbiology.biofabric.util.ExceptionHandler;
+import org.systemsbiology.biofabric.util.FixedJButton;
+import org.systemsbiology.biofabric.util.GoodnessChart;
+import org.systemsbiology.biofabric.util.ResourceManager;
+import org.systemsbiology.biofabric.util.UiUtil;
+
 import javax.swing.JLabel;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;

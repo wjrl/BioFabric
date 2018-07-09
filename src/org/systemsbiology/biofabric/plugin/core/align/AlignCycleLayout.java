@@ -31,15 +31,15 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.systemsbiology.biofabric.layouts.LayoutCriterionFailureException;
-import org.systemsbiology.biofabric.layouts.NodeLayout;
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
+import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
+import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
+import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.worker.LoopReporter;
 
 /****************************************************************************
 **
@@ -177,7 +177,7 @@ public class AlignCycleLayout extends NodeLayout {
   ** Calculate alignPath node order.
   */
 
-  private List<NID.WithName> alignPathNodeOrder(Set<FabricLink> allLinks,
+  private List<NID.WithName> alignPathNodeOrder(Set<NetLink> allLinks,
   		                                          Set<NID.WithName> loneNodes, 
   		                                          List<NID.WithName> startNodes,
   		                                          Map<String, AlignPath> alignPaths,
@@ -210,9 +210,9 @@ public class AlignCycleLayout extends NodeLayout {
     int numLink = allLinks.size();
     LoopReporter lr = new LoopReporter(numLink, 20, monitor, 0.0, 0.25, "progress.calculateNodeDegree");
     
-    Iterator<FabricLink> alit = allLinks.iterator();
+    Iterator<NetLink> alit = allLinks.iterator();
     while (alit.hasNext()) {
-      FabricLink nextLink = alit.next();
+      NetLink nextLink = alit.next();
       lr.report();
       NID.WithName sidwn = nextLink.getSrcID();
       NID.WithName tidwn = nextLink.getTrgID();
@@ -522,7 +522,7 @@ public class AlignCycleLayout extends NodeLayout {
 
     Set<NID.WithName> allNodes = new HashSet<NID.WithName>();
      
-     for (FabricLink link : narbd.allLinks) {
+     for (NetLink link : narbd.allLinks) {
        allNodes.add(link.getSrcID());
        allNodes.add(link.getTrgID());
      }

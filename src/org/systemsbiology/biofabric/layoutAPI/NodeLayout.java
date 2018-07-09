@@ -17,19 +17,19 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.layouts;
+package org.systemsbiology.biofabric.layoutAPI;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.TreeMap;
 
+import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.worker.LoopReporter;
 
 /****************************************************************************
 **
@@ -72,8 +72,8 @@ public abstract class NodeLayout {
   ** Install node orders
   */
   
-  protected void installNodeOrder(List<NID.WithName> targetIDs, BuildData.RelayoutBuildData rbd, 
-  		                            BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public void installNodeOrder(List<NID.WithName> targetIDs, BuildData.RelayoutBuildData rbd, 
+  		                         BTProgressMonitor monitor) throws AsynchExitRequestException {
     int currRow = 0;
     LoopReporter lr = new LoopReporter(targetIDs.size(), 20, monitor, 0.0, 1.0, "progress.installOrdering");
     

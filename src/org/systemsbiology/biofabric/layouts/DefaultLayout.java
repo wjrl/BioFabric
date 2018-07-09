@@ -31,12 +31,13 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
+import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.worker.LoopReporter;
 
 /****************************************************************************
 **
@@ -98,7 +99,7 @@ public class DefaultLayout extends NodeLayout {
   ** Calculate default node order. Used by several other layout classes
   */
 
-  public List<NID.WithName> defaultNodeOrder(Set<FabricLink> allLinks,
+  public List<NID.WithName> defaultNodeOrder(Set<NetLink> allLinks,
   		                                       Set<NID.WithName> loneNodes, 
   		                                       List<NID.WithName> startNodes, 
   		                                       BTProgressMonitor monitor) throws AsynchExitRequestException { 
@@ -120,9 +121,9 @@ public class DefaultLayout extends NodeLayout {
     int numLink = allLinks.size();
     LoopReporter lr = new LoopReporter(numLink, 20, monitor, 0.0, 0.25, "progress.calculateNodeDegree");
     
-    Iterator<FabricLink> alit = allLinks.iterator();
+    Iterator<NetLink> alit = allLinks.iterator();
     while (alit.hasNext()) {
-      FabricLink nextLink = alit.next();
+      NetLink nextLink = alit.next();
       lr.report();
       NID.WithName sidwn = nextLink.getSrcID();
       NID.WithName tidwn = nextLink.getTrgID();

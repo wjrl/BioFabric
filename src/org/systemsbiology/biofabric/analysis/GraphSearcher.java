@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -33,9 +33,10 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.worker.BTProgressMonitor;
 
 /****************************************************************************
 **
@@ -63,9 +64,9 @@ public class GraphSearcher {
   ////////////////////////////////////////////////////////////////////////////
   
   private HashSet<NID.WithName> allNodes_;
-  private HashSet<FabricLink> allEdges_;
+  private HashSet<NetLink> allEdges_;
   private ArrayList<NID.WithName> nodeOrder_;
-  private ArrayList<FabricLink> edgeOrder_;
+  private ArrayList<NetLink> edgeOrder_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -78,9 +79,9 @@ public class GraphSearcher {
   ** Constructor
   */
 
-  public GraphSearcher(Set<NID.WithName> nodes, Set<FabricLink> links) {
+  public GraphSearcher(Set<NID.WithName> nodes, Set<NetLink> links) {
     allNodes_ = new HashSet<NID.WithName>(nodes);
-    allEdges_ = new HashSet<FabricLink>(links);
+    allEdges_ = new HashSet<NetLink>(links);
     edgeOrder_ = null;
     nodeOrder_ = null;
   }  
@@ -92,14 +93,14 @@ public class GraphSearcher {
   ** times, the order is based on first appearance.
   */
 
-  public GraphSearcher(List<NID.WithName> nodes, List<FabricLink> links) {
+  public GraphSearcher(List<NID.WithName> nodes, List<NetLink> links) {
 
     allNodes_ = new HashSet<NID.WithName>(nodes);
-    allEdges_ = new HashSet<FabricLink>();
-    edgeOrder_ = new ArrayList<FabricLink>();
+    allEdges_ = new HashSet<NetLink>();
+    edgeOrder_ = new ArrayList<NetLink>();
     nodeOrder_ = new ArrayList<NID.WithName>(nodes);
 
-    for (FabricLink link : links) {
+    for (NetLink link : links) {
       if (!allEdges_.contains(link)) {
         edgeOrder_.add(link);
       }
@@ -129,12 +130,12 @@ public class GraphSearcher {
   ** targets are included.
   */
 
-  public static Map<NID.WithName, Integer> nodeDegree(boolean inOnly, Set<FabricLink> edges, 
+  public static Map<NID.WithName, Integer> nodeDegree(boolean inOnly, Set<NetLink> edges, 
                                                       BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     HashMap<NID.WithName, Integer> retval = new HashMap<NID.WithName, Integer>();
 
-    for (FabricLink link : edges) {
+    for (NetLink link : edges) {
       NID.WithName src = link.getSrcID();
       NID.WithName trg = link.getTrgID();
       if (!inOnly) {
@@ -170,7 +171,7 @@ public class GraphSearcher {
   ** When equal degree, sorted by name:
   */
 
-  private static SortedSet<NodeDegree> nodeDegreeSet(Set<FabricLink> edges, 
+  private static SortedSet<NodeDegree> nodeDegreeSet(Set<NetLink> edges, 
                                                      BTProgressMonitor monitor) throws AsynchExitRequestException {
     TreeSet<NodeDegree> retval = new TreeSet<NodeDegree>();   
     // Map of node degree. Since the first argument is false,
@@ -213,7 +214,7 @@ public class GraphSearcher {
  
     HashMap<NID.WithName, Set<NID.WithName>> allSrcs = new HashMap<NID.WithName, Set<NID.WithName>>();
 
-    for (FabricLink nextLink : allEdges_) {
+    for (NetLink nextLink : allEdges_) {
       NID.WithName trg = nextLink.getTrgID();
       Set<NID.WithName> trgSources = allSrcs.get(trg);
       if (trgSources == null) {
@@ -241,7 +242,7 @@ public class GraphSearcher {
   public SortedSet<SourcedNodeGray> nodeGraySetWithSource(List<NID.WithName> sourceOrder) {
     HashMap<NID.WithName, Set<NID.WithName>> allSrcs = new HashMap<NID.WithName, Set<NID.WithName>>();
     
-    for (FabricLink nextLink : allEdges_) {
+    for (NetLink nextLink : allEdges_) {
       NID.WithName trg = nextLink.getTrgID();
       Set<NID.WithName> trgSources = allSrcs.get(trg);
       if (trgSources == null) {
@@ -312,14 +313,14 @@ public class GraphSearcher {
     //
     // Deep copy:
     //
-    Set<FabricLink> currentEdges = new HashSet<FabricLink>();
-    Iterator<FabricLink> li = allEdges_.iterator();
+    Set<NetLink> currentEdges = new HashSet<NetLink>();
+    Iterator<NetLink> li = allEdges_.iterator();
     while (li.hasNext()) {
-      FabricLink link = li.next();
-      currentEdges.add(link.clone());
+      NetLink link = li.next();
+      currentEdges.add(((FabricLink)link).clone());
     }
       
-    Map<NID.WithName, Set<FabricLink>> outEdges = calcOutboundEdges(currentEdges);
+    Map<NID.WithName, Set<NetLink>> outEdges = calcOutboundEdges(currentEdges);
     Set<NID.WithName> rootNodes = buildRootList(currentNodes, currentEdges);
   
     int level = 0;
@@ -354,7 +355,7 @@ public class GraphSearcher {
     HashSet<NID.WithName> visited = new HashSet<NID.WithName>();
     
     Set<NID.WithName> rootNodes = buildRootList(allNodes_, allEdges_);
-    Map<NID.WithName, Set<FabricLink>> outEdges = calcOutboundEdges(allEdges_); 
+    Map<NID.WithName, Set<NetLink>> outEdges = calcOutboundEdges(allEdges_); 
 
     List<QueueEntry> retval = new ArrayList<QueueEntry>();
     if (edgeOrder_ != null) {
@@ -364,7 +365,7 @@ public class GraphSearcher {
           continue;
         }
         boolean gottaLink = false;
-        for (FabricLink link : edgeOrder_) {
+        for (NetLink link : edgeOrder_) {
           NID.WithName src = link.getSrcID();
           if (!currNode.equals(src)) {
             continue;
@@ -418,7 +419,7 @@ public class GraphSearcher {
     HashSet<NID.WithName> visited = new HashSet<NID.WithName>();
     ArrayList<QueueEntry> queue = new ArrayList<QueueEntry>();
     List<QueueEntry> retval = new ArrayList<QueueEntry>();
-    Map<NID.WithName, Set<FabricLink>> outEdges = calcOutboundEdges(allEdges_);    
+    Map<NID.WithName, Set<NetLink>> outEdges = calcOutboundEdges(allEdges_);    
        
     while (!toProcess.isEmpty()) {  
 	    queue.add(new QueueEntry(0, toProcess.get(0)));
@@ -452,7 +453,7 @@ public class GraphSearcher {
     HashSet<NID.WithName> visited = new HashSet<NID.WithName>();
     ArrayList<QueueEntry> queue = new ArrayList<QueueEntry>();
     List<QueueEntry> retval = new ArrayList<QueueEntry>();
-    Map<NID.WithName, Set<FabricLink>> outEdges = calcOutboundEdges(allEdges_);    
+    Map<NID.WithName, Set<NetLink>> outEdges = calcOutboundEdges(allEdges_);    
    
     
     List<NID.WithName> rootNodes;
@@ -491,7 +492,7 @@ public class GraphSearcher {
     ArrayList<QueueEntry> queue = new ArrayList<QueueEntry>();
     List<QueueEntry> retval = new ArrayList<QueueEntry>();
     
-    Map<NID.WithName, Set<FabricLink>> outEdges = calcOutboundEdges(allEdges_);    
+    Map<NID.WithName, Set<NetLink>> outEdges = calcOutboundEdges(allEdges_);    
     
     Iterator<NID.WithName> rit = startNodes.iterator();
     while (rit.hasNext()) {
@@ -554,7 +555,7 @@ public class GraphSearcher {
   ** Take a sort to a simple listing
   */
   
-  public List<NID.WithName> topoSortToPartialOrdering(Map<NID.WithName, Integer> topoSort, Set<FabricLink> allLinks,
+  public List<NID.WithName> topoSortToPartialOrdering(Map<NID.WithName, Integer> topoSort, Set<NetLink> allLinks,
                                                       BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
@@ -578,12 +579,12 @@ public class GraphSearcher {
   ** Prune edge list to only those from given source nodes
   */
 
-  public List<FabricLink> onlyLinksFromSources(List<FabricLink> linkList, Set<NID.WithName> nodes) {    
+  public List<NetLink> onlyLinksFromSources(List<NetLink> linkList, Set<NID.WithName> nodes) {    
     
-    ArrayList<FabricLink> retval = new ArrayList<FabricLink>();
+    ArrayList<NetLink> retval = new ArrayList<NetLink>();
     int numLinks = linkList.size();
     for (int j = 0; j < numLinks; j++) {
-      FabricLink link = linkList.get(j);
+      NetLink link = linkList.get(j);
       if (nodes.contains(link.getSrcID())) {
         retval.add(link);
       }
@@ -711,7 +712,7 @@ public class GraphSearcher {
         }
       } else {
         HashSet<NID.WithName> snSortSet = new HashSet<NID.WithName>(retval);
-        List<FabricLink> justFromSrc = onlyLinksFromSources(new ArrayList<FabricLink>(allEdges_), new HashSet<NID.WithName>(retval));
+        List<NetLink> justFromSrc = onlyLinksFromSources(new ArrayList<NetLink>(allEdges_), new HashSet<NID.WithName>(retval));
         ArrayList<NID.WithName> working = new ArrayList<NID.WithName>(retval);
         working.addAll(listForLevel);
         GraphSearcher gs = new GraphSearcher(working, justFromSrc); 
@@ -756,7 +757,7 @@ public class GraphSearcher {
         }
       } else {
         HashSet<NID.WithName> snSortSet = new HashSet<NID.WithName>(retval);
-        List<FabricLink> justFromSrc = onlyLinksFromSources(new ArrayList<FabricLink>(allEdges_), new HashSet<NID.WithName>(retval));
+        List<NetLink> justFromSrc = onlyLinksFromSources(new ArrayList<NetLink>(allEdges_), new HashSet<NID.WithName>(retval));
         ArrayList<NID.WithName> working = new ArrayList<NID.WithName>(retval);
         working.addAll(listForLevel);
         GraphSearcher gs = new GraphSearcher(working, justFromSrc); 
@@ -1240,13 +1241,13 @@ public class GraphSearcher {
   ** Build map from node to outbound edges
   */
 
-  private Map<NID.WithName, Set<FabricLink>> calcOutboundEdges(Set<FabricLink> edges) {
+  private Map<NID.WithName, Set<NetLink>> calcOutboundEdges(Set<NetLink> edges) {
     
-    HashMap<NID.WithName, Set<FabricLink>> retval = new HashMap<NID.WithName, Set<FabricLink>>();
-    Iterator<FabricLink> li = edges.iterator();
+    HashMap<NID.WithName, Set<NetLink>> retval = new HashMap<NID.WithName, Set<NetLink>>();
+    Iterator<NetLink> li = edges.iterator();
 
     while (li.hasNext()) {
-      FabricLink link = li.next();
+      NetLink link = li.next();
       addaLink(link, link.getSrcID(), retval);
       if (!link.isDirected()) {
       	addaLink(link, link.getTrgID(), retval);
@@ -1260,10 +1261,10 @@ public class GraphSearcher {
   ** Add a link to a bin
   */
 
-  private void addaLink(FabricLink link, NID.WithName bin, Map<NID.WithName, Set<FabricLink>> collect) {
-    Set<FabricLink> forBin = collect.get(bin);
+  private void addaLink(NetLink link, NID.WithName bin, Map<NID.WithName, Set<NetLink>> collect) {
+    Set<NetLink> forBin = collect.get(bin);
     if (forBin == null) {
-      forBin = new HashSet<FabricLink>();
+      forBin = new HashSet<NetLink>();
       collect.put(bin, forBin);
     }
     forBin.add(link);
@@ -1275,14 +1276,14 @@ public class GraphSearcher {
   ** Build a root list
   */
 
-  private Set<NID.WithName> buildRootList(Set<NID.WithName> nodes, Set<FabricLink> edges) {
+  private Set<NID.WithName> buildRootList(Set<NID.WithName> nodes, Set<NetLink> edges) {
   
     HashSet<NID.WithName> retval = new HashSet<NID.WithName>();
     retval.addAll(nodes);
     
-    Iterator<FabricLink> ei = edges.iterator();
+    Iterator<NetLink> ei = edges.iterator();
     while (ei.hasNext()) {
-      FabricLink link = ei.next();
+      NetLink link = ei.next();
       NID.WithName trg = link.getTrgID();
       retval.remove(trg);
     }
@@ -1294,19 +1295,19 @@ public class GraphSearcher {
   ** Invert
   */
 
-  private Set<FabricLink> invertOutboundEdges(Map<NID.WithName, Set<FabricLink>> outEdges) {
+  private Set<NetLink> invertOutboundEdges(Map<NID.WithName, Set<NetLink>> outEdges) {
     
-    HashSet<FabricLink> retval = new HashSet<FabricLink>();
+    HashSet<NetLink> retval = new HashSet<NetLink>();
     Iterator<NID.WithName> ki = outEdges.keySet().iterator();
 
     while (ki.hasNext()) {
       NID.WithName src = ki.next();
-      Set<FabricLink> links = outEdges.get(src);
-      Iterator<FabricLink> sit = links.iterator();
+      Set<NetLink> links = outEdges.get(src);
+      Iterator<NetLink> sit = links.iterator();
       while (sit.hasNext()) {
-        FabricLink lnk = sit.next();
+        NetLink lnk = sit.next();
         if (lnk.isFeedback()) {
-          retval.add(lnk.clone());
+          retval.add(((FabricLink)lnk).clone());
         } else {
           retval.add(lnk.flipped());
         }
@@ -1321,23 +1322,23 @@ public class GraphSearcher {
   */
 
   private void searchGutsDepth(NID.WithName vertexID, HashSet<NID.WithName> visited, 
-  		                         Map<NID.WithName, Set<FabricLink>> edgesFromSrc,
-                               int depth, List<FabricLink> edgeOrder, List<QueueEntry> results) {
+  		                         Map<NID.WithName, Set<NetLink>> edgesFromSrc,
+                               int depth, List<NetLink> edgeOrder, List<QueueEntry> results) {
 
     if (visited.contains(vertexID)) {
       return;
     }
     visited.add(vertexID);
     results.add(new QueueEntry(depth, vertexID));
-    Set<FabricLink> outEdges = edgesFromSrc.get(vertexID);
+    Set<NetLink> outEdges = edgesFromSrc.get(vertexID);
     if (outEdges == null) {
       return;
     }
     
     if (edgeOrder != null) {
-      Iterator<FabricLink> eit = edgeOrder.iterator();
+      Iterator<NetLink> eit = edgeOrder.iterator();
       while (eit.hasNext()) {
-        FabricLink link = eit.next();
+        NetLink link = eit.next();
         if (!vertexID.equals(link.getSrcID())) {
           continue;
         }
@@ -1347,9 +1348,9 @@ public class GraphSearcher {
         }
       }
     } else {
-      Iterator<FabricLink> eit = outEdges.iterator();
+      Iterator<NetLink> eit = outEdges.iterator();
       while (eit.hasNext()) {
-        FabricLink link = eit.next();
+        NetLink link = eit.next();
         NID.WithName targ = link.getTrgID();
         if (!visited.contains(targ)) {
           searchGutsDepth(targ, visited, edgesFromSrc, depth + 1, edgeOrder, results);
@@ -1364,7 +1365,7 @@ public class GraphSearcher {
   ** Breadth-First Search guts
   */
 
-  private void searchGutsBreadth(HashSet<NID.WithName> visited, ArrayList<QueueEntry> queue, Map<NID.WithName, Set<FabricLink>> edgesFromSrc, 
+  private void searchGutsBreadth(HashSet<NID.WithName> visited, ArrayList<QueueEntry> queue, Map<NID.WithName, Set<NetLink>> edgesFromSrc, 
                                  List<QueueEntry> results, CriteriaJudge judge, List<NID.WithName> byDegree) {
 
     while (queue.size() > 0) {
@@ -1381,14 +1382,14 @@ public class GraphSearcher {
         }     
       }
       
-      Set<FabricLink> outEdges = edgesFromSrc.get(curr.name);
+      Set<NetLink> outEdges = edgesFromSrc.get(curr.name);
       if (outEdges == null) {
         continue;
       }
       
       if (byDegree != null) {
       	HashSet<NID.WithName> fltrg = new HashSet<NID.WithName>();
-      	for (FabricLink fl : outEdges) {
+      	for (NetLink fl : outEdges) {
       		if (fl.isDirected()) {
       		  fltrg.add(fl.getTrgID());
       		} else {
@@ -1405,9 +1406,9 @@ public class GraphSearcher {
         }
         
       } else {
-        Iterator<FabricLink> oit = outEdges.iterator();
+        Iterator<NetLink> oit = outEdges.iterator();
         while (oit.hasNext()) { 
-          FabricLink flink = oit.next();
+          NetLink flink = oit.next();
         }
       }
     }
@@ -1438,7 +1439,7 @@ public class GraphSearcher {
       return;
     }
     
-    Map<NID.WithName, Set<FabricLink>> outEdges = calcOutboundEdges(allEdges_);    
+    Map<NID.WithName, Set<NetLink>> outEdges = calcOutboundEdges(allEdges_);    
     
     while (true) {
       boolean changed = false;
@@ -1448,11 +1449,11 @@ public class GraphSearcher {
         int numNodes = nodeList.size();
         for (int j = 0; j < numNodes; j++) {
           NID.WithName currNode = listCopy.get(j);
-          Set<FabricLink> linksForNode = outEdges.get(currNode);
+          Set<NetLink> linksForNode = outEdges.get(currNode);
           HashSet<NID.WithName> targsForNode = new HashSet<NID.WithName>();
-          Iterator<FabricLink> lfnit = linksForNode.iterator();
+          Iterator<NetLink> lfnit = linksForNode.iterator();
           while (lfnit.hasNext()) {
-            FabricLink link = lfnit.next();
+            NetLink link = lfnit.next();
             NID.WithName targ = link.getTrgID();
             targsForNode.add(targ);
           }

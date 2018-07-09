@@ -31,12 +31,14 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
+import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
+import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.worker.LoopReporter;
 
 /****************************************************************************
 **
@@ -113,7 +115,7 @@ public class SetLayout extends NodeLayout {
     }
      
     HashSet<String> rels = new HashSet<String>();
-    for (FabricLink aLink : rbd.allLinks) {
+    for (NetLink aLink : rbd.allLinks) {
       lr.report();
       if (!aLink.isDirected()) {
         throw new LayoutCriterionFailureException();
@@ -186,7 +188,7 @@ public class SetLayout extends NodeLayout {
   ** Extract the set information from the network
   */
 
-  private void extractSets(Set<FabricLink> links,
+  private void extractSets(Set<NetLink> links,
                            BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                              LayoutCriterionFailureException {
   
@@ -200,7 +202,7 @@ public class SetLayout extends NodeLayout {
     
     LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.setLayoutSetExtracton"); 
     
-    for (FabricLink link : links) {
+    for (NetLink link : links) {
       lr.report();
       NID.WithName set = (direction_ == LinkMeans.CONTAINS) ? link.getSrcID() : link.getTrgID();
       NID.WithName elem = (direction_ == LinkMeans.CONTAINS) ? link.getTrgID() : link.getSrcID();

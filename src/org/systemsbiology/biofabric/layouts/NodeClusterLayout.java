@@ -36,12 +36,11 @@ import java.util.Vector;
 
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
 import org.systemsbiology.biofabric.io.AttributeLoader;
+import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.NID;
@@ -49,6 +48,8 @@ import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.TrueObjChoiceContent;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.worker.BTProgressMonitor;
 
 /****************************************************************************
 **
@@ -92,7 +93,7 @@ public class NodeClusterLayout extends NodeLayout {
   	ClusterParams params = (ClusterParams)crParams;
     
     TreeMap<String, BuildData.RelayoutBuildData> perClust = new TreeMap<String, BuildData.RelayoutBuildData>();
-    HashMap<Tuple, List<FabricLink>> interClust = new HashMap<Tuple, List<FabricLink>>();
+    HashMap<Tuple, List<NetLink>> interClust = new HashMap<Tuple, List<NetLink>>();
     HashSet<NID.WithName> interNodesOnly = new HashSet<NID.WithName>();
     
     HashMap<NID.WithName, Integer> fullNodeDegree = null;
@@ -103,9 +104,9 @@ public class NodeClusterLayout extends NodeLayout {
     BuildData.BuildMode intraLay = (params.cLay == ClusterParams.ClustLayout.SIMILAR) ? BuildData.BuildMode.CLUSTERED_LAYOUT
             																																					: BuildData.BuildMode.DEFAULT_LAYOUT;
       
-    Iterator<FabricLink> flit = rbd.allLinks.iterator();
+    Iterator<NetLink> flit = rbd.allLinks.iterator();
     while (flit.hasNext()) {
-      FabricLink fl = flit.next();
+      NetLink fl = flit.next();
       NID.WithName source = fl.getSrcID();
       NID.WithName target = fl.getTrgID();
       if (fullNodeDegree != null) {
@@ -123,7 +124,7 @@ public class NodeClusterLayout extends NodeLayout {
         BuildData.RelayoutBuildData rbdpc = perClust.get(srcClust);
         if (rbdpc == null) {
           rbdpc = new BuildData.RelayoutBuildData(new UniqueLabeller(),
-    		                                                 new HashSet<FabricLink>(), new HashSet<NID.WithName>(),
+    		                                                 new HashSet<NetLink>(), new HashSet<NID.WithName>(),
     		                                                 new HashMap<NID.WithName, String>(), rbd.colGen, intraLay);
           rbdpc.allNodeIDs = new HashSet<NID.WithName>();
           perClust.put(srcClust, rbdpc);
@@ -133,9 +134,9 @@ public class NodeClusterLayout extends NodeLayout {
         addClusterNode(rbdpc, target);
       } else {
         Tuple intup = new Tuple(srcClust, trgClust); // Tuples reordered so val1 < val2!
-        List<FabricLink> icfl = interClust.get(intup);
+        List<NetLink> icfl = interClust.get(intup);
         if (icfl == null) {
-          icfl = new ArrayList<FabricLink>();
+          icfl = new ArrayList<NetLink>();
           interClust.put(intup, icfl);
         }
         icfl.add(fl);
@@ -153,7 +154,7 @@ public class NodeClusterLayout extends NodeLayout {
     	BuildData.RelayoutBuildData rbdpc = perClust.get(clust);
     	if (rbdpc == null) {
     		rbdpc = new BuildData.RelayoutBuildData(new UniqueLabeller(),
-    		                                        new HashSet<FabricLink>(), new HashSet<NID.WithName>(),
+    		                                        new HashSet<NetLink>(), new HashSet<NID.WithName>(),
     		                                        new HashMap<NID.WithName, String>(), rbd.colGen, intraLay);
         rbdpc.allNodeIDs = new HashSet<NID.WithName>();
         perClust.put(clust, rbdpc);
@@ -234,15 +235,15 @@ public class NodeClusterLayout extends NodeLayout {
     UiUtil.fixMePrintout("How does this interact with network-wide link groups??");
     if (params.iLink == ClusterParams.InterLink.BETWEEN) {
     	int origNum = rbd.linkOrder.size();
-    	TreeMap<Integer, FabricLink> newOrder = new TreeMap<Integer, FabricLink>();
-    	HashMap<String, List<FabricLink>> holdEm = new HashMap<String, List<FabricLink>>();
-    	Iterator<FabricLink> ksit = rbd.linkOrder.values().iterator();
+    	TreeMap<Integer, NetLink> newOrder = new TreeMap<Integer, NetLink>();
+    	HashMap<String, List<NetLink>> holdEm = new HashMap<String, List<NetLink>>();
+    	Iterator<NetLink> ksit = rbd.linkOrder.values().iterator();
     	int colCount = 0;
     	String currClust = null;
     	boolean drainTime = false;
     	boolean interClustLink = false;
     	while (ksit.hasNext()) {
-    		FabricLink daLink = ksit.next();
+    		NetLink daLink = ksit.next();
     		String srcClust = params.getClusterForNode(daLink.getSrcID());
         String trgClust = params.getClusterForNode(daLink.getTrgID());
         if (srcClust.equals(trgClust)) {
@@ -256,9 +257,9 @@ public class NodeClusterLayout extends NodeLayout {
         }
         
         if (drainTime) {
-        	List<FabricLink> toDrain = holdEm.get(currClust);
+        	List<NetLink> toDrain = holdEm.get(currClust);
         	if (toDrain != null) {
-	        	for (FabricLink ihe : toDrain) {
+	        	for (NetLink ihe : toDrain) {
 	    	  		newOrder.put(Integer.valueOf(colCount++), ihe);   	  		
 	    	  	}
         	}
@@ -270,9 +271,9 @@ public class NodeClusterLayout extends NodeLayout {
     		  newOrder.put(Integer.valueOf(colCount++), daLink);
     	  } else {
     	  	String otherClust = srcClust.equals(currClust) ? trgClust : srcClust;
-    	  	List<FabricLink> toDefer = holdEm.get(otherClust);
+    	  	List<NetLink> toDefer = holdEm.get(otherClust);
     	  	if (toDefer == null) {
-    	  		toDefer = new ArrayList<FabricLink>();
+    	  		toDefer = new ArrayList<NetLink>();
     	  		holdEm.put(otherClust, toDefer);
     	  	}
     	  	toDefer.add(daLink);  	  	
@@ -281,9 +282,9 @@ public class NodeClusterLayout extends NodeLayout {
     	
     	 UiUtil.fixMePrintout("Cluster drain order is not correct");
     	for (String daClust : holdEm.keySet()) {
-	      List<FabricLink> toDrain = holdEm.get(daClust);
+	      List<NetLink> toDrain = holdEm.get(daClust);
 	    	if (toDrain != null) {
-	      	for (FabricLink ihe : toDrain) {
+	      	for (NetLink ihe : toDrain) {
 	  	  		newOrder.put(Integer.valueOf(colCount++), ihe);   	  		
 	  	  	}
 	    	}
@@ -378,10 +379,10 @@ public class NodeClusterLayout extends NodeLayout {
   private Map<Boolean, AnnotationSet> generateLinkAnnotations(BuildData.RelayoutBuildData rbd, ClusterParams params) { 
   	HashMap<Boolean, AnnotationSet> retval = new HashMap<Boolean, AnnotationSet>();
     
-  	List<FabricLink> noShadows = new ArrayList<FabricLink>();
-  	List<FabricLink> withShadows = new ArrayList<FabricLink>();
+  	List<NetLink> noShadows = new ArrayList<NetLink>();
+  	List<NetLink> withShadows = new ArrayList<NetLink>();
   	for (Integer col : rbd.linkOrder.keySet()) {
-  		FabricLink fl = rbd.linkOrder.get(col);
+  		NetLink fl = rbd.linkOrder.get(col);
   		withShadows.add(fl);
   		if (!fl.isShadow()) {
   			noShadows.add(fl);
@@ -399,12 +400,12 @@ public class NodeClusterLayout extends NodeLayout {
   ** Generate link annotations to tag each cluster and intercluster links
   */
     
-  private AnnotationSet generateLinkAnnotationsForSet(List<FabricLink> linkList, ClusterParams params) { 
+  private AnnotationSet generateLinkAnnotationsForSet(List<NetLink> linkList, ClusterParams params) { 
     
   	HashMap<String, MinMax> clustRanges = new HashMap<String, MinMax>();
   	 	
   	for (int i = 0; i < linkList.size() ; i++) {
-  		FabricLink fl = linkList.get(i);
+  		NetLink fl = linkList.get(i);
   
   		String srcClust = params.getClusterForNode(fl.getSrcID());
       String trgClust = params.getClusterForNode(fl.getTrgID());
@@ -484,15 +485,15 @@ public class NodeClusterLayout extends NodeLayout {
   ** in the pile.
   */
   
-  private Map<String, List<NID.WithName>> rankInterClustHubs(Map<Tuple, List<FabricLink>> interLinks, 
+  private Map<String, List<NID.WithName>> rankInterClustHubs(Map<Tuple, List<NetLink>> interLinks, 
   		                                                       ClusterParams params, 
   		                                                       Map<NID.WithName, Integer> fullNodeDegree) { 
  	
   	// Map(ClusterID -> Map(NodeID, InterClustDegree)):
   	Map<String, Map<NID.WithName, Integer>> preRetval = new HashMap<String, Map<NID.WithName, Integer>>();
   	for (Tuple tup : interLinks.keySet()) {
-  	  List<FabricLink> forTup = interLinks.get(tup);
-  	  for (FabricLink link : forTup) {
+  	  List<NetLink> forTup = interLinks.get(tup);
+  	  for (NetLink link : forTup) {
   	  	// Tup order is NOT src, trg, but lo, hi:
   	    addToCount(preRetval, params.getClusterForNode(link.getSrcID()), link.getSrcID());
   	    addToCount(preRetval, params.getClusterForNode(link.getTrgID()), link.getTrgID());
@@ -588,9 +589,9 @@ public class NodeClusterLayout extends NodeLayout {
   	  fakeNodes.put(clu, new NID.WithName(pnid, clu));	
   	}
   	
-  	Set<FabricLink> links = new HashSet<FabricLink>();
+  	Set<NetLink> links = new HashSet<NetLink>();
   	for (Tuple tup : iclinks) {
-  		FabricLink pseudo = new FabricLink(fakeNodes.get(tup.getVal1()), fakeNodes.get(tup.getVal2()), "ic", Boolean.valueOf(false), Boolean.valueOf(false));
+  		NetLink pseudo = new FabricLink(fakeNodes.get(tup.getVal1()), fakeNodes.get(tup.getVal2()), "ic", Boolean.valueOf(false), Boolean.valueOf(false));
   		links.add(pseudo);
   		pseudo = new FabricLink(fakeNodes.get(tup.getVal2()), fakeNodes.get(tup.getVal1()), "ic", Boolean.valueOf(false), Boolean.valueOf(false));
   		links.add(pseudo);

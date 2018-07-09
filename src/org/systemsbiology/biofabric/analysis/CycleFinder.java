@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -25,11 +25,11 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.Iterator;
 
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.worker.LoopReporter;
 
 /****************************************************************************
 **
@@ -57,8 +57,8 @@ public class CycleFinder {
   ////////////////////////////////////////////////////////////////////////////
   
   private Set<NID.WithName> nodes_;
-  private Set<FabricLink> links_;
-  private HashMap<NID.WithName, Set<FabricLink>> linksForNode_;  
+  private Set<NetLink> links_;
+  private HashMap<NID.WithName, Set<NetLink>> linksForNode_;  
   private Integer white_;
   private Integer grey_;
   private Integer black_;
@@ -74,21 +74,21 @@ public class CycleFinder {
   ** Constructor
   */
 
-  public CycleFinder(Set<NID.WithName> nodes, Set<FabricLink> links, 
+  public CycleFinder(Set<NID.WithName> nodes, Set<NetLink> links, 
   		               BTProgressMonitor monitor) throws AsynchExitRequestException {
     nodes_ = nodes;
     links_ = links;
-    linksForNode_ = new HashMap<NID.WithName, Set<FabricLink>>();
+    linksForNode_ = new HashMap<NID.WithName, Set<NetLink>>();
     
     LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.cycleFinderSetup");
 
-    Iterator<FabricLink> lit = links_.iterator();
+    Iterator<NetLink> lit = links_.iterator();
     while (lit.hasNext()) {
-      FabricLink link = lit.next();
+      NetLink link = lit.next();
       lr.report();
-      Set<FabricLink> linksForSrc = linksForNode_.get(link.getSrcID());
+      Set<NetLink> linksForSrc = linksForNode_.get(link.getSrcID());
       if (linksForSrc == null) {
-        linksForSrc = new HashSet<FabricLink>();
+        linksForSrc = new HashSet<NetLink>();
         linksForNode_.put(link.getSrcID(), linksForSrc);
       }
       linksForSrc.add(link);
@@ -158,11 +158,11 @@ public class CycleFinder {
   private boolean visit(NID.WithName vertex, Map<NID.WithName, Integer> colors, LoopReporter lr) throws AsynchExitRequestException {
     colors.put(vertex, grey_);
     lr.report();
-    Set<FabricLink> linksForVertex = linksForNode_.get(vertex);
+    Set<NetLink> linksForVertex = linksForNode_.get(vertex);
     if (linksForVertex != null) {
-      Iterator<FabricLink> lit = linksForVertex.iterator();
+      Iterator<NetLink> lit = linksForVertex.iterator();
       while (lit.hasNext()) {
-        FabricLink link = lit.next();
+        NetLink link = lit.next();
         Integer targColor = colors.get(link.getTrgID());
         if (targColor.equals(grey_)) {
           System.err.println("link " + link + "creates cycle");

@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2018 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,41 +17,71 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.layouts;
+package org.systemsbiology.biofabric.worker;
 
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
+import java.util.SortedMap;
 
 /****************************************************************************
 **
-** This is the interface for edge layout algorithms
+** An interface for monitoring progress
 */
 
-public interface EdgeLayout {
-
-	////////////////////////////////////////////////////////////////////////////
+public interface BTProgressMonitor {
+ 
+  ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-   
+
   /***************************************************************************
   **
-  ** Relayout the whole network!
+  ** set total
   */
   
-  public void layoutEdges(BuildData.RelayoutBuildData rbd, 
-  		                    BTProgressMonitor monitor) throws AsynchExitRequestException;
-  
+  public void setTotal(int total);  
   
   /***************************************************************************
   **
-  ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
+  ** Get total
   */
   
-  public void preProcessEdges(BuildData.RelayoutBuildData rbd, 
-  		                        BTProgressMonitor monitor) throws AsynchExitRequestException;
-   
+  public int getTotal();
+  
+  /***************************************************************************
+  **
+  ** Callback
+  */
+  
+  public boolean updateProgress(int done);
+  
+  /***************************************************************************
+  **
+  ** Callback
+  */
+  
+  public boolean updateProgressAndPhase(int done, String message);
+  
+  /***************************************************************************
+  **
+  ** Callback
+  */
+  
+  public boolean updateRankings(SortedMap<Integer, Double> chartVals);
+    
+  /***************************************************************************
+  **
+  ** Callback
+  */
+  
+  public boolean keepGoing();  
+  
+
+  /***************************************************************************
+  **
+  ** Get progress
+  */  
+  
+  public int getProgress();  
 
 }

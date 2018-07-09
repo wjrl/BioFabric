@@ -29,13 +29,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.Network;
+import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.worker.LoopReporter;
 
 public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
   
@@ -99,7 +99,7 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
     
     LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.orderingLinkGroups");
     Set<String> relations = new HashSet<String>();
-    for (FabricLink link : rbd.allLinks) {
+    for (NetLink link : rbd.allLinks) {
       relations.add(link.getRelation());
       lr.report();
     }
@@ -110,7 +110,7 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
     // trivial operation (group order is at most length 5)
     Collections.sort(groupOrder, new NetAlignLinkGroupLocator());
     
-    rbd.setGroupOrderAndMode(groupOrder, BioFabricNetwork.LayoutMode.PER_NETWORK_MODE, true);
+    rbd.setGroupOrderAndMode(groupOrder, Network.LayoutMode.PER_NETWORK_MODE, true);
     return;
   }
   

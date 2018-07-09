@@ -55,18 +55,17 @@ import javax.swing.filechooser.FileFilter;
 import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.cmd.HeadlessOracle;
+import org.systemsbiology.biofabric.layoutAPI.EdgeLayout;
+import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
+import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
-import org.systemsbiology.biofabric.layouts.EdgeLayout;
-import org.systemsbiology.biofabric.layouts.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
-import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.BuildExtractor;
-import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.modelAPI.AugRelation;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.ProgressFilterInputStream;
 import org.systemsbiology.biofabric.parser.SUParser;
@@ -79,12 +78,6 @@ import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.dialogs.RelationDirectionDialog;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.BackgroundWorker;
-import org.systemsbiology.biofabric.util.BackgroundWorkerClient;
-import org.systemsbiology.biofabric.util.BackgroundWorkerControlManager;
-import org.systemsbiology.biofabric.util.BackgroundWorkerOwner;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FileExtensionFilters;
 import org.systemsbiology.biofabric.util.GarbageRequester;
@@ -94,6 +87,12 @@ import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.worker.BackgroundWorker;
+import org.systemsbiology.biofabric.worker.BackgroundWorkerClient;
+import org.systemsbiology.biofabric.worker.BackgroundWorkerControlManager;
+import org.systemsbiology.biofabric.worker.BackgroundWorkerOwner;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 /****************************************************************************
@@ -366,7 +365,7 @@ public class FileLoadFlows {
   ** Do network link relayout
   */ 
      
-  public void doNetworkLinkRelayout(SortedMap<Integer, FabricLink> modifiedAndChecked) {
+  public void doNetworkLinkRelayout(SortedMap<Integer, NetLink> modifiedAndChecked) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setLinkOrder(modifiedAndChecked);
     nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.LINK_ATTRIB_LAYOUT);  
@@ -417,7 +416,7 @@ public class FileLoadFlows {
     
   private boolean buildTheNetworkFomLinks(File file, UniqueLabeller idGen,
   		                                    Set<NID.WithName> loneNodeIDs, 
-  		                                    Set<FabricLink> reducedLinks, File holdIt) {
+  		                                    Set<NetLink> reducedLinks, File holdIt) {
   	try {
       NetworkBuilder nb = new NetworkBuilder(true, holdIt);
       nb.setForSifBuild(idGen, reducedLinks, loneNodeIDs, BuildData.BuildMode.BUILD_FROM_SIF);  
@@ -462,9 +461,9 @@ public class FileLoadFlows {
   ** Second step for loading from SIF
   */
     
-  public boolean handleDirectionsDupsAndShadows(List<FabricLink> links, Set<NID.WithName> loneNodeIDs, 
-  		                                           boolean binMag, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
-  		                                           Set<FabricLink> reducedLinks, File holdIt, boolean doForceUndirected) {
+  public boolean handleDirectionsDupsAndShadows(List<NetLink> links, Set<NID.WithName> loneNodeIDs, 
+  		                                           boolean binMag, SortedMap<AugRelation, Boolean> relaMap,
+  		                                           Set<NetLink> reducedLinks, File holdIt, boolean doForceUndirected) {
     
     
     ResourceManager rMan = ResourceManager.getManager(); 
@@ -488,7 +487,7 @@ public class FileLoadFlows {
               return (true);
             }
             
-            HashSet<FabricLink.AugRelation> needed = new HashSet<FabricLink.AugRelation>(relaMap.keySet());
+            HashSet<AugRelation> needed = new HashSet<AugRelation>(relaMap.keySet());
           
             boolean tooMany = false;
             Iterator<AttributeLoader.AttributeKey> rit = relAttributes.keySet().iterator();
@@ -497,8 +496,8 @@ public class FileLoadFlows {
               String key = sKey.key;
               String val = relAttributes.get(sKey);
               Boolean dirVal = Boolean.valueOf(val);
-              FabricLink.AugRelation forNorm = new FabricLink.AugRelation(key, false);
-              FabricLink.AugRelation forShad = new FabricLink.AugRelation(key, true);
+              AugRelation forNorm = new AugRelation(key, false);
+              AugRelation forShad = new AugRelation(key, true);
               boolean matched = false;
               if (needed.contains(forNorm)) {
                 matched = true;
@@ -527,7 +526,7 @@ public class FileLoadFlows {
         }
       }
       
-      HashSet<FabricLink> culledLinks = new HashSet<FabricLink>();
+      HashSet<NetLink> culledLinks = new HashSet<NetLink>();
       
       if (headlessOracle_ == null) {
         boolean didFinish = backPreprocess(links, relaMap, reducedLinks, culledLinks, holdIt);
@@ -574,13 +573,13 @@ public class FileLoadFlows {
       //
       
       if (binMag) {
-      	HashSet<FabricLink> binnedLinks = new HashSet<FabricLink>();
+      	HashSet<NetLink> binnedLinks = new HashSet<NetLink>();
         Pattern p = Pattern.compile("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?");
         
-        Iterator<FabricLink> alit = reducedLinks.iterator();
+        Iterator<NetLink> alit = reducedLinks.iterator();
         while (alit.hasNext()) {
-          FabricLink nextLink = alit.next();
-          FabricLink.AugRelation rel = nextLink.getAugRelation();
+          NetLink nextLink = alit.next();
+          AugRelation rel = nextLink.getAugRelation();
           Matcher m = p.matcher(rel.relation);
           int magCount = 0;
           if (m.find()) {      
@@ -611,8 +610,8 @@ public class FileLoadFlows {
   ** Do preprocessing
   */
   
-  public boolean backPreprocess(List<FabricLink> links, SortedMap<FabricLink.AugRelation, Boolean> relMap,
-                            Set<FabricLink> reducedLinks, Set<FabricLink> culledLinks, File holdIt) {
+  public boolean backPreprocess(List<NetLink> links, SortedMap<AugRelation, Boolean> relMap,
+                            Set<NetLink> reducedLinks, Set<NetLink> culledLinks, File holdIt) {
     PreprocessNetwork pn = new PreprocessNetwork();
     boolean didFinish = pn.doNetworkPreprocess(links, relMap, reducedLinks, culledLinks, holdIt);
     return (didFinish);
@@ -642,10 +641,10 @@ public class FileLoadFlows {
       holdIt = null;
     }
   
-    ArrayList<FabricLink> links = new ArrayList<FabricLink>();
+    ArrayList<NetLink> links = new ArrayList<NetLink>();
     HashSet<NID.WithName> loneNodes = new HashSet<NID.WithName>();
-    TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
-    HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
+    TreeMap<AugRelation, Boolean> relMap = new TreeMap<AugRelation, Boolean>();
+    HashSet<NetLink> reducedLinks = new HashSet<NetLink>();
     FabricImportLoader.FileImportStats sss;
     
     if ((file.length() > FILE_LENGTH_FOR_BACKGROUND_FILE_READ) && (headlessOracle_ == null)) {
@@ -705,7 +704,7 @@ public class FileLoadFlows {
    ** Load from file and directly receive link set and loners set
    */
   
-  public boolean loadFromASource(File file, ArrayList<FabricLink> links,
+  public boolean loadFromASource(File file, ArrayList<NetLink> links,
                                  HashSet<NID.WithName> loneNodes, Integer magBins,
                                  UniqueLabeller idGen, boolean loadOnly, FileLoadType type) {
     
@@ -717,8 +716,8 @@ public class FileLoadFlows {
       holdIt = null;
     }
   
-    HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
-    TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
+    HashSet<NetLink> reducedLinks = new HashSet<NetLink>();
+    TreeMap<AugRelation, Boolean> relMap = new TreeMap<AugRelation, Boolean>();
     FabricImportLoader.FileImportStats sss = new FabricImportLoader.FileImportStats();
   
     // Always do background read- not worth checking file size- most files will likely be large
@@ -768,9 +767,9 @@ public class FileLoadFlows {
   ** Preprocess ops that are either run in forground or background:
   */ 
     
-  private void preprocess(List<FabricLink> links, 
-  		                    SortedMap<FabricLink.AugRelation, Boolean> relaMap,
-  	                      Set<FabricLink> reducedLinks, Set<FabricLink> culledLinks,  
+  private void preprocess(List<NetLink> links, 
+  		                    SortedMap<AugRelation, Boolean> relaMap,
+  	                      Set<NetLink> reducedLinks, Set<NetLink> culledLinks,  
   	                      BTProgressMonitor monitor) throws AsynchExitRequestException {
     BuildExtractor.assignDirections(links, relaMap, monitor);
     BuildExtractor.preprocessLinks(links, reducedLinks, culledLinks, monitor);
@@ -1309,9 +1308,9 @@ public class FileLoadFlows {
     private boolean forRecovery_;
      
     public boolean doBackgroundSIFRead(File file, UniqueLabeller idGen,
-		    		                           List<FabricLink> links, Set<NID.WithName> loneNodeIDs, 
+		    		                           List<NetLink> links, Set<NID.WithName> loneNodeIDs, 
 		    		                           Map<String, String> nameMap, FabricImportLoader.FileImportStats sss,
-		    		                           Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relMap,
+		    		                           Integer magBins, SortedMap<AugRelation, Boolean> relMap,
 		    		                           File holdIt) {
 
     	holdIt_ = holdIt;
@@ -1330,9 +1329,9 @@ public class FileLoadFlows {
     }
     
     public boolean doBackgroundGWRead(File file, UniqueLabeller idGen,
-                                      List<FabricLink> links, Set<NID.WithName> loneNodeIDs,
+                                      List<NetLink> links, Set<NID.WithName> loneNodeIDs,
                                       Map<String, String> nameMap, FabricImportLoader.FileImportStats gws,
-                                      Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relMap,
+                                      Integer magBins, SortedMap<AugRelation, Boolean> relMap,
                                       File holdIt) {
       holdIt_ = holdIt;
       finished_ = true;
@@ -1462,9 +1461,9 @@ public class FileLoadFlows {
     private boolean finished_;
     private File holdIt_;
     
-    public boolean doNetworkPreprocess(List<FabricLink> links, 
-                                       SortedMap<FabricLink.AugRelation, Boolean> relaMap,
-                                       Set<FabricLink> reducedLinks, Set<FabricLink> culledLinks, File holdIt) {
+    public boolean doNetworkPreprocess(List<NetLink> links, 
+                                       SortedMap<AugRelation, Boolean> relaMap,
+                                       Set<NetLink> reducedLinks, Set<NetLink> culledLinks, File holdIt) {
       holdIt_ = holdIt;
       finished_ = true;
       try {
@@ -1510,15 +1509,15 @@ public class FileLoadFlows {
     
   private class PreprocessRunner extends BackgroundWorker {
    
-    private List<FabricLink> links_; 
-    private SortedMap<FabricLink.AugRelation, Boolean> relaMap_;
-    private Set<FabricLink> reducedLinks_; 
-    private Set<FabricLink> culledLinks_;
+    private List<NetLink> links_; 
+    private SortedMap<AugRelation, Boolean> relaMap_;
+    private Set<NetLink> reducedLinks_; 
+    private Set<NetLink> culledLinks_;
     private File holdIt_;
     
     
-    PreprocessRunner(List<FabricLink> links, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
-                     Set<FabricLink> reducedLinks, Set<FabricLink> culledLinks, File holdIt) {
+    PreprocessRunner(List<NetLink> links, SortedMap<AugRelation, Boolean> relaMap,
+                     Set<NetLink> reducedLinks, Set<NetLink> culledLinks, File holdIt) {
       super(new Boolean(false));
       links_ = links;
       relaMap_ = relaMap;
@@ -1621,19 +1620,19 @@ public class FileLoadFlows {
   private class GWReaderRunner extends BackgroundWorker {
   
     private File myFile_;
-    private List<FabricLink> links_;
+    private List<NetLink> links_;
     private Set<NID.WithName> loneNodeIDs_;
     private UniqueLabeller idGen_;
     private Map<String, String> nameMap_;
     private FabricImportLoader.FileImportStats sss_;
     private Integer magBins_;
-    private SortedMap<FabricLink.AugRelation, Boolean> relaMap_;
+    private SortedMap<AugRelation, Boolean> relaMap_;
     private File restoreCacheFile_;
     
-    public GWReaderRunner(File file, UniqueLabeller idGen, List<FabricLink> links,
+    public GWReaderRunner(File file, UniqueLabeller idGen, List<NetLink> links,
                           Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap,
                           FabricImportLoader.FileImportStats gws,
-                          Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
+                          Integer magBins, SortedMap<AugRelation, Boolean> relaMap,
                           File restoreCacheFile) {
       super(new Boolean(false));
       myFile_ = file;
@@ -1679,19 +1678,19 @@ public class FileLoadFlows {
   private class SIFReaderRunner extends BackgroundWorker {
    
     private File myFile_;
-    private List<FabricLink> links_;
+    private List<NetLink> links_;
     private Set<NID.WithName> loneNodeIDs_;
     private UniqueLabeller idGen_; 
     private Map<String, String> nameMap_;
     private FabricImportLoader.FileImportStats sss_;
     private Integer magBins_;
-    private SortedMap<FabricLink.AugRelation, Boolean> relaMap_;
+    private SortedMap<AugRelation, Boolean> relaMap_;
     private File restoreCacheFile_;
     
-    public SIFReaderRunner(File file, UniqueLabeller idGen, List<FabricLink> links, 
+    public SIFReaderRunner(File file, UniqueLabeller idGen, List<NetLink> links, 
     		                   Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, 
     		                   FabricImportLoader.FileImportStats sss,
-    		                   Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
+    		                   Integer magBins, SortedMap<AugRelation, Boolean> relaMap,
     		                   File restoreCacheFile) {
       super(new Boolean(false));
       myFile_ = file;
@@ -1824,7 +1823,7 @@ public class FileLoadFlows {
       holdIt_ = holdIt;
     }
     
-    void setForSifBuild(UniqueLabeller idGen, Set<FabricLink> links, 
+    void setForSifBuild(UniqueLabeller idGen, Set<NetLink> links, 
                         Set<NID.WithName> loneNodeIDs, BuildData.BuildMode bMode) {
       if (bMode != BuildData.BuildMode.BUILD_FROM_SIF) {
         throw new IllegalArgumentException();
@@ -1916,7 +1915,7 @@ public class FileLoadFlows {
  
     private boolean forMain_;
     private UniqueLabeller idGen_;
-    private Set<FabricLink> links_; 
+    private Set<NetLink> links_; 
     private Set<NID.WithName> loneNodeIDs_;
     private BuildData.BuildMode bMode_;
     private BioFabricNetwork bfn_;
@@ -1930,7 +1929,7 @@ public class FileLoadFlows {
       holdIt_ = holdIt;
     }
     
-    void setBuildDataForSIF(UniqueLabeller idGen, Set<FabricLink> links, Set<NID.WithName> loneNodeIDs,
+    void setBuildDataForSIF(UniqueLabeller idGen, Set<NetLink> links, Set<NID.WithName> loneNodeIDs,
                             BuildData.BuildMode bMode) {    
       idGen_ = idGen;
       links_ = links; 
@@ -2043,7 +2042,7 @@ public class FileLoadFlows {
       return;      
     }
 
-    public void setLinkOrder(SortedMap<Integer, FabricLink> linkOrder) {
+    public void setLinkOrder(SortedMap<Integer, NetLink> linkOrder) {
       runner_.setLinkOrder( linkOrder);
       return;
     }
@@ -2128,7 +2127,7 @@ public class FileLoadFlows {
     private List<String> groupOrder_; 
     private BioFabricNetwork.LayoutMode layMode_;
     private Boolean pointUp_;
-    private SortedMap<Integer, FabricLink> linkOrder_;
+    private SortedMap<Integer, NetLink> linkOrder_;
     private ControlTopLayout.CtrlMode cMode_; 
     private ControlTopLayout.TargMode tMode_; 
     private List<String> fixedList_;
@@ -2176,7 +2175,7 @@ public class FileLoadFlows {
       return;      
     }
 
-    void setLinkOrder(SortedMap<Integer, FabricLink> linkOrder) {
+    void setLinkOrder(SortedMap<Integer, NetLink> linkOrder) {
       linkOrder_ = linkOrder;
       return;
     }
@@ -2322,7 +2321,7 @@ public class FileLoadFlows {
   
   public void buildEmptyNetwork() {
     BuildData.RelayoutBuildData obd = new BuildData.RelayoutBuildData(new UniqueLabeller(),
-                                                                      new HashSet<FabricLink>(), 
+                                                                      new HashSet<NetLink>(), 
                                                                       new HashSet<NID.WithName>(), 
                                                                       new HashMap<NID.WithName, String>(),
                                                                       colGen_, 

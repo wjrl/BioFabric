@@ -34,11 +34,11 @@ import java.util.List;
 import javax.swing.SwingUtilities;
 
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
 import org.systemsbiology.biofabric.util.QuadTree;
 import org.systemsbiology.biofabric.util.UiUtil;
+import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.worker.LoopReporter;
 
 /****************************************************************************
 **
