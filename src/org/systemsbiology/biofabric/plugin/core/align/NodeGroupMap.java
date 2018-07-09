@@ -403,7 +403,6 @@ public class NodeGroupMap {
   
   public Comparator<NID.WithName> sortDecrDegree() {
     return (new Comparator<NID.WithName>() {
-      @Override
       public int compare(NID.WithName node1, NID.WithName node2) {
         int diffSize = nodeToNeighbors_.get(node2).size() - nodeToNeighbors_.get(node1).size();
         return (diffSize != 0) ? diffSize : node1.getName().compareTo(node2.getName());

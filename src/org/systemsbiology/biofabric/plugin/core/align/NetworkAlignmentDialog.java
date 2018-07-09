@@ -192,7 +192,6 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     perfectNGsCombo_.setEnabled(true);
     perfectNGsCombo_.setSelectedIndex(NO_PERFECT_IDX);
     perfectNGsCombo_.addItemListener(new ItemListener() {
-      @Override
       public void itemStateChanged(ItemEvent e) {
         try {
           managePerfectFieldButton();
@@ -278,7 +277,6 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   
   private void initTextFields() {
     graph1Field_.getDocument().addDocumentListener(new DocumentListener() {
-      @Override
       public void insertUpdate(DocumentEvent e) {
         try {
           manageOKButton();
@@ -287,7 +285,6 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
         }
       }
   
-      @Override
       public void removeUpdate(DocumentEvent e) {
         try {
           manageOKButton();
@@ -296,11 +293,9 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
         }
       }
   
-      @Override
       public void changedUpdate(DocumentEvent e) {}
     });
     graph2Field_.getDocument().addDocumentListener(new DocumentListener() {
-      @Override
       public void insertUpdate(DocumentEvent e) {
         try {
           manageOKButton();
@@ -309,7 +304,6 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
         }
       }
     
-      @Override
       public void removeUpdate(DocumentEvent e) {
         try {
           manageOKButton();
@@ -318,11 +312,9 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
         }
       }
     
-      @Override
       public void changedUpdate(DocumentEvent e) {}
     });
     alignField_.getDocument().addDocumentListener(new DocumentListener() {
-      @Override
       public void insertUpdate(DocumentEvent e) {
         try {
           manageOKButton();
@@ -331,7 +323,6 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
         }
       }
     
-      @Override
       public void removeUpdate(DocumentEvent e) {
         try {
           manageOKButton();
@@ -340,11 +331,9 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
         }
       }
     
-      @Override
       public void changedUpdate(DocumentEvent e) {}
     });
     perfectField_.getDocument().addDocumentListener(new DocumentListener() {
-      @Override
       public void insertUpdate(DocumentEvent e) {
         try {
           manageOKButton();
@@ -353,7 +342,6 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
         }
       }
     
-      @Override
       public void removeUpdate(DocumentEvent e) {
         try {
           manageOKButton();
@@ -362,7 +350,6 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
         }
       }
     
-      @Override
       public void changedUpdate(DocumentEvent e) {}
     });
     return;
