@@ -29,8 +29,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
 
-import org.systemsbiology.biofabric.model.BuildExtractor;
-import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.io.BuildExtractor;
+import org.systemsbiology.biofabric.modelInterface.NetLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
@@ -79,8 +79,8 @@ public class AlignmentLoader {
    */
   
   public String readAlignment(File infile, Map<NID.WithName, NID.WithName> mapG1ToG2, NetAlignFileStats stats,
-                              ArrayList<FabricLink> linksGraph1, HashSet<NID.WithName> loneNodesGraph1,
-                              ArrayList<FabricLink> linksGraph2, HashSet<NID.WithName> loneNodesGraph2)
+                              ArrayList<NetLink> linksGraph1, HashSet<NID.WithName> loneNodesGraph1,
+                              ArrayList<NetLink> linksGraph2, HashSet<NID.WithName> loneNodesGraph2)
           throws IOException {
   
     ResourceManager rMan = ResourceManager.getManager();

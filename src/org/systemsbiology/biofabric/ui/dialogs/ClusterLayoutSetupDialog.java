@@ -37,10 +37,10 @@ import javax.swing.JTextField;
 
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.io.AttributeLoader;
+import org.systemsbiology.biofabric.io.BuildExtractor;
 import org.systemsbiology.biofabric.io.FileLoadFlows;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.BuildExtractor;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.ExceptionHandler;

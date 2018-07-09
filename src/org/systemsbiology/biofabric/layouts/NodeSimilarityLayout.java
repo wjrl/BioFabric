@@ -34,9 +34,9 @@ import java.util.TreeSet;
 import java.util.Vector;
 
 import org.systemsbiology.biofabric.analysis.Link;
+import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.modelInterface.NetLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.ChoiceContent;
@@ -236,9 +236,9 @@ public class NodeSimilarityLayout extends NodeLayout {
     LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.getConnectionVectors"); 
     
     TreeMap<Integer, SortedSet<Integer>> retval = new TreeMap<Integer, SortedSet<Integer>>();
-    Iterator<FabricLink> ldit = rbd.allLinks.iterator();
+    Iterator<NetLink> ldit = rbd.allLinks.iterator();
     while (ldit.hasNext()) {
-      FabricLink fl = ldit.next();
+      NetLink fl = ldit.next();
       lr.report();
       if (fl.isShadow()) {
       	continue;
@@ -290,9 +290,9 @@ public class NodeSimilarityLayout extends NodeLayout {
     
     LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.getCosines");  
     
-    Iterator<FabricLink> ldit = rbd.allLinks.iterator();
+    Iterator<NetLink> ldit = rbd.allLinks.iterator();
     while (ldit.hasNext()) {
-      FabricLink fl = ldit.next();
+      NetLink fl = ldit.next();
       lr.report();
       if (fl.isShadow()) {
       	continue;
@@ -382,9 +382,9 @@ public class NodeSimilarityLayout extends NodeLayout {
     
     LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.getJaccard");  
       
-    Iterator<FabricLink> ldit = rbd.allLinks.iterator();
+    Iterator<NetLink> ldit = rbd.allLinks.iterator();
     while (ldit.hasNext()) {
-      FabricLink fl = ldit.next();
+      NetLink fl = ldit.next();
       lr.report();
       if (fl.isShadow()) {
       	continue;

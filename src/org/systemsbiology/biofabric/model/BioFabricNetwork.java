@@ -37,9 +37,12 @@ import org.xml.sax.Attributes;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.EdgeLayout;
 import org.systemsbiology.biofabric.layouts.NodeLayout;
-
+import org.systemsbiology.biofabric.modelInterface.AugRelation;
+import org.systemsbiology.biofabric.modelInterface.NetLink;
+import org.systemsbiology.biofabric.modelInterface.Network;
 import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.io.AttributeLoader;
+import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.io.FabricFactory;
 
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
@@ -67,7 +70,7 @@ import org.systemsbiology.biofabric.util.UniqueLabeller;
 ** This is the Network model.
 */
 
-public class BioFabricNetwork {
+public class BioFabricNetwork implements Network {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -81,34 +84,8 @@ public class BioFabricNetwork {
   //
   //////////////////////////////////////////////////////////////////////////// 
   
-  public enum LayoutMode {
-    UNINITIALIZED_MODE("notSet"),
-    PER_NODE_MODE("perNode"),
-    PER_NETWORK_MODE("perNetwork");
 
-    private String text;
-
-    LayoutMode(String text) {
-      this.text = text;
-    }
-
-    public String getText() {
-      return (text);
-    }
-
-	  public static LayoutMode fromString(String text)  throws IOException {
-	    if (text != null) {
-	      for (LayoutMode lm : LayoutMode.values()) {
-	        if (text.equalsIgnoreCase(lm.text)) {
-	          return (lm);
-	        }
-	      }
-	    }
-	    throw new IOException();
-	  }
-  }
-                        
-
+                      
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE INSTANCE MEMBERS
@@ -152,7 +129,7 @@ public class BioFabricNetwork {
   // Default value is PER_NODE
   //
 
-  private LayoutMode layoutMode_;
+  private Network.LayoutMode layoutMode_;
   
   private UniqueLabeller nodeIDGenerator_;
   
@@ -175,7 +152,7 @@ public class BioFabricNetwork {
   public BioFabricNetwork(BuildData bd, PlugInManager pMan, BTProgressMonitor monitor) throws AsynchExitRequestException {
   	nodeIDGenerator_ = new UniqueLabeller();
   	pMan_ = pMan;
-  	layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
+  	layoutMode_ = Network.LayoutMode.UNINITIALIZED_MODE;
   	BuildData.BuildMode mode = bd.getMode();
     nodeAnnot_ = new AnnotationSet();
     Map<Boolean, AnnotationSet> linkAnnots_ = new HashMap<Boolean, AnnotationSet>();
@@ -295,7 +272,7 @@ public class BioFabricNetwork {
   ** Build support
   */
   
-  UniqueLabeller getGenerator() { 
+  public UniqueLabeller getGenerator() { 
     return (nodeIDGenerator_);
   }
   
@@ -304,7 +281,7 @@ public class BioFabricNetwork {
   ** Build support
   */
   
-  FabricColorGenerator getColorGenerator() { 
+  public FabricColorGenerator getColorGenerator() { 
     return (colGen_);
   }
   
@@ -313,7 +290,7 @@ public class BioFabricNetwork {
   ** Build support
   */
   
-  List<String> getLinkGrouping() { 
+  public List<String> getLinkGrouping() { 
     return (linkGrouping_);
   }
 
@@ -523,19 +500,19 @@ public class BioFabricNetwork {
   ** not care.... 
   */
 
-  public SortedMap<Integer, FabricLink> checkNewLinkOrder(Map<AttributeLoader.AttributeKey, String> linkRows) { 
+  public SortedMap<Integer, NetLink> checkNewLinkOrder(Map<AttributeLoader.AttributeKey, String> linkRows) { 
     
     //
     // Recover the mapping that tells us what link relationships are
     // directed:
     //
     
-    HashMap<FabricLink.AugRelation, Boolean> relDir = new HashMap<FabricLink.AugRelation, Boolean>();
-    Set<FabricLink> allLinks = getAllLinks(true);
-    Iterator<FabricLink> alit = allLinks.iterator();
+    HashMap<AugRelation, Boolean> relDir = new HashMap<AugRelation, Boolean>();
+    Set<NetLink> allLinks = getAllLinks(true);
+    Iterator<NetLink> alit = allLinks.iterator();
     while (alit.hasNext()) {
-      FabricLink link = alit.next();
-      FabricLink.AugRelation rel = link.getAugRelation();
+      NetLink link = alit.next();
+      AugRelation rel = link.getAugRelation();
       boolean isDir = link.isDirected();
       Boolean myVal = new Boolean(isDir);
       Boolean currVal = relDir.get(rel);
@@ -553,7 +530,7 @@ public class BioFabricNetwork {
     // directed copy of the Fabric link:
     //
     
-    TreeMap<Integer, FabricLink> dirMap = new TreeMap<Integer, FabricLink>();
+    TreeMap<Integer, NetLink> dirMap = new TreeMap<Integer, NetLink>();
     Iterator<AttributeLoader.AttributeKey> lrit = linkRows.keySet().iterator();
     while (lrit.hasNext()) {
       FabricLink link = (FabricLink)lrit.next();
@@ -569,9 +546,9 @@ public class BioFabricNetwork {
     }
     
     // Ordered set of all our existing links:
-    TreeSet<FabricLink> alks = new TreeSet<FabricLink>(allLinks);
+    TreeSet<NetLink> alks = new TreeSet<NetLink>(allLinks);
     // Ordered set of guys we have been handed:
-    TreeSet<FabricLink> dmvs = new TreeSet<FabricLink>(dirMap.values());
+    TreeSet<NetLink> dmvs = new TreeSet<NetLink>(dirMap.values());
     
     // Has to be the case that the link definitions are 1:1 and
     // onto, or we have an error:
@@ -598,8 +575,8 @@ public class BioFabricNetwork {
   ** Get all links
   */
   
-  public Set<FabricLink> getAllLinks(boolean withShadows) {  
-    HashSet<FabricLink> allLinks = new HashSet<FabricLink>();
+  public Set<NetLink> getAllLinks(boolean withShadows) {  
+    HashSet<NetLink> allLinks = new HashSet<NetLink>();
     Iterator<Integer> ldit = fullLinkDefs_.keySet().iterator();
     while (ldit.hasNext()) {
       Integer col = ldit.next();
@@ -811,7 +788,7 @@ public class BioFabricNetwork {
   */
 
   private void specifiedLinkToColumn(FabricColorGenerator colGen, 
-  		                               SortedMap<Integer, FabricLink> linkOrder, 
+  		                               SortedMap<Integer, NetLink> linkOrder, 
   		                               boolean userSpec, BTProgressMonitor monitor) throws AsynchExitRequestException {
      
     normalCols_.columnCount = 0;
@@ -825,7 +802,7 @@ public class BioFabricNetwork {
     while (frkit.hasNext()) {
       Integer nextCol = frkit.next();
       lr.report();
-      FabricLink nextLink = linkOrder.get(nextCol);
+      NetLink nextLink = linkOrder.get(nextCol);
       Integer[] colCounts = addLinkDef(nextLink, numColors, normalCols_.columnCount, shadowCols_.columnCount, colGen);
       shadowCols_.columnCount = colCounts[0].intValue();
       if (colCounts[1] != null) {
@@ -1037,7 +1014,7 @@ public class BioFabricNetwork {
       out.print("\" trgID=\"");
       out.print(link.getTrgID().getNID().getInternal());
       out.print("\" rel=\"");
-      FabricLink.AugRelation augr = link.getAugRelation();
+      AugRelation augr = link.getAugRelation();
       out.print(CharacterEntityMapper.mapEntities(augr.relation, false));
       out.print("\" directed=\"");
       out.print(link.isDirected());
@@ -1169,7 +1146,7 @@ public class BioFabricNetwork {
   ** Get All Node Definition
   */
 
-  Map<NID.WithName, NodeInfo> getAllNodeDefinitions() {
+  public Map<NID.WithName, NodeInfo> getAllNodeDefinitions() {
     return (nodeDefs_);
   }
   
@@ -2001,7 +1978,7 @@ public class BioFabricNetwork {
   ** Pretty icky hack:
   */
 
-  Set<NID.WithName> getLoneNodes(BTProgressMonitor monitor) throws AsynchExitRequestException { 
+  public Set<NID.WithName> getLoneNodes(BTProgressMonitor monitor) throws AsynchExitRequestException { 
     HashSet<NID.WithName> retval = new HashSet<NID.WithName>();
     LoopReporter lr = new LoopReporter(nodeDefs_.size(), 20, monitor, 0.0, 1.0, "progress.findingLoneNodes");   
     Iterator<NID.WithName> lnit = nodeDefs_.keySet().iterator();
@@ -2033,12 +2010,12 @@ public class BioFabricNetwork {
   ** Add a link def
   */
   
-  private Integer[] addLinkDef(FabricLink nextLink, int numColors, int noShadowCol, int shadowCol, FabricColorGenerator colGen) {
+  private Integer[] addLinkDef(NetLink nextLink, int numColors, int noShadowCol, int shadowCol, FabricColorGenerator colGen) {
     Integer[] retval = new Integer[2]; 
     String key = colGen.getGeneColor(shadowCol % numColors);
     int srcRow = nodeDefs_.get(nextLink.getSrcID()).nodeRow;
     int trgRow = nodeDefs_.get(nextLink.getTrgID()).nodeRow;
-    LinkInfo linf = new LinkInfo(nextLink, srcRow, trgRow, noShadowCol, shadowCol, key);
+    LinkInfo linf = new LinkInfo((FabricLink)nextLink, srcRow, trgRow, noShadowCol, shadowCol, key);
     Integer shadowKey = Integer.valueOf(shadowCol);
     fullLinkDefs_.put(shadowKey, linf);
     retval[0] = Integer.valueOf(shadowCol + 1); 
@@ -2220,7 +2197,7 @@ public class BioFabricNetwork {
       return (myLink_.getTrgID());
     }
     
-    public FabricLink.AugRelation getAugRelation() {
+    public AugRelation getAugRelation() {
       return (myLink_.getAugRelation());
     }
     

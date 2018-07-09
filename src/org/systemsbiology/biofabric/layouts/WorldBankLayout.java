@@ -32,8 +32,8 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.modelInterface.NetLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.LoopReporter;
@@ -106,7 +106,7 @@ public class WorldBankLayout extends NodeLayout {
     
     LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.hDagLayoutCriteriaCheck");
     
-    for (FabricLink aLink : rbd.allLinks) {
+    for (NetLink aLink : rbd.allLinks) {
       lr.report();
       //if (!aLink.isDirected()) {
        // throw new LayoutCriterionFailureException();
@@ -216,7 +216,7 @@ public class WorldBankLayout extends NodeLayout {
   ** Calculate node order
   */
 
-  private List<NID.WithName> calcNodeOrder(Set<FabricLink> allLinks, Set<NID.WithName> loneNodes,
+  private List<NID.WithName> calcNodeOrder(Set<NetLink> allLinks, Set<NID.WithName> loneNodes,
   		                                     BTProgressMonitor monitor) throws AsynchExitRequestException {
  
     HashMap<NID.WithName, Integer> node2Degree = new HashMap<NID.WithName, Integer>();
@@ -225,7 +225,7 @@ public class WorldBankLayout extends NodeLayout {
     
     LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor, 0.0, 1.0, "progress.wblCalcNodeOrder");
 
-    for (FabricLink nextLink : allLinks) {
+    for (NetLink nextLink : allLinks) {
       lr.report();
       NID.WithName source = nextLink.getSrcID();
       NID.WithName target = nextLink.getTrgID();

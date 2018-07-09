@@ -24,8 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.TreeMap;
 
+import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.BuildData;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.LoopReporter;

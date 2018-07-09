@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -25,9 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.modelInterface.NetLink;
 import org.systemsbiology.biofabric.util.NID;
-import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
 
 /****************************************************************************
@@ -104,7 +103,7 @@ public class SIFImportLoader extends FabricImportLoader {
   ** Consume tokens, make links
   */
 
-  protected void consumeTokens(String[] tokens, UniqueLabeller idGen, List<FabricLink> links, 
+  protected void consumeTokens(String[] tokens, UniqueLabeller idGen, List<NetLink> links, 
   		                         Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins, 
   		                         HashMap<String, NID.WithName> nameToID, FileImportStats stats) throws IOException {
     if (tokens.length == 3) {

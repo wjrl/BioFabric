@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,7 +17,7 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.model;
+package org.systemsbiology.biofabric.io;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,7 +29,6 @@ import java.util.Set;
 import java.util.SortedMap;
 
 import org.systemsbiology.biofabric.analysis.Link;
-import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
@@ -40,6 +39,12 @@ import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.layouts.SetLayout;
 import org.systemsbiology.biofabric.layouts.WorldBankLayout;
+import org.systemsbiology.biofabric.model.AnnotationSet;
+import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.model.BioFabricNetwork.LinkInfo;
+import org.systemsbiology.biofabric.model.BioFabricNetwork.NodeInfo;
+import org.systemsbiology.biofabric.modelInterface.NetLink;
+import org.systemsbiology.biofabric.modelInterface.Network;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
@@ -123,7 +128,7 @@ public abstract class BuildData {
   */  
   
   public static class PreBuiltBuildData extends BuildData {
-    BioFabricNetwork bfn;
+    public BioFabricNetwork bfn;
   
     public PreBuiltBuildData(BioFabricNetwork bfn, BuildMode mode) {
       super(mode);
@@ -138,17 +143,17 @@ public abstract class BuildData {
   
   public static class RelayoutBuildData extends BuildData {
     public BioFabricNetwork bfn;
-    public Set<FabricLink> allLinks;
+    public Set<NetLink> allLinks;
     public Set<NID.WithName> loneNodeIDs;
     public FabricColorGenerator colGen;
     public Map<NID.WithName, Integer> nodeOrder;
     public List<NID.WithName> existingIDOrder;
-    public SortedMap<Integer, FabricLink> linkOrder;
+    public SortedMap<Integer, NetLink> linkOrder;
     public List<String> linkGroups;
     public boolean showLinkGroupAnnotations;
     public Set<NID.WithName> allNodeIDs;
     public Map<NID.WithName, String> clustAssign;
-    public BioFabricNetwork.LayoutMode layoutMode;
+    public Network.LayoutMode layoutMode;
     public UniqueLabeller idGen;
     
     public ControlTopLayout.CtrlMode cMode; 
@@ -179,7 +184,7 @@ public abstract class BuildData {
     }
     
     public RelayoutBuildData(UniqueLabeller idGen,
-    		                     Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs, 
+    		                     Set<NetLink> allLinks, Set<NID.WithName> loneNodeIDs, 
     		                     Map<NID.WithName, String> clustAssign, 
     		                     FabricColorGenerator colGen, BuildMode mode) {
       super(mode);
@@ -251,7 +256,7 @@ public abstract class BuildData {
       return;
     }
 
-    public void setLinkOrder(SortedMap<Integer, FabricLink> linkOrder) {
+    public void setLinkOrder(SortedMap<Integer, NetLink> linkOrder) {
       this.linkOrder = linkOrder;
       return;
     }
@@ -266,7 +271,7 @@ public abstract class BuildData {
       return;
     }
       
-    public void setGroupOrderAndMode(List<String> groupOrder, BioFabricNetwork.LayoutMode mode, 
+    public void setGroupOrderAndMode(List<String> groupOrder, Network.LayoutMode mode, 
                                      boolean showLinkGroupAnnotations) {
       this.linkGroups = groupOrder;
       this.layoutMode = mode;
@@ -333,7 +338,7 @@ public abstract class BuildData {
           return (new HierDAGLayout(pointUp.booleanValue())); 
         case SET_LAYOUT:   
           UiUtil.fixMePrintout("Get customized set dialog");
-          FabricLink link = allLinks.iterator().next();
+          NetLink link = allLinks.iterator().next();
           System.out.print(link + " means what?");            
           return (new SetLayout(pointUp.booleanValue() ? SetLayout.LinkMeans.BELONGS_TO : SetLayout.LinkMeans.CONTAINS)); 
     	  default:
@@ -363,9 +368,9 @@ public abstract class BuildData {
   */  
   
   public static class SelectBuildData extends BuildData {
-     BioFabricNetwork fullNet;
-     List<BioFabricNetwork.NodeInfo> subNodes;
-     List<BioFabricNetwork.LinkInfo> subLinks;
+     public BioFabricNetwork fullNet;
+     public List<BioFabricNetwork.NodeInfo> subNodes;
+     public List<BioFabricNetwork.LinkInfo> subLinks;
 
     public SelectBuildData(BioFabricNetwork fullNet, List<BioFabricNetwork.NodeInfo> subNodes, List<BioFabricNetwork.LinkInfo> subLinks) {
       super(BuildMode.BUILD_FOR_SUBMODEL);

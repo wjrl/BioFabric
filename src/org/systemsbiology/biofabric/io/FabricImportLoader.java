@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.modelInterface.NetLink;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 import org.systemsbiology.biofabric.util.DataUtil;
@@ -96,7 +97,7 @@ public abstract class FabricImportLoader {
    ** Consume tokens, make links
    */
   
-  protected abstract void consumeTokens(String[] tokens, UniqueLabeller idGen, List<FabricLink> links,
+  protected abstract void consumeTokens(String[] tokens, UniqueLabeller idGen, List<NetLink> links,
                                         Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins,
                                         HashMap<String, NID.WithName> nameToID, FileImportStats stats) throws IOException;
   
@@ -105,7 +106,7 @@ public abstract class FabricImportLoader {
    ** Process a SIF input
    */
   
-  public FileImportStats importFabric(File infile, UniqueLabeller idGen, List<FabricLink> links,
+  public FileImportStats importFabric(File infile, UniqueLabeller idGen, List<NetLink> links,
                                       Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins,
                                       BTProgressMonitor monitor) throws AsynchExitRequestException, IOException {
     
@@ -220,7 +221,7 @@ public abstract class FabricImportLoader {
    ** Get an actual node ID
    */
   
-  protected void buildLinkAndShadow(NID.WithName srcID, NID.WithName trgID, String rel, List<FabricLink> links) {
+  protected void buildLinkAndShadow(NID.WithName srcID, NID.WithName trgID, String rel, List<NetLink> links) {
     
     FabricLink nextLink = new FabricLink(srcID, trgID, rel, false);
     links.add(nextLink);

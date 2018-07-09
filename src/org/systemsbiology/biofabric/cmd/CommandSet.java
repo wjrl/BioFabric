@@ -77,6 +77,8 @@ import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.event.SelectionChangeListener;
 import org.systemsbiology.biofabric.io.AttributeLoader;
+import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.io.BuildExtractor;
 import org.systemsbiology.biofabric.io.FileLoadFlows;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
@@ -84,9 +86,9 @@ import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.BuildExtractor;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.modelInterface.AugRelation;
+import org.systemsbiology.biofabric.modelInterface.NetLink;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
 import org.systemsbiology.biofabric.plugin.PlugInManager;
@@ -1735,7 +1737,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       if (edgeAttributes == null) {
         return (true);
       }
-      SortedMap<Integer, FabricLink> modifiedAndChecked = bfp_.getNetwork().checkNewLinkOrder(edgeAttributes);      
+      SortedMap<Integer, NetLink> modifiedAndChecked = bfp_.getNetwork().checkNewLinkOrder(edgeAttributes);      
       if (modifiedAndChecked == null) { 
         ResourceManager rMan = ResourceManager.getManager();
         JOptionPane.showMessageDialog(topWindow_, rMan.getString("attribRead.badColMessage"),
@@ -2257,14 +2259,14 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       BioFabricNetwork bfn = bfp_.getNetwork();
       List<String> currentTags = bfn.getLinkGroups();
       boolean showGroupAnnot = bfn.getShowLinkGroupAnnotations();
-      ArrayList<FabricLink> links = new ArrayList<FabricLink>(bfn.getAllLinks(true));
-      TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
+      ArrayList<NetLink> links = new ArrayList<NetLink>(bfn.getAllLinks(true));
+      TreeMap<AugRelation, Boolean> relMap = new TreeMap<AugRelation, Boolean>();
       try {
         BuildExtractor.extractRelations(links, relMap, null);
       } catch (AsynchExitRequestException aerx) {
       	// Should not happen...
       }
-      Set<FabricLink.AugRelation> allRelations = relMap.keySet(); 
+      Set<AugRelation> allRelations = relMap.keySet(); 
       BioFabricNetwork.LayoutMode currMode = bfn.getLayoutMode();
       LinkGroupingSetupDialog lgsd = 
         new LinkGroupingSetupDialog(topWindow_, currentTags, showGroupAnnot, currMode, allRelations);

@@ -19,7 +19,7 @@
 
 package org.systemsbiology.biofabric.layouts;
 
-import org.systemsbiology.biofabric.model.BuildData;
+import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.BTProgressMonitor;
 
