@@ -17,20 +17,20 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.layouts;
+package org.systemsbiology.biofabric.worker;
 
 /****************************************************************************
 **
 ** A Class
 */
 
-public class LayoutCriterionFailureException extends Exception {
+public class AsynchExitRequestException extends Exception {
   
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE CONSTANTS
   //
-  ////////////////////////////////////////////////////////////////////////////  
+  //////////////////////////////////////////////////////////////////////////// 
  
   private static final long serialVersionUID = 1L;
   
@@ -57,7 +57,7 @@ public class LayoutCriterionFailureException extends Exception {
   ** Constructor
   */
 
-  public LayoutCriterionFailureException() {
+  public AsynchExitRequestException() {
   }  
 
   ////////////////////////////////////////////////////////////////////////////

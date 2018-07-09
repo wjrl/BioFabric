@@ -35,24 +35,20 @@ import java.util.TreeMap;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
+import org.systemsbiology.biofabric.io.BuildExtractor;
 import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.io.FileLoadFlows;
 import org.systemsbiology.biofabric.io.GWImportLoader;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.BuildExtractor;
-import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.modelAPI.AugRelation;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
 import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.AttributeExtractor;
-import org.systemsbiology.biofabric.util.BackgroundWorker;
-import org.systemsbiology.biofabric.util.BackgroundWorkerClient;
-import org.systemsbiology.biofabric.util.BackgroundWorkerControlManager;
-import org.systemsbiology.biofabric.util.BackgroundWorkerOwner;
 import org.systemsbiology.biofabric.util.CharacterEntityMapper;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.Indenter;
@@ -60,6 +56,11 @@ import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.worker.BackgroundWorker;
+import org.systemsbiology.biofabric.worker.BackgroundWorkerClient;
+import org.systemsbiology.biofabric.worker.BackgroundWorkerControlManager;
+import org.systemsbiology.biofabric.worker.BackgroundWorkerOwner;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 import org.xml.sax.Attributes;
@@ -241,7 +242,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     // create the individual networks (links + lone nodes)
     //
   
-    ArrayList<FabricLink> linksGraphA = new ArrayList<FabricLink>();
+    ArrayList<NetLink> linksGraphA = new ArrayList<NetLink>();
     HashSet<NID.WithName> lonersGraphA = new HashSet<NID.WithName>();
     
     if (GWImportLoader.isGWFile(nadi.graphA)) {
@@ -251,7 +252,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     } // assume it's sif if it's not gw
     
     
-    ArrayList<FabricLink> linksGraphB = new ArrayList<FabricLink>();
+    ArrayList<NetLink> linksGraphB = new ArrayList<NetLink>();
     HashSet<NID.WithName> lonersGraphB = new HashSet<NID.WithName>();
     
     if (GWImportLoader.isGWFile(nadi.graphB)) {
@@ -269,8 +270,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    */
   
   private Map<NID.WithName, NID.WithName> loadTheAlignmentFile(File file,
-                                                              ArrayList<FabricLink> linksGraph1, HashSet<NID.WithName> loneNodesGraph1,
-                                                              ArrayList<FabricLink> linksGraph2, HashSet<NID.WithName> loneNodesGraph2) {
+                                                              ArrayList<NetLink> linksGraph1, HashSet<NID.WithName> loneNodesGraph1,
+                                                              ArrayList<NetLink> linksGraph2, HashSet<NID.WithName> loneNodesGraph2) {
     
     Map<NID.WithName, NID.WithName> mapG1toG2 = new HashMap<NID.WithName, NID.WithName>();
     try {
@@ -310,8 +311,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    */
   
   private boolean networkAlignmentStepTwo(NetworkAlignmentDialog.NetworkAlignmentDialogInfo nadi,
-                                          ArrayList<FabricLink> linksGraphA, HashSet<NID.WithName> loneNodeIDsGraphA,
-                                          ArrayList<FabricLink> linksGraphB, HashSet<NID.WithName> loneNodeIDsGraphB,
+                                          ArrayList<NetLink> linksGraphA, HashSet<NID.WithName> loneNodeIDsGraphA,
+                                          ArrayList<NetLink> linksGraphB, HashSet<NID.WithName> loneNodeIDsGraphB,
                                           UniqueLabeller idGen, NetworkAlignmentBuildData.ViewType outType) {
     //
     // Assign GraphA and GraphB to Graph1 and Graph2
@@ -324,11 +325,11 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
   
     // small graph G1
-    ArrayList<FabricLink> linksSmall = struct.linksSmall;
+    ArrayList<NetLink> linksSmall = struct.linksSmall;
     HashSet<NID.WithName> lonersSmall = struct.lonersSmall;
   
     // large graph G2
-    ArrayList<FabricLink> linksLarge = struct.linksLarge;
+    ArrayList<NetLink> linksLarge = struct.linksLarge;
     HashSet<NID.WithName> lonersLarge = struct.lonersLarge;
 
     // Alignment processing
@@ -370,10 +371,10 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     
     NetworkAlignmentBuilder nab = new NetworkAlignmentBuilder();
     
-    ArrayList<FabricLink> mergedLinks = new ArrayList<FabricLink>();
+    ArrayList<NetLink> mergedLinks = new ArrayList<NetLink>();
     Set<NID.WithName> mergedLoneNodeIDs = new HashSet<NID.WithName>();
-    SortedMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
-    Set<FabricLink> reducedLinks = new HashSet<FabricLink>();
+    SortedMap<AugRelation, Boolean> relMap = new TreeMap<AugRelation, Boolean>();
+    Set<NetLink> reducedLinks = new HashSet<NetLink>();
     Map<NID.WithName, Boolean> mergedToCorrectNC = null, isAlignedNode = new HashMap<NID.WithName, Boolean>();
     if (doingPerfectGroup) {
       mergedToCorrectNC = new HashMap<NID.WithName, Boolean>();
@@ -387,10 +388,10 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     //
     
     nab = null;
-    ArrayList<FabricLink> mergedLinksPerfect = null;
+    ArrayList<NetLink> mergedLinksPerfect = null;
     Set<NID.WithName> mergedLoneNodeIDsPerfect = null;
-    SortedMap<FabricLink.AugRelation, Boolean> relMapPerfect = null;
-    Set<FabricLink> reducedLinksPerfect = null;
+    SortedMap<AugRelation, Boolean> relMapPerfect = null;
+    Set<NetLink> reducedLinksPerfect = null;
     Map<NID.WithName, Boolean> isAlignedNodePerfect = null;
     
     if (finished && doingPerfectGroup) {
@@ -400,10 +401,10 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       // signifies it.
       //
       nab = new NetworkAlignmentBuilder();
-      mergedLinksPerfect = new ArrayList<FabricLink>();
+      mergedLinksPerfect = new ArrayList<NetLink>();
       mergedLoneNodeIDsPerfect = new HashSet<NID.WithName>();
-      relMapPerfect = new TreeMap<FabricLink.AugRelation, Boolean>();
-      reducedLinksPerfect = new HashSet<FabricLink>();
+      relMapPerfect = new TreeMap<AugRelation, Boolean>();
+      reducedLinksPerfect = new HashSet<NetLink>();
       isAlignedNodePerfect = new HashMap<NID.WithName, Boolean>();
       
       finished = nab.processNetAlign(mergedLinksPerfect, mergedLoneNodeIDsPerfect, perfectG1toG2, null, null,
@@ -441,13 +442,13 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       //
       
       Set<NID.WithName> allLargerNodes = new HashSet<NID.WithName>(lonersLarge);
-      for (FabricLink ll: linksLarge) {
+      for (NetLink ll: linksLarge) {
         allLargerNodes.add(ll.getSrcID());
         allLargerNodes.add(ll.getTrgID());
       }
       
       Set<NID.WithName> allSmallerNodes = new HashSet<NID.WithName>(lonersSmall);
-      for (FabricLink ll: linksSmall) {
+      for (NetLink ll: linksSmall) {
         allSmallerNodes.add(ll.getSrcID());
         allSmallerNodes.add(ll.getTrgID());
       }
@@ -468,12 +469,12 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    ** Process NetAlign Score Reports
    */
   
-  private boolean networkAlignmentStepFour(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Boolean> isAlignedNode,
-                                           Map<NID.WithName, Boolean> mergedToCorrectNC, Set<FabricLink> reducedLinksPerfect,
+  private boolean networkAlignmentStepFour(Set<NetLink> reducedLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Boolean> isAlignedNode,
+                                           Map<NID.WithName, Boolean> mergedToCorrectNC, Set<NetLink> reducedLinksPerfect,
                                            Set<NID.WithName> loneNodeIDsPerfect, Map<NID.WithName, Boolean> isAlignedNodePerfect,
                                            NetAlignStats report,
-                                           ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
-                                           ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                                           ArrayList<NetLink> linksSmall, HashSet<NID.WithName> lonersSmall,
+                                           ArrayList<NetLink> linksLarge, HashSet<NID.WithName> lonersLarge,
                                            Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2) {
     File holdIt;
     try {
@@ -498,12 +499,12 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
   private boolean networkAlignmentStepFive(Set<NID.WithName> allLargerNodes,
                                            Set<NID.WithName> allSmallerNodes,
-                                           Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
+                                           Set<NetLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
                                            Map<NID.WithName, Boolean> mergedToCorrect, 
                                            Map<NID.WithName, Boolean> isAlignedNode,
                                            Map<NID.WithName, NID.WithName> mapG1toG2,
                                            Map<NID.WithName, NID.WithName> perfectMap,
-                                           ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                                           ArrayList<NetLink> linksLarge, HashSet<NID.WithName> lonersLarge,
                                            NetAlignStats report, 
                                            NetworkAlignmentBuildData.ViewType viewType, 
                                            NodeGroupMap.PerfectNGMode mode,
@@ -532,8 +533,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    ** Assign GraphA and GraphB to Graph1 and Graph2 using comparisons
    */
   
-  private boolean assignGraphs(ArrayList<FabricLink> linksGraphA, HashSet<NID.WithName> loneNodeIDsGraphA,
-                               ArrayList<FabricLink> linksGraphB, HashSet<NID.WithName> loneNodeIDsGraphB,
+  private boolean assignGraphs(ArrayList<NetLink> linksGraphA, HashSet<NID.WithName> loneNodeIDsGraphA,
+                               ArrayList<NetLink> linksGraphB, HashSet<NID.WithName> loneNodeIDsGraphB,
                                File align, NetAlignGraphStructure struct) {
   
     Set<NID.WithName> nodesA = null, nodesB = null;
@@ -950,14 +951,14 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     private File holdIt_;
     private boolean finished_;
     
-    public boolean processNetAlign(ArrayList<FabricLink> mergedLinks, Set<NID.WithName> mergedLoneNodeIDs,
+    public boolean processNetAlign(ArrayList<NetLink> mergedLinks, Set<NID.WithName> mergedLoneNodeIDs,
                                    Map<NID.WithName, NID.WithName> mapG1toG2,
                                    Map<NID.WithName, NID.WithName> perfectG1toG2,
                                    Map<NID.WithName, Boolean> mergedToCorrect,
                                    Map<NID.WithName, Boolean> isAlignedNode,
-                                   ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
-                                   ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
-                                   SortedMap<FabricLink.AugRelation, Boolean> relMap,
+                                   ArrayList<NetLink> linksG1, HashSet<NID.WithName> lonersG1,
+                                   ArrayList<NetLink> linksG2, HashSet<NID.WithName> lonersG2,
+                                   SortedMap<AugRelation, Boolean> relMap,
                                    NetworkAlignmentBuildData.ViewType outType, UniqueLabeller idGen, File holdIt) {
       finished_= true;
       holdIt_ = holdIt;
@@ -1002,24 +1003,24 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
   private class NetworkAlignmentRunner extends BackgroundWorker {
     
-    private ArrayList<FabricLink> mergedLinks_;
+    private ArrayList<NetLink> mergedLinks_;
     private Set<NID.WithName> mergedLoneNodeIDs_;
     private Map<NID.WithName, NID.WithName> mapG1toG2_, perfectG1toG2_;
     private Map<NID.WithName, Boolean> mergedToCorrect_, isAlignedNode_;
-    private ArrayList<FabricLink> linksG1_, linksG2_;
+    private ArrayList<NetLink> linksG1_, linksG2_;
     private HashSet<NID.WithName> lonersG1_, lonersG2_;
-    private SortedMap<FabricLink.AugRelation, Boolean> relMap_;
+    private SortedMap<AugRelation, Boolean> relMap_;
     private NetworkAlignmentBuildData.ViewType outType_;
     private UniqueLabeller idGen_;
     
-    public NetworkAlignmentRunner(ArrayList<FabricLink> mergedLinks, Set<NID.WithName> mergedLoners,
+    public NetworkAlignmentRunner(ArrayList<NetLink> mergedLinks, Set<NID.WithName> mergedLoners,
                                   Map<NID.WithName, NID.WithName> mapG1toG2,
                                   Map<NID.WithName, NID.WithName> perfectG1toG2,
                                   Map<NID.WithName, Boolean> mergedToCorrect,
                                   Map<NID.WithName, Boolean> isAlignedNode,
-                                  ArrayList<FabricLink> linksG1, HashSet<NID.WithName> lonersG1,
-                                  ArrayList<FabricLink> linksG2, HashSet<NID.WithName> lonersG2,
-                                  SortedMap<FabricLink.AugRelation, Boolean> relMap,
+                                  ArrayList<NetLink> linksG1, HashSet<NID.WithName> lonersG1,
+                                  ArrayList<NetLink> linksG2, HashSet<NID.WithName> lonersG2,
+                                  SortedMap<AugRelation, Boolean> relMap,
                                   NetworkAlignmentBuildData.ViewType outType, UniqueLabeller idGen) {
       super(new Boolean(false));
       
@@ -1063,12 +1064,12 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     private File holdIt_;
     private boolean finished_;
     
-    public boolean processNetAlignMeasures(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Boolean> isAlignedNode,
-                                           Map<NID.WithName, Boolean> mergedToCorrectNC, Set<FabricLink> reducedLinksPerfect,
+    public boolean processNetAlignMeasures(Set<NetLink> reducedLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Boolean> isAlignedNode,
+                                           Map<NID.WithName, Boolean> mergedToCorrectNC, Set<NetLink> reducedLinksPerfect,
                                            Set<NID.WithName> loneNodeIDsPerfect, Map<NID.WithName, Boolean> isAlignedNodePerfect,
                                            NetAlignStats report,
-                                           ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
-                                           ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                                           ArrayList<NetLink> linksSmall, HashSet<NID.WithName> lonersSmall,
+                                           ArrayList<NetLink> linksLarge, HashSet<NID.WithName> lonersLarge,
                                            Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2, File holdIt) {
       finished_ = true;
       holdIt_ = holdIt;
@@ -1115,26 +1116,26 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   private class NetAlignMeasureRunner extends BackgroundWorker {
   
     private Map<NID.WithName, NID.WithName> mapG1toG2_;
-    private Set<FabricLink> reducedLinks_;
+    private Set<NetLink> reducedLinks_;
     private Set<NID.WithName> loneNodeIDs_;
     private Map<NID.WithName, Boolean> isAlignedNode_;
     private Map<NID.WithName, Boolean> mergedToCorrectNC_;
     private Map<NID.WithName, NID.WithName> perfectG1toG2_;
-    private Set<FabricLink> reducedLinksPerfect_;
+    private Set<NetLink> reducedLinksPerfect_;
     private Set<NID.WithName> loneNodeIDsPerfect_;
     private Map<NID.WithName, Boolean> isAlignedNodePerfect_;
   
-    private ArrayList<FabricLink> linksSmall_, linksLarge_;
+    private ArrayList<NetLink> linksSmall_, linksLarge_;
     private HashSet<NID.WithName> lonersSmall_, lonersLarge_;
     private NetAlignStats report_;
     
     
-    public NetAlignMeasureRunner(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Boolean> isAlignedNode,
-                                 Map<NID.WithName, Boolean> mergedToCorrectNC, Set<FabricLink> reducedLinksPerfect,
+    public NetAlignMeasureRunner(Set<NetLink> reducedLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Boolean> isAlignedNode,
+                                 Map<NID.WithName, Boolean> mergedToCorrectNC, Set<NetLink> reducedLinksPerfect,
                                  Set<NID.WithName> loneNodeIDsPerfect, Map<NID.WithName, Boolean> isAlignedNodePerfect,
                                  NetAlignStats report,
-                                 ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
-                                 ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                                 ArrayList<NetLink> linksSmall, HashSet<NID.WithName> lonersSmall,
+                                 ArrayList<NetLink> linksLarge, HashSet<NID.WithName> lonersLarge,
                                  Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2) {
       super(new Boolean(false));
       
@@ -1272,9 +1273,9 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    */
   
   private static final class NetAlignGraphStructure {
-    ArrayList<FabricLink> linksSmall;   // G1
+    ArrayList<NetLink> linksSmall;   // G1
     HashSet<NID.WithName> lonersSmall;
-    ArrayList<FabricLink> linksLarge;   // G2
+    ArrayList<NetLink> linksLarge;   // G2
     HashSet<NID.WithName> lonersLarge;
   }
   

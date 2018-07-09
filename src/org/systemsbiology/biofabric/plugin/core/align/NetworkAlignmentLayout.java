@@ -34,17 +34,17 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.io.BuildExtractor;
+import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
-import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.BuildExtractor;
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
+import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.worker.LoopReporter;
 
 /****************************************************************************
  **
@@ -133,9 +133,9 @@ public class NetworkAlignmentLayout extends NodeLayout {
     int numLink = nabd.allLinks.size();
     LoopReporter lr = new LoopReporter(numLink, 20, monitor, 0.0, 0.25, "progress.calculateNodeDegree");
     
-    Iterator<FabricLink> alit = nabd.allLinks.iterator();
+    Iterator<NetLink> alit = nabd.allLinks.iterator();
     while (alit.hasNext()) {
-      FabricLink nextLink = alit.next();
+      NetLink nextLink = alit.next();
       lr.report();
       NID.WithName sidwn = nextLink.getSrcID();
       NID.WithName tidwn = nextLink.getTrgID();

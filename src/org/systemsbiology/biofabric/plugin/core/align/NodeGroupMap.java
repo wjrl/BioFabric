@@ -29,12 +29,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.systemsbiology.biofabric.model.BuildExtractor;
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
+
+import org.systemsbiology.biofabric.io.BuildExtractor;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.worker.LoopReporter;
 
 /***************************************************************************
  **
@@ -67,11 +68,11 @@ public class NodeGroupMap {
   ////////////////////////////////////////////////////////////////////////////
   
   private final PerfectNGMode mode_;
-  private Set<FabricLink> links_;
+  private Set<NetLink> links_;
   private Set<NID.WithName> loners_;
   private Map<NID.WithName, Boolean> mergedToCorrectNC_, isAlignedNode_;
   
-  private Map<NID.WithName, Set<FabricLink>> nodeToLinks_;
+  private Map<NID.WithName, Set<NetLink>> nodeToLinks_;
   private Map<NID.WithName, Set<NID.WithName>> nodeToNeighbors_;
   
   private Map<GroupID, Integer> groupIDtoIndex_;
@@ -108,9 +109,9 @@ public class NodeGroupMap {
             nabd.mergedToCorrectNC, nabd.isAlignedNode, nabd.mode, nodeGroupOrder, colorMap, monitor);
   }
   
-  public NodeGroupMap(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs,
+  public NodeGroupMap(Set<NetLink> allLinks, Set<NID.WithName> loneNodeIDs,
                       Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2,
-                      ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                      ArrayList<NetLink> linksLarge, HashSet<NID.WithName> lonersLarge,
                       Map<NID.WithName, Boolean> mergedToCorrectNC, Map<NID.WithName, Boolean> isAlignedNode,
                       PerfectNGMode mode, String[] nodeGroupOrder, String[][] colorMap,
                       BTProgressMonitor monitor) throws AsynchExitRequestException {
@@ -138,20 +139,20 @@ public class NodeGroupMap {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  private void generateStructs(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs) throws AsynchExitRequestException {
+  private void generateStructs(Set<NetLink> allLinks, Set<NID.WithName> loneNodeIDs) throws AsynchExitRequestException {
     LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor_, 0.0, 1.0, "progress.generatingStructures");
-    nodeToLinks_ = new HashMap<NID.WithName, Set<FabricLink>>();
+    nodeToLinks_ = new HashMap<NID.WithName, Set<NetLink>>();
     nodeToNeighbors_ = new HashMap<NID.WithName, Set<NID.WithName>>();
     
-    for (FabricLink link : allLinks) {
+    for (NetLink link : allLinks) {
       lr.report();
       NID.WithName src = link.getSrcID(), trg = link.getTrgID();
       
       if (nodeToLinks_.get(src) == null) {
-        nodeToLinks_.put(src, new HashSet<FabricLink>());
+        nodeToLinks_.put(src, new HashSet<NetLink>());
       }
       if (nodeToLinks_.get(trg) == null) {
-        nodeToLinks_.put(trg, new HashSet<FabricLink>());
+        nodeToLinks_.put(trg, new HashSet<NetLink>());
       }
       if (nodeToNeighbors_.get(src) == null) {
         nodeToNeighbors_.put(src, new HashSet<NID.WithName>());
@@ -167,7 +168,7 @@ public class NodeGroupMap {
     }
     
     for (NID.WithName node : loneNodeIDs) {
-      nodeToLinks_.put(node, new HashSet<FabricLink>());
+      nodeToLinks_.put(node, new HashSet<NetLink>());
       nodeToNeighbors_.put(node, new HashSet<NID.WithName>());
     }
     return;
@@ -209,7 +210,7 @@ public class NodeGroupMap {
             NetworkAlignment.INDUCED_GRAPH2, NetworkAlignment.HALF_UNALIGNED_GRAPH2, NetworkAlignment.FULL_UNALIGNED_GRAPH2};
     boolean[] inLG = new boolean[NUMBER_LINK_GROUPS];
     
-    for (FabricLink link : nodeToLinks_.get(node)) {
+    for (NetLink link : nodeToLinks_.get(node)) {
       for (int rel = 0; rel < inLG.length; rel++) {
         if (link.getRelation().equals(possibleRels[rel])) {
           inLG[rel] = true;
@@ -275,7 +276,7 @@ public class NodeGroupMap {
   
   private void calcNGRatios() {
     Set<NID.WithName> nodes = nodeToLinks_.keySet();
-    double size = (double) nodes.size();
+    double size = nodes.size();
     Set<GroupID> tags = groupIDtoIndex_.keySet();
   
     Map<GroupID, Integer> counts = new HashMap<GroupID, Integer>(); // initial vals
@@ -306,7 +307,7 @@ public class NodeGroupMap {
     
     String[] rels = {NetworkAlignment.COVERED_EDGE, NetworkAlignment.GRAPH1,
             NetworkAlignment.INDUCED_GRAPH2, NetworkAlignment.HALF_UNALIGNED_GRAPH2, NetworkAlignment.FULL_UNALIGNED_GRAPH2};
-    double size = (double) links_.size();
+    double size = links_.size();
     
     Map<String, Integer> counts = new HashMap<String, Integer>(); // initial vals
     for (String rel : rels) {
@@ -314,7 +315,7 @@ public class NodeGroupMap {
     }
     
     LoopReporter lr = new LoopReporter(links_.size(), 20, monitor_, 0.0, 1.0, "progress.calculatingLinkRatios");
-    for (FabricLink link : links_) {
+    for (NetLink link : links_) {
       lr.report();
       String rel = link.getRelation();
       counts.put(rel, counts.get(rel) + 1);
@@ -465,7 +466,7 @@ public class NodeGroupMap {
   
     private Map<NID.WithName, NID.WithName> mapG1toG2_;
     private Map<NID.WithName, NID.WithName> perfectG1toG2_;
-    private ArrayList<FabricLink> linksLarge_;
+    private ArrayList<NetLink> linksLarge_;
     private HashSet<NID.WithName> lonersLarge_;
     private Map<String, NID.WithName> nameToLarge_;
     private BTProgressMonitor monitor_;
@@ -475,7 +476,7 @@ public class NodeGroupMap {
     
     JaccardSimilarityFunc(Map<NID.WithName, NID.WithName> mapG1toG2,
                           Map<NID.WithName, NID.WithName> perfectG1toG2,
-                          ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+                          ArrayList<NetLink> linksLarge, HashSet<NID.WithName> lonersLarge,
                           BTProgressMonitor monitor) throws AsynchExitRequestException {
       this.mapG1toG2_ = mapG1toG2;
       this.perfectG1toG2_ = perfectG1toG2;
@@ -563,7 +564,7 @@ public class NodeGroupMap {
       LoopReporter lr = new LoopReporter(linksLarge_.size(), 20, monitor_, 0.0, 1.0, "progress.generatingJaccardStructures");
       nodeToNeighL = new HashMap<NID.WithName, Set<NID.WithName>>();
     
-      for (FabricLink link : linksLarge_) {
+      for (NetLink link : linksLarge_) {
         lr.report();
         NID.WithName src = link.getSrcID(), trg = link.getTrgID();
       

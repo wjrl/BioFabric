@@ -31,12 +31,14 @@ import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.analysis.CycleFinder;
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
+import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
+import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.worker.LoopReporter;
 
 /****************************************************************************
 **
@@ -100,7 +102,7 @@ public class HierDAGLayout extends NodeLayout {
 	  
 	  LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.hDagLayoutCriteriaCheck");
 	  
-    for (FabricLink aLink : rbd.allLinks) {
+    for (NetLink aLink : rbd.allLinks) {
       lr.report();
       if (!aLink.isDirected()) {
     	  throw new LayoutCriterionFailureException();
@@ -176,7 +178,7 @@ public class HierDAGLayout extends NodeLayout {
   ** Construct a map of the targets of each node. Note that instance members
   */
 
-  private void linksToSources(Set<NID.WithName> nodeList, Set<FabricLink> linkList,
+  private void linksToSources(Set<NID.WithName> nodeList, Set<NetLink> linkList,
   		                        BTProgressMonitor monitor) throws AsynchExitRequestException {
     
   	//
@@ -201,9 +203,9 @@ public class HierDAGLayout extends NodeLayout {
     
     LoopReporter lr2 = new LoopReporter(linkList.size(), 20, monitor, 0.0, 1.0, "progress.hDagDegAndTargs");
     
-    Iterator<FabricLink> llit = linkList.iterator();
+    Iterator<NetLink> llit = linkList.iterator();
     while (llit.hasNext()) {
-      FabricLink link = llit.next();
+      NetLink link = llit.next();
       lr2.report();
       //
       // By default, layout designed to have links point up. Quick way to switch this

@@ -18,7 +18,7 @@
 */
 
 
-package org.systemsbiology.biofabric.util;
+package org.systemsbiology.biofabric.worker;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;

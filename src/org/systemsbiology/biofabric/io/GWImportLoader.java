@@ -27,6 +27,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
@@ -132,7 +133,7 @@ public class GWImportLoader extends FabricImportLoader {
    ** Consume tokens, process nodes, make links
    */
   
-  protected void consumeTokens(String[] tokens, UniqueLabeller idGen, List<FabricLink> links,
+  protected void consumeTokens(String[] tokens, UniqueLabeller idGen, List<NetLink> links,
                                Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap,
                                Integer magBins, HashMap<String, NID.WithName> nameToID,
                                FileImportStats stats) throws IOException {
