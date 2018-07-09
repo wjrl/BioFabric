@@ -184,7 +184,8 @@ public class BioFabricApplication {
   */
 
   public static void main(String argv[]) {
-    ArgParser ap = new ArgParser(); 
+    ArgParser ap = new ArgParser();
+    System.out.println("He llo");
     final Map<String, Object> argMap = ap.parse(ArgParser.AppType.VIEWER, argv);
     if (argMap == null) {
       System.err.print(ap.getUsage(ArgParser.AppType.VIEWER));

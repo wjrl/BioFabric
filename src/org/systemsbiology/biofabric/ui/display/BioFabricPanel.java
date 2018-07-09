@@ -1819,7 +1819,6 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     return (zoomer_.getWorldRect());    
   }
   
-  @Override
   public Dimension getPreferredSize() {
     return (this.myPanel_.getPreferredSize());    
   }
