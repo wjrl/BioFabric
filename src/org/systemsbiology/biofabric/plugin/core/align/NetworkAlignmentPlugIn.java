@@ -1087,25 +1087,21 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       return (finished_);
     }
     
-    @Override
     public boolean handleRemoteException(Exception remoteEx) {
       finished_ = false;
       return (false);
     }
   
-    @Override
     public void handleCancellation() {
       finished_ = false;
       flf_.cancelAndRestore(holdIt_);
       return;
     }
   
-    @Override
     public void cleanUpPreEnable(Object result) {
       return;
     }
   
-    @Override
     public void cleanUpPostRepaint(Object result) {
       return;
     }
