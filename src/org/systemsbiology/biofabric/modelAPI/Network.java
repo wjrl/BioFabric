@@ -115,4 +115,8 @@ public interface Network {
   //
   ////////////////////////////////////////////////////////////////////////////
 
+  public int getNodeCount();
+  public int getLinkCount(boolean forShadow);
+  
+  
 }

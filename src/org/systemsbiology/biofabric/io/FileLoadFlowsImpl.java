@@ -55,6 +55,9 @@ import javax.swing.filechooser.FileFilter;
 import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.cmd.HeadlessOracle;
+import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
+import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
+import org.systemsbiology.biofabric.ioAPI.IOFactory;
 import org.systemsbiology.biofabric.layoutAPI.EdgeLayout;
 import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
@@ -100,7 +103,7 @@ import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 ** Handles File Loading Tasks
 */
 
-public class FileLoadFlows {
+public class FileLoadFlowsImpl implements FileLoadFlows {
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -165,7 +168,7 @@ public class FileLoadFlows {
   ** Constructor 
   */ 
   
-  public FileLoadFlows(BioFabricWindow bfw, PlugInManager pMan,
+  public FileLoadFlowsImpl(BioFabricWindow bfw, PlugInManager pMan,
                        FabricColorGenerator colGen, CommandSet cSet,
                        HeadlessOracle headlessOracle, boolean isForMain) {
     bfw_ = bfw;
@@ -202,7 +205,7 @@ public class FileLoadFlows {
   */ 
      
   public void buildNetworkForPlugIn(BuildData.RelayoutBuildData pluginData, File holdIt) { 
-    NetworkBuilder nb = new FileLoadFlows.NetworkBuilder(true, holdIt);
+    NetworkBuilder nb = new FileLoadFlowsImpl.NetworkBuilder(true, holdIt);
     nb.setForPlugInBuild(pluginData);
     nb.doNetworkBuild();
     return;
@@ -623,7 +626,7 @@ public class FileLoadFlows {
    */
   
   public boolean loadFromASource(File file, Map<AttributeLoader.AttributeKey, String> nameMap,
-                                 Integer magBins, UniqueLabeller idGen, FileLoadType type) {
+                                 Integer magBins, UniqueLabeller idGen, FileLoadFlows.FileLoadType type) {
     
     HashMap<String, String> nodeNames = null;
     if (nameMap != null) {
@@ -654,9 +657,9 @@ public class FileLoadFlows {
       // This gets file in:
       //
       boolean finished;
-      if (type == FileLoadType.SIF) {
+      if (type == FileLoadFlows.FileLoadType.SIF) {
         finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
-      } else if (type == FileLoadType.GW) {
+      } else if (type == FileLoadFlows.FileLoadType.GW) {
         finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
       } else {
         throw (new IllegalArgumentException("File type not identified"));
@@ -667,14 +670,14 @@ public class FileLoadFlows {
       return (true);
     } else {
       try {
-        if (type == FileLoadType.SIF) {
+        if (type == FileLoadFlows.FileLoadType.SIF) {
           sss = (new SIFImportLoader()).importFabric(file, idGen, links, loneNodes, nodeNames, magBins, null);
-        } else if (type == FileLoadType.GW) {
+        } else if (type == FileLoadFlows.FileLoadType.GW) {
           sss = (new GWImportLoader()).importFabric(file, idGen, links, loneNodes, nodeNames, magBins, null);
         } else {
           throw (new IllegalArgumentException("File type not identified"));
         }
-        BuildExtractor.extractRelations(links, relMap, null);
+        IOFactory.getBuildExtractor().extractRelations(links, relMap, null);
       } catch (AsynchExitRequestException axex) {
         // Should never happen
         return (false);
@@ -706,7 +709,7 @@ public class FileLoadFlows {
   
   public boolean loadFromASource(File file, ArrayList<NetLink> links,
                                  HashSet<NID.WithName> loneNodes, Integer magBins,
-                                 UniqueLabeller idGen, boolean loadOnly, FileLoadType type) {
+                                 UniqueLabeller idGen, boolean loadOnly, FileLoadFlows.FileLoadType type) {
     
     File holdIt;
     try {
@@ -724,9 +727,9 @@ public class FileLoadFlows {
     BackgroundFileReader br = new BackgroundFileReader();
     // This gets file in:
     boolean finished;
-    if (type == FileLoadType.SIF) {
+    if (type == FileLoadFlows.FileLoadType.SIF) {
       finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, null, sss, magBins, relMap, holdIt);
-    } else if (type == FileLoadType.GW) {
+    } else if (type == FileLoadFlows.FileLoadType.GW) {
       finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, null, sss, magBins, relMap, holdIt);
     } else {
       throw (new IllegalArgumentException("File type not identified"));
@@ -771,8 +774,9 @@ public class FileLoadFlows {
   		                    SortedMap<AugRelation, Boolean> relaMap,
   	                      Set<NetLink> reducedLinks, Set<NetLink> culledLinks,  
   	                      BTProgressMonitor monitor) throws AsynchExitRequestException {
-    BuildExtractor.assignDirections(links, relaMap, monitor);
-    BuildExtractor.preprocessLinks(links, reducedLinks, culledLinks, monitor);
+  	BuildExtractor bex = IOFactory.getBuildExtractor();
+    bex.assignDirections(links, relaMap, monitor);
+    bex.preprocessLinks(links, reducedLinks, culledLinks, monitor);
     return;
   }  
     
@@ -832,7 +836,7 @@ public class FileLoadFlows {
   ** Common load operations.
   */ 
     
-  boolean postXMLLoad(FabricFactory ff, String fileName, File holdIt) {  
+  public boolean postXMLLoad(FabricFactory ff, String fileName, File holdIt) {  
     NetworkBuilder nb = new NetworkBuilder(true, holdIt); 
     nb.setBuildDataForXMLLoad(ff.getFabricNetwork(), BuildData.BuildMode.BUILD_FROM_XML);
     nb.doNetworkBuild();
@@ -1025,8 +1029,9 @@ public class FileLoadFlows {
     HashMap<AttributeLoader.AttributeKey, String> attributes = new HashMap<AttributeLoader.AttributeKey, String>();
     try {    
       AttributeLoader.ReadStats stats = new AttributeLoader.ReadStats();
-      AttributeLoader alod = new AttributeLoader(); 
-      Map<String, NID.WithName> nameToID = (!forNodes) ? BuildExtractor.reduceNameSetToOne(nameToIDs) : null;
+      AttributeLoader alod = new AttributeLoader();
+      BuildExtractor bex = IOFactory.getBuildExtractor();
+      Map<String, NID.WithName> nameToID = (!forNodes) ? bex.reduceNameSetToOne(nameToIDs) : null;
       alod.readAttributes(file, forNodes, attributes, nameToID, stats);
       if (!stats.badLines.isEmpty()) {
         ResourceManager rMan = ResourceManager.getManager();
@@ -1655,7 +1660,7 @@ public class FileLoadFlows {
         FabricImportLoader.FileImportStats sss = (new GWImportLoader()).importFabric(myFile_, idGen_, links_,
                         loneNodeIDs_, nameMap_, magBins_, this);
         sss_.copyInto(sss);
-        BuildExtractor.extractRelations(links_, relaMap_, this);
+        IOFactory.getBuildExtractor().extractRelations(links_, relaMap_, this);
         
         return (new Boolean(true));
       } catch (IOException ioe) {
@@ -1712,7 +1717,7 @@ public class FileLoadFlows {
         preLoadOperations();
         FabricImportLoader.FileImportStats sss = (new SIFImportLoader()).importFabric(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, this);
         sss_.copyInto(sss);
-        BuildExtractor.extractRelations(links_, relaMap_, this);     
+        IOFactory.getBuildExtractor().extractRelations(links_, relaMap_, this);     
         return (new Boolean(true));
       } catch (IOException ioe) {
         stashException(ioe);
@@ -2438,7 +2443,7 @@ public class FileLoadFlows {
     private FileLoadFlows flf_;
     private BioFabricWindow bfw_;
     
-    PlugInInfo(FileLoadFlows flf, BioFabricNetwork bfn, BioFabricWindow bfw) {
+    PlugInInfo(FileLoadFlowsImpl flf, BioFabricNetwork bfn, BioFabricWindow bfw) {
       flf_ = flf;
       bfn_ = bfn;
       bfw_ = bfw;

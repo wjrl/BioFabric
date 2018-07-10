@@ -27,9 +27,8 @@ import java.util.ArrayList;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
-import org.systemsbiology.biofabric.io.BuildData;
-import org.systemsbiology.biofabric.io.FabricFactory;
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.ioAPI.PluginWhiteboard;
+import org.systemsbiology.biofabric.modelAPI.Network;
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
@@ -40,6 +39,7 @@ import org.systemsbiology.biofabric.util.AttributeExtractor;
 import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
+
 import org.xml.sax.Attributes;
 
 /****************************************************************************
@@ -114,7 +114,7 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
   ** Install a new network
   */
   
-  public void newNetworkInstalled(BioFabricNetwork bfn) {
+  public void newNetworkInstalled(Network bfn) {
     for (BioFabricToolPlugInCmd cmd : myCmds_) {
       NodeAndLinkCounterCmd nalc = (NodeAndLinkCounterCmd)cmd;
       nalc.setNewNetwork(bfn);
@@ -187,7 +187,7 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
   ** Get XML Reader
   */
  
-  public AbstractFactoryClient getXMLWorker(FabricFactory.FactoryWhiteboard board) {
+  public AbstractFactoryClient getXMLWorker(PluginWhiteboard board) {
     return (new PlugInWorker(board, this));
   }
   
@@ -216,7 +216,7 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
     ** Set new network. In this case, process the network too
     */
     
-    public void setNewNetwork(BioFabricNetwork bfn) {
+    public void setNewNetwork(Network bfn) {
       if (bfn != null) {
         myData_.nodeCount = bfn.getNodeCount();
         myData_.linkCount = bfn.getLinkCount(false);
@@ -282,7 +282,7 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
    
     private NetStatsPlugIn plugin_;
    
-    public PlugInWorker(FabricFactory.FactoryWhiteboard board, NetStatsPlugIn plugin) {
+    public PlugInWorker(PluginWhiteboard board, NetStatsPlugIn plugin) {
       super(board);
       plugin_ = plugin;
       String name = plugin.getClass().getName();
@@ -292,10 +292,10 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
     
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
       Object retval = null;
-      FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard)this.sharedWhiteboard_;
+      PluginWhiteboard board = (PluginWhiteboard)this.sharedWhiteboard_;
       if (myKeys_.contains(elemName)) {
-        board.currPlugIn = plugin_;
-        retval = board.currPlugIn;
+        board.setCurrentPlugIn(plugin_);
+        retval = board.getCurrentPlugIn();
       }
       return (retval);     
     }  
@@ -325,16 +325,16 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
   
   public static class NetStatsWorker extends AbstractFactoryClient {
         
-    public NetStatsWorker(FabricFactory.FactoryWhiteboard board) {
+    public NetStatsWorker(PluginWhiteboard board) {
       super(board);
       myKeys_.add("netStats");
     }
     
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
       Object retval = null;
-      FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard) this.sharedWhiteboard_;
-      board.currPlugInData = buildFromXML(elemName, attrs);
-      retval = board.currPlugInData;
+      PluginWhiteboard board = (PluginWhiteboard)this.sharedWhiteboard_;
+      board.setCurrentPlugInData(buildFromXML(elemName, attrs));
+      retval = board.getCurrentPlugInData();
       return (retval);
     }
     
@@ -358,8 +358,8 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
   
   public static class StatsGlue implements GlueStick {    
     public Object glueKidToParent(Object kidObj, AbstractFactoryClient parentWorker, Object optionalArgs) throws IOException {
-      FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard) optionalArgs;
-      board.currPlugIn.attachXMLData(board.currPlugInData);
+      PluginWhiteboard board = (PluginWhiteboard)optionalArgs;
+      board.getCurrentPlugIn().attachXMLData(board.getCurrentPlugInData());
       return null;
     }
   }  

@@ -29,7 +29,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
 
-import org.systemsbiology.biofabric.io.BuildExtractor;
+import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
+import org.systemsbiology.biofabric.ioAPI.IOFactory;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
@@ -87,8 +88,9 @@ public class AlignmentLoader {
     
     Map<String, NID.WithName> G1nameToNID, G2nameToNID;
     try {
-      G1nameToNID = makeStringMap(BuildExtractor.extractNodes(linksGraph1, loneNodesGraph1, null));
-      G2nameToNID = makeStringMap(BuildExtractor.extractNodes(linksGraph2, loneNodesGraph2, null));
+    	BuildExtractor bex = IOFactory.getBuildExtractor();
+      G1nameToNID = makeStringMap(bex.extractNodes(linksGraph1, loneNodesGraph1, null));
+      G2nameToNID = makeStringMap(bex.extractNodes(linksGraph2, loneNodesGraph2, null));
     } catch (AsynchExitRequestException aere) {
       throw new IllegalStateException();
     }

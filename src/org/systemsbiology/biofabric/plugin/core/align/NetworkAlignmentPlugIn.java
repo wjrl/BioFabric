@@ -35,11 +35,12 @@ import java.util.TreeMap;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
-import org.systemsbiology.biofabric.io.BuildExtractor;
-import org.systemsbiology.biofabric.io.FabricFactory;
-import org.systemsbiology.biofabric.io.FileLoadFlows;
+import org.systemsbiology.biofabric.ioAPI.PluginWhiteboard;
+import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
+import org.systemsbiology.biofabric.ioAPI.IOFactory;
+import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
 import org.systemsbiology.biofabric.io.GWImportLoader;
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.modelAPI.Network;
 import org.systemsbiology.biofabric.modelAPI.AugRelation;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
@@ -130,7 +131,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   ** Install a new network
   */
   
-  public void newNetworkInstalled(BioFabricNetwork bfn) {
+  public void newNetworkInstalled(Network bfn) {
     UiUtil.fixMePrintout("Drop stats if new network is not an alignment");
     for (BioFabricToolPlugInCmd cmd : myCmds_) {
       ((Enabler)cmd).setEnabled(true);
@@ -214,7 +215,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   ** Get XML Reader
   */
  
-  public AbstractFactoryClient getXMLWorker(FabricFactory.FactoryWhiteboard board) {
+  public AbstractFactoryClient getXMLWorker(PluginWhiteboard board) {
     return (new PlugInWorker(board, this));
   }
   
@@ -539,8 +540,9 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
     Set<NID.WithName> nodesA = null, nodesB = null;
     try {
-      nodesA = BuildExtractor.extractNodes(linksGraphA, loneNodeIDsGraphA, null);
-      nodesB = BuildExtractor.extractNodes(linksGraphB, loneNodeIDsGraphB, null);
+    	BuildExtractor bex = IOFactory.getBuildExtractor();
+      nodesA = bex.extractNodes(linksGraphA, loneNodeIDsGraphA, null);
+      nodesB = bex.extractNodes(linksGraphB, loneNodeIDsGraphB, null);
     } catch (AsynchExitRequestException aere) {
       // should never happen
     }
@@ -1045,7 +1047,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
               linksG1_, lonersG1_, linksG2_, lonersG2_, mergedToCorrect_, isAlignedNode_, outType_, idGen_, this);
       
       netAlign.mergeNetworks();
-      BuildExtractor.extractRelations(mergedLinks_, relMap_, this);
+      BuildExtractor bex = IOFactory.getBuildExtractor();
+      bex.extractRelations(mergedLinks_, relMap_, this);
       return (new Boolean(true));
     }
     
@@ -1182,7 +1185,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    
     private NetworkAlignmentPlugIn plugin_;
    
-    public PlugInWorker(FabricFactory.FactoryWhiteboard board, NetworkAlignmentPlugIn plugin) {
+    public PlugInWorker(PluginWhiteboard board, NetworkAlignmentPlugIn plugin) {
       super(board);
       plugin_ = plugin;
       String name = plugin.getClass().getName();
@@ -1192,10 +1195,10 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
       Object retval = null;
-      FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard)this.sharedWhiteboard_;
+      PluginWhiteboard board = (PluginWhiteboard)this.sharedWhiteboard_;
       if (myKeys_.contains(elemName)) {
-        board.currPlugIn = plugin_;
-        retval = board.currPlugIn;
+        board.setCurrentPlugIn(plugin_);
+        retval = board.getCurrentPlugIn();
       }
       return (retval);     
     }  
@@ -1208,7 +1211,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
   public static class NetAlignStatsWorker extends AbstractFactoryClient {
         
-    public NetAlignStatsWorker(FabricFactory.FactoryWhiteboard board) {
+    public NetAlignStatsWorker(PluginWhiteboard board) {
       super(board);
       myKeys_.add("NetAlignStats");
       installWorker(new NetAlignMeasureWorker(board), null);
@@ -1216,17 +1219,17 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
       Object retval = null;
-      FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard) this.sharedWhiteboard_;
-      board.currPlugInData = new NetAlignStats();
-      retval = board.currPlugInData;
+      PluginWhiteboard board = (PluginWhiteboard) this.sharedWhiteboard_;
+      board.setCurrentPlugInData(new NetAlignStats());
+      retval = board.getCurrentPlugInData();
       return (retval);
     }
   }
   
   public static class NetAlignStatsGlue implements GlueStick {    
     public Object glueKidToParent(Object kidObj, AbstractFactoryClient parentWorker, Object optionalArgs) throws IOException {
-      FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard) optionalArgs;
-      board.currPlugIn.attachXMLData(board.currPlugInData);
+      PluginWhiteboard board = (PluginWhiteboard) optionalArgs;
+      board.getCurrentPlugIn().attachXMLData(board.getCurrentPlugInData());
       return null;
     }
   } 
@@ -1238,15 +1241,15 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
   public static class NetAlignMeasureWorker extends AbstractFactoryClient {
         
-    public NetAlignMeasureWorker(FabricFactory.FactoryWhiteboard board) {
+    public NetAlignMeasureWorker(PluginWhiteboard board) {
       super(board);
       myKeys_.add("NetAlignMeasure");
     }
     
     protected Object localProcessElement(String elemName, Attributes attrs) throws IOException {
       Object retval = null;
-      FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard) this.sharedWhiteboard_;    
-      ((NetAlignStats)board.currPlugInData).addAMeasure(buildFromXML(elemName, attrs));
+      PluginWhiteboard board = (PluginWhiteboard) this.sharedWhiteboard_;    
+      ((NetAlignStats)board.getCurrentPlugInData()).addAMeasure(buildFromXML(elemName, attrs));
       return (retval);
     }
     

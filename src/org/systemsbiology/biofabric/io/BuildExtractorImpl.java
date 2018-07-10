@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 
+import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
 import org.systemsbiology.biofabric.modelAPI.AugRelation;
 import org.systemsbiology.biofabric.modelAPI.LinkComparator;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
@@ -41,7 +42,7 @@ import org.systemsbiology.biofabric.worker.LoopReporter;
 ** Methods for extracting info while building networks
 */
 
-public class BuildExtractor {
+public class BuildExtractorImpl implements BuildExtractor {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -54,8 +55,8 @@ public class BuildExtractor {
   ** Extract nodes
   */
   
-  public static Set<NID.WithName> extractNodes(Collection<NetLink> allLinks, Set<NID.WithName> loneNodeIDs,
-                                               BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public Set<NID.WithName> extractNodes(Collection<NetLink> allLinks, Set<NID.WithName> loneNodeIDs,
+                                        BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     Set<NID.WithName> retval = new HashSet<NID.WithName>(loneNodeIDs);
     LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor, 0.0, 1.0, "progress.analyzingNodes");
@@ -73,10 +74,9 @@ public class BuildExtractor {
   ** Extract relations
   */
 
-  public static void extractRelations(List<NetLink> allLinks, 
-  		                                SortedMap<AugRelation, Boolean> relMap, 
-  		                                BTProgressMonitor monitor) 
-  		                                  throws AsynchExitRequestException {
+  public void extractRelations(List<NetLink> allLinks, 
+  		                         SortedMap<AugRelation, Boolean> relMap, 
+  		                         BTProgressMonitor monitor) throws AsynchExitRequestException {
     HashSet<NetLink> flipSet = new HashSet<NetLink>();
     HashSet<AugRelation> flipRels = new HashSet<AugRelation>();
     HashSet<AugRelation> rels = new HashSet<AugRelation>();
@@ -118,7 +118,7 @@ public class BuildExtractor {
   ** Helper to drop to map to single name: useful
   */
 
-  public static Map<String, NID.WithName> reduceNameSetToOne(Map<String, Set<NID.WithName>> mapsToSets) { 
+  public Map<String, NID.WithName> reduceNameSetToOne(Map<String, Set<NID.WithName>> mapsToSets) { 
   	HashMap<String, NID.WithName> retval = new HashMap<String, NID.WithName>();
     Iterator<String> alit = mapsToSets.keySet().iterator();
     while (alit.hasNext()) {
@@ -138,9 +138,9 @@ public class BuildExtractor {
   ** Process a link set that has not had directionality established
   */
 
-  public static void assignDirections(List<NetLink> allLinks, 
-  		                                Map<AugRelation, Boolean> relMap,
-  		                                BTProgressMonitor monitor) throws AsynchExitRequestException { 
+  public void assignDirections(List<NetLink> allLinks, 
+  		                         Map<AugRelation, Boolean> relMap,
+  		                         BTProgressMonitor monitor) throws AsynchExitRequestException { 
      
 	  int numLink = allLinks.size();
 	  LoopReporter lr = new LoopReporter(numLink, 20, monitor, 0.0, 1.0, "progress.installDirections");
@@ -163,8 +163,8 @@ public class BuildExtractor {
   ** and added to the allLinks list. 
   */
 
-  public static void preprocessLinks(List<NetLink> allLinks, Set<NetLink> retval, Set<NetLink> culled,
-  		                               BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public void preprocessLinks(List<NetLink> allLinks, Set<NetLink> retval, Set<NetLink> culled,
+  		                        BTProgressMonitor monitor) throws AsynchExitRequestException {
   	LinkComparator flc = new LinkComparator();
   	int numLink = allLinks.size();
 	  LoopReporter lr = new LoopReporter(numLink, 20, monitor, 0.0, 1.0, "progress.cullingAndFlipping");

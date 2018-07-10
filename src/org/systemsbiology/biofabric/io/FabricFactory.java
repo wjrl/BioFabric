@@ -28,6 +28,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import org.xml.sax.Attributes;
+
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.parser.ParserClient;
@@ -37,6 +38,7 @@ import org.systemsbiology.biofabric.plugin.PlugInManager;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.NamedColor;
+import org.systemsbiology.biofabric.ioAPI.PluginWhiteboard;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
 
@@ -183,7 +185,7 @@ public class FabricFactory implements ParserClient {
     return (null);
   }
 
-  public static class FactoryWhiteboard {
+  public static class FactoryWhiteboard implements PluginWhiteboard {
   	public UniqueLabeller ulb;
     public BioFabricNetwork bfn;
     public BioFabricNetwork.LinkInfo linkInfo;
@@ -199,9 +201,28 @@ public class FabricFactory implements ParserClient {
   	public AnnotationSet.Annot annot;
   	public AnnotationSet currAnnots;
   	
-  	public BioFabricToolPlugIn currPlugIn;
-  	public BioFabricToolPlugInData currPlugInData;
-    
+  	public BioFabricToolPlugIn currPlugIn_;
+  	public BioFabricToolPlugInData currPlugInData_;
+  	
+	
+  	public BioFabricToolPlugIn getCurrentPlugIn() {
+  		return (currPlugIn_);
+  	}
+  	
+  	public void setCurrentPlugIn(BioFabricToolPlugIn pi) {
+  		currPlugIn_ = pi;
+  		return;
+  	}
+  	
+  	public BioFabricToolPlugInData getCurrentPlugInData() {
+  	  return (currPlugInData_);
+  	}
+  	
+  	public void setCurrentPlugInData(BioFabricToolPlugInData pid) {
+  		currPlugInData_ = pid;
+  		return;
+  	}
+  	
     public FactoryWhiteboard() {
       colTarg = FabricColorGenerator.UNCHANGED;
       ulb = new UniqueLabeller();
