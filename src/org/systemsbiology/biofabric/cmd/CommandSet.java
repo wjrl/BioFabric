@@ -78,8 +78,9 @@ import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.event.SelectionChangeListener;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.BuildData;
-import org.systemsbiology.biofabric.io.BuildExtractor;
-import org.systemsbiology.biofabric.io.FileLoadFlows;
+import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
+import org.systemsbiology.biofabric.io.FileLoadFlowsImpl;
+import org.systemsbiology.biofabric.ioAPI.IOFactory;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
@@ -217,7 +218,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   private HashMap<Integer, ChecksForEnabled> noIcons_;
   private HashMap<String, ChecksForEnabled> plugInCmds_;
   private FabricColorGenerator colGen_;
-  private FileLoadFlows flf_;
+  private FileLoadFlowsImpl flf_;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -731,7 +732,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     colGen_.newColorModel();
     isForMain_ = isMain;
     pMan_ = pMan;
-    flf_ = new FileLoadFlows(bfw_, pMan_, colGen_, this, headlessOracle, isMain);
+    flf_ = new FileLoadFlowsImpl(bfw_, pMan_, colGen_, this, headlessOracle, isMain);
     isAMac_ = System.getProperty("os.name").toLowerCase().startsWith("mac os x");
     FabricDisplayOptionsManager.getMgr().addTracker(this);
     EventManager mgr = EventManager.getManager();
@@ -2261,7 +2262,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       ArrayList<NetLink> links = new ArrayList<NetLink>(bfn.getAllLinks(true));
       TreeMap<AugRelation, Boolean> relMap = new TreeMap<AugRelation, Boolean>();
       try {
-        BuildExtractor.extractRelations(links, relMap, null);
+        IOFactory.getBuildExtractor().extractRelations(links, relMap, null);
       } catch (AsynchExitRequestException aerx) {
       	// Should not happen...
       }

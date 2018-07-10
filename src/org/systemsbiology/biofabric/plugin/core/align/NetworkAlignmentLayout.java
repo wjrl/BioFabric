@@ -35,7 +35,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.io.BuildData;
-import org.systemsbiology.biofabric.io.BuildExtractor;
+import org.systemsbiology.biofabric.ioAPI.IOFactory;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
@@ -179,7 +179,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       classToGroup.put(i, new ArrayList<NID.WithName>());
     }
     // fill the master list with nodes
-    Set<NID.WithName> allNodes = BuildExtractor.extractNodes(nabd.allLinks, nabd.loneNodeIDs, monitor);
+    Set<NID.WithName> allNodes = IOFactory.getBuildExtractor().extractNodes(nabd.allLinks, nabd.loneNodeIDs, monitor);
     for (NID.WithName node : allNodes) {
       int nodeClass = grouper.getIndex(node);
       classToGroup.get(nodeClass).add(node);

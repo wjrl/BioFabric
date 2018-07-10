@@ -21,7 +21,7 @@ package org.systemsbiology.biofabric.plugin;
 
 import javax.swing.JFrame;
 
-import org.systemsbiology.biofabric.io.FileLoadFlows;
+import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
 import org.systemsbiology.biofabric.worker.BackgroundWorkerControlManager;
 
 /****************************************************************************
