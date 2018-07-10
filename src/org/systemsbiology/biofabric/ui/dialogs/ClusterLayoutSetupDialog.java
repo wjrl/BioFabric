@@ -37,8 +37,8 @@ import javax.swing.JTextField;
 
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.io.AttributeLoader;
-import org.systemsbiology.biofabric.io.BuildExtractor;
-import org.systemsbiology.biofabric.io.FileLoadFlows;
+import org.systemsbiology.biofabric.ioAPI.IOFactory;
+import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
@@ -206,7 +206,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
     if ((selName != null) && !selName.trim().equals("")) {
     	String cand = selName.trim();
     	Map<String, Set<NID.WithName>> nn2ids = bfn_.getNormNameToIDs();
-      Map<String, NID.WithName> nn2id = BuildExtractor.reduceNameSetToOne(nn2ids);
+      Map<String, NID.WithName> nn2id = IOFactory.getBuildExtractor().reduceNameSetToOne(nn2ids);
       NID.WithName nidCand = nn2id.get(DataUtil.normKey(cand));
     	if (bfn_.getNodeDefinition(nidCand) == null) {
         ResourceManager rMan = ResourceManager.getManager();
@@ -310,7 +310,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
       return (false);
     }
     Map<String, Set<NID.WithName>> nn2ids = bfn.getNormNameToIDs();
-    Map<String, NID.WithName> nn2id = BuildExtractor.reduceNameSetToOne(nn2ids);
+    Map<String, NID.WithName> nn2id = IOFactory.getBuildExtractor().reduceNameSetToOne(nn2ids);
     params.install(nodeAttributes, nn2id);
     return (true);
   }

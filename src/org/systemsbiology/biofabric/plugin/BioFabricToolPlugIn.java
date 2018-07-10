@@ -21,9 +21,8 @@ package org.systemsbiology.biofabric.plugin;
 
 import java.io.PrintWriter;
 
-import org.systemsbiology.biofabric.io.BuildData;
-import org.systemsbiology.biofabric.io.FabricFactory;
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.ioAPI.PluginWhiteboard;
+import org.systemsbiology.biofabric.modelAPI.Network;
 import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.util.Indenter;
 
@@ -87,7 +86,7 @@ public interface BioFabricToolPlugIn {
   ** Get XML Reader
   */
  
-  public AbstractFactoryClient getXMLWorker(FabricFactory.FactoryWhiteboard board);
+  public AbstractFactoryClient getXMLWorker(PluginWhiteboard board);
   
   /***************************************************************************
   **
@@ -101,7 +100,7 @@ public interface BioFabricToolPlugIn {
   ** Install a new network
   */
   
-  public void newNetworkInstalled(BioFabricNetwork bfn);
+  public void newNetworkInstalled(Network bfn);
   
   /***************************************************************************
   **
