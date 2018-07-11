@@ -17,41 +17,39 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.layoutAPI;
+package org.systemsbiology.biofabric.workerAPI;
 
-import org.systemsbiology.biofabric.io.BuildData;
-import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
-import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
+import javax.swing.JFrame;
+
+import org.systemsbiology.biofabric.worker.BackgroundWorker;
+import org.systemsbiology.biofabric.worker.BackgroundWorkerClient;
+import org.systemsbiology.biofabric.worker.WorkerClientBundle;
 
 /****************************************************************************
 **
-** This is the interface for edge layout algorithms
+** Factory for returning API Implementations
 */
 
-public interface EdgeLayout {
-
-	////////////////////////////////////////////////////////////////////////////
+public class WorkerFactory {
+  
+  ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-   
-  /***************************************************************************
-  **
-  ** Relayout the whole network!
-  */
-  
-  public void layoutEdges(BuildData.RelayoutBuildData rbd, 
-  		                    BTProgressMonitor monitor) throws AsynchExitRequestException;
-  
   
   /***************************************************************************
   **
-  ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
+  ** Get a BFWorker
   */
   
-  public void preProcessEdges(BuildData.RelayoutBuildData rbd, 
-  		                        BTProgressMonitor monitor) throws AsynchExitRequestException;
-   
-
+  public static BFWorker getBFWorker(BackgroundWorkerOwner owner,
+                                     JFrame topWindow, BackgroundWorkerControlManager suw, String waitTitle, 
+                                     String waitMsg, boolean allowCancels) {
+  	
+  	BackgroundWorker bw = new BackgroundWorker();
+    BackgroundWorkerClient bwc = new BackgroundWorkerClient(owner, bw, topWindow, suw, waitTitle, waitMsg, allowCancels);
+  	return (new WorkerClientBundle(bw, bwc));
+  }
+  
 }
