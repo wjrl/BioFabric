@@ -118,7 +118,7 @@ import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
-import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 /****************************************************************************
@@ -347,6 +347,13 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       bfp_.repaint();
       return;
     }
+    
+    // No model? Nothing to do...
+    // Fix for issue #89
+    if (!bfp_.hasAModel()) {
+    	return;
+    }
+    
     
     if (needRecolor && !needRebuild) {  
       flf_.doRecolor(isForMain_);

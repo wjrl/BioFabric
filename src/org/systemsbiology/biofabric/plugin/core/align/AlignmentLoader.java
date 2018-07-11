@@ -34,7 +34,7 @@ import org.systemsbiology.biofabric.ioAPI.IOFactory;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
-import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 
 import java.io.BufferedReader;
 import java.io.File;
