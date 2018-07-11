@@ -102,7 +102,7 @@ public interface FileLoadFlows {
   
   /***************************************************************************
   **
-  ** Second step for loading from SIF
+  ** Second step for loading from SIF (and GW)
   */
     
   public boolean handleDirectionsDupsAndShadows(List<NetLink> links, Set<NID.WithName> loneNodeIDs, 
@@ -117,6 +117,14 @@ public interface FileLoadFlows {
   public boolean loadFromASource(File file, ArrayList<NetLink> links,
                                  HashSet<NID.WithName> loneNodes, Integer magBins,
                                  UniqueLabeller idGen, boolean loadOnly, FileLoadType type);
+  
+  /***************************************************************************
+   **
+   ** Common load operation for gw or sif
+   */
+  
+  public boolean loadFromASource(File file, Map<AttributeLoader.AttributeKey, String> nameMap,
+                                 Integer magBins, UniqueLabeller idGen, FileLoadType type);
   
   /***************************************************************************
   **
