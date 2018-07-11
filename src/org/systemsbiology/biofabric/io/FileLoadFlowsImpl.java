@@ -90,12 +90,15 @@ import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
-import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
-import org.systemsbiology.biofabric.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.worker.BackgroundWorker;
 import org.systemsbiology.biofabric.worker.BackgroundWorkerClient;
-import org.systemsbiology.biofabric.worker.BackgroundWorkerControlManager;
-import org.systemsbiology.biofabric.worker.BackgroundWorkerOwner;
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
+import org.systemsbiology.biofabric.workerAPI.BFWorker;
+import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
+import org.systemsbiology.biofabric.workerAPI.BackgroundCore;
+import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
+import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerOwner;
+import org.systemsbiology.biofabric.workerAPI.WorkerFactory;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 /****************************************************************************
@@ -1321,11 +1324,10 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       finished_ = true;
       forRecovery_ = false;
       try {
-        SIFReaderRunner runner = new SIFReaderRunner(file, idGen, links, loneNodeIDs, nameMap, sss, magBins, relMap, holdIt_);                                                        
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
-                                                                 "fileLoad.waitTitle", "fileLoad.wait", true);
-        runner.setClient(bwc);
-        bwc.launchWorker();         
+        BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true);
+        SIFReaderRunner runner = new SIFReaderRunner(file, idGen, links, loneNodeIDs, nameMap, sss, magBins, relMap, holdIt_, bfw);                                                        
+        bfw.setCore(runner);
+        bfw.launchWorker();       
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -1341,12 +1343,10 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       finished_ = true;
       forRecovery_ = false;
       try {
-        GWReaderRunner runner = new GWReaderRunner(file, idGen, links, loneNodeIDs, nameMap, gws, magBins, relMap, holdIt_);
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_,
-                "fileLoad.waitTitle", "fileLoad.wait", true);
-        
-        runner.setClient(bwc);
-        bwc.launchWorker();
+        BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true);
+        GWReaderRunner runner = new GWReaderRunner(file, idGen, links, loneNodeIDs, nameMap, gws, magBins, relMap, holdIt_, bfw);                                                      
+        bfw.setCore(runner);
+        bfw.launchWorker();       
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -1358,11 +1358,10 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       finished_ = true;
       forRecovery_ = (holdIt == null);
       try {
-        ReaderRunner runner = new ReaderRunner(sup, file, compressed, holdIt_);                                                                  
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
-                                                                 "fileLoad.waitTitle", "fileLoad.wait", true);
-        runner.setClient(bwc);
-        bwc.launchWorker();         
+      	BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true);
+        ReaderRunner runner = new ReaderRunner(sup, file, compressed, holdIt_, bfw);                                                      
+        bfw.setCore(runner);
+        bfw.launchWorker(); 
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -1408,23 +1407,31 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Background file load
   */ 
     
-  private class ReaderRunner extends BackgroundWorker {
+  private class ReaderRunner implements BackgroundCore {
    
     private File myFile_;
     private SUParser myParser_;
     private boolean compressed_;
     private File holdIt_;
+    private BFWorker bfwk_;
     
-    public ReaderRunner(SUParser sup, File file, boolean compressed, File holdIt) {
-      super(new Boolean(false));
+    public ReaderRunner(SUParser sup, File file, boolean compressed, File holdIt, BFWorker bfwk) {
+
+    	bfwk_ = bfwk;
       myFile_ = file;
       myParser_ = sup;
       compressed_ = compressed;
       holdIt_ = holdIt;
-    }  
+    }
+    
+     public Object getEarlyResult() {
+    	 return (new Boolean(false));
+     }
+ 
     public Object runCore() throws AsynchExitRequestException {
+    	BTProgressMonitor monitor = bfwk_.getMonitor();
       if ((holdIt_ != null) && (holdIt_.length() == 0)) {
-        buildRestoreCache(holdIt_, this);
+        buildRestoreCache(holdIt_, monitor);
       }
       ProgressFilterInputStream pfis = null;
       try {
@@ -1437,10 +1444,10 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
           bis = new BufferedInputStream(new FileInputStream(myFile_));
         } 
         pfis = new ProgressFilterInputStream(bis, fileLen);   
-        myParser_.parse(pfis, this, compressed_);
+        myParser_.parse(pfis, monitor, compressed_);
         return (new Boolean(true));
       } catch (IOException ioe) {
-        stashException(ioe);
+        bfwk_.stashException(ioe);
         return (null);
       } finally {
         if (pfis != null) { try { pfis.close(); } catch (IOException ioe) {} }
@@ -1471,11 +1478,10 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       holdIt_ = holdIt;
       finished_ = true;
       try {
-        PreprocessRunner runner = new PreprocessRunner(links, relaMap, reducedLinks, culledLinks, holdIt_);                                                            
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
-                                                                 "netPreprocess.waitTitle", "netPreprocess.wait", true);
-        runner.setClient(bwc);
-        bwc.launchWorker();         
+        BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "netPreprocess.waitTitle", "netPreprocess.wait", true);
+        PreprocessRunner runner = new PreprocessRunner(links, relaMap, reducedLinks, culledLinks, holdIt_, bfw);                                                        
+        bfw.setCore(runner);
+        bfw.launchWorker();  
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -1511,18 +1517,20 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** followed by (maybe) telling the user what is dropped.
   */ 
     
-  private class PreprocessRunner extends BackgroundWorker {
+  private class PreprocessRunner implements BackgroundCore {
    
     private List<NetLink> links_; 
     private SortedMap<AugRelation, Boolean> relaMap_;
     private Set<NetLink> reducedLinks_; 
     private Set<NetLink> culledLinks_;
     private File holdIt_;
-    
+    private BFWorker bfwk_; 
     
     PreprocessRunner(List<NetLink> links, SortedMap<AugRelation, Boolean> relaMap,
-                     Set<NetLink> reducedLinks, Set<NetLink> culledLinks, File holdIt) {
-      super(new Boolean(false));
+                     Set<NetLink> reducedLinks, Set<NetLink> culledLinks, File holdIt, BFWorker bfwk) {
+     
+      
+      bfwk_ = bfwk;
       links_ = links;
       relaMap_ = relaMap;
       reducedLinks_ = reducedLinks;
@@ -1530,11 +1538,16 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       holdIt_ = holdIt;
     }
     
+    public Object getEarlyResult() {
+    	return (new Boolean(false));
+    }
+    
     public Object runCore() throws AsynchExitRequestException {
+    	BTProgressMonitor monitor = bfwk_.getMonitor();
       if (holdIt_.length() == 0) {
-        buildRestoreCache(holdIt_, this);
+        buildRestoreCache(holdIt_, monitor);
       }
-      preprocess(links_, relaMap_, reducedLinks_, culledLinks_, this);
+      preprocess(links_, relaMap_, reducedLinks_, culledLinks_, monitor);
       return (new Boolean(true));  
     }
     
@@ -1554,25 +1567,25 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private File file_;
 
     public void doBackgroundWrite(File file) {
-    	file_ = file; 
-    	WriterRunner runner = new WriterRunner(file);
-    	doWrite(runner);
+    	file_ = file;
+      try { 
+      	BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "fileWrite.waitTitle", "fileWrite.wait", true);
+    	  WriterRunner runner = new WriterRunner(file, bfw);
+        bfw.setCore(runner);
+        bfw.launchWorker();       
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }
     	return;
     }
     
     public void doBackgroundWrite(OutputStream stream) {
     	file_ = null;
-      WriterRunner runner = new WriterRunner(stream);
-      doWrite(runner);
-      return;
-    }
-    
-    private void doWrite(WriterRunner runner) {
+    	BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "fileWrite.waitTitle", "fileWrite.wait", true);
+      WriterRunner runner = new WriterRunner(stream, bfw);
       try {                                                                
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
-                                                                 "fileWrite.waitTitle", "fileWrite.wait", true);
-        runner.setClient(bwc);
-        bwc.launchWorker();         
+        bfw.setCore(runner);
+        bfw.launchWorker();       
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -1621,7 +1634,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
    ** occurs in subsequent steps.
    */
   
-  private class GWReaderRunner extends BackgroundWorker {
+  private class GWReaderRunner implements BackgroundCore {
   
     private File myFile_;
     private List<NetLink> links_;
@@ -1632,13 +1645,15 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private Integer magBins_;
     private SortedMap<AugRelation, Boolean> relaMap_;
     private File restoreCacheFile_;
+    private BFWorker bfwk_;
     
     public GWReaderRunner(File file, UniqueLabeller idGen, List<NetLink> links,
                           Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap,
                           FabricImportLoader.FileImportStats gws,
                           Integer magBins, SortedMap<AugRelation, Boolean> relaMap,
-                          File restoreCacheFile) {
-      super(new Boolean(false));
+                          File restoreCacheFile, BFWorker bfwk) {
+     
+      bfwk_ = bfwk;
       myFile_ = file;
       links_ = links;
       loneNodeIDs_ = loneNodeIDs;
@@ -1650,20 +1665,26 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       restoreCacheFile_ = restoreCacheFile;
     }
   
+    public Object getEarlyResult() {
+    	return (new Boolean(false));
+    }
+    
+    
     public Object runCore() throws AsynchExitRequestException {
+    	BTProgressMonitor monitor = bfwk_.getMonitor();
       try {
         if (restoreCacheFile_.length() == 0) {
-          buildRestoreCache(restoreCacheFile_, this);
+          buildRestoreCache(restoreCacheFile_, monitor);
         }
         preLoadOperations();
-        FabricImportLoader.FileImportStats sss = (new GWImportLoader()).importFabric(myFile_, idGen_, links_,
-                        loneNodeIDs_, nameMap_, magBins_, this);
+        FabricImportLoader.FileImportStats sss = 
+        		(new GWImportLoader()).importFabric(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, monitor);
         sss_.copyInto(sss);
-        IOFactory.getBuildExtractor().extractRelations(links_, relaMap_, this);
+        IOFactory.getBuildExtractor().extractRelations(links_, relaMap_, monitor);
         
         return (new Boolean(true));
       } catch (IOException ioe) {
-        stashException(ioe);
+        bfwk_.stashException(ioe);
         return (null);
       }
     }
@@ -1679,7 +1700,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** occurs in subsequent steps.
   */ 
     
-  private class SIFReaderRunner extends BackgroundWorker {
+  private class SIFReaderRunner implements BackgroundCore {
    
     private File myFile_;
     private List<NetLink> links_;
@@ -1690,13 +1711,15 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private Integer magBins_;
     private SortedMap<AugRelation, Boolean> relaMap_;
     private File restoreCacheFile_;
+    private BFWorker bfwk_;
     
     public SIFReaderRunner(File file, UniqueLabeller idGen, List<NetLink> links, 
     		                   Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, 
     		                   FabricImportLoader.FileImportStats sss,
     		                   Integer magBins, SortedMap<AugRelation, Boolean> relaMap,
-    		                   File restoreCacheFile) {
-      super(new Boolean(false));
+    		                   File restoreCacheFile, BFWorker bfwk) {
+      
+    	bfwk_ = bfwk;
       myFile_ = file;
       links_ = links;
       loneNodeIDs_ = loneNodeIDs;
@@ -1708,18 +1731,24 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       restoreCacheFile_ = restoreCacheFile;
     }
     
+    public Object getEarlyResult() {
+    	return (new Boolean(false));
+    }
+    
     public Object runCore() throws AsynchExitRequestException {
       try {
+      	BTProgressMonitor monitor = bfwk_.getMonitor();
       	if (restoreCacheFile_.length() == 0) {
-          buildRestoreCache(restoreCacheFile_, this);
+          buildRestoreCache(restoreCacheFile_, monitor);
       	}
         preLoadOperations();
-        FabricImportLoader.FileImportStats sss = (new SIFImportLoader()).importFabric(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, this);
+        FabricImportLoader.FileImportStats sss = 
+          (new SIFImportLoader()).importFabric(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, monitor);
         sss_.copyInto(sss);
-        IOFactory.getBuildExtractor().extractRelations(links_, relaMap_, this);     
+        IOFactory.getBuildExtractor().extractRelations(links_, relaMap_, monitor);     
         return (new Boolean(true));
       } catch (IOException ioe) {
-        stashException(ioe);
+        bfwk_.stashException(ioe);
         return (null);
       }
     } 
@@ -1733,28 +1762,33 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Background file write
   */ 
     
-  private class WriterRunner extends BackgroundWorker {
+  private class WriterRunner implements BackgroundCore {
    
     private File myFile_;
     private OutputStream myStream_;
+    private BFWorker bfwk_;
     
-    public WriterRunner(File file) {
-      super(new Boolean(false));
+    public WriterRunner(File file, BFWorker bfwk) {
       myFile_ = file;
       myStream_ = null;
+      bfwk_ = bfwk;
     }
-    public WriterRunner(OutputStream stream) {
-      super(new Boolean(false));
+    public WriterRunner(OutputStream stream, BFWorker bfwk) {
       myStream_ = stream;
       myFile_ = null;
+      bfwk_ = bfwk;
     }
      
+    public Object getEarlyResult() {
+    	return (new Boolean(false));
+    }
+
     public Object runCore() throws AsynchExitRequestException {
       try {
-        saveToOutputStream((myStream_ == null) ? new FileOutputStream(myFile_) : myStream_, false, this);
+        saveToOutputStream((myStream_ == null) ? new FileOutputStream(myFile_) : myStream_, false, bfwk_.getMonitor());
         return (new Boolean(true));
       } catch (IOException ioe) {
-        stashException(ioe);
+        bfwk_.stashException(ioe);
         return (null);
       }
     } 
@@ -1821,9 +1855,11 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private NewNetworkRunner runner_;
     private boolean finished_;
     private File holdIt_;  // For recovery
+    private BFWorker bfwk_;
     
     NetworkBuilder(boolean isMain, File holdIt) {
-      runner_ = new NewNetworkRunner(isMain, holdIt);
+    	bfwk_ = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "netBuild.waitTitle", "netBuild.wait", true); 
+      runner_ = new NewNetworkRunner(isMain, holdIt, bfwk_);
       holdIt_ = holdIt;
     }
     
@@ -1866,11 +1902,9 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
 
     public boolean doNetworkBuild() {
       finished_ = true;
-      try {
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner_, topWindow_, bfw_, 
-                                                                "netBuild.waitTitle", "netBuild.wait", true);
-        runner_.setClient(bwc);
-        bwc.launchWorker();         
+      try {                                                
+        bfwk_.setCore(runner_);
+        bfwk_.launchWorker();      
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -1915,7 +1949,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Build New Network
   */ 
     
-  private class NewNetworkRunner extends BackgroundWorker {
+  private class NewNetworkRunner implements BackgroundCore {
  
     private boolean forMain_;
     private UniqueLabeller idGen_;
@@ -1926,11 +1960,17 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private File holdIt_;
     private long linkCount_;
     private BuildData.RelayoutBuildData plugInBuildData_;
+    private BFWorker bfwk_;
+    
 
-    public NewNetworkRunner(boolean forMain, File holdIt) {
-      super(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB));      
+    public NewNetworkRunner(boolean forMain, File holdIt, BFWorker bfwk) { 
       forMain_ = forMain;
       holdIt_ = holdIt;
+      bfwk_ = bfwk;
+    }
+     
+    public Object getEarlyResult(){
+    	return (new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB));      
     }
     
     void setBuildDataForSIF(UniqueLabeller idGen, Set<NetLink> links, Set<NID.WithName> loneNodeIDs,
@@ -1981,21 +2021,24 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
 
     public Object runCore() throws AsynchExitRequestException {
       try {
+      	BTProgressMonitor monitor = bfwk_.getMonitor();
         if ((holdIt_ != null) && (holdIt_.length() == 0)) {
-          buildRestoreCache(holdIt_, this);
+          buildRestoreCache(holdIt_, monitor);
         }   
         BuildData bd = generateBuildData();
         preLoadOperations();
-        // This can be run on foreground thread (for headless operation: shut up progress monitor
+        // This can be run on foreground thread (for headless operation): shut up progress monitor
         // if that is the case:
-        BTProgressMonitor monitor = (headlessOracle_ != null) ? null : this;
+        if (headlessOracle_ != null) {
+        	monitor = null;
+        }
         BufferedImage bi = expensiveModelOperations(bd, forMain_, monitor);
         if (linkCount_ > 10000) {
-          (new GarbageRequester()).askForGC(this);
+          (new GarbageRequester()).askForGC(monitor);
         }
         return (bi);
       } catch (IOException ex) {
-        stashException(ex);
+        bfwk_.stashException(ex);
         return (null);
       }
     }
@@ -2014,9 +2057,12 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
      
     private File holdIt_;
     NetworkRelayoutRunner runner_;
+    private BFWorker bfwk_;
       
     public NetworkRelayout() {
-      runner_ = new NetworkRelayoutRunner();             
+    	bfwk_ = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "netRelayout.waitTitle", "netRelayout.wait", true);
+      runner_ = new NetworkRelayoutRunner(bfwk_); 
+      bfwk_.setCore(runner_);
     }
     
     public void setGroupOrderAndMode(List<String> groupOrder, BioFabricNetwork.LayoutMode mode, 
@@ -2055,14 +2101,11 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       try {
         holdIt_ = File.createTempFile("BioFabricHold", ".zip");
         holdIt_.deleteOnExit();
-        runner_.setNetworkAndMode(holdIt_, bfn, bMode);                                                                  
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner_, topWindow_, bfw_, 
-                                                                "netRelayout.waitTitle", "netRelayout.wait", true);
+        runner_.setNetworkAndMode(holdIt_, bfn, bMode); 
         if (bMode == BuildData.BuildMode.REORDER_LAYOUT) {
-          bwc.makeSuperChart();
+          bfwk_.makeSuperChart();
         }
-        runner_.setClient(bwc);
-        bwc.launchWorker();         
+        bfwk_.launchWorker();         
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -2120,7 +2163,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Background network layout
   */ 
     
-  private class NetworkRelayoutRunner extends BackgroundWorker {
+  private class NetworkRelayoutRunner implements BackgroundCore {
  
     private BuildData.RelayoutBuildData rbd_;
     private BuildData.BuildMode mode_;
@@ -2136,11 +2179,16 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private ControlTopLayout.TargMode tMode_; 
     private List<String> fixedList_;
     private boolean showLinkGroupAnnotations_;
+    private BFWorker bfwk_;
   
-    NetworkRelayoutRunner() {
-      super(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)); 
+    NetworkRelayoutRunner(BFWorker bfwk) {
+      bfwk_ = bfwk;
     }
     
+    public Object getEarlyResult() {
+    	return (new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)); 
+    }
+
     void setNetworkAndMode(File holdIt, BioFabricNetwork bfn, BuildData.BuildMode bMode) {
       holdIt_ = holdIt;
       bfn_ = bfn;
@@ -2185,10 +2233,11 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     }
  
     public Object runCore() throws AsynchExitRequestException {
+    	BTProgressMonitor monitor = bfwk_.getMonitor(); 
       if ((holdIt_ != null) && (holdIt_.length() == 0)) {
-        buildRestoreCache(holdIt_, this);
+        buildRestoreCache(holdIt_, monitor);
       }
-      rbd_ = new BuildData.RelayoutBuildData(bfn_, mode_, this);
+      rbd_ = new BuildData.RelayoutBuildData(bfn_, mode_, monitor);
       if (nodeAttrib_ != null) {
         rbd_.setNodeOrderFromAttrib(nodeAttrib_);   
       } else if ((groupOrder_ != null) && (layMode_ != null)) {
@@ -2205,25 +2254,25 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       try {
        if (rbd_.needsLayoutForRelayout()) {
           NodeLayout nl = rbd_.getNodeLayout();
-          boolean nlok = nl.criteriaMet(rbd_, this);
+          boolean nlok = nl.criteriaMet(rbd_, monitor);
           if (!nlok) {
             throw new IllegalStateException(); // Should not happen, failure throws exception
           }
-          nl.doNodeLayout(rbd_, params_, this);
+          nl.doNodeLayout(rbd_, params_, monitor);
           // Some "Node" layouts do the whole ball of wax, don't need this step:
           EdgeLayout el = rbd_.getEdgeLayout();
           if (el != null) {
-            el.layoutEdges(rbd_, this);
+            el.layoutEdges(rbd_, monitor);
           }
         }
-        BufferedImage bi = expensiveModelOperations(rbd_, true, this);
-        (new GarbageRequester()).askForGC(this);
+        BufferedImage bi = expensiveModelOperations(rbd_, true, monitor);
+        (new GarbageRequester()).askForGC(monitor);
         return (bi);
       } catch (IOException ex) {
-        stashException(ex);
+        bfwk_.stashException(ex);
         return (null);
       } catch (LayoutCriterionFailureException ex) {
-        stashException(ex);
+        bfwk_.stashException(ex);
         return (null);
       }
     }
@@ -2246,11 +2295,10 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       try {
         holdIt_ = holdIt;
         bfp_.shutdown();
-        RecolorNetworkRunner runner = new RecolorNetworkRunner(isMain, holdIt_);                                                                  
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
-                                                                 "netRecolor.waitTitle", "netRecolor.wait", true);
-        runner.setClient(bwc);
-        bwc.launchWorker();         
+        BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "netRecolor.waitTitle", "netRecolor.wait", true);
+        RecolorNetworkRunner runner = new RecolorNetworkRunner(isMain, holdIt_, bfw);                                                              
+        bfw.setCore(runner);
+        bfw.launchWorker();      
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -2290,25 +2338,31 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Background network recolor
   */ 
     
-  private class RecolorNetworkRunner extends BackgroundWorker {
+  private class RecolorNetworkRunner implements BackgroundCore {
  
     private boolean forMain_;
     private File holdIt_;
+    private BFWorker bfwk_;
     
-    public RecolorNetworkRunner(boolean forMain, File holdIt) {
-      super(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)); 
+    public RecolorNetworkRunner(boolean forMain, File holdIt, BFWorker bfwk) {
+      bfwk_ = bfwk;
       holdIt_ = holdIt;
       forMain_ = forMain;
     }
     
+    public Object getEarlyResult() {
+    	return (new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)); 
+    }
+    
     public Object runCore() throws AsynchExitRequestException {
-      try {       
-        buildRestoreCache(holdIt_, this); 
-        BufferedImage bi = expensiveRecolorOperations(forMain_, this);
-        (new GarbageRequester()).askForGC(this);
+      try { 
+      	BTProgressMonitor monitor = bfwk_.getMonitor();
+        buildRestoreCache(holdIt_, monitor); 
+        BufferedImage bi = expensiveRecolorOperations(forMain_, monitor);
+        (new GarbageRequester()).askForGC(monitor);
         return (bi);
       } catch (IOException ex) {
-        stashException(ex);
+        bfwk_.stashException(ex);
         return (null);
       }
     }

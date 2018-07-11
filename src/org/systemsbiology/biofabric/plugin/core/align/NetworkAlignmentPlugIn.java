@@ -57,11 +57,13 @@ import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
-import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
-import org.systemsbiology.biofabric.worker.BackgroundWorker;
-import org.systemsbiology.biofabric.worker.BackgroundWorkerClient;
-import org.systemsbiology.biofabric.worker.BackgroundWorkerControlManager;
-import org.systemsbiology.biofabric.worker.BackgroundWorkerOwner;
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
+import org.systemsbiology.biofabric.workerAPI.BFWorker;
+import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
+import org.systemsbiology.biofabric.workerAPI.BackgroundCore;
+import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
+import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerOwner;
+import org.systemsbiology.biofabric.workerAPI.WorkerFactory;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 import org.xml.sax.Attributes;
@@ -964,15 +966,13 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
                                    NetworkAlignmentBuildData.ViewType outType, UniqueLabeller idGen, File holdIt) {
       finished_= true;
       holdIt_ = holdIt;
-      try {
+      try {    	
+      	BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bwcm_, "fileLoad.waitTitle", "fileLoad.wait", true);
         NetworkAlignmentRunner runner = new NetworkAlignmentRunner(mergedLinks, mergedLoneNodeIDs, mapG1toG2, perfectG1toG2,
-                mergedToCorrect, isAlignedNode, linksG1, lonersG1, linksG2, lonersG2, relMap, outType, idGen);
-        
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bwcm_,
-                "fileLoad.waitTitle", "fileLoad.wait", true);
-        
-        runner.setClient(bwc);
-        bwc.launchWorker();
+                                                                   mergedToCorrect, isAlignedNode, linksG1, lonersG1, linksG2, 
+                                                                   lonersG2, relMap, outType, idGen, bfw);
+        bfw.setCore(runner);
+        bfw.launchWorker();
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -1003,7 +1003,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    ** Background network alignment processing
    */
   
-  private class NetworkAlignmentRunner extends BackgroundWorker {
+  private class NetworkAlignmentRunner implements BackgroundCore {
     
     private ArrayList<NetLink> mergedLinks_;
     private Set<NID.WithName> mergedLoneNodeIDs_;
@@ -1014,6 +1014,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     private SortedMap<AugRelation, Boolean> relMap_;
     private NetworkAlignmentBuildData.ViewType outType_;
     private UniqueLabeller idGen_;
+    private BFWorker bfwk_;
     
     public NetworkAlignmentRunner(ArrayList<NetLink> mergedLinks, Set<NID.WithName> mergedLoners,
                                   Map<NID.WithName, NID.WithName> mapG1toG2,
@@ -1023,9 +1024,10 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
                                   ArrayList<NetLink> linksG1, HashSet<NID.WithName> lonersG1,
                                   ArrayList<NetLink> linksG2, HashSet<NID.WithName> lonersG2,
                                   SortedMap<AugRelation, Boolean> relMap,
-                                  NetworkAlignmentBuildData.ViewType outType, UniqueLabeller idGen) {
-      super(new Boolean(false));
+                                  NetworkAlignmentBuildData.ViewType outType, 
+                                  UniqueLabeller idGen, BFWorker bfwk) {
       
+      this.bfwk_ = bfwk;
       this.mergedLinks_ = mergedLinks;
       this.mergedLoneNodeIDs_ = mergedLoners;
       this.mapG1toG2_ = mapG1toG2;
@@ -1041,14 +1043,19 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       this.idGen_ = idGen;
     }
     
+    public Object getEarlyResult() {
+      return (new Boolean(false));
+    }
+
     public Object runCore() throws AsynchExitRequestException {
       
+    	BTProgressMonitor monitor = bfwk_.getMonitor();
       NetworkAlignment netAlign = new NetworkAlignment(mergedLinks_, mergedLoneNodeIDs_, mapG1toG2_, perfectG1toG2_,
-              linksG1_, lonersG1_, linksG2_, lonersG2_, mergedToCorrect_, isAlignedNode_, outType_, idGen_, this);
+              linksG1_, lonersG1_, linksG2_, lonersG2_, mergedToCorrect_, isAlignedNode_, outType_, idGen_, monitor);
       
       netAlign.mergeNetworks();
       BuildExtractor bex = IOFactory.getBuildExtractor();
-      bex.extractRelations(mergedLinks_, relMap_, this);
+      bex.extractRelations(mergedLinks_, relMap_, monitor);
       return (new Boolean(true));
     }
     
@@ -1077,14 +1084,14 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       finished_ = true;
       holdIt_ = holdIt;
       try {
-        NetAlignMeasureRunner runner = new NetAlignMeasureRunner(reducedLinks, loneNodeIDs, isAlignedNode, mergedToCorrectNC, reducedLinksPerfect,
-                loneNodeIDsPerfect, isAlignedNodePerfect, report, linksSmall, lonersSmall, linksLarge, lonersLarge, mapG1toG2, perfectG1toG2);
-    
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bwcm_,
-                "fileLoad.waitTitle", "fileLoad.wait", true);
-    
-        runner.setClient(bwc);
-        bwc.launchWorker();
+      	
+      	BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bwcm_, "fileLoad.waitTitle", "fileLoad.wait", true);
+        NetAlignMeasureRunner runner = new NetAlignMeasureRunner(reducedLinks, loneNodeIDs, isAlignedNode, mergedToCorrectNC, 
+        		                                                     reducedLinksPerfect, loneNodeIDsPerfect, isAlignedNodePerfect, 
+        		                                                     report, linksSmall, lonersSmall, linksLarge, 
+        		                                                     lonersLarge, mapG1toG2, perfectG1toG2, bfw);
+        bfw.setCore(runner);
+        bfw.launchWorker();
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -1116,7 +1123,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    ** Background network alignment measure processing
    */
   
-  private class NetAlignMeasureRunner extends BackgroundWorker {
+  private class NetAlignMeasureRunner implements BackgroundCore {
   
     private Map<NID.WithName, NID.WithName> mapG1toG2_;
     private Set<NetLink> reducedLinks_;
@@ -1131,6 +1138,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     private ArrayList<NetLink> linksSmall_, linksLarge_;
     private HashSet<NID.WithName> lonersSmall_, lonersLarge_;
     private NetAlignStats report_;
+    private BFWorker bfwk_;
     
     
     public NetAlignMeasureRunner(Set<NetLink> reducedLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName, Boolean> isAlignedNode,
@@ -1139,9 +1147,10 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
                                  NetAlignStats report,
                                  ArrayList<NetLink> linksSmall, HashSet<NID.WithName> lonersSmall,
                                  ArrayList<NetLink> linksLarge, HashSet<NID.WithName> lonersLarge,
-                                 Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2) {
-      super(new Boolean(false));
+                                 Map<NID.WithName, NID.WithName> mapG1toG2, 
+                                 Map<NID.WithName, NID.WithName> perfectG1toG2, BFWorker bfwk) {
       
+    	this.bfwk_ = bfwk;
       this.reducedLinks_ = reducedLinks;
       this.loneNodeIDs_ = loneNodeIDs;
       this.isAlignedNode_ = isAlignedNode;
@@ -1157,20 +1166,22 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       this.mapG1toG2_ = mapG1toG2;
       this.perfectG1toG2_ = perfectG1toG2;
     }
+    
+    public Object getEarlyResult() {
+      return (new Boolean(false));
+    }
   
-    @Override
     public Object runCore() throws AsynchExitRequestException {
   
       NetworkAlignmentScorer scorer = new NetworkAlignmentScorer(reducedLinks_, loneNodeIDs_, mergedToCorrectNC_,
               isAlignedNode_, isAlignedNodePerfect_, reducedLinksPerfect_, loneNodeIDsPerfect_,
-              linksSmall_, lonersSmall_, linksLarge_, lonersLarge_, mapG1toG2_, perfectG1toG2_, this);
+              linksSmall_, lonersSmall_, linksLarge_, lonersLarge_, mapG1toG2_, perfectG1toG2_, bfwk_.getMonitor());
   
       this.report_.replaceValuesTo(scorer.getNetAlignStats());
       
       return (new Boolean(true));
     }
   
-    @Override
     public Object postRunCore() {
       return (null);
     }

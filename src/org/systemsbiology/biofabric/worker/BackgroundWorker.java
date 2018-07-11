@@ -27,12 +27,16 @@ import java.util.TreeMap;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
+import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
+import org.systemsbiology.biofabric.workerAPI.BackgroundCore;
+
 /****************************************************************************
 **
 ** Class to support running background threads
 */
 
-public abstract class BackgroundWorker implements Runnable, BTProgressMonitor {
+public class BackgroundWorker implements Runnable, BTProgressMonitor {
 
   protected Object myResult_;
   protected Object earlyResult_;  
@@ -44,7 +48,12 @@ public abstract class BackgroundWorker implements Runnable, BTProgressMonitor {
   protected BackgroundWorkerClient client_;
   protected Timer checkCancelTimer_;
   protected boolean isForeground_;
+  private BackgroundCore core_;
 
+  public BackgroundWorker() {
+    this(null, false);
+  }
+  
   public BackgroundWorker(Object earlyResult) {
     this(earlyResult, false);
   }
@@ -58,8 +67,10 @@ public abstract class BackgroundWorker implements Runnable, BTProgressMonitor {
     isForeground_ = isForeground;
   }
    
-  public void setClient(BackgroundWorkerClient client) {
+  public void setClientAndCore(BackgroundWorkerClient client, BackgroundCore core) {
+  	earlyResult_ = core.getEarlyResult();
     client_ = client;
+    core_ = core;
     return;
   }
   
@@ -82,7 +93,7 @@ public abstract class BackgroundWorker implements Runnable, BTProgressMonitor {
           }
         });
         checkCancelTimer_.start();
-        myResult_ = runCore();
+        myResult_ = core_.runCore();
         // Added 1/29/09 : Without this, don't we just keep running?
         checkCancelTimer_.stop();
       } catch (AsynchExitRequestException ex) {
@@ -96,7 +107,7 @@ public abstract class BackgroundWorker implements Runnable, BTProgressMonitor {
       }
       if (caughtException_ == null) {
         updateProgress(total_);
-        postRunCore();
+        core_.postRunCore();
       } else {
         myResult_ = earlyResult_;
       }
@@ -120,12 +131,12 @@ public abstract class BackgroundWorker implements Runnable, BTProgressMonitor {
   public void runForeground() {
     try {
       try {
-        myResult_ = runCore();
+        myResult_ = core_.runCore();
       } catch (AsynchExitRequestException ex) {
         throw new IllegalStateException();  // Should not happen
       }
       if (caughtException_ == null) {
-        postRunCore();
+        core_.postRunCore();
       } else {
         myResult_ = earlyResult_;
       }
@@ -141,28 +152,11 @@ public abstract class BackgroundWorker implements Runnable, BTProgressMonitor {
   
   /****************************************************************************
   **
-  ** This routine is where all the work gets done.  It is overridden by
-  ** child classes.  All work occurs on a background thread (unless this is explictly a foregound worker).
-  */   
-   
-  public abstract Object runCore() throws AsynchExitRequestException;
-
-  /****************************************************************************
-  **
-  ** This work occurs on the background thread AFTER we have sent off 
-  ** the final update progress report to the UI thread, but before
-  ** we report on the UI thread that we are finished (unless this is explictly a foregound worker).
-  */  
-    
-  public abstract Object postRunCore(); 
-  
-  /****************************************************************************
-  **
   ** If the run core catches an exception, we store it here (so run core
   ** does not have to declare all sorts of throws).
   */  
     
-  protected void stashException(Exception ex) {
+  public void stashException(Exception ex) {
     caughtException_ = ex;
     return;    
   }   

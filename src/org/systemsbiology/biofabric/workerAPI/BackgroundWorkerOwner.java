@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2008 Institute for Systems Biology 
+**    Copyright (C) 2003-2007 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,36 +17,47 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.worker;
+package org.systemsbiology.biofabric.workerAPI;
 
 
 /****************************************************************************
 **
-** Class implemented by classes that disable and enable UI controls
-** during asynch operations
+** Class implemented by owners of Background workers
 */
 
-public interface BackgroundWorkerControlManager { 
+public interface BackgroundWorkerOwner { 
 
   /****************************************************************************
   **
-  ** disable
+  ** We get a change to process a background thread exception before it
+  ** gets popped up in a window.  If we return true, the exception will
+  ** not get displayed.
   */  
   
-  public void disableControls();
-
-  /****************************************************************************
-  **
-  ** enable
-  */  
-  
-  public void reenableControls();  
+  public boolean handleRemoteException(Exception remoteEx);
   
   /****************************************************************************
   **
-  ** also redraw....
+  ** Things to do if we get cancelled
   */  
   
-  public void redraw();  
-
+  public void handleCancellation();  
+  
+  /****************************************************************************
+  **
+  ** These are the routines to be executed, on the UI thread, after the 
+  ** background is done, but before the UI controls are enabled and
+  ** the new model is painted (e.g. zoom to worksheet center).
+  */
+  
+  public void cleanUpPreEnable(Object result);
+  
+  /****************************************************************************
+  **
+  ** These are the routines to be executed, on the UI thread, after the 
+  ** background is done, and after the UI has been repainted (e.g. warning
+  ** dialogs).
+  */
+  
+  public void cleanUpPostRepaint(Object result);   
 } 

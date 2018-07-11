@@ -45,9 +45,9 @@ import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.QuadTree;
 import org.systemsbiology.biofabric.util.UiUtil;
-import org.systemsbiology.biofabric.worker.AsynchExitRequestException;
-import org.systemsbiology.biofabric.worker.BTProgressMonitor;
-import org.systemsbiology.biofabric.worker.LoopReporter;
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
+import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
+import org.systemsbiology.biofabric.workerAPI.LoopReporter;
 
 /****************************************************************************
 **

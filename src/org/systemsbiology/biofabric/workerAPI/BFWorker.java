@@ -17,73 +17,56 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.plugin;
+package org.systemsbiology.biofabric.workerAPI;
 
-import javax.swing.JFrame;
-
-import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
-import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
+import org.systemsbiology.biofabric.util.GoodnessChart;
 
 /****************************************************************************
 **
-** Interface for information plugins can get from BioFabric
+** An interface for monitoring progress
 */
 
-public interface PlugInNetworkModelAPI {
-  
+public interface BFWorker {
+ 
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
+
+  /***************************************************************************
+  **
+  ** Get the progress monitor
+  */
+
+  public BTProgressMonitor getMonitor();  
   
   /***************************************************************************
   **
-  ** Get the link count, with and without shadows
+  ** Set the run core
   */
   
-  public int getLinkCount(boolean forShadow);
-  
-  /***************************************************************************
-  ** 
-  ** Get node count
-  */
-
-  public int getNodeCount();
+  public void setCore(BackgroundCore core);
   
   /***************************************************************************
-  ** 
-  ** Get file loading utilities
+  **
+  ** Launch the run core
   */
-
-  public FileLoadFlows getFileUtilities();
+  
+  public void launchWorker();
+  
+  /***************************************************************************
+  **
+  ** Stash exception for later display
+  */
+  
+  public void stashException(Exception ex);
+  
+  /***************************************************************************
+  **
+  ** Add goodness chart
+  */  
+  
+  public void makeSuperChart();
  
-  /***************************************************************************
-  ** 
-  ** Get file loading utilities
-  */
-
-  public JFrame getTopWindow();
-  
-  /***************************************************************************
-  ** 
-  ** Get file loading utilities
-  */
-
-  public BackgroundWorkerControlManager getBWCtrlMgr();
-
-  /***************************************************************************
-  **
-  ** Stash plugin data for extraction
-  */
-  
-  public void stashPluginData(String keyword, BioFabricToolPlugInData data);
-
-  /***************************************************************************
-  **
-  ** Pull plugin data for extraction
-  */
-  
-  public BioFabricToolPlugInData providePluginData(String keyword);
-
 }
