@@ -166,12 +166,6 @@ public class BufferBuilder {
     worldRect_ = new Rectangle2D.Double();
     binRender_.dimsForBuf(screenDim_, worldRect_); // Both will give same answer... 
     Rectangle worldPiece = UiUtil.rectFromRect2D(worldRect_);
-    UiUtil.fixMePrintout("Saw NPE here after recolor operation. Appears to be event-driven on non-main window");
-    UiUtil.fixMePrintout("Saw NPE here after non-main window was launched");
-    System.out.println(bis_ + " " + screenDim_);
-    if (bis_ == null) {
-    	System.out.println(bis_ + " " + screenDim_);
-    }
     BufferedImage bi = bis_.fetchImage(screenDim_.width, screenDim_.height, BufferedImage.TYPE_INT_RGB);
     double lpp = linksPerPix(screenDim_, worldPiece);
     BufBuildDrawer useDrawer = (lpp < TRANSITION_LPP_) ? drawRender_ : binRender_;
