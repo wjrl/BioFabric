@@ -348,6 +348,13 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       return;
     }
     
+    // No model? Nothing to do...
+    // Fix for issue #89
+    if (!bfp_.hasAModel()) {
+    	return;
+    }
+    
+    
     if (needRecolor && !needRebuild) {  
       flf_.doRecolor(isForMain_);
     } else if (needRebuild) {

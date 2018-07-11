@@ -281,7 +281,6 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     } catch (IOException ioex) {
       holdIt = null;
     }
-    System.out.println("Lotsa problems here (nulls) if non-main has never been launched");
     NetworkRecolor nb = new NetworkRecolor(); 
     nb.doNetworkRecolor(isForMain, holdIt);
     return;
