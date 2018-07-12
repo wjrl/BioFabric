@@ -72,6 +72,7 @@ public class BioFabricApplication {
   
   public BioFabricApplication(boolean forCyto, Map<String, Object> args) { 
     forCyto_ = forCyto;
+    ResourceManager.initManager("org.systemsbiology.biofabric.props.BioFabric");
     plum_ = new PlugInManager();
     boolean ok = plum_.loadPlugIns(args);   
     if (!ok) {
@@ -155,7 +156,7 @@ public class BioFabricApplication {
         } 
       }
     }
-    ResourceManager.initManager("org.systemsbiology.biofabric.props.BioFabric");
+
     bfw_ = new BioFabricWindow(args, this, true, false);
     ExceptionHandler.getHandler().initialize(bfw_.getWindow());
     Dimension cbf = UiUtil.centerBigFrame(bfw_.getWindow(), 1600, 1200, 1.0, 0);

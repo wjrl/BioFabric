@@ -55,6 +55,8 @@ public class AlignmentLoader {
   //
   ////////////////////////////////////////////////////////////////////////////
   
+	private String pluginClassName_;
+	
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC CONSTRUCTORS
@@ -66,7 +68,9 @@ public class AlignmentLoader {
    ** Constructor
    */
   
-  public AlignmentLoader() {}
+  public AlignmentLoader(String pluginClassName) {
+  	pluginClassName_ = pluginClassName;
+  }
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -94,57 +98,60 @@ public class AlignmentLoader {
     } catch (AsynchExitRequestException aere) {
       throw new IllegalStateException();
     }
-  
-    BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(infile), "UTF-8"));
+    BufferedReader in = null;
     
-    String line = null;
-    while ((line = in.readLine()) != null) {
-  
-      StringTokenizer st = new StringTokenizer(line);
-      if (st.countTokens() != 2) {
-        stats.badLines.add(line);
-        continue;
-      }
-  
-      //
-      // Checking if nodes are in graphs
-      //
-  
-      String strNameG1 = st.nextToken(), strNameG2 = st.nextToken();
-     
-      boolean existsInG1 = G1nameToNID.containsKey(strNameG1),
-              existsInG2 = G2nameToNID.containsKey(strNameG2);
-  
-      if (!existsInG1) {
-        String msg = MessageFormat.format(rMan.getString("networkAlignment.nodeNotFoundG1"), strNameG1);
-        throw (new IOException(msg));
-      }
-      if (!existsInG2) {
-        String msg = MessageFormat.format(rMan.getString("networkAlignment.nodeNotFoundG2"), strNameG2);
-        throw (new IOException(msg));
-      }
-      
-      NID.WithName nodeG1 = G1nameToNID.get(strNameG1), nodeG2 = G2nameToNID.get(strNameG2);
-      
-      if (mapG1ToG2.containsKey(nodeG1)) {
-        
-        if (! mapG1ToG2.get(nodeG1).equals(nodeG2)) {
-          String msg = MessageFormat.format(rMan.getString("networkAlignment.mapError"), strNameG1);
-          throw (new IOException(msg));
-        } else {
-          stats.dupLines.add(line);
-        }
-      } else {
-        mapG1ToG2.put(nodeG1, nodeG2);
-      }
+    try {
+    	in = new BufferedReader(new InputStreamReader(new FileInputStream(infile), "UTF-8"));
+    
+	    String line = null;
+	    while ((line = in.readLine()) != null) {
+	  
+	      StringTokenizer st = new StringTokenizer(line);
+	      if (st.countTokens() != 2) {
+	        stats.badLines.add(line);
+	        continue;
+	      }
+	  
+	      //
+	      // Checking if nodes are in graphs
+	      //
+	  
+	      String strNameG1 = st.nextToken(), strNameG2 = st.nextToken();
+	     
+	      boolean existsInG1 = G1nameToNID.containsKey(strNameG1),
+	              existsInG2 = G2nameToNID.containsKey(strNameG2);
+	  
+	      if (!existsInG1) {
+	        String msg = MessageFormat.format(rMan.getPluginString(pluginClassName_, "networkAlignment.nodeNotFoundG1"), strNameG1);
+	        throw (new IOException(msg));
+	      }
+	      if (!existsInG2) {
+	        String msg = MessageFormat.format(rMan.getPluginString(pluginClassName_, "networkAlignment.nodeNotFoundG2"), strNameG2);
+	        throw (new IOException(msg));
+	      }
+	      
+	      NID.WithName nodeG1 = G1nameToNID.get(strNameG1), nodeG2 = G2nameToNID.get(strNameG2);
+	      
+	      if (mapG1ToG2.containsKey(nodeG1)) {
+	        
+	        if (! mapG1ToG2.get(nodeG1).equals(nodeG2)) {
+	          String msg = MessageFormat.format(rMan.getPluginString(pluginClassName_, "networkAlignment.mapError"), strNameG1);
+	          throw (new IOException(msg));
+	        } else {
+	          stats.dupLines.add(line);
+	        }
+	      } else {
+	        mapG1ToG2.put(nodeG1, nodeG2);
+	      }
+	    }
+	  
+	    if (mapG1ToG2.size() != G1nameToNID.size()) {
+	      String msg = MessageFormat.format(rMan.getPluginString(pluginClassName_, "networkAlignment.mapSizeError"), mapG1ToG2.size(), G1nameToNID.size());
+	      throw (new IOException(msg));
+	    }
+    } finally {
+    	if (in != null) in.close();
     }
-  
-    if (mapG1ToG2.size() != G1nameToNID.size()) {
-      String msg = MessageFormat.format(rMan.getString("networkAlignment.mapSizeError"), mapG1ToG2.size(), G1nameToNID.size());
-      throw (new IOException(msg));
-    }
-  
-    in.close();
     return (null);
   }
   
@@ -155,33 +162,40 @@ public class AlignmentLoader {
    */
   
   public Map<String, String> readAlignment(File infile, NetAlignFileStats stats) throws IOException {
-    ResourceManager rMan = ResourceManager.getManager();
-    BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(infile), "UTF-8"));
-  
+    ResourceManager rMan = ResourceManager.getManager();  
     Map<String, String> mapG1ToG2Str = new HashMap<String, String>();
-    String line = null;
-    while ((line = in.readLine()) != null) {
+    BufferedReader in = null;
     
-      StringTokenizer st = new StringTokenizer(line);
-      if (st.countTokens() != 2) {
-        stats.badLines.add(line);
-        continue;
-      }
-    
-      String strNameG1 = st.nextToken(), strNameG2 = st.nextToken();
-      
-      if (mapG1ToG2Str.containsKey(strNameG1)) {
-        if (! mapG1ToG2Str.get(strNameG1).equals(strNameG2)) {
-          String msg = MessageFormat.format(rMan.getString("networkAlignment.mapError"), strNameG1);
-          throw (new IOException(msg));
-        } else {
-          stats.dupLines.add(line);
-        }
-      } else {
-        mapG1ToG2Str.put(strNameG1, strNameG2);
-      }
+    try {
+    	in = new BufferedReader(new InputStreamReader(new FileInputStream(infile), "UTF-8"));
+  
+	   
+	    String line = null;
+	    while ((line = in.readLine()) != null) {
+	    
+	      StringTokenizer st = new StringTokenizer(line);
+	      if (st.countTokens() != 2) {
+	        stats.badLines.add(line);
+	        continue;
+	      }
+	    
+	      String strNameG1 = st.nextToken(), strNameG2 = st.nextToken();
+	      
+	      if (mapG1ToG2Str.containsKey(strNameG1)) {
+	        if (! mapG1ToG2Str.get(strNameG1).equals(strNameG2)) {
+	          String msg = MessageFormat.format(rMan.getPluginString(pluginClassName_, "networkAlignment.mapError"), strNameG1);
+	          throw (new IOException(msg));
+	        } else {
+	          stats.dupLines.add(line);
+	        }
+	      } else {
+	        mapG1ToG2Str.put(strNameG1, strNameG2);
+	      }
+	    }
+    } finally {
+    	if (in != null) in.close();
     }
-    in.close();
+
     return (mapG1ToG2Str);
   }
   
