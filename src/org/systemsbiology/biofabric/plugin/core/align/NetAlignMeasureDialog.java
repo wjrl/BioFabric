@@ -50,7 +50,7 @@ public class NetAlignMeasureDialog extends BTStashResultsDialog {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  public NetAlignMeasureDialog(JFrame parent, NetworkAlignmentPlugIn.NetAlignStats stats) {
+  public NetAlignMeasureDialog(JFrame parent, NetworkAlignmentPlugIn.NetAlignStats stats, String pluginClassName) {
     super(parent, ResourceManager.getManager().getString("networkAlignment.measures"), new Dimension(700, 400), 2);
     this.parent_ = parent;
     this.netAlignStats_ = stats;
@@ -59,7 +59,7 @@ public class NetAlignMeasureDialog extends BTStashResultsDialog {
     cp.setBorder(new EmptyBorder(20, 20, 20, 20));
     cp.setLayout(new GridBagLayout());
   
-    String msg = ResourceManager.getManager().getString("networkAlignment.measureMessage");
+    String msg = ResourceManager.getManager().getPluginString(pluginClassName, "networkAlignment.measureMessage");
     addWidgetFullRow(new JLabel(msg), false);
     
     for (NetworkAlignmentPlugIn.NetAlignMeasure measure : netAlignStats_.getMeasures()) {
@@ -69,7 +69,7 @@ public class NetAlignMeasureDialog extends BTStashResultsDialog {
     
     if (!netAlignStats_.hasStats()) {
       // should not happen because all topological measures are always calculable
-      String noM = ResourceManager.getManager().getString("networkAlignment.noMeasuresAvailable");
+      String noM = ResourceManager.getManager().getPluginString(pluginClassName, "networkAlignment.noMeasuresAvailable");
       addWidgetFullRow(new JLabel(noM), false);
     }
     
