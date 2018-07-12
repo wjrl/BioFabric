@@ -669,7 +669,6 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       if (!finished) { // do not continue if failed
         return (true);
       }
-      return (true);
     } else {
       try {
         if (type == FileLoadFlows.FileLoadType.SIF) {
