@@ -77,6 +77,7 @@ public class NetworkAlignmentScorer {
   private Map<NID.WithName, NID.WithName> mapG1toG2_, perfectG1toG2_;
   
   private BTProgressMonitor monitor_;
+  private String pluginClassName_;
   
   private Map<NID.WithName, Set<NetLink>> nodeToLinksMain_, nodeToLinksPerfect_;
   private Map<NID.WithName, Set<NID.WithName>> nodeToNeighborsMain_, nodeToNeighborsPerfect_;
@@ -102,7 +103,8 @@ public class NetworkAlignmentScorer {
                                 ArrayList<NetLink> linksSmall, HashSet<NID.WithName> lonersSmall,
                                 ArrayList<NetLink> linksLarge, HashSet<NID.WithName> lonersLarge,
                                 Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2,
-                                BTProgressMonitor monitor) throws AsynchExitRequestException {
+                                BTProgressMonitor monitor, String pluginClassName) throws AsynchExitRequestException {
+  	pluginClassName_ = pluginClassName;
     this.linksMain_ = new HashSet<NetLink>(reducedLinks);
     this.loneNodeIDsMain_ = new HashSet<NID.WithName>(loneNodeIDs);
     this.mergedToCorrectNC_ = mergedToCorrectNC;
@@ -244,13 +246,13 @@ public class NetworkAlignmentScorer {
   private void finalizeMeasures() {
     ResourceManager rMan = ResourceManager.getManager();
     String
-            ECn = rMan.getString("networkAlignment.edgeCoverage"),
-            S3n = rMan.getString("networkAlignment.symmetricSubstructureScore"),
-            ICSn = rMan.getString("networkAlignment.inducedConservedStructure"),
-            NCn = rMan.getString("networkAlignment.nodeCorrectness"),
-            NGSn = rMan.getString("networkAlignment.nodeGroupSimilarity"),
-            LGSn = rMan.getString("networkAlignment.linkGroupSimilarity"),
-            JSn = rMan.getString("networkAlignment.jaccardSimilarity");
+            ECn = rMan.getPluginString(pluginClassName_, "networkAlignment.edgeCoverage"),
+            S3n = rMan.getPluginString(pluginClassName_, "networkAlignment.symmetricSubstructureScore"),
+            ICSn = rMan.getPluginString(pluginClassName_, "networkAlignment.inducedConservedStructure"),
+            NCn = rMan.getPluginString(pluginClassName_, "networkAlignment.nodeCorrectness"),
+            NGSn = rMan.getPluginString(pluginClassName_, "networkAlignment.nodeGroupSimilarity"),
+            LGSn = rMan.getPluginString(pluginClassName_, "networkAlignment.linkGroupSimilarity"),
+            JSn = rMan.getPluginString(pluginClassName_, "networkAlignment.jaccardSimilarity");
     
     NetworkAlignmentPlugIn.NetAlignMeasure[] possibleMeasures = {
             new NetworkAlignmentPlugIn.NetAlignMeasure(ECn, EC),
