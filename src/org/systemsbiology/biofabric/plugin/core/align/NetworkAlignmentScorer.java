@@ -31,8 +31,10 @@ import java.util.Map;
 import java.util.Set;
 
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
+import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 import org.systemsbiology.biofabric.workerAPI.LoopReporter;
@@ -244,15 +246,15 @@ public class NetworkAlignmentScorer {
    */
   
   private void finalizeMeasures() {
-    ResourceManager rMan = ResourceManager.getManager();
+    PluginResourceManager rMan = PluginSupportFactory.getResourceManager(pluginClassName_);
     String
-            ECn = rMan.getPluginString(pluginClassName_, "networkAlignment.edgeCoverage"),
-            S3n = rMan.getPluginString(pluginClassName_, "networkAlignment.symmetricSubstructureScore"),
-            ICSn = rMan.getPluginString(pluginClassName_, "networkAlignment.inducedConservedStructure"),
-            NCn = rMan.getPluginString(pluginClassName_, "networkAlignment.nodeCorrectness"),
-            NGSn = rMan.getPluginString(pluginClassName_, "networkAlignment.nodeGroupSimilarity"),
-            LGSn = rMan.getPluginString(pluginClassName_, "networkAlignment.linkGroupSimilarity"),
-            JSn = rMan.getPluginString(pluginClassName_, "networkAlignment.jaccardSimilarity");
+            ECn = rMan.getPluginString("networkAlignment.edgeCoverage"),
+            S3n = rMan.getPluginString("networkAlignment.symmetricSubstructureScore"),
+            ICSn = rMan.getPluginString("networkAlignment.inducedConservedStructure"),
+            NCn = rMan.getPluginString("networkAlignment.nodeCorrectness"),
+            NGSn = rMan.getPluginString("networkAlignment.nodeGroupSimilarity"),
+            LGSn = rMan.getPluginString("networkAlignment.linkGroupSimilarity"),
+            JSn = rMan.getPluginString("networkAlignment.jaccardSimilarity");
     
     NetworkAlignmentPlugIn.NetAlignMeasure[] possibleMeasures = {
             new NetworkAlignmentPlugIn.NetAlignMeasure(ECn, EC),
