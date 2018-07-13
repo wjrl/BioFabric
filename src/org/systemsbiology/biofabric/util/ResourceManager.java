@@ -20,6 +20,9 @@
 package org.systemsbiology.biofabric.util;
 
 import java.util.ResourceBundle;
+
+import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
+
 import java.util.HashMap;
 import java.util.MissingResourceException;
 
@@ -67,7 +70,7 @@ public class ResourceManager {
   ** Get a resource String for a plugin
   */
 
-  public String getPluginString(String pluginKey, String key) {
+  String getPluginString(String pluginKey, String key) {
     String retval = key;
     ResourceBundle bundle =  pluginBundles_.get(pluginKey);
     if (bundle == null) {
@@ -87,7 +90,7 @@ public class ResourceManager {
   ** Set a bundle for a plugin
   */
 
-  public void setPluginBundle(String pluginKey, String bundleName) {
+  void setPluginBundle(String pluginKey, String bundleName) {
     pluginBundles_.put(pluginKey, ResourceBundle.getBundle(bundleName));
     return;
   } 
@@ -106,7 +109,7 @@ public class ResourceManager {
   ** Get a resource Character for plugin
   */
 
-  public char getPluginChar(String pluginKey, String key) {
+  char getPluginChar(String pluginKey, String key) {
   	ResourceBundle bundle =  pluginBundles_.get(pluginKey);
     return (getCharFromBundle(key, bundle));
   }  
@@ -163,8 +166,7 @@ public class ResourceManager {
     }
     return (singleton_);
   }
-  
-  
+   
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE CONSTRUCTORS
@@ -180,4 +182,53 @@ public class ResourceManager {
     bundle_ = ResourceBundle.getBundle(bundleName);
     pluginBundles_ = new HashMap<String, ResourceBundle>();   
   } 
+  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC INNER CLASSES
+  //
+  ////////////////////////////////////////////////////////////////////////////
+
+  /***************************************************************************
+  **
+  ** Plugins resource manager
+  */
+   
+  public static class ForPlugins implements PluginResourceManager {
+  	private String pluginName_;
+  	private ResourceManager myMan_;
+  	
+  	public ForPlugins(String pluginName) {
+  		pluginName_ = pluginName;
+  		myMan_ = ResourceManager.getManager();
+  	}
+  	
+    /***************************************************************************
+	  ** 
+	  **  Set a bundle for a plugin
+	  */
+	
+	  public void setPluginBundle(String bundleName) {
+	  	myMan_.setPluginBundle(pluginName_, bundleName);
+	    return;
+	  }
+ 	
+  	/***************************************************************************
+	  ** 
+	  ** Get a resource String for a plugin
+	  */
+	
+	  public String getPluginString(String key) {
+	  	return (myMan_.getPluginString(pluginName_, key));
+	  }
+	 
+	  /***************************************************************************
+	  ** 
+	  ** Get a resource Character for plugin
+	  */
+	
+	  public char getPluginChar(String key) {
+	  	return (myMan_.getPluginChar(pluginName_, key));
+	  }
+  }
 }

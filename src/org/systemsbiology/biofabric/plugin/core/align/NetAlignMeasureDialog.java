@@ -29,9 +29,10 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.utils.DialogSupport;
-import org.systemsbiology.biofabric.util.ResourceManager;
+import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
 
 public class NetAlignMeasureDialog extends BTStashResultsDialog {
   
@@ -51,7 +52,8 @@ public class NetAlignMeasureDialog extends BTStashResultsDialog {
   ////////////////////////////////////////////////////////////////////////////
   
   public NetAlignMeasureDialog(JFrame parent, NetworkAlignmentPlugIn.NetAlignStats stats, String pluginClassName) {
-    super(parent, ResourceManager.getManager().getString("networkAlignment.measures"), new Dimension(700, 400), 2);
+    super(parent, PluginSupportFactory.getResourceManager(pluginClassName).getPluginString("networkAlignment.measures"), new Dimension(700, 400), 2);
+    
     this.parent_ = parent;
     this.netAlignStats_ = stats;
   
@@ -59,7 +61,10 @@ public class NetAlignMeasureDialog extends BTStashResultsDialog {
     cp.setBorder(new EmptyBorder(20, 20, 20, 20));
     cp.setLayout(new GridBagLayout());
   
-    String msg = ResourceManager.getManager().getPluginString(pluginClassName, "networkAlignment.measureMessage");
+    PluginResourceManager rMan = PluginSupportFactory.getResourceManager(pluginClassName);
+    
+    
+    String msg = rMan.getPluginString("networkAlignment.measureMessage");
     addWidgetFullRow(new JLabel(msg), false);
     
     for (NetworkAlignmentPlugIn.NetAlignMeasure measure : netAlignStats_.getMeasures()) {
@@ -69,7 +74,7 @@ public class NetAlignMeasureDialog extends BTStashResultsDialog {
     
     if (!netAlignStats_.hasStats()) {
       // should not happen because all topological measures are always calculable
-      String noM = ResourceManager.getManager().getPluginString(pluginClassName, "networkAlignment.noMeasuresAvailable");
+      String noM = rMan.getPluginString("networkAlignment.noMeasuresAvailable");
       addWidgetFullRow(new JLabel(noM), false);
     }
     

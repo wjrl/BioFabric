@@ -35,11 +35,11 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.io.BuildData;
-import org.systemsbiology.biofabric.ioAPI.IOFactory;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
@@ -179,7 +179,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       classToGroup.put(i, new ArrayList<NID.WithName>());
     }
     // fill the master list with nodes
-    Set<NID.WithName> allNodes = IOFactory.getBuildExtractor().extractNodes(nabd.allLinks, nabd.loneNodeIDs, monitor);
+    Set<NID.WithName> allNodes = PluginSupportFactory.getBuildExtractor().extractNodes(nabd.allLinks, nabd.loneNodeIDs, monitor);
     for (NID.WithName node : allNodes) {
       int nodeClass = grouper.getIndex(node);
       classToGroup.get(nodeClass).add(node);
