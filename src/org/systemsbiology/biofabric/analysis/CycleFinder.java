@@ -116,7 +116,7 @@ public class CycleFinder {
     // Color vertices white:
     //
  
-    LoopReporter lr0 = new LoopReporter(nodes_.size(), 20, monitor, 0.0, 1.0, "progress.cycleFinderVisit");
+    LoopReporter lr0 = new LoopReporter(nodes_.size(), 20, monitor, 0.0, 1.0, "progress.cycleFinderVisitPass1");
     
     
     HashMap<NID.WithName, Integer> colors = new HashMap<NID.WithName, Integer>();
@@ -132,7 +132,7 @@ public class CycleFinder {
     // Visit each white vertex:
     //
     
-    LoopReporter lr = new LoopReporter(nodes_.size(), 20, monitor, 0.0, 1.0, "progress.cycleFinderVisit");
+    LoopReporter lr = new LoopReporter(nodes_.size(), 20, monitor, 0.0, 1.0, "progress.cycleFinderVisitPass2");
  
     vit = nodes_.iterator();
     while (vit.hasNext()) {

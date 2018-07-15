@@ -70,7 +70,7 @@ public class ControlTopLayout extends NodeLayout {
     
     CTRL_PARTIAL_ORDER("ctrlTop.ctrlPartialOrder"), 
     CTRL_INTRA_DEGREE_ONLY("ctrlTop.ctrlIntraDegree"), 
-    CTRL_MEDIAN_TARGET_DEGREE("ctrlTop.ctrlMedianTarg"), 
+    CTRL_MEDIAN_TARGET_DEGREE("ctrlTop.ctrlMedianTarg"),
     CTRL_DEGREE_ONLY("ctrlTop.ctrlDegreeOnly"), 
     FIXED_LIST("ctrlTop.ctrlInputList"),
     ;    
@@ -91,12 +91,11 @@ public class ControlTopLayout extends NodeLayout {
     }
   }
   
-  
   public enum TargMode {
     TARGET_DEGREE("ctrlTop.trgTargDegree"), 
+    NODE_DEGREE_ODOMETER_SOURCE("ctrlTop.degreeOdometer"),
     GRAY_CODE("ctrlTop.trgGrayCode"), 
     BREADTH_ORDER("ctrlTop.trgBreadth"), 
-    NODE_DEGREE_ODOMETER_SOURCE("ctrlTop.degreeOdometer"),
     ;
     
     private String resource_;
@@ -161,7 +160,7 @@ public class ControlTopLayout extends NodeLayout {
                                                                LayoutCriterionFailureException {
     //
     // 1) What are the requirements?
-    // 2) If we ae given a fixed list, we need to map to nodes, and make sure it is 1:1 and onto.
+    // 2) If we are given a fixed list, we need to map to nodes, and make sure it is 1:1 and onto.
     // Do we handle singleton nodes OK???
     //
     
@@ -192,19 +191,19 @@ public class ControlTopLayout extends NodeLayout {
     
     switch (ctrlMode_) {
       case CTRL_PARTIAL_ORDER:
-        dfo = allNodeOrder(rbd.allNodeIDs, rbd.allLinks, monitor);
-        ctrlList = controlSortPartialOrder(rbd.allNodeIDs, rbd.allLinks, cnSet, dfo, monitor);
+        dfo = allNodeOrder(rbd.allNodeIDs, rbd.allLinks, false, monitor);
+        ctrlList = controlSortPartialOrder(rbd.allNodeIDs, rbd.allLinks, cnSet, dfo, false, monitor);
         break;
       case CTRL_INTRA_DEGREE_ONLY:       
-        ctrlList = controlSortIntraDegreeOnly(rbd.allNodeIDs, rbd.allLinks, cnSet, monitor);
+        ctrlList = controlSortIntraDegreeOnly(rbd.allNodeIDs, rbd.allLinks, cnSet, false, monitor);
         break;
       case CTRL_DEGREE_ONLY:
-        dfo = allNodeOrder(rbd.allNodeIDs, rbd.allLinks, monitor);
-        ctrlList = orderPureDegree(cnSet, dfo, monitor);
+        dfo = allNodeOrder(rbd.allNodeIDs, rbd.allLinks, false, monitor);
+        ctrlList = listToSublist(cnSet, dfo, monitor);
         break;   
       case CTRL_MEDIAN_TARGET_DEGREE:
-        ctrlList = orderCtrlMedianTargetDegree(rbd.allNodeIDs, rbd.allLinks, monitor);
-        break;
+        ctrlList = orderCtrlMedianTargetDegree(rbd.allNodeIDs, rbd.allLinks, false, monitor);
+        break;        
       case FIXED_LIST:
         ctrlList = null; // forcedTop;
         break;
@@ -219,19 +218,19 @@ public class ControlTopLayout extends NodeLayout {
         nodeOrder = targetsBySourceGrayCode(ctrlList,cnSet, rbd.allNodeIDs, rbd.allLinks, monitor);
         break;
       case NODE_DEGREE_ODOMETER_SOURCE:
-        nodeOrder = targetsByNodeDegreeOdometerSource(ctrlList, cnSet, rbd.allNodeIDs, rbd.allLinks, monitor);
+        nodeOrder = targetsByNodeDegreeOdometerSourceMultigraph(ctrlList, cnSet, rbd.allNodeIDs, rbd.allLinks, monitor);
         break;
       case TARGET_DEGREE:
         if (dfo == null) {
-          dfo = allNodeOrder(rbd.allNodeIDs, rbd.allLinks, monitor);
+          dfo = allNodeOrder(rbd.allNodeIDs, rbd.allLinks, false, monitor);
         }
         Set<NID.WithName> targs = new HashSet<NID.WithName>(rbd.allNodeIDs);
         targs.removeAll(cnSet);
         nodeOrder = new ArrayList<NID.WithName>(ctrlList);
-        nodeOrder.addAll(orderPureDegree(targs, dfo, monitor));
+        nodeOrder.addAll(listToSublist(targs, dfo, monitor));
         break;
       case BREADTH_ORDER:
-        nodeOrder = orderTargetsBreadth(ctrlList, cnSet, rbd.allNodeIDs, rbd.allLinks, monitor);
+        nodeOrder = orderTargetsBreadth(ctrlList, cnSet, rbd.allNodeIDs, rbd.allLinks, false, monitor);
         break;
       default:
         throw new IllegalStateException();
@@ -274,7 +273,7 @@ public class ControlTopLayout extends NodeLayout {
   */
 
   private List<NID.WithName> controlSortPartialOrder(Set<NID.WithName> nodes, Set<NetLink> links, 
-                                                     SortedSet<NID.WithName> cnSet, List<NID.WithName> dfo, 
+                                                     SortedSet<NID.WithName> cnSet, List<NID.WithName> dfo, boolean relCollapse,
                                                      BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     //
@@ -293,7 +292,7 @@ public class ControlTopLayout extends NodeLayout {
     // links at the same time:
     //
     
-    List<NID.WithName> ctrlNodes = orderPureDegree(cnSet, dfo, monitor);
+    List<NID.WithName> ctrlNodes = listToSublist(cnSet, dfo, monitor);
     
     //
     // Use the order to create a reverse mapping:
@@ -371,7 +370,7 @@ public class ControlTopLayout extends NodeLayout {
     UiUtil.fixMePrintout("NO! Still arbitrary? (HashSet iteration??)");
     GraphSearcher gs = new GraphSearcher(new HashSet<NID.WithName>(ctrlNodes), dagLinks);
     Map<NID.WithName, Integer> ts = gs.topoSort(false);
-    List<NID.WithName> retval = gs.topoSortToPartialOrdering(ts, links, monitor);
+    List<NID.WithName> retval = gs.topoSortToPartialOrdering(ts, links, relCollapse, monitor);
     
     //
     // Nodes that were dropped due to cycles still need to be added as 
@@ -391,10 +390,10 @@ public class ControlTopLayout extends NodeLayout {
   ** Calculate an ordering of ALL (source, target) nodes that puts the highest degree nodes first:
   */
 
-  private List<NID.WithName> allNodeOrder(Set<NID.WithName> nodes, Set<NetLink> links, 
+  private List<NID.WithName> allNodeOrder(Set<NID.WithName> nodes, Set<NetLink> links, boolean relCollapse,  
                                           BTProgressMonitor monitor) throws AsynchExitRequestException {  
     GraphSearcher gs = new GraphSearcher(nodes, links); 
-    List<NID.WithName> retval = gs.nodeDegreeOrder(monitor);
+    List<NID.WithName> retval = gs.nodeDegreeOrder(relCollapse, monitor);
     Collections.reverse(retval);
     return (retval);
   }
@@ -406,7 +405,7 @@ public class ControlTopLayout extends NodeLayout {
   */
 
   private List<NID.WithName> controlSortIntraDegreeOnly(Set<NID.WithName> nodes, Set<NetLink> links, 
-                                                        SortedSet<NID.WithName> ctrlNodes,
+                                                        SortedSet<NID.WithName> ctrlNodes, boolean relCollapse,
                                                         BTProgressMonitor monitor) throws AsynchExitRequestException {    
     //
     // Sort the nodes so we can apply a standard order to the nodes of zero degree at the start:
@@ -420,7 +419,7 @@ public class ControlTopLayout extends NodeLayout {
     }   
  
     GraphSearcher gs = new GraphSearcher(ctrlNodes, ctrlLinks); 
-    List<NID.WithName> retval = gs.nodeDegreeOrder(monitor);
+    List<NID.WithName> retval = gs.nodeDegreeOrder(relCollapse, monitor);
     
     //
     // Not all of the nodes get returned, if they have no inbound control links. So
@@ -443,11 +442,12 @@ public class ControlTopLayout extends NodeLayout {
   private List<NID.WithName> orderTargetsBreadth(List<NID.WithName> ctrlList,
                                                  Set<NID.WithName> cnSet,
                                                  Set<NID.WithName> nodes, 
-                                                 Set<NetLink> links, 
+                                                 Set<NetLink> links,
+                                                 boolean relCollapse,
                                                  BTProgressMonitor monitor) throws AsynchExitRequestException {
    
     GraphSearcher gs = new GraphSearcher(nodes, links);
-    List<GraphSearcher.QueueEntry> queue = gs.breadthSearch(ctrlList, monitor);
+    List<GraphSearcher.QueueEntry> queue = gs.breadthSearch(ctrlList, relCollapse, monitor);
     
     ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>(ctrlList);
     for (GraphSearcher.QueueEntry qe : queue) {
@@ -496,7 +496,7 @@ public class ControlTopLayout extends NodeLayout {
    
     ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>(ctrlList);
     GraphSearcher gs = new GraphSearcher(nodes, links); 
-    SortedSet<GraphSearcher.SourcedNodeDegree> snds = gs.nodeDegreeSetWithSource(ctrlList);        
+    SortedSet<GraphSearcher.SourcedNodeDegree> snds = gs.nodeDegreeSetWithSource(ctrlList);    
     for (GraphSearcher.SourcedNodeDegree node : snds) {
       if (!cnSet.contains(node.getNode())) {
         outList.add(node.getNode());
@@ -504,14 +504,38 @@ public class ControlTopLayout extends NodeLayout {
     }
     return (outList);
   }
+  
+  /***************************************************************************
+  **
+  ** Target nodes are ordered by degree. Within degree, targets are arranged
+  ** to "odometer" thru the inputs
+  */
+  
+  private List<NID.WithName> targetsByNodeDegreeOdometerSourceMultigraph(List<NID.WithName> ctrlList,
+                                                               					 Set<NID.WithName> cnSet,
+                                                               					 Set<NID.WithName> nodes, 
+                                                               					 Set<NetLink> links,
+                                                               					 BTProgressMonitor monitor) throws AsynchExitRequestException {
+   
+    ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>(ctrlList);
+    GraphSearcher gs = new GraphSearcher(nodes, links); 
+    SortedSet<GraphSearcher.SourcedNodeAndRelDegree> snds = gs.nodeDegreeSetWithSourceMultigraph(ctrlList);    
+    for (GraphSearcher.SourcedNodeAndRelDegree nodeAndRel : snds) {
+      if (!cnSet.contains(nodeAndRel.getNode())) {
+        outList.add(nodeAndRel.getNode());
+      }
+    }
+    return (outList);
+  }
+  
 
   /***************************************************************************
   **
-  ** Order nodes by decreasing degree. Can be used for ctrl OR targets.
+  ** Provide a sublist of original list, containing nodes in given set.
   */
 
-  private List<NID.WithName> orderPureDegree(Set<NID.WithName> nodeSet, List<NID.WithName> dfo,
-                                             BTProgressMonitor monitor) throws AsynchExitRequestException {
+  private List<NID.WithName> listToSublist(Set<NID.WithName> nodeSet, List<NID.WithName> dfo,
+                                           BTProgressMonitor monitor) throws AsynchExitRequestException {
              
     ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
     for (NID.WithName node : dfo) {
@@ -528,11 +552,11 @@ public class ControlTopLayout extends NodeLayout {
   ** target nodes. 
   */
   
-  private List<NID.WithName> orderCtrlMedianTargetDegree(Set<NID.WithName> nodes, Set<NetLink> links, 
+  private List<NID.WithName> orderCtrlMedianTargetDegree(Set<NID.WithName> nodes, Set<NetLink> links, boolean relCollapse,
                                                          BTProgressMonitor monitor) throws AsynchExitRequestException {
         
     ArrayList<NID.WithName> outList = new ArrayList<NID.WithName>();
-    SortedSet<GraphSearcher.NodeDegree> ctrlMed = medianTargetDegree(nodes, links, monitor);
+    SortedSet<GraphSearcher.NodeDegree> ctrlMed = medianTargetDegree(nodes, links, relCollapse, monitor);
     for (GraphSearcher.NodeDegree nodeDeg : ctrlMed) {
       outList.add(nodeDeg.getNodeID());
     }
@@ -545,11 +569,11 @@ public class ControlTopLayout extends NodeLayout {
   ** Creates an ordered set of source nodes ordered by their median target degree
   */
 
-  private SortedSet<GraphSearcher.NodeDegree> medianTargetDegree(Set<NID.WithName> nodes, Set<NetLink> links,
+  private SortedSet<GraphSearcher.NodeDegree> medianTargetDegree(Set<NID.WithName> nodes, Set<NetLink> links, boolean relCollapse,
                                                                  BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     GraphSearcher gs = new GraphSearcher(nodes, links); 
-    Map<NID.WithName, Integer> nDeg = gs.nodeDegree(true, monitor);
+    Map<NID.WithName, Integer> nDeg = gs.nodeDegree(true, relCollapse, monitor);
     
     HashMap<NID.WithName, List<Integer>> deg = new HashMap<NID.WithName, List<Integer>>();
     for (NetLink nextLink : links) {
@@ -575,4 +599,5 @@ public class ControlTopLayout extends NodeLayout {
     }
     return (retval);
   } 
+
 }

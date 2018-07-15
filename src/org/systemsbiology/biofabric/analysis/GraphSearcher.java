@@ -113,16 +113,16 @@ public class GraphSearcher {
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
- 
+
   /***************************************************************************
   ** 
-  ** Map of node degree
+  ** Map of node degree. If relCollapse, multigraph edges collapsed, and equals neighbor count.
   */
 
-  public Map<NID.WithName, Integer> nodeDegree(boolean inOnly, BTProgressMonitor monitor) throws AsynchExitRequestException {
-    return (nodeDegree(inOnly, allEdges_, monitor));
+  public Map<NID.WithName, Integer> nodeDegree(boolean inOnly, boolean relCollapse, BTProgressMonitor monitor) throws AsynchExitRequestException {
+    return ((relCollapse) ? nodeNeighborCount(inOnly, allEdges_, monitor) : nodeDegree(inOnly, allEdges_, monitor));
   }
-  
+ 
   /***************************************************************************
   ** 
   ** Map of node degree. If inOnly == true, we only calculate in-degree. If false,
@@ -132,6 +132,52 @@ public class GraphSearcher {
 
   public static Map<NID.WithName, Integer> nodeDegree(boolean inOnly, Set<NetLink> edges, 
                                                       BTProgressMonitor monitor) throws AsynchExitRequestException {
+    
+    HashMap<NodeAndRel, Integer> retval0 = new HashMap<NodeAndRel, Integer>();
+
+    for (NetLink link : edges) {
+      NID.WithName src = link.getSrcID();
+      NID.WithName trg = link.getTrgID();
+      String relation = link.getRelation();
+      NodeAndRel sar = new NodeAndRel(src, relation);
+      if (!inOnly) {
+        Integer deg = retval0.get(sar);
+        if (deg == null) {
+          retval0.put(sar, Integer.valueOf(1));
+        } else {
+          retval0.put(sar, Integer.valueOf(deg.intValue() + 1));
+        }
+      }
+      NodeAndRel tar = new NodeAndRel(trg, relation);
+      Integer deg = retval0.get(trg);
+      if (deg == null) {
+        retval0.put(tar, Integer.valueOf(1));
+      } else {
+        retval0.put(tar, Integer.valueOf(deg.intValue() + 1));
+      }
+    }
+    
+    HashMap<NID.WithName, Integer> retval = new HashMap<NID.WithName, Integer>();
+    for (NodeAndRel nar : retval0.keySet()) {
+      Integer count = retval0.get(nar);
+      Integer nco = retval.get(nar.getNode());
+      nco = (nco == null) ? Integer.valueOf(count) : Integer.valueOf(count + nco);		
+      retval.put(nar.getNode(), nco);
+    }  		
+
+    return (retval);
+  }
+  
+  /***************************************************************************
+  ** 
+  ** Map of node neighbor count. If inOnly == true, we only calculate in-degree. If false,
+  ** the degree number for a node is a combined in/out degree. Both sources and
+  ** targets are included. Note this differs from degree with multigraphs, where there can be
+  ** multiple links between two nodes, but each one adds to degree
+  */
+
+  public static Map<NID.WithName, Integer> nodeNeighborCount(boolean inOnly, Set<NetLink> edges, 
+                                                             BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     HashMap<NID.WithName, Integer> retval = new HashMap<NID.WithName, Integer>();
 
@@ -161,8 +207,8 @@ public class GraphSearcher {
   ** Sorted set of node degree
   */
 
-  private SortedSet<NodeDegree> nodeDegreeSet(BTProgressMonitor monitor) throws AsynchExitRequestException {
-    return (nodeDegreeSet(allEdges_, monitor));
+  private SortedSet<NodeDegree> nodeDegreeSet(boolean relCollapse, BTProgressMonitor monitor) throws AsynchExitRequestException {
+    return (nodeDegreeSet(allEdges_, relCollapse, monitor));
   }
   
   /***************************************************************************
@@ -171,15 +217,16 @@ public class GraphSearcher {
   ** When equal degree, sorted by name:
   */
 
-  private static SortedSet<NodeDegree> nodeDegreeSet(Set<NetLink> edges, 
+  private static SortedSet<NodeDegree> nodeDegreeSet(Set<NetLink> edges, boolean relCollapse, 
                                                      BTProgressMonitor monitor) throws AsynchExitRequestException {
     TreeSet<NodeDegree> retval = new TreeSet<NodeDegree>();   
     // Map of node degree. Since the first argument is false,
     // the provided degree number is the combined in/out degree.
-    Map<NID.WithName, Integer> nds = nodeDegree(false, edges, monitor);
+    Map<NID.WithName, Integer> nds = (relCollapse) ? nodeNeighborCount(false, edges, monitor)
+    	                                             : nodeDegree(false, edges, monitor);
     // Adding to sorted set orders by degree:
-    for (NID.WithName node : nds.keySet()) {
-      NodeDegree ndeg = new NodeDegree(node, nds.get(node).intValue());
+    for (NID.WithName nar : nds.keySet()) {
+      NodeDegree ndeg = new NodeDegree(nar, nds.get(nar).intValue());
       retval.add(ndeg);
     }
     return (retval);
@@ -236,6 +283,36 @@ public class GraphSearcher {
   
   /***************************************************************************
   ** 
+  ** Sorted set of node degree, taking into account multigraph relations
+  */
+
+  public SortedSet<SourcedNodeAndRelDegree> nodeDegreeSetWithSourceMultigraph(List<NID.WithName> sourceOrder) {
+ 
+    HashMap<NID.WithName, Set<NodeAndRel>> allSrcs = new HashMap<NID.WithName, Set<NodeAndRel>>();
+
+    for (NetLink nextLink : allEdges_) {
+      NID.WithName trg = nextLink.getTrgID();
+      String rel = nextLink.getAugRelation().relation;
+      Set<NodeAndRel> trgSrcAndRels = allSrcs.get(trg);
+      if (trgSrcAndRels == null) {
+        trgSrcAndRels = new HashSet<NodeAndRel>();
+        allSrcs.put(trg, trgSrcAndRels);
+      }
+      trgSrcAndRels.add(new NodeAndRel(nextLink.getSrcID(), rel));
+    } 
+    
+    TreeSet<SourcedNodeAndRelDegree> retval = new TreeSet<SourcedNodeAndRelDegree>();
+
+    for (NID.WithName node : allSrcs.keySet()) {
+      Set<NodeAndRel> trgSources = allSrcs.get(node);
+      SourcedNodeAndRelDegree ndeg = new SourcedNodeAndRelDegree(node, sourceOrder, trgSources);
+      retval.add(ndeg);
+    }
+    return (retval);
+  }
+
+  /***************************************************************************
+  ** 
   ** Sorted set of nodes via gray code
   */
 
@@ -283,9 +360,9 @@ public class GraphSearcher {
   ** Sorted list of nodes, ordered by degree. 
   */
 
-  public List<NID.WithName> nodeDegreeOrder(BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NID.WithName> nodeDegreeOrder(boolean relCollapse, BTProgressMonitor monitor) throws AsynchExitRequestException {
     ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
-    SortedSet<NodeDegree> nds = nodeDegreeSet(monitor);
+    SortedSet<NodeDegree> nds = nodeDegreeSet(relCollapse, monitor);
     for (NodeDegree ndeg : nds) {
       retval.add(ndeg.getNodeID());
     }
@@ -395,13 +472,13 @@ public class GraphSearcher {
   ** Breadth-First Search, ordered by degree
   */
 
-  public List<QueueEntry> breadthSearch(List<NID.WithName> startNodes, BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<QueueEntry> breadthSearch(List<NID.WithName> startNodes, boolean relCollapse, BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     if (edgeOrder_ != null) {
       throw new IllegalStateException();
     }
     
-    List<NID.WithName> byDeg = nodeDegreeOrder(monitor);
+    List<NID.WithName> byDeg = nodeDegreeOrder(relCollapse, monitor);
     Collections.reverse(byDeg);
     ArrayList<NID.WithName> toProcess = new ArrayList<NID.WithName>(byDeg);
     
@@ -434,7 +511,7 @@ public class GraphSearcher {
   ** Breadth-First Search
   */
 
-  public List<QueueEntry> breadthSearch(boolean byDegree, List<NID.WithName> useRoots, 
+  public List<QueueEntry> breadthSearch(boolean byDegree, boolean relCollapse, List<NID.WithName> useRoots, 
                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     if (edgeOrder_ != null) {
@@ -443,7 +520,7 @@ public class GraphSearcher {
     
     List<NID.WithName> byDeg = null;
     if (byDegree) {
-      byDeg = nodeDegreeOrder(monitor);
+      byDeg = nodeDegreeOrder(relCollapse, monitor);
       Collections.reverse(byDeg);
     }   
     
@@ -550,18 +627,18 @@ public class GraphSearcher {
     return (retval);
   }  
   
-   /***************************************************************************
+  /***************************************************************************
   ** 
   ** Take a sort to a simple listing
   */
   
   public List<NID.WithName> topoSortToPartialOrdering(Map<NID.WithName, Integer> topoSort, Set<NetLink> allLinks,
-                                                      BTProgressMonitor monitor) throws AsynchExitRequestException {
+                                                      boolean relCollapse, BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
     TreeMap<Integer, List<NID.WithName>> invert = new TreeMap<Integer, List<NID.WithName>>();
     
-    SortedSet<NodeDegree> nds = nodeDegreeSet(allLinks, monitor);
+    SortedSet<NodeDegree> nds = nodeDegreeSet(allLinks, relCollapse, monitor);
     
     invertTopoSort(topoSort, invert);    
     Iterator<List<NID.WithName>> kit = invert.values().iterator();
@@ -953,6 +1030,104 @@ public class GraphSearcher {
   
   /****************************************************************************
   **
+  ** Node annotated by degree and by (source, relation) tuples. Ordering such that higher degree
+  ** nodes some first, and equal degree nodes are ordered by order of source
+  ** nodes. Note this version will reflect actual degree in a multigraph, with multiple edges
+  ** between a source and a target.
+  */
+  
+  public static class SourcedNodeAndRelDegree implements Comparable<SourcedNodeAndRelDegree> {
+    
+    private NID.WithName node_;
+    private int degree_;
+    private boolean[] srcs_;
+    
+    public SourcedNodeAndRelDegree(NID.WithName node, List<NID.WithName> srcOrder, Set<NodeAndRel> mySARs) {
+      node_ = node;
+      degree_ = mySARs.size();
+      int numSrc = srcOrder.size();
+      srcs_ = new boolean[numSrc];
+      Set<NID.WithName> snSet = new HashSet<NID.WithName>();    
+      for (NodeAndRel sar : mySARs) {
+      	snSet.add(sar.getNode());
+      }
+      for (int i = 0; i < numSrc; i++) {
+        if (snSet.contains(srcOrder.get(i))) {
+          srcs_[i] = true;
+        }
+      }
+    }
+    
+    public NID.WithName getNode() {
+      return (node_);
+    }
+    
+    @Override
+    public int hashCode() {
+      return (node_.hashCode() + degree_);
+    }
+  
+    @Override
+    public String toString() {
+      return (" node = " + node_ + " degree = " + degree_);
+    }
+    
+    @Override
+    public boolean equals(Object other) {
+      if (!(other instanceof SourcedNodeAndRelDegree)) {
+        return (false);
+      }
+      SourcedNodeAndRelDegree otherDeg = (SourcedNodeAndRelDegree)other;    
+      if (this.degree_ != otherDeg.degree_) {
+        return (false);
+      }
+      return ((this.node_ == null) ? (otherDeg.node_ == null) : this.node_.equals(otherDeg.node_));
+    }
+    
+    public int compareTo(SourcedNodeAndRelDegree otherDeg) {
+      
+      if (this.node_.equals(otherDeg.node_)) {
+        return (0);
+      }    
+      
+      if (this.degree_ != otherDeg.degree_) {
+        // Higher degree is first:
+        return (otherDeg.degree_ - this.degree_);
+      }
+      
+      boolean iAmBigger = false;
+      boolean heIsBigger = false;
+      for (int i = 0; i < this.srcs_.length; i++) {
+
+        if (this.srcs_[i]) {
+          if (otherDeg.srcs_[i] == false) {
+            iAmBigger = true;
+            heIsBigger = false;
+            break;
+          }
+        }
+        if (otherDeg.srcs_[i]) {
+          if (this.srcs_[i] == false) {
+            iAmBigger = false;
+            heIsBigger = true;
+            break;
+          } 
+        }
+      }
+      if (iAmBigger) {
+        return (-1);
+      } else if (heIsBigger) {
+        return (1);
+      }
+      if (this.node_ == null) {
+        return ((otherDeg.node_ == null) ? 0 : -1);
+      }
+      return (this.node_.compareTo(otherDeg.node_));
+    } 
+  }
+   
+  /****************************************************************************
+  **
   ** A Class
   */
   
@@ -1182,7 +1357,7 @@ public class GraphSearcher {
 
     @Override
     public boolean equals(Object other) {
-      if (!(other instanceof SourcedNode)) {
+      if (!(other instanceof MMDSourcedNode)) {
         return (false);
       }
       MMDSourcedNode otherDeg = (MMDSourcedNode)other;
@@ -1229,6 +1404,71 @@ public class GraphSearcher {
       return (this.node_.compareTo(otherDeg.node_));
     }
   }
+  
+  /****************************************************************************
+  **
+  ** When ordering target nodes by degree, we get tripped up in a multigraph case when
+  ** only counting sources. We need to count source-relation tuples with a multigraph: 
+  */
+
+  public static class NodeAndRel implements Comparable<NodeAndRel> {
+
+    private NID.WithName node_;
+    private String relation_;
+   
+    public NodeAndRel(NID.WithName node, String relation) {
+      node_ = node;
+      relation_ = relation;
+    }
+
+    public NID.WithName getNode() {
+      return (node_);
+    }
+    
+    public String getRelation() {
+      return (relation_);
+    }
+
+    @Override
+    public int hashCode() {
+      return (node_.hashCode() + relation_.hashCode());
+    }
+
+    @Override
+    public String toString() {
+      return (" node = " + node_ + " relation = " + relation_);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      if (!(other instanceof NodeAndRel)) {
+        return (false);
+      }
+      NodeAndRel otherSR = (NodeAndRel)other;
+      if (!this.node_.equals(otherSR.node_)) {
+      	return (false);
+      }
+      return (this.relation_.equals(otherSR.relation_));
+    }
+
+    public int compareTo(NodeAndRel otherSR) {
+
+      //
+      // Same name, same node:
+      //
+
+    	int cn = this.node_.compareTo(otherSR.node_);
+    	if (cn != 0) {
+    		return (cn);
+    	}
+    	
+      return this.relation_.compareTo(otherSR.relation_);
+    }
+  }
+  
+  
+  
+  
   
   ////////////////////////////////////////////////////////////////////////////
   //

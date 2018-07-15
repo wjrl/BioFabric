@@ -972,7 +972,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       finished_= true;
       holdIt_ = holdIt;
       try {    	
-      	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bwcm_, "fileLoad.waitTitle", "fileLoad.wait", true);
+      	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bwcm_, "fileLoad.waitTitle", "fileLoad.wait", true, className_);
         NetworkAlignmentRunner runner = new NetworkAlignmentRunner(mergedLinks, mergedLoneNodeIDs, mapG1toG2, perfectG1toG2,
                                                                    mergedToCorrect, isAlignedNode, linksG1, lonersG1, linksG2, 
                                                                    lonersG2, relMap, outType, idGen, bfw);
@@ -1090,7 +1090,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       holdIt_ = holdIt;
       try {
       	
-      	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bwcm_, "fileLoad.waitTitle", "fileLoad.wait", true);
+      	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bwcm_, "fileLoad.waitTitle", "fileLoad.wait", true, className_);
         NetAlignMeasureRunner runner = new NetAlignMeasureRunner(reducedLinks, loneNodeIDs, isAlignedNode, mergedToCorrectNC, 
         		                                                     reducedLinksPerfect, loneNodeIDsPerfect, isAlignedNodePerfect, 
         		                                                     report, linksSmall, lonersSmall, linksLarge, 
