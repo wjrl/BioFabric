@@ -32,7 +32,7 @@ import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
 import org.systemsbiology.biofabric.modelAPI.AugRelation;
 import org.systemsbiology.biofabric.modelAPI.LinkComparator;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 import org.systemsbiology.biofabric.workerAPI.LoopReporter;
@@ -55,15 +55,15 @@ public class BuildExtractorImpl implements BuildExtractor {
   ** Extract nodes
   */
   
-  public Set<NID.WithName> extractNodes(Collection<NetLink> allLinks, Set<NID.WithName> loneNodeIDs,
+  public Set<NetNode> extractNodes(Collection<NetLink> allLinks, Set<NetNode> loneNodeIDs,
                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
     
-    Set<NID.WithName> retval = new HashSet<NID.WithName>(loneNodeIDs);
+    Set<NetNode> retval = new HashSet<NetNode>(loneNodeIDs);
     LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor, 0.0, 1.0, "progress.analyzingNodes");
     
     for (NetLink link : allLinks) {
-      retval.add(link.getSrcID());
-      retval.add(link.getTrgID());
+      retval.add(link.getSrcNode());
+      retval.add(link.getTrgNode());
       lr.report();
     }
     return (retval);
@@ -118,12 +118,12 @@ public class BuildExtractorImpl implements BuildExtractor {
   ** Helper to drop to map to single name: useful
   */
 
-  public Map<String, NID.WithName> reduceNameSetToOne(Map<String, Set<NID.WithName>> mapsToSets) { 
-  	HashMap<String, NID.WithName> retval = new HashMap<String, NID.WithName>();
+  public Map<String, NetNode> reduceNameSetToOne(Map<String, Set<NetNode>> mapsToSets) { 
+  	HashMap<String, NetNode> retval = new HashMap<String, NetNode>();
     Iterator<String> alit = mapsToSets.keySet().iterator();
     while (alit.hasNext()) {
       String nextName = alit.next();
-      Set<NID.WithName> forName = mapsToSets.get(nextName);
+      Set<NetNode> forName = mapsToSets.get(nextName);
       if (forName.size() != 1) {
       	throw new IllegalStateException();
       }

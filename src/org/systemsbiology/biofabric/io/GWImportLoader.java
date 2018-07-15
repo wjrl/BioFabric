@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
@@ -134,8 +135,8 @@ public class GWImportLoader extends FabricImportLoader {
    */
   
   protected void consumeTokens(String[] tokens, UniqueLabeller idGen, List<NetLink> links,
-                               Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap,
-                               Integer magBins, HashMap<String, NID.WithName> nameToID,
+                               Set<NetNode> loneNodeIDs, Map<String, String> nameMap,
+                               Integer magBins, Map<String, NetNode> nameToID,
                                FileImportStats stats) throws IOException {
     
     if (tokens.length == 1) {
@@ -174,8 +175,8 @@ public class GWImportLoader extends FabricImportLoader {
       sourceName = stripBrackets(sourceName);
       targetName = stripBrackets(targetName);
       
-      NID.WithName srcID = nameToNode(sourceName, idGen, nameToID);
-      NID.WithName trgID = nameToNode(targetName, idGen, nameToID);
+      NetNode srcID = nameToNode(sourceName, idGen, nameToID);
+      NetNode trgID = nameToNode(targetName, idGen, nameToID);
   
       edgeRelation = stripBrackets(edgeRelation);
       
@@ -202,14 +203,14 @@ public class GWImportLoader extends FabricImportLoader {
     return;
   }
   
-  private void addLoneNodes(UniqueLabeller idGen, Set<NID.WithName> loneNodeIDs,
-                            HashMap<String, NID.WithName> nameToID) {
+  private void addLoneNodes(UniqueLabeller idGen, Set<NetNode> loneNodeIDs,
+                            Map<String, NetNode> nameToID) {
     
     for (Map.Entry<Integer, Boolean> entry : indexUsed_.entrySet()) {
       
       if (! entry.getValue()) {
         String loner = indexToName_.get(entry.getKey());
-        NID.WithName lonerID = nameToNode(loner, idGen, nameToID);
+        NetNode lonerID = nameToNode(loner, idGen, nameToID);
         loneNodeIDs.add(lonerID);
       }
     }

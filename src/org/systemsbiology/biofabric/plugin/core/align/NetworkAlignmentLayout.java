@@ -39,6 +39,7 @@ import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
@@ -84,12 +85,12 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Relayout the network!
    */
   
-  public List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd, Params params, BTProgressMonitor monitor)
+  public List<NetNode> doNodeLayout(BuildData.RelayoutBuildData rbd, Params params, BTProgressMonitor monitor)
           throws AsynchExitRequestException {
     
     NetworkAlignmentBuildData nabd = (NetworkAlignmentBuildData) rbd;
     
-    List<NID.WithName> targetIDs;
+    List<NetNode> targetIDs;
     
     switch (nabd.view) {
       case GROUP:
@@ -106,7 +107,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
     }
     
     installNodeOrder(targetIDs, nabd, monitor);
-    return (new ArrayList<NID.WithName>(targetIDs));
+    return (new ArrayList<NetNode>(targetIDs));
   }
   
   /***************************************************************************
@@ -114,7 +115,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Breadth first search based on node groups
    */
 
-  private List<NID.WithName> bfsNodeGroupLayout(NetworkAlignmentBuildData nabd,
+  private List<NetNode> bfsNodeGroupLayout(NetworkAlignmentBuildData nabd,
                                                 BTProgressMonitor monitor) throws AsynchExitRequestException {
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
@@ -125,10 +126,10 @@ public class NetworkAlignmentLayout extends NodeLayout {
     // we go there first:
     //
     
-    HashMap<NID.WithName, Integer> linkCounts = new HashMap<NID.WithName, Integer>();
-    HashMap<NID.WithName, Set<NID.WithName>> targsPerSource = new HashMap<NID.WithName, Set<NID.WithName>>();
+    HashMap<NetNode, Integer> linkCounts = new HashMap<NetNode, Integer>();
+    HashMap<NetNode, Set<NetNode>> targsPerSource = new HashMap<NetNode, Set<NetNode>>();
     
-    HashSet<NID.WithName> targsToGo = new HashSet<NID.WithName>();
+    HashSet<NetNode> targsToGo = new HashSet<NetNode>();
     
     int numLink = nabd.allLinks.size();
     LoopReporter lr = new LoopReporter(numLink, 20, monitor, 0.0, 0.25, "progress.calculateNodeDegree");
@@ -137,17 +138,17 @@ public class NetworkAlignmentLayout extends NodeLayout {
     while (alit.hasNext()) {
       NetLink nextLink = alit.next();
       lr.report();
-      NID.WithName sidwn = nextLink.getSrcID();
-      NID.WithName tidwn = nextLink.getTrgID();
-      Set<NID.WithName> targs = targsPerSource.get(sidwn);
+      NetNode sidwn = nextLink.getSrcNode();
+      NetNode tidwn = nextLink.getTrgNode();
+      Set<NetNode> targs = targsPerSource.get(sidwn);
       if (targs == null) {
-        targs = new HashSet<NID.WithName>();
+        targs = new HashSet<NetNode>();
         targsPerSource.put(sidwn, targs);
       }
       targs.add(tidwn);
       targs = targsPerSource.get(tidwn);
       if (targs == null) {
-        targs = new HashSet<NID.WithName>();
+        targs = new HashSet<NetNode>();
         targsPerSource.put(tidwn, targs);
       }
       targs.add(sidwn);
@@ -174,31 +175,31 @@ public class NetworkAlignmentLayout extends NodeLayout {
     }
     
     // master list of nodes in each group
-    SortedMap<Integer, List<NID.WithName>> classToGroup = new TreeMap<Integer, List<NID.WithName>>();
+    SortedMap<Integer, List<NetNode>> classToGroup = new TreeMap<Integer, List<NetNode>>();
     for (int i = 0; i < grouper.numGroups(); i++) {
-      classToGroup.put(i, new ArrayList<NID.WithName>());
+      classToGroup.put(i, new ArrayList<NetNode>());
     }
     // fill the master list with nodes
-    Set<NID.WithName> allNodes = PluginSupportFactory.getBuildExtractor().extractNodes(nabd.allLinks, nabd.loneNodeIDs, monitor);
-    for (NID.WithName node : allNodes) {
+    Set<NetNode> allNodes = PluginSupportFactory.getBuildExtractor().extractNodes(nabd.allLinks, nabd.loneNodeIDs, monitor);
+    for (NetNode node : allNodes) {
       int nodeClass = grouper.getIndex(node);
       classToGroup.get(nodeClass).add(node);
     }
     // sort by decreasing degree
-    for (List<NID.WithName> group : classToGroup.values()) {
+    for (List<NetNode> group : classToGroup.values()) {
       Collections.sort(group, grouper.sortDecrDegree());
     }
     
-    SortedMap<Integer, List<NID.WithName>> targetsGroup = new TreeMap<Integer, List<NID.WithName>>(),
-            queueGroup = new TreeMap<Integer, List<NID.WithName>>(),
-            targsLeftToGoGroup = new TreeMap<Integer, List<NID.WithName>>();
+    SortedMap<Integer, List<NetNode>> targetsGroup = new TreeMap<Integer, List<NetNode>>(),
+            queueGroup = new TreeMap<Integer, List<NetNode>>(),
+            targsLeftToGoGroup = new TreeMap<Integer, List<NetNode>>();
     
     // each node group (singletons too) gets queue and targets list
     for (int i = 0; i < grouper.numGroups(); i++) {
-      targetsGroup.put(i, new ArrayList<NID.WithName>());
-      queueGroup.put(i, new ArrayList<NID.WithName>());
-      targsLeftToGoGroup.put(i, new ArrayList<NID.WithName>());
-      for (NID.WithName node : classToGroup.get(i)) {
+      targetsGroup.put(i, new ArrayList<NetNode>());
+      queueGroup.put(i, new ArrayList<NetNode>());
+      targsLeftToGoGroup.put(i, new ArrayList<NetNode>());
+      for (NetNode node : classToGroup.get(i)) {
         targsLeftToGoGroup.get(i).add(node);
       }
     }
@@ -216,7 +217,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       }
       // if queue is empty, pull head node from list
       if (queueGroup.get(currGroup).isEmpty()) {
-        NID.WithName head = targsLeftToGoGroup.get(currGroup).remove(0);
+        NetNode head = targsLeftToGoGroup.get(currGroup).remove(0);
         queueGroup.get(currGroup).add(head);
       }
       
@@ -228,10 +229,10 @@ public class NetworkAlignmentLayout extends NodeLayout {
     // Add lone nodes and "flatten" out the targets into one list
     //
 
-    List<NID.WithName> targets = new ArrayList<NID.WithName>();
+    List<NetNode> targets = new ArrayList<NetNode>();
     for (int i = 0; i < grouper.numGroups(); i++) {
-      List<NID.WithName> group = targetsGroup.get(i);
-      for (NID.WithName node : group) {
+      List<NetNode> group = targetsGroup.get(i);
+      for (NetNode node : group) {
         targets.add(node);
       }
     }
@@ -251,24 +252,24 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Node ordering, non-recursive:
    */
   
-  private void flushQueue(SortedMap<Integer, List<NID.WithName>> targetsGroup,
-                          Map<NID.WithName, Set<NID.WithName>> targsPerSource,
-                          Map<NID.WithName, Integer> linkCounts,
-                          Set<NID.WithName> targsToGo, SortedMap<Integer, List<NID.WithName>> targsLeftToGoGroup,
-                          SortedMap<Integer, List<NID.WithName>> queuesGroup,
+  private void flushQueue(SortedMap<Integer, List<NetNode>> targetsGroup,
+                          Map<NetNode, Set<NetNode>> targsPerSource,
+                          Map<NetNode, Integer> linkCounts,
+                          Set<NetNode> targsToGo, SortedMap<Integer, List<NetNode>> targsLeftToGoGroup,
+                          SortedMap<Integer, List<NetNode>> queuesGroup,
                           BTProgressMonitor monitor, double startFrac, double endFrac, final int currGroup,
                           NodeGroupMap grouper)
           throws AsynchExitRequestException {
     
-    List<NID.WithName> queue = queuesGroup.get(currGroup);
-    List<NID.WithName> leftToGo = targsLeftToGoGroup.get(currGroup);
+    List<NetNode> queue = queuesGroup.get(currGroup);
+    List<NetNode> leftToGo = targsLeftToGoGroup.get(currGroup);
     
     LoopReporter lr = new LoopReporter(leftToGo.size(), 20, monitor, startFrac, endFrac, "progress.nodeOrdering");
     int lastSize = leftToGo.size();
   
     while (! queue.isEmpty()) {
       
-      NID.WithName node = queue.remove(0);
+      NetNode node = queue.remove(0);
       int ttgSize = targsLeftToGoGroup.get(currGroup).size();
       lr.report(lastSize - ttgSize);
       lastSize = ttgSize;
@@ -282,8 +283,8 @@ public class NetworkAlignmentLayout extends NodeLayout {
         throw new IllegalStateException("Node of incorrect group in queue");
       }
       
-      List<NID.WithName> myKids = orderMyKids(targsPerSource, linkCounts, targsToGo, node);
-      for (NID.WithName kid : myKids) {
+      List<NetNode> myKids = orderMyKids(targsPerSource, linkCounts, targsToGo, node);
+      for (NetNode kid : myKids) {
         
         if (! targsToGo.contains(kid)) {
           throw new IllegalStateException("kid not in targsToGo");
@@ -313,33 +314,33 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Node ordering
    */
   
-  private List<NID.WithName> orderMyKids(final Map<NID.WithName, Set<NID.WithName>> targsPerSource,
-                                         Map<NID.WithName, Integer> linkCounts,
-                                         Set<NID.WithName> targsToGo, final NID.WithName node) {
-    Set<NID.WithName> targs = targsPerSource.get(node);
+  private List<NetNode> orderMyKids(final Map<NetNode, Set<NetNode>> targsPerSource,
+                                         Map<NetNode, Integer> linkCounts,
+                                         Set<NetNode> targsToGo, final NetNode node) {
+    Set<NetNode> targs = targsPerSource.get(node);
     if (targs == null) {
-      return (new ArrayList<NID.WithName>());
+      return (new ArrayList<NetNode>());
     }
-    TreeMap<Integer, SortedSet<NID.WithName>> kidMap = new TreeMap<Integer, SortedSet<NID.WithName>>(Collections.reverseOrder());
-    Iterator<NID.WithName> tait = targs.iterator();
+    TreeMap<Integer, SortedSet<NetNode>> kidMap = new TreeMap<Integer, SortedSet<NetNode>>(Collections.reverseOrder());
+    Iterator<NetNode> tait = targs.iterator();
     while (tait.hasNext()) {
-      NID.WithName nextTarg = tait.next();
+      NetNode nextTarg = tait.next();
       Integer count = linkCounts.get(nextTarg);
-      SortedSet<NID.WithName> perCount = kidMap.get(count);
+      SortedSet<NetNode> perCount = kidMap.get(count);
       if (perCount == null) {
-        perCount = new TreeSet<NID.WithName>();
+        perCount = new TreeSet<NetNode>();
         kidMap.put(count, perCount);
       }
       perCount.add(nextTarg);
     }
     
-    ArrayList<NID.WithName> myKidsToProc = new ArrayList<NID.WithName>();
-    Iterator<SortedSet<NID.WithName>> kmit = kidMap.values().iterator();
+    ArrayList<NetNode> myKidsToProc = new ArrayList<NetNode>();
+    Iterator<SortedSet<NetNode>> kmit = kidMap.values().iterator();
     while (kmit.hasNext()) {
-      SortedSet<NID.WithName> perCount = kmit.next();
-      Iterator<NID.WithName> pcit = perCount.iterator();
+      SortedSet<NetNode> perCount = kmit.next();
+      Iterator<NetNode> pcit = perCount.iterator();
       while (pcit.hasNext()) {
-        NID.WithName kid = pcit.next();
+        NetNode kid = pcit.next();
         if (targsToGo.contains(kid)) {
           myKidsToProc.add(kid);
         }
@@ -354,13 +355,13 @@ public class NetworkAlignmentLayout extends NodeLayout {
    */
   
   private void installAnnotations(NetworkAlignmentBuildData nabd,
-                                  SortedMap<Integer, List<NID.WithName>> targetsGroup, NodeGroupMap grouper) {
+                                  SortedMap<Integer, List<NetNode>> targetsGroup, NodeGroupMap grouper) {
     
     AnnotationSet layerZeroAnnots = new AnnotationSet();
     int min = 0;
     
     for (int i = 0; i < grouper.numGroups(); i++) {
-      List<NID.WithName> group = targetsGroup.get(i);
+      List<NetNode> group = targetsGroup.get(i);
       if (group.isEmpty()) {
         continue;
       }

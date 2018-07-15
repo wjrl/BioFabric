@@ -55,13 +55,13 @@ import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
 import org.systemsbiology.biofabric.util.ColorListRenderer;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.MinMax;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 
 
@@ -624,7 +624,7 @@ public class FabricMagnifyingTool extends JPanel {
       int startCen = myCen.y - (currSize_ / 2) - 1;
       int endCen = myCen.y + (currSize_ / 2) + 1;   
       for (int i = startCen; i <= endCen; i++) {
-        NID.WithName node = model_.getNodeIDForRow(Integer.valueOf(i));
+        NetNode node = model_.getNodeIDForRow(Integer.valueOf(i));
         if (node == null) {
           continue;
         }
@@ -632,7 +632,7 @@ public class FabricMagnifyingTool extends JPanel {
         MinMax nimm = ni.getColRange(showShadows);
         if ((nimm.min <= myCen.x + (currSize_ / 2)) && (nimm.max >= myCen.x - (currSize_ / 2))) {
           Rectangle2D bounds = tiny_.getStringBounds(node.getName(), frc);
-          atPoint.setLocation(0.0, (double)(i * BioFabricPanel.GRID_SIZE));
+          atPoint.setLocation(0.0, i * BioFabricPanel.GRID_SIZE);
           ac.transform(atPoint, drawPoint);
           g2.drawString(node.getName(), getWidth() - (float)bounds.getWidth() - 5.0F, (float)drawPoint.getY() + ((float)bounds.getHeight() / 3.0F)); 
         } 
@@ -712,8 +712,8 @@ public class FabricMagnifyingTool extends JPanel {
       for (int i = startCen; i <= endCen; i++) {
         count++;
         Integer colObj = Integer.valueOf(i);
-        NID.WithName src = model_.getSourceIDForColumn(colObj, showShadows);
-        NID.WithName trg = model_.getTargetIDForColumn(colObj, showShadows);
+        NetNode src = model_.getSourceIDForColumn(colObj, showShadows);
+        NetNode trg = model_.getTargetIDForColumn(colObj, showShadows);
         if ((src == null) || (trg == null)) {
           continue;
         }
@@ -807,7 +807,7 @@ public class FabricMagnifyingTool extends JPanel {
    
       for (int i = startCen; i <= endCen; i++) {
         Integer colObj = Integer.valueOf(i);
-        NID.WithName src = model_.getSourceIDForColumn(colObj, showShadows);
+        NetNode src = model_.getSourceIDForColumn(colObj, showShadows);
         if (src == null) {
           continue;
         }

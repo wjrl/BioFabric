@@ -35,7 +35,7 @@ import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 import org.systemsbiology.biofabric.workerAPI.LoopReporter;
@@ -53,11 +53,11 @@ public class HierDAGLayout extends NodeLayout {
   //
   ////////////////////////////////////////////////////////////////////////////
 
-   private Map<NID.WithName, Set<NID.WithName>> l2s_;
-   private Map<NID.WithName, Integer> inDegs_;
-   private Map<NID.WithName, Integer> outDegs_;
-   private ArrayList<NID.WithName> placeList_;
-   private HashMap<NID.WithName, Integer> nameToRow_;
+   private Map<NetNode, Set<NetNode>> l2s_;
+   private Map<NetNode, Integer> inDegs_;
+   private Map<NetNode, Integer> outDegs_;
+   private ArrayList<NetNode> placeList_;
+   private HashMap<NetNode, Integer> nameToRow_;
    private boolean pointUp_;
   
   ////////////////////////////////////////////////////////////////////////////
@@ -72,11 +72,11 @@ public class HierDAGLayout extends NodeLayout {
   */
 
   public HierDAGLayout(boolean pointUp) {
-     l2s_ = new HashMap<NID.WithName, Set<NID.WithName>>();
-     inDegs_ = new HashMap<NID.WithName, Integer>();
-     outDegs_ = new HashMap<NID.WithName, Integer>();
-     placeList_ = new ArrayList<NID.WithName>();
-     nameToRow_ = new HashMap<NID.WithName, Integer>();
+     l2s_ = new HashMap<NetNode, Set<NetNode>>();
+     inDegs_ = new HashMap<NetNode, Integer>();
+     outDegs_ = new HashMap<NetNode, Integer>();
+     placeList_ = new ArrayList<NetNode>();
+     nameToRow_ = new HashMap<NetNode, Integer>();
      pointUp_ = pointUp;
   }
 
@@ -122,11 +122,11 @@ public class HierDAGLayout extends NodeLayout {
   ** Generate the Node ordering
   */
   
-  public List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd,
+  public List<NetNode> doNodeLayout(BuildData.RelayoutBuildData rbd,
   		                                   Params params,
   		   																 BTProgressMonitor monitor) throws AsynchExitRequestException {
     
-    List<NID.WithName> targets = orderByNodeDegree(rbd, monitor);       
+    List<NetNode> targets = orderByNodeDegree(rbd, monitor);       
 
     //
     // Now have the ordered list of targets we are going to display.
@@ -143,15 +143,15 @@ public class HierDAGLayout extends NodeLayout {
   ** Get the ordering of nodes by node degree:
   */
   
-  private List<NID.WithName> orderByNodeDegree(BuildData.RelayoutBuildData rbd, 
+  private List<NetNode> orderByNodeDegree(BuildData.RelayoutBuildData rbd, 
   		                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
     
-    HashSet<NID.WithName> nodesToGo = new HashSet<NID.WithName>(rbd.allNodeIDs);
+    HashSet<NetNode> nodesToGo = new HashSet<NetNode>(rbd.allNodeIDs);
     
     // Build map of sources to targets, also record in and out degrees of each node:
     linksToSources(rbd.allNodeIDs, rbd.allLinks, monitor);
     
-    List<NID.WithName> placeList = extractRoots(monitor);
+    List<NetNode> placeList = extractRoots(monitor);
     addToPlaceList(placeList);
     nodesToGo.removeAll(placeList);
     
@@ -162,7 +162,7 @@ public class HierDAGLayout extends NodeLayout {
     LoopReporter lr = new LoopReporter(nodesToGo.size(), 20, monitor, 0.0, 1.0, "progress.findingCandidates");
     
     while (!nodesToGo.isEmpty()) {
-      List<NID.WithName> nextBatch = findNextCandidates();
+      List<NetNode> nextBatch = findNextCandidates();
       lr.report(nextBatch.size());
       addToPlaceList(nextBatch);
       nodesToGo.removeAll(nextBatch);
@@ -178,7 +178,7 @@ public class HierDAGLayout extends NodeLayout {
   ** Construct a map of the targets of each node. Note that instance members
   */
 
-  private void linksToSources(Set<NID.WithName> nodeList, Set<NetLink> linkList,
+  private void linksToSources(Set<NetNode> nodeList, Set<NetLink> linkList,
   		                        BTProgressMonitor monitor) throws AsynchExitRequestException {
     
   	//
@@ -188,11 +188,11 @@ public class HierDAGLayout extends NodeLayout {
   	
   	LoopReporter lr = new LoopReporter(nodeList.size(), 20, monitor, 0.0, 1.0, "progress.hDagLayoutInit");
   	
-    Iterator<NID.WithName> nit = nodeList.iterator();
+    Iterator<NetNode> nit = nodeList.iterator();
     while (nit.hasNext()) {
-      NID.WithName node = nit.next();
+      NetNode node = nit.next();
       lr.report();
-      l2s_.put(node, new HashSet<NID.WithName>());
+      l2s_.put(node, new HashSet<NetNode>());
       inDegs_.put(node, Integer.valueOf(0));
       outDegs_.put(node, Integer.valueOf(0));
     } 
@@ -211,9 +211,9 @@ public class HierDAGLayout extends NodeLayout {
       // By default, layout designed to have links point up. Quick way to switch this
       // is to reverse semantics of source and target:
       //
-      NID.WithName src = (pointUp_) ? link.getSrcID() : link.getTrgID();
-      NID.WithName trg = (pointUp_) ? link.getTrgID() : link.getSrcID();
-      Set<NID.WithName> toTarg = l2s_.get(src);
+      NetNode src = (pointUp_) ? link.getSrcNode() : link.getTrgNode();
+      NetNode trg = (pointUp_) ? link.getTrgNode() : link.getSrcNode();
+      Set<NetNode> toTarg = l2s_.get(src);
       toTarg.add(trg);
       Integer deg = outDegs_.get(src);
       outDegs_.put(src, Integer.valueOf(deg.intValue() + 1));
@@ -228,9 +228,9 @@ public class HierDAGLayout extends NodeLayout {
   ** Add to list to place
   */
 
-  private void addToPlaceList(List<NID.WithName> nextBatch) {
+  private void addToPlaceList(List<NetNode> nextBatch) {
     int nextRow = placeList_.size();
-    for (NID.WithName nextNode : nextBatch) {
+    for (NetNode nextNode : nextBatch) {
       placeList_.add(nextNode);
       nameToRow_.put(nextNode, Integer.valueOf(nextRow++));
     }
@@ -242,17 +242,17 @@ public class HierDAGLayout extends NodeLayout {
   ** Extract the root nodes in order from highest degree to low
   */
 
-  private List<NID.WithName> extractRoots(BTProgressMonitor monitor) throws AsynchExitRequestException {
+  private List<NetNode> extractRoots(BTProgressMonitor monitor) throws AsynchExitRequestException {
  
     LoopReporter lr = new LoopReporter(l2s_.size(), 20, monitor, 0.0, 1.0, "progress.rootExtractPass1");
     
-    Map<NID.WithName, Integer> roots = new HashMap<NID.WithName, Integer>();
+    Map<NetNode, Integer> roots = new HashMap<NetNode, Integer>();
       
-    Iterator<NID.WithName> lit = l2s_.keySet().iterator();
+    Iterator<NetNode> lit = l2s_.keySet().iterator();
     while (lit.hasNext()) {
-      NID.WithName node = lit.next();
+      NetNode node = lit.next();
       lr.report();
-      Set<NID.WithName> fn = l2s_.get(node);
+      Set<NetNode> fn = l2s_.get(node);
       if (fn.isEmpty()) {
         roots.put(node, Integer.valueOf(0));
       }
@@ -263,12 +263,12 @@ public class HierDAGLayout extends NodeLayout {
     LoopReporter lr2 = new LoopReporter(l2s_.size(), 20, monitor, 0.0, 1.0, "progress.rootExtractPass2");
     lit = l2s_.keySet().iterator();
     while (lit.hasNext()) {
-      NID.WithName node = lit.next();
+      NetNode node = lit.next();
       lr2.report();
-      Set<NID.WithName> fn = l2s_.get(node);
-      Iterator<NID.WithName> sit = fn.iterator();
+      Set<NetNode> fn = l2s_.get(node);
+      Iterator<NetNode> sit = fn.iterator();
       while (sit.hasNext()) {
-        NID.WithName trg = sit.next();
+        NetNode trg = sit.next();
         Integer rs = roots.get(trg);
         if (rs != null) {
           roots.put(trg, Integer.valueOf(rs.intValue() + 1));          
@@ -277,14 +277,14 @@ public class HierDAGLayout extends NodeLayout {
     }
     lr2.finish();
     
-    ArrayList<NID.WithName> buildList = new ArrayList<NID.WithName>();
+    ArrayList<NetNode> buildList = new ArrayList<NetNode>();
     
     LoopReporter lr3 = new LoopReporter(roots.size(), 20, monitor, 0.0, 1.0, "progress.rootExtractPass3");
     int count = 1;
-    TreeSet<NID.WithName> alpha = new TreeSet<NID.WithName>(Collections.reverseOrder());
+    TreeSet<NetNode> alpha = new TreeSet<NetNode>(Collections.reverseOrder());
     alpha.addAll(roots.keySet());
     while (buildList.size() < roots.size()) {
-      for (NID.WithName node : alpha) {
+      for (NetNode node : alpha) {
         Integer val = roots.get(node);
         if (val.intValue() == count) {
           buildList.add(node);
@@ -303,22 +303,22 @@ public class HierDAGLayout extends NodeLayout {
   ** Find the next guys to go:
   */
 
-  private List<NID.WithName> findNextCandidates() {
+  private List<NetNode> findNextCandidates() {
  
-    HashSet<NID.WithName> quickie = new HashSet<NID.WithName>(placeList_);
+    HashSet<NetNode> quickie = new HashSet<NetNode>(placeList_);
      
     ArrayList<GraphSearcher.SourcedNode> nextOutList = new ArrayList<GraphSearcher.SourcedNode>();
-    Iterator<NID.WithName> lit = l2s_.keySet().iterator();
+    Iterator<NetNode> lit = l2s_.keySet().iterator();
     while (lit.hasNext()) {
-      NID.WithName node = lit.next();
+      NetNode node = lit.next();
       if (quickie.contains(node)) {
         continue;
       }
-      Set<NID.WithName> fn = l2s_.get(node);
+      Set<NetNode> fn = l2s_.get(node);
       boolean allThere = true;
-      Iterator<NID.WithName> sit = fn.iterator();
+      Iterator<NetNode> sit = fn.iterator();
       while (sit.hasNext()) {
-        NID.WithName trg = sit.next();
+        NetNode trg = sit.next();
         if (!quickie.contains(trg)) {
           allThere = false;
           break;
@@ -340,7 +340,7 @@ public class HierDAGLayout extends NodeLayout {
     // Make them a list:
     //
    
-    ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
+    ArrayList<NetNode> retval = new ArrayList<NetNode>();
     for (GraphSearcher.SourcedNode sn : nextOut) {
       retval.add(sn.getNode());
     }

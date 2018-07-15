@@ -38,11 +38,11 @@ import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.util.ChoiceContent;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.DoubMinMax;
 import org.systemsbiology.biofabric.util.MinMax;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
@@ -99,7 +99,7 @@ public class NodeSimilarityLayout extends NodeLayout {
   ** Node layout
   */
 
-  public List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd, 
+  public List<NetNode> doNodeLayout(BuildData.RelayoutBuildData rbd, 
 							                           NodeLayout.Params params,
 							                           BTProgressMonitor monitor) throws AsynchExitRequestException { 
   	if (params instanceof NodeSimilarityLayout.ResortParams) {
@@ -116,12 +116,12 @@ public class NodeSimilarityLayout extends NodeLayout {
   ** Move nodes to match shapes
   */
 
-  private List<NID.WithName> doReorderLayout(BuildData.RelayoutBuildData rbd, 
+  private List<NetNode> doReorderLayout(BuildData.RelayoutBuildData rbd, 
                                              NodeSimilarityLayout.ResortParams rp,
                                              BTProgressMonitor monitor) throws AsynchExitRequestException { 
 
   	BioFabricNetwork bfn = rbd.bfn;
-  	HashMap<NID.WithName, Integer> targToRow = new HashMap<NID.WithName, Integer>();
+  	HashMap<NetNode, Integer> targToRow = new HashMap<NetNode, Integer>();
     SortedMap<Integer, SortedSet<Integer>> connVecs = getConnectionVectors(rbd, targToRow, monitor);
      
     List<Integer> ordered = new ArrayList<Integer>();
@@ -157,7 +157,7 @@ public class NodeSimilarityLayout extends NodeLayout {
     }
     
     monitor.updateRankings(rankings);
-    List<NID.WithName> retval = convertOrderToMap(bfn, rbd, ordered);  
+    List<NetNode> retval = convertOrderToMap(bfn, rbd, ordered);  
     return (retval);
   }
   
@@ -166,12 +166,12 @@ public class NodeSimilarityLayout extends NodeLayout {
   ** Clustered Layout guts
   */   
 
-  private List<NID.WithName> doClusteredLayout(BuildData.RelayoutBuildData rbd, 
+  private List<NetNode> doClusteredLayout(BuildData.RelayoutBuildData rbd, 
                                                NodeSimilarityLayout.ClusterParams params,
                                                BTProgressMonitor monitor) throws AsynchExitRequestException {   
  
     List<Integer> ordered = doClusteredLayoutOrder(rbd, params, monitor);
-    List<NID.WithName> retval = convertOrderToMap(rbd.bfn, rbd, ordered);
+    List<NetNode> retval = convertOrderToMap(rbd.bfn, rbd, ordered);
     return (retval);
   }
   
@@ -184,7 +184,7 @@ public class NodeSimilarityLayout extends NodeLayout {
 							                                 NodeSimilarityLayout.ClusterParams cp,
 							                                 BTProgressMonitor monitor) throws AsynchExitRequestException {   
  
-    HashMap<NID.WithName, Integer> targToRow = new HashMap<NID.WithName, Integer>();
+    HashMap<NetNode, Integer> targToRow = new HashMap<NetNode, Integer>();
     SortedMap<Integer, SortedSet<Integer>> connVecs = getConnectionVectors(rbd, targToRow, monitor);
 
     TreeMap<Double, SortedSet<Link>> dists = new TreeMap<Double, SortedSet<Link>>(Collections.reverseOrder());
@@ -199,8 +199,8 @@ public class NodeSimilarityLayout extends NodeLayout {
     
     
     LoopReporter lr = new LoopReporter(targToRow.size(), 20, monitor, 0.0, 1.0, "progress.preparingToChain"); 
-    HashMap<Integer, NID.WithName> rowToTarg = new HashMap<Integer, NID.WithName>();
-    for (NID.WithName targ : targToRow.keySet()) {
+    HashMap<Integer, NetNode> rowToTarg = new HashMap<Integer, NetNode>();
+    for (NetNode targ : targToRow.keySet()) {
     	lr.report();
     	rowToTarg.put(targToRow.get(targ), targ);
     }
@@ -224,13 +224,13 @@ public class NodeSimilarityLayout extends NodeLayout {
   */
 
   private SortedMap<Integer, SortedSet<Integer>> getConnectionVectors(BuildData.RelayoutBuildData rbd, 
-  		                                                                Map<NID.WithName, Integer> targToRow,
+  		                                                                Map<NetNode, Integer> targToRow,
   		                                                                BTProgressMonitor monitor) throws AsynchExitRequestException {
     
-    Iterator<NID.WithName> rtit = rbd.existingIDOrder.iterator();
+    Iterator<NetNode> rtit = rbd.existingIDOrder.iterator();
     int count = 0;
     while (rtit.hasNext()) {
-      NID.WithName node = rtit.next();
+      NetNode node = rtit.next();
       targToRow.put(node, Integer.valueOf(count++));
     }
     
@@ -244,9 +244,9 @@ public class NodeSimilarityLayout extends NodeLayout {
       if (fl.isShadow()) {
       	continue;
       }
-      NID.WithName srcName = fl.getSrcID();
+      NetNode srcName = fl.getSrcNode();
       Integer srcRow = targToRow.get(srcName);
-      NID.WithName trgName = fl.getTrgID();
+      NetNode trgName = fl.getTrgNode();
       Integer trgRow = targToRow.get(trgName);
 
       SortedSet<Integer> forRetval = retval.get(srcRow);
@@ -276,7 +276,7 @@ public class NodeSimilarityLayout extends NodeLayout {
                              SortedMap<Double, SortedSet<Link>> retval, 
                              Map<Integer, Integer> connMag, 
                              BuildData.RelayoutBuildData rbd, 
-                             Map<NID.WithName, Integer> targToRow,
+                             Map<NetNode, Integer> targToRow,
                              BTProgressMonitor monitor) throws AsynchExitRequestException {
     int rowCount = rbd.allNodeIDs.size();
     Integer[] icache = new Integer[rowCount];
@@ -298,9 +298,9 @@ public class NodeSimilarityLayout extends NodeLayout {
       if (fl.isShadow()) {
       	continue;
       }
-      NID.WithName srcName = fl.getSrcID();
+      NetNode srcName = fl.getSrcNode();
       Integer srcRow = targToRow.get(srcName);
-      NID.WithName trgName = fl.getTrgID();
+      NetNode trgName = fl.getTrgNode();
       Integer trgRow = targToRow.get(trgName);
       SortedSet<Integer> srcVec = connVec.get(srcRow);     
       int srcSize = srcVec.size();
@@ -365,7 +365,7 @@ public class NodeSimilarityLayout extends NodeLayout {
                             SortedMap<Double, SortedSet<Link>> retval, 
                             Map<Integer, Integer> connMag, 
                             BuildData.RelayoutBuildData rbd, 
-                            Map<NID.WithName, Integer> targToRow,
+                            Map<NetNode, Integer> targToRow,
   	                        BTProgressMonitor monitor) throws AsynchExitRequestException {
 
     int rowCount = rbd.allNodeIDs.size();
@@ -390,9 +390,9 @@ public class NodeSimilarityLayout extends NodeLayout {
       if (fl.isShadow()) {
       	continue;
       }
-      NID.WithName srcName = fl.getSrcID();
+      NetNode srcName = fl.getSrcNode();
       Integer srcRow = targToRow.get(srcName);
-      NID.WithName trgName = fl.getTrgID();
+      NetNode trgName = fl.getTrgNode();
       Integer trgRow = targToRow.get(trgName);
       SortedSet<Integer> srcVec = connVec.get(srcRow);     
       int srcSize = srcVec.size();
@@ -436,7 +436,7 @@ public class NodeSimilarityLayout extends NodeLayout {
   ** set of nodes.
   */
 
-  private List<Integer> orderByDistanceChained(Map<Integer, NID.WithName> rowToTarg, 
+  private List<Integer> orderByDistanceChained(Map<Integer, NetNode> rowToTarg, 
   		                                             Integer start, SortedMap<Double, SortedSet<Link>> cosines, 
 			                                             Map<Integer, Integer> connMag, List<Link> linkTrace, 
 			                                             int limit, double tol, List<Integer> jumpLog,
@@ -544,7 +544,7 @@ public class NodeSimilarityLayout extends NodeLayout {
   ** another node.  That node then becomes the next to search on.
   */
 
-  private DoubleRanked findBestUnseenHop(Map<Integer, NID.WithName> nodeForRow, SortedMap<Double, SortedSet<Link>> cosines, 
+  private DoubleRanked findBestUnseenHop(Map<Integer, NetNode> nodeForRow, SortedMap<Double, SortedSet<Link>> cosines, 
                                          Map<Integer, Integer> degMag, HashSet<Integer> seen, 
                                          List<Integer> launchNodes, List<Integer> currentOrder) { 
     if ((launchNodes != null) && launchNodes.isEmpty()) {
@@ -644,7 +644,7 @@ public class NodeSimilarityLayout extends NodeLayout {
   ** Handle the fallback case.
   */
 
-  private void handleFallbacks(Map<Integer, NID.WithName> rowToNode, Map<Integer, Integer> degMag, List<Link> linkTrace, 
+  private void handleFallbacks(Map<Integer, NetNode> rowToNode, Map<Integer, Integer> degMag, List<Link> linkTrace, 
                                 HashSet<Integer> seen, List<Integer> retval) { 
     Integer nextBest = getHighestDegreeRemaining(rowToNode, seen, degMag);
     if (nextBest != null) {        
@@ -675,7 +675,7 @@ public class NodeSimilarityLayout extends NodeLayout {
   ** When we run out of connected nodes, go get the best one remaining
   */
 
-  private Integer getHighestDegreeRemaining(Map<Integer, NID.WithName> rowToNode, Set<Integer> seen, Map<Integer, Integer> degMag) { 
+  private Integer getHighestDegreeRemaining(Map<Integer, NetNode> rowToNode, Set<Integer> seen, Map<Integer, Integer> degMag) { 
     Integer maxDegNode = null;
     String maxDegNodeName = null;
     Integer maxDegDeg = null;

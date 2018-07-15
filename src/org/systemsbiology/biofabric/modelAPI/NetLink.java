@@ -19,8 +19,6 @@
 
 package org.systemsbiology.biofabric.modelAPI;
 
-import org.systemsbiology.biofabric.util.NID;
-
 /****************************************************************************
 **
 ** This is the interface for network links that plugins can use
@@ -34,8 +32,8 @@ public interface NetLink {
   public boolean isFeedback();
   public void installDirection(Boolean isDirected);
   public boolean isDirected();
-  public NID.WithName getTrgID();
-  public NID.WithName getSrcID();
+  public NetNode getTrgNode();
+  public NetNode getSrcNode();
   public boolean isShadow();
   public boolean synonymous(NetLink other);
 }

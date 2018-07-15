@@ -34,7 +34,8 @@ import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
+import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 
@@ -63,9 +64,9 @@ public class GraphSearcher {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  private HashSet<NID.WithName> allNodes_;
+  private HashSet<NetNode> allNodes_;
   private HashSet<NetLink> allEdges_;
-  private ArrayList<NID.WithName> nodeOrder_;
+  private ArrayList<NetNode> nodeOrder_;
   private ArrayList<NetLink> edgeOrder_;
   
   ////////////////////////////////////////////////////////////////////////////
@@ -79,8 +80,8 @@ public class GraphSearcher {
   ** Constructor
   */
 
-  public GraphSearcher(Set<NID.WithName> nodes, Set<NetLink> links) {
-    allNodes_ = new HashSet<NID.WithName>(nodes);
+  public GraphSearcher(Set<NetNode> nodes, Set<NetLink> links) {
+    allNodes_ = new HashSet<NetNode>(nodes);
     allEdges_ = new HashSet<NetLink>(links);
     edgeOrder_ = null;
     nodeOrder_ = null;
@@ -93,12 +94,12 @@ public class GraphSearcher {
   ** times, the order is based on first appearance.
   */
 
-  public GraphSearcher(List<NID.WithName> nodes, List<NetLink> links) {
+  public GraphSearcher(List<NetNode> nodes, List<NetLink> links) {
 
-    allNodes_ = new HashSet<NID.WithName>(nodes);
+    allNodes_ = new HashSet<NetNode>(nodes);
     allEdges_ = new HashSet<NetLink>();
     edgeOrder_ = new ArrayList<NetLink>();
-    nodeOrder_ = new ArrayList<NID.WithName>(nodes);
+    nodeOrder_ = new ArrayList<NetNode>(nodes);
 
     for (NetLink link : links) {
       if (!allEdges_.contains(link)) {
@@ -119,7 +120,7 @@ public class GraphSearcher {
   ** Map of node degree. If relCollapse, multigraph edges collapsed, and equals neighbor count.
   */
 
-  public Map<NID.WithName, Integer> nodeDegree(boolean inOnly, boolean relCollapse, BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public Map<NetNode, Integer> nodeDegree(boolean inOnly, boolean relCollapse, BTProgressMonitor monitor) throws AsynchExitRequestException {
     return ((relCollapse) ? nodeNeighborCount(inOnly, allEdges_, monitor) : nodeDegree(inOnly, allEdges_, monitor));
   }
  
@@ -130,14 +131,14 @@ public class GraphSearcher {
   ** targets are included.
   */
 
-  public static Map<NID.WithName, Integer> nodeDegree(boolean inOnly, Set<NetLink> edges, 
+  public static Map<NetNode, Integer> nodeDegree(boolean inOnly, Set<NetLink> edges, 
                                                       BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     HashMap<NodeAndRel, Integer> retval0 = new HashMap<NodeAndRel, Integer>();
 
     for (NetLink link : edges) {
-      NID.WithName src = link.getSrcID();
-      NID.WithName trg = link.getTrgID();
+      NetNode src = link.getSrcNode();
+      NetNode trg = link.getTrgNode();
       String relation = link.getRelation();
       NodeAndRel sar = new NodeAndRel(src, relation);
       if (!inOnly) {
@@ -157,7 +158,7 @@ public class GraphSearcher {
       }
     }
     
-    HashMap<NID.WithName, Integer> retval = new HashMap<NID.WithName, Integer>();
+    HashMap<NetNode, Integer> retval = new HashMap<NetNode, Integer>();
     for (NodeAndRel nar : retval0.keySet()) {
       Integer count = retval0.get(nar);
       Integer nco = retval.get(nar.getNode());
@@ -176,14 +177,14 @@ public class GraphSearcher {
   ** multiple links between two nodes, but each one adds to degree
   */
 
-  public static Map<NID.WithName, Integer> nodeNeighborCount(boolean inOnly, Set<NetLink> edges, 
+  public static Map<NetNode, Integer> nodeNeighborCount(boolean inOnly, Set<NetLink> edges, 
                                                              BTProgressMonitor monitor) throws AsynchExitRequestException {
     
-    HashMap<NID.WithName, Integer> retval = new HashMap<NID.WithName, Integer>();
+    HashMap<NetNode, Integer> retval = new HashMap<NetNode, Integer>();
 
     for (NetLink link : edges) {
-      NID.WithName src = link.getSrcID();
-      NID.WithName trg = link.getTrgID();
+      NetNode src = link.getSrcNode();
+      NetNode trg = link.getTrgNode();
       if (!inOnly) {
         Integer deg = retval.get(src);
         if (deg == null) {
@@ -222,10 +223,10 @@ public class GraphSearcher {
     TreeSet<NodeDegree> retval = new TreeSet<NodeDegree>();   
     // Map of node degree. Since the first argument is false,
     // the provided degree number is the combined in/out degree.
-    Map<NID.WithName, Integer> nds = (relCollapse) ? nodeNeighborCount(false, edges, monitor)
+    Map<NetNode, Integer> nds = (relCollapse) ? nodeNeighborCount(false, edges, monitor)
     	                                             : nodeDegree(false, edges, monitor);
     // Adding to sorted set orders by degree:
-    for (NID.WithName nar : nds.keySet()) {
+    for (NetNode nar : nds.keySet()) {
       NodeDegree ndeg = new NodeDegree(nar, nds.get(nar).intValue());
       retval.add(ndeg);
     }
@@ -237,14 +238,14 @@ public class GraphSearcher {
   ** Sorts the provided set of nodes by node degree, then name.
   */
 
-  public static List<NID.WithName> nodesByDegree(Set<NID.WithName> nodes, SortedSet<NodeDegree> nds) {
+  public static List<NetNode> nodesByDegree(Set<NetNode> nodes, SortedSet<NodeDegree> nds) {
     
-    ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
+    ArrayList<NetNode> retval = new ArrayList<NetNode>();
     
     Iterator<NodeDegree> li = nds.iterator();
     while (li.hasNext()) {
       NodeDegree nd = li.next();
-      NID.WithName node = nd.getNodeID();
+      NetNode node = nd.getNodeID();
       if (nodes.contains(node)) {
         retval.add(node);
       }
@@ -257,24 +258,24 @@ public class GraphSearcher {
   ** Sorted set of node degree
   */
 
-  public SortedSet<SourcedNodeDegree> nodeDegreeSetWithSource(List<NID.WithName> sourceOrder) {
+  public SortedSet<SourcedNodeDegree> nodeDegreeSetWithSource(List<NetNode> sourceOrder) {
  
-    HashMap<NID.WithName, Set<NID.WithName>> allSrcs = new HashMap<NID.WithName, Set<NID.WithName>>();
+    HashMap<NetNode, Set<NetNode>> allSrcs = new HashMap<NetNode, Set<NetNode>>();
 
     for (NetLink nextLink : allEdges_) {
-      NID.WithName trg = nextLink.getTrgID();
-      Set<NID.WithName> trgSources = allSrcs.get(trg);
+      NetNode trg = nextLink.getTrgNode();
+      Set<NetNode> trgSources = allSrcs.get(trg);
       if (trgSources == null) {
-        trgSources = new HashSet<NID.WithName>();
+        trgSources = new HashSet<NetNode>();
         allSrcs.put(trg, trgSources);
       }
-      trgSources.add(nextLink.getSrcID());
+      trgSources.add(nextLink.getSrcNode());
     } 
     
     TreeSet<SourcedNodeDegree> retval = new TreeSet<SourcedNodeDegree>();
 
-    for (NID.WithName node : allSrcs.keySet()) {
-      Set<NID.WithName> trgSources = allSrcs.get(node);
+    for (NetNode node : allSrcs.keySet()) {
+      Set<NetNode> trgSources = allSrcs.get(node);
       SourcedNodeDegree ndeg = new SourcedNodeDegree(node, sourceOrder, trgSources);
       retval.add(ndeg);
     }
@@ -286,24 +287,24 @@ public class GraphSearcher {
   ** Sorted set of node degree, taking into account multigraph relations
   */
 
-  public SortedSet<SourcedNodeAndRelDegree> nodeDegreeSetWithSourceMultigraph(List<NID.WithName> sourceOrder) {
+  public SortedSet<SourcedNodeAndRelDegree> nodeDegreeSetWithSourceMultigraph(List<NetNode> sourceOrder) {
  
-    HashMap<NID.WithName, Set<NodeAndRel>> allSrcs = new HashMap<NID.WithName, Set<NodeAndRel>>();
+    HashMap<NetNode, Set<NodeAndRel>> allSrcs = new HashMap<NetNode, Set<NodeAndRel>>();
 
     for (NetLink nextLink : allEdges_) {
-      NID.WithName trg = nextLink.getTrgID();
+      NetNode trg = nextLink.getTrgNode();
       String rel = nextLink.getAugRelation().relation;
       Set<NodeAndRel> trgSrcAndRels = allSrcs.get(trg);
       if (trgSrcAndRels == null) {
         trgSrcAndRels = new HashSet<NodeAndRel>();
         allSrcs.put(trg, trgSrcAndRels);
       }
-      trgSrcAndRels.add(new NodeAndRel(nextLink.getSrcID(), rel));
+      trgSrcAndRels.add(new NodeAndRel(nextLink.getSrcNode(), rel));
     } 
     
     TreeSet<SourcedNodeAndRelDegree> retval = new TreeSet<SourcedNodeAndRelDegree>();
 
-    for (NID.WithName node : allSrcs.keySet()) {
+    for (NetNode node : allSrcs.keySet()) {
       Set<NodeAndRel> trgSources = allSrcs.get(node);
       SourcedNodeAndRelDegree ndeg = new SourcedNodeAndRelDegree(node, sourceOrder, trgSources);
       retval.add(ndeg);
@@ -316,23 +317,23 @@ public class GraphSearcher {
   ** Sorted set of nodes via gray code
   */
 
-  public SortedSet<SourcedNodeGray> nodeGraySetWithSource(List<NID.WithName> sourceOrder) {
-    HashMap<NID.WithName, Set<NID.WithName>> allSrcs = new HashMap<NID.WithName, Set<NID.WithName>>();
+  public SortedSet<SourcedNodeGray> nodeGraySetWithSource(List<NetNode> sourceOrder) {
+    HashMap<NetNode, Set<NetNode>> allSrcs = new HashMap<NetNode, Set<NetNode>>();
     
     for (NetLink nextLink : allEdges_) {
-      NID.WithName trg = nextLink.getTrgID();
-      Set<NID.WithName> trgSources = allSrcs.get(trg);
+      NetNode trg = nextLink.getTrgNode();
+      Set<NetNode> trgSources = allSrcs.get(trg);
       if (trgSources == null) {
-        trgSources = new HashSet<NID.WithName>();
+        trgSources = new HashSet<NetNode>();
         allSrcs.put(trg, trgSources);
       }
-      trgSources.add(nextLink.getSrcID());
+      trgSources.add(nextLink.getSrcNode());
     } 
     
     TreeSet<SourcedNodeGray> retval = new TreeSet<SourcedNodeGray>();
 
-    for (NID.WithName node : allSrcs.keySet()) {
-      Set<NID.WithName> trgSources = allSrcs.get(node);
+    for (NetNode node : allSrcs.keySet()) {
+      Set<NetNode> trgSources = allSrcs.get(node);
       SourcedNodeGray ndeg = new SourcedNodeGray(node, sourceOrder, trgSources);
       retval.add(ndeg);
     }
@@ -344,11 +345,11 @@ public class GraphSearcher {
   ** Sorted set of nodes via gray code
   */
 
-  public static SortedSet<SourcedNodeGray> nodeGraySetWithSourceFromMap(List<NID.WithName> sourceOrder, 
-                                                                        Map<NID.WithName, Set<NID.WithName>> srcsPerTarg) {
+  public static SortedSet<SourcedNodeGray> nodeGraySetWithSourceFromMap(List<NetNode> sourceOrder, 
+                                                                        Map<NetNode, Set<NetNode>> srcsPerTarg) {
      
     TreeSet<SourcedNodeGray> retval = new TreeSet<SourcedNodeGray>();
-    for (NID.WithName node : srcsPerTarg.keySet()) {
+    for (NetNode node : srcsPerTarg.keySet()) {
       SourcedNodeGray ndeg = new SourcedNodeGray(node, sourceOrder, srcsPerTarg.get(node));
       retval.add(ndeg);
     }
@@ -360,8 +361,8 @@ public class GraphSearcher {
   ** Sorted list of nodes, ordered by degree. 
   */
 
-  public List<NID.WithName> nodeDegreeOrder(boolean relCollapse, BTProgressMonitor monitor) throws AsynchExitRequestException {
-    ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
+  public List<NetNode> nodeDegreeOrder(boolean relCollapse, BTProgressMonitor monitor) throws AsynchExitRequestException {
+    ArrayList<NetNode> retval = new ArrayList<NetNode>();
     SortedSet<NodeDegree> nds = nodeDegreeSet(relCollapse, monitor);
     for (NodeDegree ndeg : nds) {
       retval.add(ndeg.getNodeID());
@@ -374,7 +375,7 @@ public class GraphSearcher {
   ** Topo sort
   */
 
-  public Map<NID.WithName, Integer> topoSort(boolean compress) {
+  public Map<NetNode, Integer> topoSort(boolean compress) {
     
     if (edgeOrder_ != null) {
       throw new IllegalStateException();
@@ -385,8 +386,8 @@ public class GraphSearcher {
     // Delete them and edges from them.  Recalulate root list and continue.
     //
     
-    HashMap<NID.WithName, Integer> retval = new HashMap<NID.WithName, Integer>();
-    Set<NID.WithName> currentNodes = new HashSet<NID.WithName>(allNodes_);
+    HashMap<NetNode, Integer> retval = new HashMap<NetNode, Integer>();
+    Set<NetNode> currentNodes = new HashSet<NetNode>(allNodes_);
     //
     // Deep copy:
     //
@@ -397,15 +398,15 @@ public class GraphSearcher {
       currentEdges.add(((FabricLink)link).clone());
     }
       
-    Map<NID.WithName, Set<NetLink>> outEdges = calcOutboundEdges(currentEdges);
-    Set<NID.WithName> rootNodes = buildRootList(currentNodes, currentEdges);
+    Map<NetNode, Set<NetLink>> outEdges = calcOutboundEdges(currentEdges);
+    Set<NetNode> rootNodes = buildRootList(currentNodes, currentEdges);
   
     int level = 0;
     while (!rootNodes.isEmpty()) {
       Integer ilevel = new Integer(level++);
-      Iterator<NID.WithName> rit = rootNodes.iterator();
+      Iterator<NetNode> rit = rootNodes.iterator();
       while (rit.hasNext()) {
-        NID.WithName nodeID = rit.next();
+        NetNode nodeID = rit.next();
         retval.put(nodeID, ilevel);
         outEdges.remove(nodeID);
         currentNodes.remove(nodeID);
@@ -429,21 +430,21 @@ public class GraphSearcher {
     //
     // Do until roots are exhausted
     //
-    HashSet<NID.WithName> visited = new HashSet<NID.WithName>();
+    HashSet<NetNode> visited = new HashSet<NetNode>();
     
-    Set<NID.WithName> rootNodes = buildRootList(allNodes_, allEdges_);
-    Map<NID.WithName, Set<NetLink>> outEdges = calcOutboundEdges(allEdges_); 
+    Set<NetNode> rootNodes = buildRootList(allNodes_, allEdges_);
+    Map<NetNode, Set<NetLink>> outEdges = calcOutboundEdges(allEdges_); 
 
     List<QueueEntry> retval = new ArrayList<QueueEntry>();
     if (edgeOrder_ != null) {
-      HashSet<NID.WithName> seenRoots = new HashSet<NID.WithName>();
-      for (NID.WithName currNode : nodeOrder_) {
+      HashSet<NetNode> seenRoots = new HashSet<NetNode>();
+      for (NetNode currNode : nodeOrder_) {
         if (!rootNodes.contains(currNode)) {
           continue;
         }
         boolean gottaLink = false;
         for (NetLink link : edgeOrder_) {
-          NID.WithName src = link.getSrcID();
+          NetNode src = link.getSrcNode();
           if (!currNode.equals(src)) {
             continue;
           }
@@ -460,7 +461,7 @@ public class GraphSearcher {
         }
       }
     } else {
-      for (NID.WithName currNode : rootNodes) {
+      for (NetNode currNode : rootNodes) {
         searchGutsDepth(currNode, visited, outEdges, 0, null, retval);
       }
     }
@@ -472,19 +473,19 @@ public class GraphSearcher {
   ** Breadth-First Search, ordered by degree
   */
 
-  public List<QueueEntry> breadthSearch(List<NID.WithName> startNodes, boolean relCollapse, BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<QueueEntry> breadthSearch(List<NetNode> startNodes, boolean relCollapse, BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     if (edgeOrder_ != null) {
       throw new IllegalStateException();
     }
     
-    List<NID.WithName> byDeg = nodeDegreeOrder(relCollapse, monitor);
+    List<NetNode> byDeg = nodeDegreeOrder(relCollapse, monitor);
     Collections.reverse(byDeg);
-    ArrayList<NID.WithName> toProcess = new ArrayList<NID.WithName>(byDeg);
+    ArrayList<NetNode> toProcess = new ArrayList<NetNode>(byDeg);
     
     if ((startNodes != null) && !startNodes.isEmpty()) {
     	toProcess.removeAll(startNodes);
-    	ArrayList<NID.WithName> useDeg = new ArrayList<NID.WithName>(startNodes);	
+    	ArrayList<NetNode> useDeg = new ArrayList<NetNode>(startNodes);	
     	useDeg.addAll(toProcess);
     	toProcess = useDeg;
     }
@@ -493,10 +494,10 @@ public class GraphSearcher {
     // Do until everybody is visited
     //
     
-    HashSet<NID.WithName> visited = new HashSet<NID.WithName>();
+    HashSet<NetNode> visited = new HashSet<NetNode>();
     ArrayList<QueueEntry> queue = new ArrayList<QueueEntry>();
     List<QueueEntry> retval = new ArrayList<QueueEntry>();
-    Map<NID.WithName, Set<NetLink>> outEdges = calcOutboundEdges(allEdges_);    
+    Map<NetNode, Set<NetLink>> outEdges = calcOutboundEdges(allEdges_);    
        
     while (!toProcess.isEmpty()) {  
 	    queue.add(new QueueEntry(0, toProcess.get(0)));
@@ -511,14 +512,14 @@ public class GraphSearcher {
   ** Breadth-First Search
   */
 
-  public List<QueueEntry> breadthSearch(boolean byDegree, boolean relCollapse, List<NID.WithName> useRoots, 
+  public List<QueueEntry> breadthSearch(boolean byDegree, boolean relCollapse, List<NetNode> useRoots, 
                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     if (edgeOrder_ != null) {
       throw new IllegalStateException();
     }
     
-    List<NID.WithName> byDeg = null;
+    List<NetNode> byDeg = null;
     if (byDegree) {
       byDeg = nodeDegreeOrder(relCollapse, monitor);
       Collections.reverse(byDeg);
@@ -527,21 +528,21 @@ public class GraphSearcher {
     //
     // Do until roots are exhausted
     //
-    HashSet<NID.WithName> visited = new HashSet<NID.WithName>();
+    HashSet<NetNode> visited = new HashSet<NetNode>();
     ArrayList<QueueEntry> queue = new ArrayList<QueueEntry>();
     List<QueueEntry> retval = new ArrayList<QueueEntry>();
-    Map<NID.WithName, Set<NetLink>> outEdges = calcOutboundEdges(allEdges_);    
+    Map<NetNode, Set<NetLink>> outEdges = calcOutboundEdges(allEdges_);    
    
     
-    List<NID.WithName> rootNodes;
+    List<NetNode> rootNodes;
     if (useRoots == null) {
-      rootNodes = new ArrayList<NID.WithName>(buildRootList(allNodes_, allEdges_));
+      rootNodes = new ArrayList<NetNode>(buildRootList(allNodes_, allEdges_));
     } else {
       rootNodes = useRoots;
     }
     
     
-    Iterator<NID.WithName> rit = rootNodes.iterator();
+    Iterator<NetNode> rit = rootNodes.iterator();
     while (rit.hasNext()) {
       queue.add(new QueueEntry(0, rit.next()));
     }
@@ -555,7 +556,7 @@ public class GraphSearcher {
   ** Breadth-First Search
   */
 
-  public List<QueueEntry> breadthSearchUntilStopped(Set<NID.WithName> startNodes, CriteriaJudge judge) {
+  public List<QueueEntry> breadthSearchUntilStopped(Set<NetNode> startNodes, CriteriaJudge judge) {
     
     if (edgeOrder_ != null) {
       throw new IllegalStateException();
@@ -565,13 +566,13 @@ public class GraphSearcher {
     // Do until roots are exhausted
     //
     
-    HashSet<NID.WithName> visited = new HashSet<NID.WithName>();
+    HashSet<NetNode> visited = new HashSet<NetNode>();
     ArrayList<QueueEntry> queue = new ArrayList<QueueEntry>();
     List<QueueEntry> retval = new ArrayList<QueueEntry>();
     
-    Map<NID.WithName, Set<NetLink>> outEdges = calcOutboundEdges(allEdges_);    
+    Map<NetNode, Set<NetLink>> outEdges = calcOutboundEdges(allEdges_);    
     
-    Iterator<NID.WithName> rit = startNodes.iterator();
+    Iterator<NetNode> rit = startNodes.iterator();
     while (rit.hasNext()) {
       queue.add(new QueueEntry(0, rit.next()));
     }
@@ -585,20 +586,20 @@ public class GraphSearcher {
   ** of nodes for each column.
   */
   
-  public int invertTopoSort(Map<NID.WithName, Integer> topoSort, Map<Integer, List<NID.WithName>> invert) {
+  public int invertTopoSort(Map<NetNode, Integer> topoSort, Map<Integer, List<NetNode>> invert) {
         
-    Iterator<NID.WithName> kit = topoSort.keySet().iterator();
+    Iterator<NetNode> kit = topoSort.keySet().iterator();
     int maxLevel = -1;
     while (kit.hasNext()) {
-      NID.WithName key = kit.next();
+      NetNode key = kit.next();
       Integer level = topoSort.get(key);
       int currLev = level.intValue();
       if (currLev > maxLevel) {
         maxLevel = currLev;
       }
-      List<NID.WithName> nodeList = invert.get(level);
+      List<NetNode> nodeList = invert.get(level);
       if (nodeList == null) {
-        nodeList = new ArrayList<NID.WithName>();
+        nodeList = new ArrayList<NetNode>();
         invert.put(level, nodeList);
       }
       nodeList.add(key);
@@ -611,15 +612,15 @@ public class GraphSearcher {
   ** Take a sort to a simple listing
   */
   
-  public List<NID.WithName> topoSortToPartialOrdering(Map<NID.WithName, Integer> topoSort) {
+  public List<NetNode> topoSortToPartialOrdering(Map<NetNode, Integer> topoSort) {
     
-    ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
-    TreeMap<Integer, List<NID.WithName>> invert = new TreeMap<Integer, List<NID.WithName>>();
+    ArrayList<NetNode> retval = new ArrayList<NetNode>();
+    TreeMap<Integer, List<NetNode>> invert = new TreeMap<Integer, List<NetNode>>();
       
     invertTopoSort(topoSort, invert);    
-    Iterator<List<NID.WithName>> kit = invert.values().iterator();
+    Iterator<List<NetNode>> kit = invert.values().iterator();
     while (kit.hasNext()) {
-      List<NID.WithName> listForLevel = kit.next();
+      List<NetNode> listForLevel = kit.next();
       // Want reproducibility between VfA and Vfg layouts.  This is required.
       Collections.sort(listForLevel);
       retval.addAll(listForLevel);
@@ -632,19 +633,19 @@ public class GraphSearcher {
   ** Take a sort to a simple listing
   */
   
-  public List<NID.WithName> topoSortToPartialOrdering(Map<NID.WithName, Integer> topoSort, Set<NetLink> allLinks,
+  public List<NetNode> topoSortToPartialOrdering(Map<NetNode, Integer> topoSort, Set<NetLink> allLinks,
                                                       boolean relCollapse, BTProgressMonitor monitor) throws AsynchExitRequestException {
     
-    ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
-    TreeMap<Integer, List<NID.WithName>> invert = new TreeMap<Integer, List<NID.WithName>>();
+    ArrayList<NetNode> retval = new ArrayList<NetNode>();
+    TreeMap<Integer, List<NetNode>> invert = new TreeMap<Integer, List<NetNode>>();
     
     SortedSet<NodeDegree> nds = nodeDegreeSet(allLinks, relCollapse, monitor);
     
     invertTopoSort(topoSort, invert);    
-    Iterator<List<NID.WithName>> kit = invert.values().iterator();
+    Iterator<List<NetNode>> kit = invert.values().iterator();
     while (kit.hasNext()) {
-      List<NID.WithName> listForLevel = kit.next();
-      List<NID.WithName> l4lbyDeg = nodesByDegree(new HashSet<NID.WithName>(listForLevel), nds);
+      List<NetNode> listForLevel = kit.next();
+      List<NetNode> l4lbyDeg = nodesByDegree(new HashSet<NetNode>(listForLevel), nds);
       Collections.reverse(l4lbyDeg);
       retval.addAll(l4lbyDeg);
     }
@@ -656,13 +657,13 @@ public class GraphSearcher {
   ** Prune edge list to only those from given source nodes
   */
 
-  public List<NetLink> onlyLinksFromSources(List<NetLink> linkList, Set<NID.WithName> nodes) {    
+  public List<NetLink> onlyLinksFromSources(List<NetLink> linkList, Set<NetNode> nodes) {    
     
     ArrayList<NetLink> retval = new ArrayList<NetLink>();
     int numLinks = linkList.size();
     for (int j = 0; j < numLinks; j++) {
       NetLink link = linkList.get(j);
-      if (nodes.contains(link.getSrcID())) {
+      if (nodes.contains(link.getSrcNode())) {
         retval.add(link);
       }
     }  
@@ -680,21 +681,21 @@ public class GraphSearcher {
   ** With a given topo sort, force the given moveID to one end
   */
 
-  public static Map<NID.WithName, Integer> topoSortReposition(Map<NID.WithName, Integer> origSort, 
-                                                              NID.WithName moveID, boolean moveMin) {
+  public static Map<NetNode, Integer> topoSortReposition(Map<NetNode, Integer> origSort, 
+                                                              NetNode moveID, boolean moveMin) {
     
     Integer origCol = origSort.get(moveID);
     if (origCol == null) {
-      return (new HashMap<NID.WithName, Integer>(origSort));
+      return (new HashMap<NetNode, Integer>(origSort));
     }
     
     int colVal = origCol.intValue();
     boolean colDup = false;
     int minVal = Integer.MAX_VALUE;
     int maxVal = Integer.MIN_VALUE;
-    Iterator<NID.WithName> oskit = origSort.keySet().iterator();
+    Iterator<NetNode> oskit = origSort.keySet().iterator();
     while (oskit.hasNext()) {
-      NID.WithName key = oskit.next();
+      NetNode key = oskit.next();
       if (key.equals(moveID)) {
         continue;
       }
@@ -741,11 +742,11 @@ public class GraphSearcher {
       } 
     }
       
-    HashMap<NID.WithName, Integer> retval = new HashMap<NID.WithName, Integer>();
+    HashMap<NetNode, Integer> retval = new HashMap<NetNode, Integer>();
   
     oskit = origSort.keySet().iterator();
     while (oskit.hasNext()) {
-      NID.WithName key = oskit.next();
+      NetNode key = oskit.next();
       if (key.equals(moveID)) {
         retval.put(moveID, Integer.valueOf(moveCol));
       } else {   
@@ -766,31 +767,31 @@ public class GraphSearcher {
   ** Take a sort to a simple listing
   */
   
-  public List<NID.WithName> topoSortToPartialOrderingByDegree(Map<NID.WithName, Integer> topoSort, Map<NID.WithName, Integer> degree) {
+  public List<NetNode> topoSortToPartialOrderingByDegree(Map<NetNode, Integer> topoSort, Map<NetNode, Integer> degree) {
     
-    ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
-    TreeMap<Integer, List<NID.WithName>> invert = new TreeMap<Integer, List<NID.WithName>>();
+    ArrayList<NetNode> retval = new ArrayList<NetNode>();
+    TreeMap<Integer, List<NetNode>> invert = new TreeMap<Integer, List<NetNode>>();
     
     invertTopoSort(topoSort, invert);    
     
     boolean first = true;
-    Iterator<List<NID.WithName>> kit = invert.values().iterator();
+    Iterator<List<NetNode>> kit = invert.values().iterator();
     while (kit.hasNext()) {
-      List<NID.WithName> listForLevel = kit.next();
+      List<NetNode> listForLevel = kit.next();
       if (first) {
         first = false;
         SortedSet<NodeDegree> ssnd = new TreeSet<NodeDegree>(Collections.reverseOrder());
         for (int i = 0; i < listForLevel.size(); i++) {
-          NID.WithName node = listForLevel.get(i);
+          NetNode node = listForLevel.get(i);
           ssnd.add(new NodeDegree(node, degree.get(node).intValue()));
         } 
         for (NodeDegree nd : ssnd) {
           retval.add(nd.getNodeID());
         }
       } else {
-        HashSet<NID.WithName> snSortSet = new HashSet<NID.WithName>(retval);
-        List<NetLink> justFromSrc = onlyLinksFromSources(new ArrayList<NetLink>(allEdges_), new HashSet<NID.WithName>(retval));
-        ArrayList<NID.WithName> working = new ArrayList<NID.WithName>(retval);
+        HashSet<NetNode> snSortSet = new HashSet<NetNode>(retval);
+        List<NetLink> justFromSrc = onlyLinksFromSources(new ArrayList<NetLink>(allEdges_), new HashSet<NetNode>(retval));
+        ArrayList<NetNode> working = new ArrayList<NetNode>(retval);
         working.addAll(listForLevel);
         GraphSearcher gs = new GraphSearcher(working, justFromSrc); 
         SortedSet<GraphSearcher.SourcedNodeDegree> snds = gs.nodeDegreeSetWithSource(retval);
@@ -811,31 +812,31 @@ public class GraphSearcher {
   ** Take a sort to a simple listing
   */
   
-  public List<NID.WithName> topoSortToPartialOrderingByGray(Map<NID.WithName, Integer> topoSort, Map<NID.WithName, Integer> degree) {
+  public List<NetNode> topoSortToPartialOrderingByGray(Map<NetNode, Integer> topoSort, Map<NetNode, Integer> degree) {
     
-    ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
-    TreeMap<Integer, List<NID.WithName>> invert = new TreeMap<Integer, List<NID.WithName>>();
+    ArrayList<NetNode> retval = new ArrayList<NetNode>();
+    TreeMap<Integer, List<NetNode>> invert = new TreeMap<Integer, List<NetNode>>();
     
     invertTopoSort(topoSort, invert);    
     
     boolean first = true;
-    Iterator<List<NID.WithName>> kit = invert.values().iterator();
+    Iterator<List<NetNode>> kit = invert.values().iterator();
     while (kit.hasNext()) {
-      List<NID.WithName> listForLevel = kit.next();
+      List<NetNode> listForLevel = kit.next();
       if (first) {
         first = false;
         SortedSet<NodeDegree> ssnd = new TreeSet<NodeDegree>(Collections.reverseOrder());
         for (int i = 0; i < listForLevel.size(); i++) {
-          NID.WithName node = listForLevel.get(i);
+          NetNode node = listForLevel.get(i);
           ssnd.add(new NodeDegree(node, degree.get(node).intValue()));
         } 
         for (NodeDegree nd : ssnd) {
           retval.add(nd.getNodeID());
         }
       } else {
-        HashSet<NID.WithName> snSortSet = new HashSet<NID.WithName>(retval);
-        List<NetLink> justFromSrc = onlyLinksFromSources(new ArrayList<NetLink>(allEdges_), new HashSet<NID.WithName>(retval));
-        ArrayList<NID.WithName> working = new ArrayList<NID.WithName>(retval);
+        HashSet<NetNode> snSortSet = new HashSet<NetNode>(retval);
+        List<NetLink> justFromSrc = onlyLinksFromSources(new ArrayList<NetLink>(allEdges_), new HashSet<NetNode>(retval));
+        ArrayList<NetNode> working = new ArrayList<NetNode>(retval);
         working.addAll(listForLevel);
         GraphSearcher gs = new GraphSearcher(working, justFromSrc); 
         SortedSet<GraphSearcher.SourcedNodeGray> snds = gs.nodeGraySetWithSource(retval);
@@ -859,9 +860,9 @@ public class GraphSearcher {
 
   public class QueueEntry {
     public int depth;
-    public NID.WithName name;
+    public NetNode name;
  
-    QueueEntry(int depth, NID.WithName name) {
+    QueueEntry(int depth, NetNode name) {
       this.depth = depth;
       this.name = name;
     }
@@ -879,7 +880,7 @@ public class GraphSearcher {
   */  
       
   public static interface CriteriaJudge {
-    public boolean stopHere(NID.WithName nodeID);  
+    public boolean stopHere(NetNode nodeID);  
   } 
  
   /****************************************************************************
@@ -890,15 +891,15 @@ public class GraphSearcher {
   
   public static class NodeDegree implements Comparable<NodeDegree> {
     
-    private NID.WithName node_;
+    private NetNode node_;
     private int degree_;
   
-    public NodeDegree(NID.WithName node, int degree) {
+    public NodeDegree(NetNode node, int degree) {
       node_ = node;
       degree_ = degree;
     }
     
-    public NID.WithName getNodeID() {
+    public NetNode getNodeID() {
       return (node_);
     }
     
@@ -944,11 +945,11 @@ public class GraphSearcher {
   
   public static class SourcedNodeDegree implements Comparable<SourcedNodeDegree> {
     
-    private NID.WithName node_;
+    private NetNode node_;
     private int degree_;
     private boolean[] srcs_;
     
-    public SourcedNodeDegree(NID.WithName node, List<NID.WithName> srcOrder, Set<NID.WithName> mySrcs) {
+    public SourcedNodeDegree(NetNode node, List<NetNode> srcOrder, Set<NetNode> mySrcs) {
       node_ = node;
       degree_ = mySrcs.size();
       int numSrc = srcOrder.size();
@@ -960,7 +961,7 @@ public class GraphSearcher {
       }
     }
     
-    public NID.WithName getNode() {
+    public NetNode getNode() {
       return (node_);
     }
     
@@ -1038,16 +1039,16 @@ public class GraphSearcher {
   
   public static class SourcedNodeAndRelDegree implements Comparable<SourcedNodeAndRelDegree> {
     
-    private NID.WithName node_;
+    private NetNode node_;
     private int degree_;
     private boolean[] srcs_;
     
-    public SourcedNodeAndRelDegree(NID.WithName node, List<NID.WithName> srcOrder, Set<NodeAndRel> mySARs) {
+    public SourcedNodeAndRelDegree(NetNode node, List<NetNode> srcOrder, Set<NodeAndRel> mySARs) {
       node_ = node;
       degree_ = mySARs.size();
       int numSrc = srcOrder.size();
       srcs_ = new boolean[numSrc];
-      Set<NID.WithName> snSet = new HashSet<NID.WithName>();    
+      Set<NetNode> snSet = new HashSet<NetNode>();    
       for (NodeAndRel sar : mySARs) {
       	snSet.add(sar.getNode());
       }
@@ -1058,7 +1059,7 @@ public class GraphSearcher {
       }
     }
     
-    public NID.WithName getNode() {
+    public NetNode getNode() {
       return (node_);
     }
     
@@ -1133,19 +1134,19 @@ public class GraphSearcher {
   
   public static class SourcedNodeGray implements Comparable<SourcedNodeGray> {
     
-    private NID.WithName node_;
+    private NetNode node_;
     private int degree_;
     private char[] srcs_;
     private String binNum_;
     private BigInteger bi_;
     private BigInteger gray_;
-    private List<NID.WithName> srcOrder_;
+    private List<NetNode> srcOrder_;
     
-    public SourcedNodeGray(NID.WithName node, List<NID.WithName> srcOrder, Set<NID.WithName> mySrcs) {
+    public SourcedNodeGray(NetNode node, List<NetNode> srcOrder, Set<NetNode> mySrcs) {
       node_ = node;
       degree_ = mySrcs.size();
       int numSrc = srcOrder.size();
-      srcOrder_ = new ArrayList<NID.WithName>(srcOrder);
+      srcOrder_ = new ArrayList<NetNode>(srcOrder);
       srcs_ = new char[numSrc];
       for (int i = 0; i < numSrc; i++) {
         srcs_[i] = (mySrcs.contains(srcOrder.get(i))) ? '1' : '0';
@@ -1164,7 +1165,7 @@ public class GraphSearcher {
       }
     }
       
-    public NID.WithName getNodeID() {
+    public NetNode getNodeID() {
       return (node_);
     }
 
@@ -1235,16 +1236,16 @@ public class GraphSearcher {
   
   public static class SourcedNode implements Comparable<SourcedNode> {
     
-    private NID.WithName node_;
+    private NetNode node_;
     private int myIn_;
     private ArrayList<Integer> mySourceOrderList_;
    
-    public SourcedNode(NID.WithName node, Map<NID.WithName, Integer> inDegs, 
-                       Map<NID.WithName, Integer> nameToRow, Map<NID.WithName, Set<NID.WithName>> l2s) {
+    public SourcedNode(NetNode node, Map<NetNode, Integer> inDegs, 
+                       Map<NetNode, Integer> nameToRow, Map<NetNode, Set<NetNode>> l2s) {
       node_ = node;
       TreeSet<Integer> myOrder = new TreeSet<Integer>(); 
-      Set<NID.WithName> mySet = l2s.get(node_);
-      for (NID.WithName nextNode : mySet) {
+      Set<NetNode> mySet = l2s.get(node_);
+      for (NetNode nextNode : mySet) {
         Integer nextSourceRow = nameToRow.get(nextNode);
         myOrder.add(nextSourceRow);       
       }
@@ -1252,7 +1253,7 @@ public class GraphSearcher {
       myIn_ = inDegs.get(node_).intValue();
     }
     
-    public NID.WithName getNode() {
+    public NetNode getNode() {
       return (node_);
     }
     
@@ -1321,18 +1322,18 @@ public class GraphSearcher {
 
   public static class MMDSourcedNode implements Comparable<MMDSourcedNode> {
 
-    private NID.WithName node_;
+    private NetNode node_;
     private int myIn_;
     private ArrayList<Integer> mySourceOrderList_;
    
-    public MMDSourcedNode(NID.WithName node, Map<NID.WithName, Integer> inDegs, 
-                          List<NID.WithName> placeList, Map<NID.WithName, Set<NID.WithName>> l2s) {
+    public MMDSourcedNode(NetNode node, Map<NetNode, Integer> inDegs, 
+                          List<NetNode> placeList, Map<NetNode, Set<NetNode>> l2s) {
       node_ = node;
-      Set<NID.WithName> mySet = l2s.get(node_);
+      Set<NetNode> mySet = l2s.get(node_);
       TreeSet<Integer> mySourceOrder = new TreeSet<Integer>();
       int numNode = placeList.size();
       for (int i = 0; i < numNode; i++) {
-        NID.WithName nodex = placeList.get(i);
+        NetNode nodex = placeList.get(i);
         if (mySet.contains(nodex)) {
           mySourceOrder.add(Integer.valueOf(i));
         }
@@ -1341,7 +1342,7 @@ public class GraphSearcher {
       myIn_ = inDegs.get(this.node_).intValue();
     }
 
-    public NID.WithName getNode() {
+    public NetNode getNode() {
       return (node_);
     }
 
@@ -1413,15 +1414,15 @@ public class GraphSearcher {
 
   public static class NodeAndRel implements Comparable<NodeAndRel> {
 
-    private NID.WithName node_;
+    private NetNode node_;
     private String relation_;
    
-    public NodeAndRel(NID.WithName node, String relation) {
+    public NodeAndRel(NetNode node, String relation) {
       node_ = node;
       relation_ = relation;
     }
 
-    public NID.WithName getNode() {
+    public NetNode getNode() {
       return (node_);
     }
     
@@ -1481,16 +1482,16 @@ public class GraphSearcher {
   ** Build map from node to outbound edges
   */
 
-  private Map<NID.WithName, Set<NetLink>> calcOutboundEdges(Set<NetLink> edges) {
+  private Map<NetNode, Set<NetLink>> calcOutboundEdges(Set<NetLink> edges) {
     
-    HashMap<NID.WithName, Set<NetLink>> retval = new HashMap<NID.WithName, Set<NetLink>>();
+    HashMap<NetNode, Set<NetLink>> retval = new HashMap<NetNode, Set<NetLink>>();
     Iterator<NetLink> li = edges.iterator();
 
     while (li.hasNext()) {
       NetLink link = li.next();
-      addaLink(link, link.getSrcID(), retval);
+      addaLink(link, link.getSrcNode(), retval);
       if (!link.isDirected()) {
-      	addaLink(link, link.getTrgID(), retval);
+      	addaLink(link, link.getTrgNode(), retval);
       }
     }
     return (retval);
@@ -1501,7 +1502,7 @@ public class GraphSearcher {
   ** Add a link to a bin
   */
 
-  private void addaLink(NetLink link, NID.WithName bin, Map<NID.WithName, Set<NetLink>> collect) {
+  private void addaLink(NetLink link, NetNode bin, Map<NetNode, Set<NetLink>> collect) {
     Set<NetLink> forBin = collect.get(bin);
     if (forBin == null) {
       forBin = new HashSet<NetLink>();
@@ -1516,15 +1517,15 @@ public class GraphSearcher {
   ** Build a root list
   */
 
-  private Set<NID.WithName> buildRootList(Set<NID.WithName> nodes, Set<NetLink> edges) {
+  private Set<NetNode> buildRootList(Set<NetNode> nodes, Set<NetLink> edges) {
   
-    HashSet<NID.WithName> retval = new HashSet<NID.WithName>();
+    HashSet<NetNode> retval = new HashSet<NetNode>();
     retval.addAll(nodes);
     
     Iterator<NetLink> ei = edges.iterator();
     while (ei.hasNext()) {
       NetLink link = ei.next();
-      NID.WithName trg = link.getTrgID();
+      NetNode trg = link.getTrgNode();
       retval.remove(trg);
     }
     return (retval);
@@ -1535,13 +1536,13 @@ public class GraphSearcher {
   ** Invert
   */
 
-  private Set<NetLink> invertOutboundEdges(Map<NID.WithName, Set<NetLink>> outEdges) {
+  private Set<NetLink> invertOutboundEdges(Map<NetNode, Set<NetLink>> outEdges) {
     
     HashSet<NetLink> retval = new HashSet<NetLink>();
-    Iterator<NID.WithName> ki = outEdges.keySet().iterator();
+    Iterator<NetNode> ki = outEdges.keySet().iterator();
 
     while (ki.hasNext()) {
-      NID.WithName src = ki.next();
+      NetNode src = ki.next();
       Set<NetLink> links = outEdges.get(src);
       Iterator<NetLink> sit = links.iterator();
       while (sit.hasNext()) {
@@ -1561,8 +1562,8 @@ public class GraphSearcher {
   ** Depth-First Search guts
   */
 
-  private void searchGutsDepth(NID.WithName vertexID, HashSet<NID.WithName> visited, 
-  		                         Map<NID.WithName, Set<NetLink>> edgesFromSrc,
+  private void searchGutsDepth(NetNode vertexID, HashSet<NetNode> visited, 
+  		                         Map<NetNode, Set<NetLink>> edgesFromSrc,
                                int depth, List<NetLink> edgeOrder, List<QueueEntry> results) {
 
     if (visited.contains(vertexID)) {
@@ -1579,10 +1580,10 @@ public class GraphSearcher {
       Iterator<NetLink> eit = edgeOrder.iterator();
       while (eit.hasNext()) {
         NetLink link = eit.next();
-        if (!vertexID.equals(link.getSrcID())) {
+        if (!vertexID.equals(link.getSrcNode())) {
           continue;
         }
-        NID.WithName targ = link.getTrgID();
+        NetNode targ = link.getTrgNode();
         if (!visited.contains(targ)) {
           searchGutsDepth(targ, visited, edgesFromSrc, depth + 1, edgeOrder, results);
         }
@@ -1591,7 +1592,7 @@ public class GraphSearcher {
       Iterator<NetLink> eit = outEdges.iterator();
       while (eit.hasNext()) {
         NetLink link = eit.next();
-        NID.WithName targ = link.getTrgID();
+        NetNode targ = link.getTrgNode();
         if (!visited.contains(targ)) {
           searchGutsDepth(targ, visited, edgesFromSrc, depth + 1, edgeOrder, results);
         }
@@ -1605,8 +1606,8 @@ public class GraphSearcher {
   ** Breadth-First Search guts
   */
 
-  private void searchGutsBreadth(HashSet<NID.WithName> visited, ArrayList<QueueEntry> queue, Map<NID.WithName, Set<NetLink>> edgesFromSrc, 
-                                 List<QueueEntry> results, CriteriaJudge judge, List<NID.WithName> byDegree) {
+  private void searchGutsBreadth(HashSet<NetNode> visited, ArrayList<QueueEntry> queue, Map<NetNode, Set<NetLink>> edgesFromSrc, 
+                                 List<QueueEntry> results, CriteriaJudge judge, List<NetNode> byDegree) {
 
     while (queue.size() > 0) {
       QueueEntry curr = queue.remove(0);
@@ -1628,18 +1629,18 @@ public class GraphSearcher {
       }
       
       if (byDegree != null) {
-      	HashSet<NID.WithName> fltrg = new HashSet<NID.WithName>();
+      	HashSet<NetNode> fltrg = new HashSet<NetNode>();
       	for (NetLink fl : outEdges) {
       		if (fl.isDirected()) {
-      		  fltrg.add(fl.getTrgID());
+      		  fltrg.add(fl.getTrgNode());
       		} else {
-      		  NID.WithName flSrc = fl.getSrcID();
-      		  fltrg.add((curr.name.equals(flSrc)) ? fl.getTrgID() : flSrc);
+      		  NetNode flSrc = fl.getSrcNode();
+      		  fltrg.add((curr.name.equals(flSrc)) ? fl.getTrgNode() : flSrc);
       		}
       	}
-        Iterator<NID.WithName> bdit = byDegree.iterator();
+        Iterator<NetNode> bdit = byDegree.iterator();
         while (bdit.hasNext()) { 
-          NID.WithName trg = bdit.next();
+          NetNode trg = bdit.next();
           if (fltrg.contains(trg)) {
             queue.add(new QueueEntry(curr.depth + 1, trg));
           }
@@ -1649,6 +1650,7 @@ public class GraphSearcher {
         Iterator<NetLink> oit = outEdges.iterator();
         while (oit.hasNext()) { 
           NetLink flink = oit.next();
+          UiUtil.fixMePrintout("What should we be doing here???");
         }
       }
     }
@@ -1661,7 +1663,7 @@ public class GraphSearcher {
   ** breaking the partial ordering.
   */
 
-  private void contractTopoSort(Map<NID.WithName, Integer> topoSort) {
+  private void contractTopoSort(Map<NetNode, Integer> topoSort) {
     
     //
     // Make a list of nodes for each level.  Starting at the highest level,
@@ -1672,34 +1674,34 @@ public class GraphSearcher {
     // Iterate this process until no more changes can occur.
     //
     
-    HashMap<Integer, List<NID.WithName>> nodesAtLevel = new HashMap<Integer, List<NID.WithName>>();
+    HashMap<Integer, List<NetNode>> nodesAtLevel = new HashMap<Integer, List<NetNode>>();
     int maxLevel = invertTopoSort(topoSort, nodesAtLevel);    
     
     if (maxLevel == -1) {  // nothing to do
       return;
     }
     
-    Map<NID.WithName, Set<NetLink>> outEdges = calcOutboundEdges(allEdges_);    
+    Map<NetNode, Set<NetLink>> outEdges = calcOutboundEdges(allEdges_);    
     
     while (true) {
       boolean changed = false;
       for (int i = maxLevel; i >= 0; i--) {
-        List<NID.WithName> nodeList = nodesAtLevel.get(Integer.valueOf(i));
-        List<NID.WithName> listCopy = new ArrayList<NID.WithName>(nodeList);
+        List<NetNode> nodeList = nodesAtLevel.get(Integer.valueOf(i));
+        List<NetNode> listCopy = new ArrayList<NetNode>(nodeList);
         int numNodes = nodeList.size();
         for (int j = 0; j < numNodes; j++) {
-          NID.WithName currNode = listCopy.get(j);
+          NetNode currNode = listCopy.get(j);
           Set<NetLink> linksForNode = outEdges.get(currNode);
-          HashSet<NID.WithName> targsForNode = new HashSet<NID.WithName>();
+          HashSet<NetNode> targsForNode = new HashSet<NetNode>();
           Iterator<NetLink> lfnit = linksForNode.iterator();
           while (lfnit.hasNext()) {
             NetLink link = lfnit.next();
-            NID.WithName targ = link.getTrgID();
+            NetNode targ = link.getTrgNode();
             targsForNode.add(targ);
           }
           int min = getMinLevel(targsForNode, topoSort, i, maxLevel);
           if (min > i + 1) {
-            List<NID.WithName> higherNodeList = nodesAtLevel.get(Integer.valueOf(min - 1));
+            List<NetNode> higherNodeList = nodesAtLevel.get(Integer.valueOf(min - 1));
             higherNodeList.add(currNode);
             nodeList.remove(currNode);
             topoSort.put(currNode, Integer.valueOf(min - 1));
@@ -1718,14 +1720,14 @@ public class GraphSearcher {
   ** Get the minimum level of all the target nodes
   */
 
-  private int getMinLevel(Set<NID.WithName> targs, Map<NID.WithName, Integer> topoSort, int currLevel, int maxLevel) {
+  private int getMinLevel(Set<NetNode> targs, Map<NetNode, Integer> topoSort, int currLevel, int maxLevel) {
     if (targs == null) {
       return (currLevel);
     }
     int min = maxLevel;    
-    Iterator<NID.WithName> trgit = targs.iterator();
+    Iterator<NetNode> trgit = targs.iterator();
     while (trgit.hasNext()) {
-      NID.WithName trg = trgit.next();
+      NetNode trg = trgit.next();
       Integer level = topoSort.get(trg);
       int currLev = level.intValue();
       if (min > currLev) {

@@ -37,6 +37,7 @@ import org.xml.sax.Attributes;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.modelAPI.AugRelation;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.modelAPI.Network;
 import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.io.AttributeLoader;
@@ -95,7 +96,7 @@ public class BioFabricNetwork implements Network {
   // For mapping of selections:
   //
   
-  private HashMap<Integer, NID.WithName> rowToTargID_;
+  private HashMap<Integer, NetNode> rowToTargID_;
   private int rowCount_;
   
   //
@@ -104,7 +105,7 @@ public class BioFabricNetwork implements Network {
   
   private TreeMap<Integer, LinkInfo> fullLinkDefs_;
   private TreeMap<Integer, Integer> nonShadowedLinkMap_;
-  private HashMap<NID.WithName, NodeInfo> nodeDefs_;
+  private HashMap<NetNode, NodeInfo> nodeDefs_;
   
   //
   // Grouping for links:
@@ -224,10 +225,10 @@ public class BioFabricNetwork implements Network {
   private void standardBuildDataInit(BuildData bd) {
     this.normalCols_ = new ColumnAssign();
     this.shadowCols_ = new ColumnAssign();
-    this.rowToTargID_ = new HashMap<Integer, NID.WithName>();
+    this.rowToTargID_ = new HashMap<Integer, NetNode>();
     this.fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
     this.nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
-    this.nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
+    this.nodeDefs_ = new HashMap<NetNode, NodeInfo>();
     return;
   }
   
@@ -340,16 +341,16 @@ public class BioFabricNetwork implements Network {
   *  can be multiple nodes for one name)
   */
 
-  public Map<String, Set<NID.WithName>> getNormNameToIDs() {
-  	HashMap<String, Set<NID.WithName>> retval = new HashMap<String, Set<NID.WithName>>();
-  	Iterator<NID.WithName> kit = nodeDefs_.keySet().iterator();
+  public Map<String, Set<NetNode>> getNormNameToIDs() {
+  	HashMap<String, Set<NetNode>> retval = new HashMap<String, Set<NetNode>>();
+  	Iterator<NetNode> kit = nodeDefs_.keySet().iterator();
   	while (kit.hasNext()) {
-  		NID.WithName key = kit.next();
+  		NetNode key = kit.next();
   		NodeInfo forKey = nodeDefs_.get(key);
   		String nameNorm = DataUtil.normKey(forKey.getNodeName());
-  		Set<NID.WithName> forName = retval.get(nameNorm);
+  		Set<NetNode> forName = retval.get(nameNorm);
   		if (forName == null) {
-  			forName = new HashSet<NID.WithName>();
+  			forName = new HashSet<NetNode>();
   			retval.put(nameNorm, forName);
   		}
   		forName.add(key);
@@ -408,9 +409,9 @@ public class BioFabricNetwork implements Network {
     //
     
     HashSet<String> normedNames = new HashSet<String>();
-    Iterator<NID.WithName> rttvit = rowToTargID_.values().iterator();
+    Iterator<NetNode> rttvit = rowToTargID_.values().iterator();
     while (rttvit.hasNext()) {
-    	NID.WithName key = rttvit.next();
+    	NetNode key = rttvit.next();
     	NodeInfo ni = nodeDefs_.get(key);
       normedNames.add(DataUtil.normKey(ni.getNodeName()));
     }
@@ -456,7 +457,7 @@ public class BioFabricNetwork implements Network {
     //
     
     HashSet<AttributeLoader.AttributeKey> asUpper = new HashSet<AttributeLoader.AttributeKey>();
-    Iterator<NID.WithName> rttvit = rowToTargID_.values().iterator();
+    Iterator<NetNode> rttvit = rowToTargID_.values().iterator();
     /*
     while (rttvit.hasNext()) { 	
     	
@@ -608,7 +609,7 @@ public class BioFabricNetwork implements Network {
     //
 
   	NodeLayout layout = rbd.getNodeLayout();
-    List<NID.WithName> targetIDs = layout.doNodeLayout(rbd, null, monitor);
+    List<NetNode> targetIDs = layout.doNodeLayout(rbd, null, monitor);
     
     //
     // Now have the ordered list of targets we are going to display.
@@ -670,7 +671,7 @@ public class BioFabricNetwork implements Network {
                                  (mode == BuildData.BuildMode.CLUSTERED_LAYOUT) || 
                                  (mode == BuildData.BuildMode.REORDER_LAYOUT); 
 
-    List<NID.WithName> targetIDs;
+    List<NetNode> targetIDs;
     if (specifiedNodeOrder) {
       targetIDs = specifiedIDOrder(rbd.allNodeIDs, rbd.nodeOrder);
     } else {       
@@ -690,10 +691,10 @@ public class BioFabricNetwork implements Network {
   
     if ((rbd.linkOrder == null) || rbd.linkOrder.isEmpty() || (mode == BuildData.BuildMode.GROUP_PER_NODE_CHANGE) || (mode == BuildData.BuildMode.GROUP_PER_NETWORK_CHANGE)) {
       if ((rbd.nodeOrder == null) || rbd.nodeOrder.isEmpty()) {
-        rbd.nodeOrder = new HashMap<NID.WithName, Integer>();
+        rbd.nodeOrder = new HashMap<NetNode, Integer>();
         int numT = targetIDs.size();
         for (int i = 0; i < numT; i++) {
-          NID.WithName targID = targetIDs.get(i);
+          NetNode targID = targetIDs.get(i);
           rbd.nodeOrder.put(targID, Integer.valueOf(i));
         }
       }
@@ -737,15 +738,15 @@ public class BioFabricNetwork implements Network {
   ** Get specified node ID order list from attribute map
   */
   
-  private List<NID.WithName> specifiedIDOrder(Set<NID.WithName> allNodeIDs, Map<NID.WithName, Integer> newOrder) { 
-    TreeMap<Integer, NID.WithName> forRetval = new TreeMap<Integer, NID.WithName>();
-    Iterator<NID.WithName> rttvit = allNodeIDs.iterator();
+  private List<NetNode> specifiedIDOrder(Set<NetNode> allNodeIDs, Map<NetNode, Integer> newOrder) { 
+    TreeMap<Integer, NetNode> forRetval = new TreeMap<Integer, NetNode>();
+    Iterator<NetNode> rttvit = allNodeIDs.iterator();
     while (rttvit.hasNext()) {
-      NID.WithName key = rttvit.next();
+      NetNode key = rttvit.next();
       Integer val = newOrder.get(key);
       forRetval.put(val, key);
     }
-    return (new ArrayList<NID.WithName>(forRetval.values()));
+    return (new ArrayList<NetNode>(forRetval.values()));
   }
  
   /***************************************************************************
@@ -753,12 +754,12 @@ public class BioFabricNetwork implements Network {
   ** Get existing order
   */
   
-  public List<NID.WithName> existingIDOrder() {  
-    ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
+  public List<NetNode> existingIDOrder() {  
+    ArrayList<NetNode> retval = new ArrayList<NetNode>();
     Iterator<Integer> rtit = new TreeSet<Integer>(rowToTargID_.keySet()).iterator();
     while (rtit.hasNext()) {
       Integer row = rtit.next();
-      NID.WithName nodeID = rowToTargID_.get(row);
+      NetNode nodeID = rowToTargID_.get(row);
       retval.add(nodeID);
     }
     return (retval);
@@ -837,7 +838,7 @@ public class BioFabricNetwork implements Network {
     String progressTag = (forShadow) ? "progress.findingDrainZonesWithShadow" : "progress.findingDrainZones";
     LoopReporter lr = new LoopReporter(size, 20, monitor, startFrac, endFrac, progressTag);
 
-    Map<NID.WithName, List<DrainZone>> nodeToZones = new TreeMap<NID.WithName, List<DrainZone>>();
+    Map<NetNode, List<DrainZone>> nodeToZones = new TreeMap<NetNode, List<DrainZone>>();
 
     if (links.size() == 0) {
       return;
@@ -852,7 +853,7 @@ public class BioFabricNetwork implements Network {
         int endIdx = links.size() - 1;
   
         MinMax mm = new MinMax(startIdx, endIdx);
-        NID.WithName name = findZoneNode(mm, links);
+        NetNode name = findZoneNode(mm, links);
   
         if (nodeToZones.get(name) == null) {
           nodeToZones.put(name, new ArrayList<DrainZone>());
@@ -864,7 +865,7 @@ public class BioFabricNetwork implements Network {
         int last = index - 1;  // backtrack one position
   
         MinMax mm = new MinMax(startIdx, last);
-        NID.WithName name = findZoneNode(mm, links);
+        NetNode name = findZoneNode(mm, links);
   
         if (nodeToZones.get(name) == null) {
           nodeToZones.put(name, new ArrayList<DrainZone>());
@@ -876,7 +877,7 @@ public class BioFabricNetwork implements Network {
       }    
     }
 
-    for (Map.Entry<NID.WithName, List<DrainZone>> entry : nodeToZones.entrySet()) {     
+    for (Map.Entry<NetNode, List<DrainZone>> entry : nodeToZones.entrySet()) {     
       NodeInfo ni = getNodeDefinition(entry.getKey());
       lr.report();
       ni.setDrainZones(entry.getValue(), forShadow);
@@ -892,14 +893,14 @@ public class BioFabricNetwork implements Network {
   
   private boolean isContiguous(LinkInfo A, LinkInfo B) {
     
-    NID.WithName mainA;
+    NetNode mainA;
     if (A.isShadow()) {
       mainA = getNodeIDForRow(A.bottomRow());
     } else {
       mainA = getNodeIDForRow(A.topRow());
     }
     
-    NID.WithName mainB;
+    NetNode mainB;
     if (B.isShadow()) {
       mainB = getNodeIDForRow(B.bottomRow());
     } else {
@@ -913,7 +914,7 @@ public class BioFabricNetwork implements Network {
    * finds the node of the drain zone with bounds = MinMax([A,B])
    */
   
-  private NID.WithName findZoneNode(MinMax mm, List<LinkInfo> links) {
+  private NetNode findZoneNode(MinMax mm, List<LinkInfo> links) {
     
     LinkInfo li = links.get(mm.min);  // checking the minimum of the minmax is enough...?
 
@@ -963,7 +964,7 @@ public class BioFabricNetwork implements Network {
       Integer row = r2tit.next();
       lr.report();
       UiUtil.fixMePrintout("y2kr-SC-s3-0.010-importance-0.990.0.bif has GPI8::852755 nid=9655 duplicated");
-      NID.WithName nodeID = rowToTargID_.get(row);
+      NetNode nodeID = rowToTargID_.get(row);
       NodeInfo ni = getNodeDefinition(nodeID);
       ni.writeXML(out, ind, row.intValue());
     }
@@ -1009,9 +1010,9 @@ public class BioFabricNetwork implements Network {
       lr.report();
       ind.indent();
       out.print("<link srcID=\"");
-      out.print(link.getSrcID().getNID().getInternal());
+      out.print(link.getSrcNode().getNID().getNID().getInternal());
       out.print("\" trgID=\"");
-      out.print(link.getTrgID().getNID().getInternal());
+      out.print(link.getTrgNode().getNID().getNID().getInternal());
       out.print("\" rel=\"");
       AugRelation augr = link.getAugRelation();
       out.print(CharacterEntityMapper.mapEntities(augr.relation, false));
@@ -1102,7 +1103,7 @@ public class BioFabricNetwork implements Network {
     Iterator<Integer> r2tit = new TreeSet<Integer>(rowToTargID_.keySet()).iterator();
     while (r2tit.hasNext()) {
       Integer row = r2tit.next();
-      NID.WithName nodeID = rowToTargID_.get(row);
+      NetNode nodeID = rowToTargID_.get(row);
       NodeInfo ni = getNodeDefinition(nodeID);
       out.print(ni.getNodeName());
       out.print(" = ");
@@ -1135,7 +1136,7 @@ public class BioFabricNetwork implements Network {
   ** Get Node Definition
   */
 
-  public NodeInfo getNodeDefinition(NID.WithName targID) {
+  public NodeInfo getNodeDefinition(NetNode targID) {
     NodeInfo node = nodeDefs_.get(targID);
     return (node);
   }
@@ -1145,7 +1146,7 @@ public class BioFabricNetwork implements Network {
   ** Get All Node Definition
   */
 
-  public Map<NID.WithName, NodeInfo> getAllNodeDefinitions() {
+  public Map<NetNode, NodeInfo> getAllNodeDefinitions() {
     return (nodeDefs_);
   }
   
@@ -1173,9 +1174,9 @@ public class BioFabricNetwork implements Network {
   ** Get Target For Column
   */
 
-  public NID.WithName getTargetIDForColumn(Integer colVal, boolean forShadow) {
+  public NetNode getTargetIDForColumn(Integer colVal, boolean forShadow) {
     ColumnAssign useCA = (forShadow) ? shadowCols_ : normalCols_;
-    NID.WithName target = useCA.columnToTarget.get(colVal);
+    NetNode target = useCA.columnToTarget.get(colVal);
     return (target);
   }
   
@@ -1184,12 +1185,12 @@ public class BioFabricNetwork implements Network {
   ** Get Drain zone For Column
   */
 
-  public NID.WithName getDrainForColumn(Integer colVal, boolean forShadow) {
+  public NetNode getDrainForColumn(Integer colVal, boolean forShadow) {
   
     int col = colVal.intValue();
     ColumnAssign useCA = (forShadow) ? shadowCols_ : normalCols_;
-    NID.WithName targetID = useCA.columnToTarget.get(colVal);
-    NID.WithName sourceID = useCA.columnToSource.get(colVal);
+    NetNode targetID = useCA.columnToTarget.get(colVal);
+    NetNode sourceID = useCA.columnToSource.get(colVal);
     if (targetID != null) {
       NodeInfo nit = nodeDefs_.get(targetID);
       List<DrainZone> tdzs = nit.getDrainZones(forShadow);
@@ -1219,9 +1220,9 @@ public class BioFabricNetwork implements Network {
   ** Get Source For Column
   */
 
-  public NID.WithName getSourceIDForColumn(Integer colVal, boolean forShadow) {
+  public NetNode getSourceIDForColumn(Integer colVal, boolean forShadow) {
     ColumnAssign useCA = (forShadow) ? shadowCols_ : normalCols_;
-    NID.WithName source = useCA.columnToSource.get(colVal);
+    NetNode source = useCA.columnToSource.get(colVal);
     return (source);
   }
   
@@ -1230,8 +1231,8 @@ public class BioFabricNetwork implements Network {
   ** Get node for row
   */
 
-  public NID.WithName getNodeIDForRow(Integer rowObj) {
-    NID.WithName node = rowToTargID_.get(rowObj);
+  public NetNode getNodeIDForRow(Integer rowObj) {
+    NetNode node = rowToTargID_.get(rowObj);
     return (node);
   }
   
@@ -1304,12 +1305,12 @@ public class BioFabricNetwork implements Network {
   ** Get all node names
   */
 
-  public Set<NID.WithName> getNodeSetIDs() {
-  	HashSet<NID.WithName> retval = new HashSet<NID.WithName>();
+  public Set<NetNode> getNodeSetIDs() {
+  	HashSet<NetNode> retval = new HashSet<NetNode>();
   	Iterator<NodeInfo> nsit = nodeDefs_.values().iterator();
     while (nsit.hasNext()) {
     	NodeInfo ni = nsit.next();
-      retval.add(new NID.WithName(ni.getNodeID(), ni.getNodeName()));
+      retval.add(new FabricNode(ni.getNodeID(), ni.getNodeName()));
     }
     return (retval);
   }  
@@ -1357,11 +1358,11 @@ public class BioFabricNetwork implements Network {
   ** Get node matches
   */
 
-  public Set<NID.WithName> nodeMatches(boolean fullMatch, String searchString) {
-    HashSet<NID.WithName> retval = new HashSet<NID.WithName>();
-    Iterator<NID.WithName> nkit = nodeDefs_.keySet().iterator();
+  public Set<NetNode> nodeMatches(boolean fullMatch, String searchString) {
+    HashSet<NetNode> retval = new HashSet<NetNode>();
+    Iterator<NetNode> nkit = nodeDefs_.keySet().iterator();
     while (nkit.hasNext()) {
-      NID.WithName nodeID = nkit.next();
+      NetNode nodeID = nkit.next();
       String nodeName = nodeDefs_.get(nodeID).getNodeName();
       if (matches(searchString, nodeName, fullMatch)) {
         retval.add(nodeID);
@@ -1375,7 +1376,7 @@ public class BioFabricNetwork implements Network {
   ** Get first neighbors of node, along with info blocks
   */
 
-  public void getFirstNeighbors(NID.WithName nodeID, Set<NID.WithName> nodeSet, List<NodeInfo> nodes, List<LinkInfo> links) {
+  public void getFirstNeighbors(NetNode nodeID, Set<NetNode> nodeSet, List<NodeInfo> nodes, List<LinkInfo> links) {
     Iterator<LinkInfo> ldit = fullLinkDefs_.values().iterator();
     while (ldit.hasNext()) {
       LinkInfo linf = ldit.next();
@@ -1387,9 +1388,9 @@ public class BioFabricNetwork implements Network {
         links.add(linf);
       }
     }
-    Iterator<NID.WithName> nsit = nodeSet.iterator();
+    Iterator<NetNode> nsit = nodeSet.iterator();
     while (nsit.hasNext()) {
-      NID.WithName nextID = nsit.next();
+      NetNode nextID = nsit.next();
       nodes.add(nodeDefs_.get(nextID));
     }
     return;
@@ -1400,8 +1401,8 @@ public class BioFabricNetwork implements Network {
   ** Get first neighbors of node
   */
 
-  public Set<NID.WithName> getFirstNeighbors(NID.WithName nodeID) {
-    HashSet<NID.WithName> nodeSet = new HashSet<NID.WithName>();
+  public Set<NetNode> getFirstNeighbors(NetNode nodeID) {
+    HashSet<NetNode> nodeSet = new HashSet<NetNode>();
     Iterator<LinkInfo> ldit = fullLinkDefs_.values().iterator();
     while (ldit.hasNext()) {
       LinkInfo linf = ldit.next();
@@ -1419,8 +1420,8 @@ public class BioFabricNetwork implements Network {
   ** Add first neighbors of node set
   */
 
-  public void addFirstNeighbors(Set<NID.WithName> nodeSet, Set<Integer> columnSet, Set<FabricLink> linkSet, boolean forShadow) {
-    HashSet<NID.WithName> newNodes = new HashSet<NID.WithName>();
+  public void addFirstNeighbors(Set<NetNode> nodeSet, Set<Integer> columnSet, Set<FabricLink> linkSet, boolean forShadow) {
+    HashSet<NetNode> newNodes = new HashSet<NetNode>();
     Iterator<LinkInfo> ldit = fullLinkDefs_.values().iterator();
     while (ldit.hasNext()) {
       LinkInfo linf = ldit.next();
@@ -1462,13 +1463,13 @@ public class BioFabricNetwork implements Network {
   ** Count of links per targ:
   */
 
-  private Map<NID.WithName, Integer> linkCountPerTarg(Set<NID.WithName> targets, List<LinkInfo> linkList) {
-    HashMap<NID.WithName, Integer> retval = new HashMap<NID.WithName, Integer>();
+  private Map<NetNode, Integer> linkCountPerTarg(Set<NetNode> targets, List<LinkInfo> linkList) {
+    HashMap<NetNode, Integer> retval = new HashMap<NetNode, Integer>();
     Iterator<LinkInfo> lcit = linkList.iterator();
     while (lcit.hasNext()) {
       LinkInfo linf = lcit.next();
-      NID.WithName src = linf.getSource();
-      NID.WithName trg = linf.getTarget();      
+      NetNode src = linf.getSource();
+      NetNode trg = linf.getTarget();      
       if (targets.contains(src)) {
         Integer count = retval.get(src);
         if (count == null) {
@@ -1498,23 +1499,23 @@ public class BioFabricNetwork implements Network {
 
   private List<LinkInfo> pruneToMinSubModel(BioFabricNetwork bfn, List<NodeInfo> targetList, List<LinkInfo> linkList) {
           
-    HashSet<NID.WithName> targSet = new HashSet<NID.WithName>();
+    HashSet<NetNode> targSet = new HashSet<NetNode>();
     Iterator<NodeInfo> tlit = targetList.iterator();
     while (tlit.hasNext()) {
       NodeInfo ninf = tlit.next();
-      targSet.add(new NID.WithName(ninf.getNodeID(), ninf.getNodeName()));
+      targSet.add(new FabricNode(ninf.getNodeID(), ninf.getNodeName()));
     }   
 
-    Map<NID.WithName, Integer> subCounts = linkCountPerTarg(targSet, linkList);
-    Map<NID.WithName, Integer> fullCounts = linkCountPerTarg(bfn.getNodeSetIDs(), bfn.getLinkDefList(true));
+    Map<NetNode, Integer> subCounts = linkCountPerTarg(targSet, linkList);
+    Map<NetNode, Integer> fullCounts = linkCountPerTarg(bfn.getNodeSetIDs(), bfn.getLinkDefList(true));
     
     HashSet<Integer> skipThem = new HashSet<Integer>();
     HashSet<Integer> ditchThem = new HashSet<Integer>();
     Iterator<LinkInfo> lcit = linkList.iterator();
     while (lcit.hasNext()) {
       LinkInfo linf = lcit.next();
-      NID.WithName topNode = bfn.getNodeIDForRow(Integer.valueOf(linf.topRow()));
-      NID.WithName botNode = bfn.getNodeIDForRow(Integer.valueOf(linf.bottomRow()));
+      NetNode topNode = bfn.getNodeIDForRow(Integer.valueOf(linf.topRow()));
+      NetNode botNode = bfn.getNodeIDForRow(Integer.valueOf(linf.bottomRow()));
       boolean topStays = subCounts.get(topNode).equals(fullCounts.get(topNode));
       boolean botStays = subCounts.get(botNode).equals(fullCounts.get(botNode));
       if ((topStays && botStays) || (!topStays && !botStays)) {  // Nobody gets ditched!
@@ -1563,8 +1564,8 @@ public class BioFabricNetwork implements Network {
       linkList = pruneToMinSubModel(bfn, targetList, linkList);
     }
       
-    HashMap<NID.WithName, Integer> lastColForNode = new HashMap<NID.WithName, Integer>();
-    HashMap<NID.WithName, Integer> lastShadColForNode = new HashMap<NID.WithName, Integer>();
+    HashMap<NetNode, Integer> lastColForNode = new HashMap<NetNode, Integer>();
+    HashMap<NetNode, Integer> lastShadColForNode = new HashMap<NetNode, Integer>();
     Iterator<LinkInfo> lcit = linkList.iterator();
     while (lcit.hasNext()) {
       LinkInfo linf = lcit.next();
@@ -1734,12 +1735,12 @@ public class BioFabricNetwork implements Network {
       minTrgCol = 0;
     }
     
-    rowToTargID_ = new HashMap<Integer, NID.WithName>();
-    nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
+    rowToTargID_ = new HashMap<Integer, NetNode>();
+    nodeDefs_ = new HashMap<NetNode, NodeInfo>();
     rowCount_ = modTargetList.size();
     for (int i = 0; i < rowCount_; i++) {
       NodeInfo infoMini = modTargetList.get(i);
-      NID.WithName nwn = new NID.WithName(infoMini.getNodeID(), infoMini.getNodeName());
+      NetNode nwn = new FabricNode(infoMini.getNodeID(), infoMini.getNodeName());
       rowToTargID_.put(Integer.valueOf(infoMini.nodeRow), nwn);
       nodeDefs_.put(nwn, infoMini);
     }
@@ -1782,9 +1783,9 @@ public class BioFabricNetwork implements Network {
     // with a link has a drain zone
     //
     
-    Iterator<NID.WithName> ndkit = nodeDefs_.keySet().iterator();
+    Iterator<NetNode> ndkit = nodeDefs_.keySet().iterator();
     while (ndkit.hasNext()) {
-      NID.WithName node = ndkit.next();
+      NetNode node = ndkit.next();
       NodeInfo srcNI = nodeDefs_.get(node);
       
       //
@@ -1862,8 +1863,8 @@ public class BioFabricNetwork implements Network {
   ** Fill out node info from order
   */
 
-  private void fillNodesFromOrder(List<NID.WithName> targetIDs, 
-  		                            FabricColorGenerator colGen, Map<NID.WithName, String> clustAssign,
+  private void fillNodesFromOrder(List<NetNode> targetIDs, 
+  		                            FabricColorGenerator colGen, Map<NetNode, String> clustAssign,
   		                            BTProgressMonitor monitor) throws AsynchExitRequestException {
     //
     // Now have the ordered list of targets we are going to display.
@@ -1875,9 +1876,9 @@ public class BioFabricNetwork implements Network {
     LoopReporter lr = new LoopReporter(targetIDs.size(), 20, monitor, 0.0, 1.0, "progress.nodeInfo");
   
     int currRow = 0;
-    Iterator<NID.WithName> trit = targetIDs.iterator();
+    Iterator<NetNode> trit = targetIDs.iterator();
     while (trit.hasNext()) {
-      NID.WithName targetID = trit.next();
+      NetNode targetID = trit.next();
       lr.report();
       Integer rowObj = Integer.valueOf(currRow);
       rowToTargID_.put(rowObj, targetID);
@@ -1886,7 +1887,7 @@ public class BioFabricNetwork implements Network {
         System.out.println("targetID is Null " + rowObj);
       }
 
-      NodeInfo nextNI = new NodeInfo(targetID.getNID(), targetID.getName(), currRow++, colorKey);
+      NodeInfo nextNI = new NodeInfo(targetID.getNID().getNID(), targetID.getName(), currRow++, colorKey);
       if (clustAssign != null) {
       	nextNI.setCluster(clustAssign.get(targetID));
       }
@@ -1902,7 +1903,7 @@ public class BioFabricNetwork implements Network {
   */
   
   void addNodeInfoForIO(NodeInfo nif) {
-  	NID.WithName nwn = new NID.WithName(nif.getNodeID(), nif.getNodeName());
+  	NetNode nwn = new FabricNode(nif.getNodeID(), nif.getNodeName());
     nodeDefs_.put(nwn, nif);
     rowCount_ = nodeDefs_.size();   
     rowToTargID_.put(Integer.valueOf(nif.nodeRow), nwn);
@@ -1955,14 +1956,14 @@ public class BioFabricNetwork implements Network {
   ** For the lone nodes, they are assigned into the last column:
   */
 
-  private void loneNodesToLastColumn(Set<NID.WithName> loneNodeIDs,
+  private void loneNodesToLastColumn(Set<NetNode> loneNodeIDs,
   		                               BTProgressMonitor monitor) throws AsynchExitRequestException {
   	
   	LoopReporter lr = new LoopReporter(loneNodeIDs.size(), 20, monitor, 0.0, 1.0, "progress.loneNodes");
   	
-    Iterator<NID.WithName> lnit = loneNodeIDs.iterator();
+    Iterator<NetNode> lnit = loneNodeIDs.iterator();
     while (lnit.hasNext()) {
-      NID.WithName loneID = lnit.next();
+      NetNode loneID = lnit.next();
       lr.report();
       NodeInfo loneNI = nodeDefs_.get(loneID);     
       loneNI.updateMinMaxCol(normalCols_.columnCount - 1, false);
@@ -1977,13 +1978,13 @@ public class BioFabricNetwork implements Network {
   ** Pretty icky hack:
   */
 
-  public Set<NID.WithName> getLoneNodes(BTProgressMonitor monitor) throws AsynchExitRequestException { 
-    HashSet<NID.WithName> retval = new HashSet<NID.WithName>();
+  public Set<NetNode> getLoneNodes(BTProgressMonitor monitor) throws AsynchExitRequestException { 
+    HashSet<NetNode> retval = new HashSet<NetNode>();
     LoopReporter lr = new LoopReporter(nodeDefs_.size(), 20, monitor, 0.0, 1.0, "progress.findingLoneNodes");   
-    Iterator<NID.WithName> lnit = nodeDefs_.keySet().iterator();
+    Iterator<NetNode> lnit = nodeDefs_.keySet().iterator();
     boolean checkDone = false;
     while (lnit.hasNext()) {
-      NID.WithName loneID = lnit.next();
+      NetNode loneID = lnit.next();
       lr.report();
       NodeInfo loneNI = nodeDefs_.get(loneID);
       int min = loneNI.getColRange(true).min;
@@ -2012,8 +2013,8 @@ public class BioFabricNetwork implements Network {
   private Integer[] addLinkDef(NetLink nextLink, int numColors, int noShadowCol, int shadowCol, FabricColorGenerator colGen) {
     Integer[] retval = new Integer[2]; 
     String key = colGen.getGeneColor(shadowCol % numColors);
-    int srcRow = nodeDefs_.get(nextLink.getSrcID()).nodeRow;
-    int trgRow = nodeDefs_.get(nextLink.getTrgID()).nodeRow;
+    int srcRow = nodeDefs_.get(nextLink.getSrcNode()).nodeRow;
+    int trgRow = nodeDefs_.get(nextLink.getTrgNode()).nodeRow;
     LinkInfo linf = new LinkInfo((FabricLink)nextLink, srcRow, trgRow, noShadowCol, shadowCol, key);
     Integer shadowKey = Integer.valueOf(shadowCol);
     fullLinkDefs_.put(shadowKey, linf);
@@ -2091,8 +2092,8 @@ public class BioFabricNetwork implements Network {
   ** Return node cluster assignment
   */
   
-  public Map<NID.WithName, String> nodeClusterAssigment() {
-  	HashMap<NID.WithName, String> retval = new HashMap<NID.WithName, String>();
+  public Map<NetNode, String> nodeClusterAssigment() {
+  	HashMap<NetNode, String> retval = new HashMap<NetNode, String>();
   	if (nodeDefs_.isEmpty()) {
   		return (retval);
   	}
@@ -2101,7 +2102,7 @@ public class BioFabricNetwork implements Network {
     	if (cluster == null) {
     		throw new IllegalStateException();
     	}
-    	retval.put(new NID.WithName(ni.getNodeID(), ni.getNodeName()), cluster);
+    	retval.put(new FabricNode(ni.getNodeID(), ni.getNodeName()), cluster);
     }
     return (retval);    
   } 
@@ -2133,10 +2134,10 @@ public class BioFabricNetwork implements Network {
   BioFabricNetwork() { 
     normalCols_ = new ColumnAssign();
     shadowCols_ = new ColumnAssign();
-    rowToTargID_ = new HashMap<Integer, NID.WithName>(); 
+    rowToTargID_ = new HashMap<Integer, NetNode>(); 
     fullLinkDefs_ = new TreeMap<Integer, LinkInfo>();
     nonShadowedLinkMap_ = new TreeMap<Integer, Integer>();
-    nodeDefs_ = new HashMap<NID.WithName, NodeInfo>();
+    nodeDefs_ = new HashMap<NetNode, NodeInfo>();
     linkGrouping_ = new ArrayList<String>();
     showLinkGroupAnnotations_ = false;
     colGen_ = null;
@@ -2188,12 +2189,12 @@ public class BioFabricNetwork implements Network {
       return (myLink_);
     }    
     
-    public NID.WithName getSource() {
-      return (myLink_.getSrcID());
+    public NetNode getSource() {
+      return (myLink_.getSrcNode());
     }
     
-    public NID.WithName getTarget() {
-      return (myLink_.getTrgID());
+    public NetNode getTarget() {
+      return (myLink_.getTrgNode());
     }
     
     public AugRelation getAugRelation() {
@@ -2261,8 +2262,8 @@ public class BioFabricNetwork implements Network {
       return (nodeID_);
     } 
     
-    public NID.WithName getNodeIDWithName() { 
-      return (new NID.WithName(nodeID_, nodeName_));
+    public NetNode getNodeIDWithName() { 
+      return (new FabricNode(nodeID_, nodeName_));
     } 
  
     public List<DrainZone> getDrainZones(boolean forShadow) {
@@ -2442,13 +2443,13 @@ public class BioFabricNetwork implements Network {
   */  
   
   public static class ColumnAssign  {
-    public HashMap<Integer, NID.WithName> columnToSource;
-    public HashMap<Integer, NID.WithName> columnToTarget;
+    public HashMap<Integer, NetNode> columnToSource;
+    public HashMap<Integer, NetNode> columnToTarget;
     public int columnCount;
 
     ColumnAssign() {
-      this.columnToSource = new HashMap<Integer, NID.WithName>();
-      this.columnToTarget = new HashMap<Integer, NID.WithName>();
+      this.columnToSource = new HashMap<Integer, NetNode>();
+      this.columnToTarget = new HashMap<Integer, NetNode>();
       this.columnCount = 0;
     } 
   }
@@ -2694,7 +2695,7 @@ public class BioFabricNetwork implements Network {
       Boolean dirObj = Boolean.valueOf(directed);
       String shadow = AttributeExtractor.extractAttribute(elemName, attrs, "link", "shadow", true);
       Boolean shadObj = Boolean.valueOf(shadow);
-      FabricLink flink = new FabricLink(srcNID, trgNID, rel, shadObj.booleanValue(), dirObj);
+      FabricLink flink = new FabricLink(new FabricNode(srcNID), new FabricNode(trgNID), rel, shadObj.booleanValue(), dirObj);
       String col = AttributeExtractor.extractAttribute(elemName, attrs, "link", "column", false);
       String shadowCol = AttributeExtractor.extractAttribute(elemName, attrs, "link", "shadowCol", true);
       String srcRow = AttributeExtractor.extractAttribute(elemName, attrs, "link", "srcRow", true);

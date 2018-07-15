@@ -27,7 +27,7 @@ import java.util.SortedMap;
 
 import org.systemsbiology.biofabric.modelAPI.AugRelation;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 
@@ -49,8 +49,8 @@ public interface BuildExtractor {
   ** Extract nodes
   */
   
-  public Set<NID.WithName> extractNodes(Collection<NetLink> allLinks, Set<NID.WithName> loneNodeIDs,
-                                        BTProgressMonitor monitor) throws AsynchExitRequestException;
+  public Set<NetNode> extractNodes(Collection<NetLink> allLinks, Set<NetNode> loneNodeIDs,
+                                   BTProgressMonitor monitor) throws AsynchExitRequestException;
   
  
   /***************************************************************************
@@ -67,7 +67,7 @@ public interface BuildExtractor {
   ** Helper to drop to map to single name: useful
   */
 
-  public Map<String, NID.WithName> reduceNameSetToOne(Map<String, Set<NID.WithName>> mapsToSets);
+  public Map<String, NetNode> reduceNameSetToOne(Map<String, Set<NetNode>> mapsToSets);
   
   /***************************************************************************
   ** 

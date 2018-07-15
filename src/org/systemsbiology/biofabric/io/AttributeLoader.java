@@ -30,8 +30,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.util.DataUtil;
-import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
 **
@@ -86,7 +86,7 @@ public class AttributeLoader {
   */
 
   public String readAttributes(File infile, boolean forNodes, Map<AttributeKey, String> results, 
-  		                         Map<String, NID.WithName> nodes, ReadStats stats) throws IOException {
+  		                         Map<String, NetNode> nodes, ReadStats stats) throws IOException {
     
     Pattern nodePat = Pattern.compile("(.*)=(.*)");
     Pattern linkPat = Pattern.compile("(.*\\S) (.*)\\((.*)\\) (\\S.*)=(.*)"); 
@@ -129,8 +129,8 @@ public class AttributeLoader {
         if (isShadow) {
           stats.shadowsPresent = true;
         }
-        NID.WithName srcID = nodes.get(DataUtil.normKey(src));
-        NID.WithName trgID = nodes.get(DataUtil.normKey(trg));
+        NetNode srcID = nodes.get(DataUtil.normKey(src));
+        NetNode trgID = nodes.get(DataUtil.normKey(trg));
         FabricLink nextLink = new FabricLink(srcID, trgID, rel, isShadow);
         if (results.containsKey(nextLink)) {
           stats.dupLines.add(line);
