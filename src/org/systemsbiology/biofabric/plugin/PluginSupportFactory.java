@@ -17,26 +17,42 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.workerAPI;
+package org.systemsbiology.biofabric.plugin;
 
 import javax.swing.JFrame;
 
+import org.systemsbiology.biofabric.io.BuildExtractorImpl;
+import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
+import org.systemsbiology.biofabric.util.ResourceManager;
+import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
 import org.systemsbiology.biofabric.worker.BackgroundWorker;
 import org.systemsbiology.biofabric.worker.BackgroundWorkerClient;
 import org.systemsbiology.biofabric.worker.WorkerClientBundle;
+import org.systemsbiology.biofabric.workerAPI.BFWorker;
+import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
+import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerOwner;
 
 /****************************************************************************
 **
 ** Factory for returning API Implementations
 */
 
-public class WorkerFactory {
+public class PluginSupportFactory {
   
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
+  
+  /***************************************************************************
+  **
+  ** Get a Build Extractor
+  */
+  
+  public static BuildExtractor getBuildExtractor() {
+  	return (new BuildExtractorImpl());
+  }
   
   /***************************************************************************
   **
@@ -52,4 +68,12 @@ public class WorkerFactory {
   	return (new WorkerClientBundle(bw, bwc));
   }
   
+  /***************************************************************************
+  **
+  ** Get a Plugin Resource Manager
+  */
+  
+  public static PluginResourceManager getResourceManager(String pluginName) {
+  	return (new ResourceManager.ForPlugins(pluginName));
+  }  
 }

@@ -34,9 +34,9 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.systemsbiology.biofabric.ioAPI.IOFactory;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
@@ -375,7 +375,7 @@ public class NetworkAlignment {
   
   private void createIsAlignedMap() throws AsynchExitRequestException {
   
-    Set<NID.WithName> allNodes = IOFactory.getBuildExtractor().extractNodes(mergedLinks_, mergedLoners_, monitor_);
+    Set<NID.WithName> allNodes = PluginSupportFactory.getBuildExtractor().extractNodes(mergedLinks_, mergedLoners_, monitor_);
     for (NID.WithName node : allNodes) {
       // here mergedIDToSmall_ is a tool: if node is in it, we know it is an aligned node
       if (mergedIDToSmall_.get(node) != null) {

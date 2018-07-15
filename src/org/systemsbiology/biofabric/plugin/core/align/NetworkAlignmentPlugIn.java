@@ -37,7 +37,6 @@ import javax.swing.JOptionPane;
 
 import org.systemsbiology.biofabric.ioAPI.PluginWhiteboard;
 import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
-import org.systemsbiology.biofabric.ioAPI.IOFactory;
 import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
 import org.systemsbiology.biofabric.io.GWImportLoader;
 import org.systemsbiology.biofabric.modelAPI.Network;
@@ -48,22 +47,22 @@ import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
 import org.systemsbiology.biofabric.util.AttributeExtractor;
 import org.systemsbiology.biofabric.util.CharacterEntityMapper;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.NID;
-import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BFWorker;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 import org.systemsbiology.biofabric.workerAPI.BackgroundCore;
 import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
 import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerOwner;
-import org.systemsbiology.biofabric.workerAPI.WorkerFactory;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 import org.xml.sax.Attributes;
@@ -104,8 +103,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     netAlignStats_ = new NetAlignStats();
     
     className_ = getClass().getName();
-    ResourceManager rMan = ResourceManager.getManager();
-    rMan.setPluginBundle(className_, "org.systemsbiology.biofabric.plugin.core.align.NetworkAlignment");    
+    PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
+    rMan.setPluginBundle("org.systemsbiology.biofabric.plugin.core.align.NetworkAlignment");    
   }
   
   ////////////////////////////////////////////////////////////////////////////
@@ -167,8 +166,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   */
   
   public String getToolMenu() {
-    ResourceManager rMan = ResourceManager.getManager();
-    return (rMan.getPluginString(className_, "command.alignmentCommands"));
+    PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
+    return (rMan.getPluginString("command.alignmentCommands"));
   }
   
   /***************************************************************************
@@ -288,21 +287,20 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       AlignmentLoader alod = new AlignmentLoader(className_);
       
       alod.readAlignment(file, mapG1toG2, stats, linksGraph1, loneNodesGraph1, linksGraph2, loneNodesGraph2);
+      PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
   
       if (!stats.badLines.isEmpty()) {
-        ResourceManager rMan = ResourceManager.getManager();
-        String badLineFormat = rMan.getPluginString(className_, "netAlignRead.badLineFormat");
+        String badLineFormat = rMan.getPluginString("netAlignRead.badLineFormat");
         String badLineMsg = MessageFormat.format(badLineFormat, new Object[] {Integer.valueOf(stats.badLines.size())});
         JOptionPane.showMessageDialog(topWindow_, badLineMsg,
-                rMan.getPluginString(className_, "netAlignRead.badLineTitle"),
+                rMan.getPluginString("netAlignRead.badLineTitle"),
                 JOptionPane.WARNING_MESSAGE);
       }
       if (!stats.dupLines.isEmpty()) {
-        ResourceManager rMan = ResourceManager.getManager();
-        String dupLineFormat = rMan.getPluginString(className_, "netAlignRead.dupLineFormat");
+        String dupLineFormat = rMan.getPluginString("netAlignRead.dupLineFormat");
         String dupLineMsg = MessageFormat.format(dupLineFormat, new Object[] {Integer.valueOf(stats.dupLines.size())});
         JOptionPane.showMessageDialog(topWindow_, dupLineMsg,
-                rMan.getPluginString(className_, "netAlignRead.dupLineTitle"),
+                rMan.getPluginString("netAlignRead.dupLineTitle"),
                 JOptionPane.WARNING_MESSAGE);
       }
     } catch (IOException ioe) {
@@ -421,9 +419,11 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
   
     // i.e. same 2 graphs and perfect alignment yield an empty network
+    
     if (mergedLinks.isEmpty()) {
-      JOptionPane.showMessageDialog(topWindow_, (ResourceManager.getManager()).getPluginString(className_, "networkAlignment.emptyNetwork"),
-              (ResourceManager.getManager()).getPluginString(className_, "networkAlignment.emptyNetworkTitle"),
+    	PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
+      JOptionPane.showMessageDialog(topWindow_, rMan.getPluginString("networkAlignment.emptyNetwork"),
+              rMan.getPluginString("networkAlignment.emptyNetworkTitle"),
               JOptionPane.WARNING_MESSAGE);
       return (false);
     }
@@ -547,7 +547,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
     Set<NID.WithName> nodesA = null, nodesB = null;
     try {
-    	BuildExtractor bex = IOFactory.getBuildExtractor();
+    	BuildExtractor bex = PluginSupportFactory.getBuildExtractor();
       nodesA = bex.extractNodes(linksGraphA, loneNodeIDsGraphA, null);
       nodesB = bex.extractNodes(linksGraphB, loneNodeIDsGraphB, null);
     } catch (AsynchExitRequestException aere) {
@@ -676,8 +676,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
       
     public String getCommandName() {
-      ResourceManager rMan = ResourceManager.getManager();
-      return (rMan.getPluginString(className_, "command.netAlignMeasures"));
+    	PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
+      return (rMan.getPluginString("command.netAlignMeasures"));
     }   
     
     public boolean performOperation(JFrame topFrame) {
@@ -710,8 +710,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
     
     public String getCommandName() {
-      ResourceManager rMan = ResourceManager.getManager();
-      return (rMan.getPluginString(className_, "command.netAlignGroupLayout"));  
+      PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
+      return (rMan.getPluginString("command.netAlignGroupLayout"));  
     }
     
     public boolean performOperation(JFrame topFrame) {
@@ -771,8 +771,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
     
     public String getCommandName() {
-      ResourceManager rMan = ResourceManager.getManager();
-      return (rMan.getPluginString(className_, "command.netAlignCaseIILayout"));  
+      PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
+      return (rMan.getPluginString("command.netAlignCaseIILayout"));  
     }
     
     public boolean performOperation(JFrame topFrame) {
@@ -827,8 +827,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
     
     public String getCommandName() {
-      ResourceManager rMan = ResourceManager.getManager();
-      return (rMan.getPluginString(className_, "command.orphanLayout"));  
+      PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
+      return (rMan.getPluginString("command.orphanLayout"));  
     }
     
     public boolean performOperation(JFrame topFrame) {
@@ -972,7 +972,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       finished_= true;
       holdIt_ = holdIt;
       try {    	
-      	BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bwcm_, "fileLoad.waitTitle", "fileLoad.wait", true);
+      	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bwcm_, "fileLoad.waitTitle", "fileLoad.wait", true);
         NetworkAlignmentRunner runner = new NetworkAlignmentRunner(mergedLinks, mergedLoneNodeIDs, mapG1toG2, perfectG1toG2,
                                                                    mergedToCorrect, isAlignedNode, linksG1, lonersG1, linksG2, 
                                                                    lonersG2, relMap, outType, idGen, bfw);
@@ -1059,7 +1059,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
               linksG1_, lonersG1_, linksG2_, lonersG2_, mergedToCorrect_, isAlignedNode_, outType_, idGen_, monitor);
       
       netAlign.mergeNetworks();
-      BuildExtractor bex = IOFactory.getBuildExtractor();
+      BuildExtractor bex = PluginSupportFactory.getBuildExtractor();
       bex.extractRelations(mergedLinks_, relMap_, monitor);
       return (new Boolean(true));
     }
@@ -1090,7 +1090,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       holdIt_ = holdIt;
       try {
       	
-      	BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bwcm_, "fileLoad.waitTitle", "fileLoad.wait", true);
+      	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bwcm_, "fileLoad.waitTitle", "fileLoad.wait", true);
         NetAlignMeasureRunner runner = new NetAlignMeasureRunner(reducedLinks, loneNodeIDs, isAlignedNode, mergedToCorrectNC, 
         		                                                     reducedLinksPerfect, loneNodeIDsPerfect, isAlignedNodePerfect, 
         		                                                     report, linksSmall, lonersSmall, linksLarge, 

@@ -57,7 +57,6 @@ import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.cmd.HeadlessOracle;
 import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
 import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
-import org.systemsbiology.biofabric.ioAPI.IOFactory;
 import org.systemsbiology.biofabric.layoutAPI.EdgeLayout;
 import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
@@ -73,6 +72,7 @@ import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.ProgressFilterInputStream;
 import org.systemsbiology.biofabric.parser.SUParser;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.plugin.PlugInManager;
 import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -90,15 +90,12 @@ import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
-import org.systemsbiology.biofabric.worker.BackgroundWorker;
-import org.systemsbiology.biofabric.worker.BackgroundWorkerClient;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BFWorker;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 import org.systemsbiology.biofabric.workerAPI.BackgroundCore;
 import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
 import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerOwner;
-import org.systemsbiology.biofabric.workerAPI.WorkerFactory;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 /****************************************************************************
@@ -678,7 +675,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         } else {
           throw (new IllegalArgumentException("File type not identified"));
         }
-        IOFactory.getBuildExtractor().extractRelations(links, relMap, null);
+        PluginSupportFactory.getBuildExtractor().extractRelations(links, relMap, null);
       } catch (AsynchExitRequestException axex) {
         // Should never happen
         return (false);
@@ -775,7 +772,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   		                    SortedMap<AugRelation, Boolean> relaMap,
   	                      Set<NetLink> reducedLinks, Set<NetLink> culledLinks,  
   	                      BTProgressMonitor monitor) throws AsynchExitRequestException {
-  	BuildExtractor bex = IOFactory.getBuildExtractor();
+  	BuildExtractor bex = PluginSupportFactory.getBuildExtractor();
     bex.assignDirections(links, relaMap, monitor);
     bex.preprocessLinks(links, reducedLinks, culledLinks, monitor);
     return;
@@ -1031,7 +1028,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     try {    
       AttributeLoader.ReadStats stats = new AttributeLoader.ReadStats();
       AttributeLoader alod = new AttributeLoader();
-      BuildExtractor bex = IOFactory.getBuildExtractor();
+      BuildExtractor bex = PluginSupportFactory.getBuildExtractor();
       Map<String, NID.WithName> nameToID = (!forNodes) ? bex.reduceNameSetToOne(nameToIDs) : null;
       alod.readAttributes(file, forNodes, attributes, nameToID, stats);
       if (!stats.badLines.isEmpty()) {
@@ -1323,7 +1320,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       finished_ = true;
       forRecovery_ = false;
       try {
-        BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true);
+        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true);
         SIFReaderRunner runner = new SIFReaderRunner(file, idGen, links, loneNodeIDs, nameMap, sss, magBins, relMap, holdIt_, bfw);                                                        
         bfw.setCore(runner);
         bfw.launchWorker();       
@@ -1342,7 +1339,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       finished_ = true;
       forRecovery_ = false;
       try {
-        BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true);
+        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true);
         GWReaderRunner runner = new GWReaderRunner(file, idGen, links, loneNodeIDs, nameMap, gws, magBins, relMap, holdIt_, bfw);                                                      
         bfw.setCore(runner);
         bfw.launchWorker();       
@@ -1357,7 +1354,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       finished_ = true;
       forRecovery_ = (holdIt == null);
       try {
-      	BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true);
+      	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true);
         ReaderRunner runner = new ReaderRunner(sup, file, compressed, holdIt_, bfw);                                                      
         bfw.setCore(runner);
         bfw.launchWorker(); 
@@ -1477,7 +1474,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       holdIt_ = holdIt;
       finished_ = true;
       try {
-        BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "netPreprocess.waitTitle", "netPreprocess.wait", true);
+        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netPreprocess.waitTitle", "netPreprocess.wait", true);
         PreprocessRunner runner = new PreprocessRunner(links, relaMap, reducedLinks, culledLinks, holdIt_, bfw);                                                        
         bfw.setCore(runner);
         bfw.launchWorker();  
@@ -1568,7 +1565,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     public void doBackgroundWrite(File file) {
     	file_ = file;
       try { 
-      	BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "fileWrite.waitTitle", "fileWrite.wait", true);
+      	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileWrite.waitTitle", "fileWrite.wait", true);
     	  WriterRunner runner = new WriterRunner(file, bfw);
         bfw.setCore(runner);
         bfw.launchWorker();       
@@ -1580,7 +1577,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     
     public void doBackgroundWrite(OutputStream stream) {
     	file_ = null;
-    	BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "fileWrite.waitTitle", "fileWrite.wait", true);
+    	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileWrite.waitTitle", "fileWrite.wait", true);
       WriterRunner runner = new WriterRunner(stream, bfw);
       try {                                                                
         bfw.setCore(runner);
@@ -1679,7 +1676,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         FabricImportLoader.FileImportStats sss = 
         		(new GWImportLoader()).importFabric(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, monitor);
         sss_.copyInto(sss);
-        IOFactory.getBuildExtractor().extractRelations(links_, relaMap_, monitor);
+        PluginSupportFactory.getBuildExtractor().extractRelations(links_, relaMap_, monitor);
         
         return (new Boolean(true));
       } catch (IOException ioe) {
@@ -1744,7 +1741,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         FabricImportLoader.FileImportStats sss = 
           (new SIFImportLoader()).importFabric(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, monitor);
         sss_.copyInto(sss);
-        IOFactory.getBuildExtractor().extractRelations(links_, relaMap_, monitor);     
+        PluginSupportFactory.getBuildExtractor().extractRelations(links_, relaMap_, monitor);     
         return (new Boolean(true));
       } catch (IOException ioe) {
         bfwk_.stashException(ioe);
@@ -1857,7 +1854,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private BFWorker bfwk_;
     
     NetworkBuilder(boolean isMain, File holdIt) {
-    	bfwk_ = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "netBuild.waitTitle", "netBuild.wait", true); 
+    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netBuild.waitTitle", "netBuild.wait", true); 
       runner_ = new NewNetworkRunner(isMain, holdIt, bfwk_);
       holdIt_ = holdIt;
     }
@@ -2059,7 +2056,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private BFWorker bfwk_;
       
     public NetworkRelayout() {
-    	bfwk_ = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "netRelayout.waitTitle", "netRelayout.wait", true);
+    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netRelayout.waitTitle", "netRelayout.wait", true);
       runner_ = new NetworkRelayoutRunner(bfwk_); 
       bfwk_.setCore(runner_);
     }
@@ -2294,7 +2291,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       try {
         holdIt_ = holdIt;
         bfp_.shutdown();
-        BFWorker bfw = WorkerFactory.getBFWorker(this, topWindow_, bfw_, "netRecolor.waitTitle", "netRecolor.wait", true);
+        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netRecolor.waitTitle", "netRecolor.wait", true);
         RecolorNetworkRunner runner = new RecolorNetworkRunner(isMain, holdIt_, bfw);                                                              
         bfw.setCore(runner);
         bfw.launchWorker();      

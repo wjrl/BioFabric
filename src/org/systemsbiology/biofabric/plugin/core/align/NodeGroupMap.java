@@ -30,8 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.systemsbiology.biofabric.ioAPI.IOFactory;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
@@ -527,7 +527,7 @@ public class NodeGroupMap {
     private void constructLargeMap() {
       Set<NID.WithName> nodesLarge = null;
       try {
-        nodesLarge = IOFactory.getBuildExtractor().extractNodes(linksLarge_, lonersLarge_, monitor_);
+        nodesLarge = PluginSupportFactory.getBuildExtractor().extractNodes(linksLarge_, lonersLarge_, monitor_);
       } catch (AsynchExitRequestException aere) {
         // should not happen;
       }

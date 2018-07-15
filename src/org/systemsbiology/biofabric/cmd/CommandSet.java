@@ -80,7 +80,6 @@ import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
 import org.systemsbiology.biofabric.io.FileLoadFlowsImpl;
-import org.systemsbiology.biofabric.ioAPI.IOFactory;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
@@ -91,6 +90,7 @@ import org.systemsbiology.biofabric.modelAPI.AugRelation;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.plugin.PlugInManager;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
@@ -2269,7 +2269,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       ArrayList<NetLink> links = new ArrayList<NetLink>(bfn.getAllLinks(true));
       TreeMap<AugRelation, Boolean> relMap = new TreeMap<AugRelation, Boolean>();
       try {
-        IOFactory.getBuildExtractor().extractRelations(links, relMap, null);
+        PluginSupportFactory.getBuildExtractor().extractRelations(links, relMap, null);
       } catch (AsynchExitRequestException aerx) {
       	// Should not happen...
       }

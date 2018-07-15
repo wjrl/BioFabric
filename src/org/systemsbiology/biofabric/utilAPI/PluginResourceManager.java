@@ -17,30 +17,44 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.ioAPI;
+package org.systemsbiology.biofabric.utilAPI;
 
-import org.systemsbiology.biofabric.io.BuildExtractorImpl;
+import java.util.ResourceBundle;
+import java.util.HashMap;
+import java.util.MissingResourceException;
 
 /****************************************************************************
 **
-** Factory for returning API Implementations
+** Resource Manager.
 */
 
-public class IOFactory {
+public interface PluginResourceManager {
   
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-  
+ 
   /***************************************************************************
-  **
-  ** Get a Build Extractor
+  ** 
+  **  Set a bundle for a plugin
   */
-  
-  public static BuildExtractor getBuildExtractor() {
-  	return (new BuildExtractorImpl());
-  }
-  
+
+  public void setPluginBundle(String bundleName);
+	
+  /***************************************************************************
+  ** 
+  ** Get a resource String for a plugin
+  */
+
+  public String getPluginString(String key);
+ 
+  /***************************************************************************
+  ** 
+  ** Get a resource Character for plugin
+  */
+
+  public char getPluginChar(String key);
+ 
 }

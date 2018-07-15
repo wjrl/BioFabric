@@ -60,14 +60,14 @@ public interface PlugInNetworkModelAPI {
  
   /***************************************************************************
   ** 
-  ** Get file loading utilities
+  ** Get top window
   */
 
   public JFrame getTopWindow();
   
   /***************************************************************************
   ** 
-  ** Get file loading utilities
+  ** Get the BackgroundWorkerControlManager
   */
 
   public BackgroundWorkerControlManager getBWCtrlMgr();

@@ -24,6 +24,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.systemsbiology.biofabric.modelAPI.NetNode;
+
 public class NID implements Cloneable, Comparable<NID> {
   
   private final String id_;
@@ -83,7 +85,7 @@ public class NID implements Cloneable, Comparable<NID> {
   // A class that can be used to order nodes using their names, with the NID only as a tie-breaker if names match.
   
   
-  public static class WithName implements Cloneable, Comparable<WithName> {
+  public static class WithName implements NetNode, Cloneable, Comparable<WithName> {
   
 	  private final NID nid_;
 	  private final String name_;
