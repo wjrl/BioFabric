@@ -42,10 +42,10 @@ public class LinkComparator implements Comparator<NetLink> {
       return (0);
     }
     
-    String srcOne = DataUtil.normKey(one.getSrcID().getName());
-    String trgOne = DataUtil.normKey(one.getTrgID().getName());
-    String srcTwo = DataUtil.normKey(otherLink.getSrcID().getName());
-    String trgTwo = DataUtil.normKey(otherLink.getTrgID().getName());
+    String srcOne = DataUtil.normKey(one.getSrcNode().getName());
+    String trgOne = DataUtil.normKey(one.getTrgNode().getName());
+    String srcTwo = DataUtil.normKey(otherLink.getSrcNode().getName());
+    String trgTwo = DataUtil.normKey(otherLink.getTrgNode().getName());
     
     if (!srcOne.equals(srcTwo)) {
       return (srcOne.compareTo(srcTwo));
@@ -65,11 +65,11 @@ public class LinkComparator implements Comparator<NetLink> {
     // internal IDs get to here. Can't let it fall through
     //
     
-    if (!one.getSrcID().equals(otherLink.getSrcID())) {
-       return (one.getSrcID().compareTo(otherLink.getSrcID()));
+    if (!one.getSrcNode().equals(otherLink.getSrcNode())) {
+       return (one.getSrcNode().compareTo(otherLink.getSrcNode()));
     }
-    if (!one.getTrgID().equals(otherLink.getTrgID())) {
-      return (one.getTrgID().compareTo(otherLink.getTrgID()));
+    if (!one.getTrgNode().equals(otherLink.getTrgNode())) {
+      return (one.getTrgNode().compareTo(otherLink.getTrgNode()));
     }
 
     throw new IllegalStateException();

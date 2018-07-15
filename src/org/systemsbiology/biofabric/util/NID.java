@@ -85,7 +85,7 @@ public class NID implements Cloneable, Comparable<NID> {
   // A class that can be used to order nodes using their names, with the NID only as a tie-breaker if names match.
   
   
-  public static class WithName implements NetNode, Cloneable, Comparable<WithName> {
+  public static class WithName implements Cloneable, Comparable<WithName> {
   
 	  private final NID nid_;
 	  private final String name_;
@@ -101,9 +101,9 @@ public class NID implements Cloneable, Comparable<NID> {
 	  }
 	  
 	  @Override
-	  public NID clone() {
+	  public NID.WithName clone() {
 	    try {
-	      NID newVal = (NID)super.clone();
+	      NID.WithName newVal = (NID.WithName)super.clone();
 	      return (newVal);
 	    } catch (CloneNotSupportedException ex) {
 	      throw new IllegalStateException();     

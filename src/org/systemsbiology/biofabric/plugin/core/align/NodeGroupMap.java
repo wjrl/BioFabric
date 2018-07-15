@@ -31,8 +31,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 import org.systemsbiology.biofabric.workerAPI.LoopReporter;
@@ -69,11 +69,11 @@ public class NodeGroupMap {
   
   private final PerfectNGMode mode_;
   private Set<NetLink> links_;
-  private Set<NID.WithName> loners_;
-  private Map<NID.WithName, Boolean> mergedToCorrectNC_, isAlignedNode_;
+  private Set<NetNode> loners_;
+  private Map<NetNode, Boolean> mergedToCorrectNC_, isAlignedNode_;
   
-  private Map<NID.WithName, Set<NetLink>> nodeToLinks_;
-  private Map<NID.WithName, Set<NID.WithName>> nodeToNeighbors_;
+  private Map<NetNode, Set<NetLink>> nodeToLinks_;
+  private Map<NetNode, Set<NetNode>> nodeToNeighbors_;
   
   private Map<GroupID, Integer> groupIDtoIndex_;
   private Map<Integer, GroupID> indexToGroupID_;
@@ -109,10 +109,10 @@ public class NodeGroupMap {
             nabd.mergedToCorrectNC, nabd.isAlignedNode, nabd.mode, nodeGroupOrder, colorMap, monitor);
   }
   
-  public NodeGroupMap(Set<NetLink> allLinks, Set<NID.WithName> loneNodeIDs,
-                      Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2,
-                      ArrayList<NetLink> linksLarge, HashSet<NID.WithName> lonersLarge,
-                      Map<NID.WithName, Boolean> mergedToCorrectNC, Map<NID.WithName, Boolean> isAlignedNode,
+  public NodeGroupMap(Set<NetLink> allLinks, Set<NetNode> loneNodeIDs,
+                      Map<NetNode, NetNode> mapG1toG2, Map<NetNode, NetNode> perfectG1toG2,
+                      ArrayList<NetLink> linksLarge, HashSet<NetNode> lonersLarge,
+                      Map<NetNode, Boolean> mergedToCorrectNC, Map<NetNode, Boolean> isAlignedNode,
                       PerfectNGMode mode, String[] nodeGroupOrder, String[][] colorMap,
                       BTProgressMonitor monitor) throws AsynchExitRequestException {
     this.links_ = allLinks;
@@ -139,14 +139,14 @@ public class NodeGroupMap {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  private void generateStructs(Set<NetLink> allLinks, Set<NID.WithName> loneNodeIDs) throws AsynchExitRequestException {
+  private void generateStructs(Set<NetLink> allLinks, Set<NetNode> loneNodeIDs) throws AsynchExitRequestException {
     LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor_, 0.0, 1.0, "progress.generatingStructures");
-    nodeToLinks_ = new HashMap<NID.WithName, Set<NetLink>>();
-    nodeToNeighbors_ = new HashMap<NID.WithName, Set<NID.WithName>>();
+    nodeToLinks_ = new HashMap<NetNode, Set<NetLink>>();
+    nodeToNeighbors_ = new HashMap<NetNode, Set<NetNode>>();
     
     for (NetLink link : allLinks) {
       lr.report();
-      NID.WithName src = link.getSrcID(), trg = link.getTrgID();
+      NetNode src = link.getSrcNode(), trg = link.getTrgNode();
       
       if (nodeToLinks_.get(src) == null) {
         nodeToLinks_.put(src, new HashSet<NetLink>());
@@ -155,10 +155,10 @@ public class NodeGroupMap {
         nodeToLinks_.put(trg, new HashSet<NetLink>());
       }
       if (nodeToNeighbors_.get(src) == null) {
-        nodeToNeighbors_.put(src, new HashSet<NID.WithName>());
+        nodeToNeighbors_.put(src, new HashSet<NetNode>());
       }
       if (nodeToNeighbors_.get(trg) == null) {
-        nodeToNeighbors_.put(trg, new HashSet<NID.WithName>());
+        nodeToNeighbors_.put(trg, new HashSet<NetNode>());
       }
       
       nodeToLinks_.get(src).add(link);
@@ -167,9 +167,9 @@ public class NodeGroupMap {
       nodeToNeighbors_.get(trg).add(src);
     }
     
-    for (NID.WithName node : loneNodeIDs) {
+    for (NetNode node : loneNodeIDs) {
       nodeToLinks_.put(node, new HashSet<NetLink>());
-      nodeToNeighbors_.put(node, new HashSet<NID.WithName>());
+      nodeToNeighbors_.put(node, new HashSet<NetNode>());
     }
     return;
   }
@@ -201,7 +201,7 @@ public class NodeGroupMap {
    ** Hash function
    */
   
-  private GroupID generateID(NID.WithName node) {
+  private GroupID generateID(NetNode node) {
     //
     // See which types of link groups the node's links are in
     //
@@ -275,7 +275,7 @@ public class NodeGroupMap {
    */
   
   private void calcNGRatios() {
-    Set<NID.WithName> nodes = nodeToLinks_.keySet();
+    Set<NetNode> nodes = nodeToLinks_.keySet();
     double size = nodes.size();
     Set<GroupID> tags = groupIDtoIndex_.keySet();
   
@@ -284,7 +284,7 @@ public class NodeGroupMap {
       counts.put(gID, 0);
     }
     
-    for (NID.WithName node : nodes) {
+    for (NetNode node : nodes) {
       GroupID gID = generateID(node);
       counts.put(gID, counts.get(gID) + 1);
     }
@@ -341,7 +341,7 @@ public class NodeGroupMap {
    ** Return the index in given ordering given node
    */
   
-  public int getIndex(NID.WithName node) {
+  public int getIndex(NetNode node) {
     GroupID groupID = generateID(node);
     Integer index = groupIDtoIndex_.get(groupID);
     if (index == null) {
@@ -402,9 +402,9 @@ public class NodeGroupMap {
    ** Sorts in decreasing node degree - method is here for convenience
    */
   
-  public Comparator<NID.WithName> sortDecrDegree() {
-    return (new Comparator<NID.WithName>() {
-      public int compare(NID.WithName node1, NID.WithName node2) {
+  public Comparator<NetNode> sortDecrDegree() {
+    return (new Comparator<NetNode>() {
+      public int compare(NetNode node1, NetNode node2) {
         int diffSize = nodeToNeighbors_.get(node2).size() - nodeToNeighbors_.get(node1).size();
         return (diffSize != 0) ? diffSize : node1.getName().compareTo(node2.getName());
       }
@@ -464,27 +464,27 @@ public class NodeGroupMap {
   
   static class JaccardSimilarityFunc {
   
-    private Map<NID.WithName, NID.WithName> mapG1toG2_;
-    private Map<NID.WithName, NID.WithName> perfectG1toG2_;
+    private Map<NetNode, NetNode> mapG1toG2_;
+    private Map<NetNode, NetNode> perfectG1toG2_;
     private ArrayList<NetLink> linksLarge_;
-    private HashSet<NID.WithName> lonersLarge_;
-    private Map<String, NID.WithName> nameToLarge_;
+    private HashSet<NetNode> lonersLarge_;
+    private Map<String, NetNode> nameToLarge_;
     private BTProgressMonitor monitor_;
     
-    Map<NID.WithName, NID.WithName> entrezAlign;
-    Map<NID.WithName, Set<NID.WithName>> nodeToNeighL;
+    Map<NetNode, NetNode> entrezAlign;
+    Map<NetNode, Set<NetNode>> nodeToNeighL;
     
-    JaccardSimilarityFunc(Map<NID.WithName, NID.WithName> mapG1toG2,
-                          Map<NID.WithName, NID.WithName> perfectG1toG2,
-                          ArrayList<NetLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+    JaccardSimilarityFunc(Map<NetNode, NetNode> mapG1toG2,
+                          Map<NetNode, NetNode> perfectG1toG2,
+                          ArrayList<NetLink> linksLarge, HashSet<NetNode> lonersLarge,
                           BTProgressMonitor monitor) throws AsynchExitRequestException {
       this.mapG1toG2_ = mapG1toG2;
       this.perfectG1toG2_ = perfectG1toG2;
-      this.entrezAlign = new HashMap<NID.WithName, NID.WithName>();
-      this.nodeToNeighL = new HashMap<NID.WithName, Set<NID.WithName>>();
+      this.entrezAlign = new HashMap<NetNode, NetNode>();
+      this.nodeToNeighL = new HashMap<NetNode, Set<NetNode>>();
       this.linksLarge_ = linksLarge;
       this.lonersLarge_ = lonersLarge;
-      this.nameToLarge_ = new HashMap<String, NID.WithName>();
+      this.nameToLarge_ = new HashMap<String, NetNode>();
       this.monitor_ = monitor;
       makeNodeToNeighL();
       constructEntrezAlign();
@@ -497,18 +497,18 @@ public class NodeGroupMap {
      ** Checks if two aligned-'large graph'-nodes have same neighbors
      */
     
-    boolean isCorrectJS(NID.WithName node) {
+    boolean isCorrectJS(NetNode node) {
       
       String largeName = (node.getName().split("::"))[1];
       
-      NID.WithName largeNode = nameToLarge_.get(largeName);
+      NetNode largeNode = nameToLarge_.get(largeName);
       if (largeNode == null) {
         throw new IllegalStateException("Large node for " + node.getName() + " not found for Jaccard Similarity");
       }
-      NID.WithName match = entrezAlign.get(largeNode);
+      NetNode match = entrezAlign.get(largeNode);
       
-      Set<NID.WithName> nodeNeigh = nodeToNeighL.get(largeNode);
-      Set<NID.WithName> matchNeigh = nodeToNeighL.get(match);
+      Set<NetNode> nodeNeigh = nodeToNeighL.get(largeNode);
+      Set<NetNode> matchNeigh = nodeToNeighL.get(match);
       
       if (nodeNeigh.contains(match)) {
         nodeNeigh.remove(match);
@@ -525,13 +525,13 @@ public class NodeGroupMap {
      */
     
     private void constructLargeMap() {
-      Set<NID.WithName> nodesLarge = null;
+      Set<NetNode> nodesLarge = null;
       try {
         nodesLarge = PluginSupportFactory.getBuildExtractor().extractNodes(linksLarge_, lonersLarge_, monitor_);
       } catch (AsynchExitRequestException aere) {
         // should not happen;
       }
-      for (NID.WithName nodeL : nodesLarge) {
+      for (NetNode nodeL : nodesLarge) {
         nameToLarge_.put(nodeL.getName(), nodeL);
       }
       return;
@@ -543,13 +543,13 @@ public class NodeGroupMap {
      */
   
     private void constructEntrezAlign() {
-      for (NID.WithName node : mapG1toG2_.keySet()) {
-        NID.WithName converted = perfectG1toG2_.get(node);
+      for (NetNode node : mapG1toG2_.keySet()) {
+        NetNode converted = perfectG1toG2_.get(node);
         if (converted == null) {
 //          System.err.println("no Entrez match for " + node);
           continue;
         }
-        NID.WithName matchedWith = mapG1toG2_.get(node);
+        NetNode matchedWith = mapG1toG2_.get(node);
         entrezAlign.put(matchedWith, converted);
       }
       return;
@@ -562,24 +562,24 @@ public class NodeGroupMap {
   
     private void makeNodeToNeighL() throws AsynchExitRequestException {
       LoopReporter lr = new LoopReporter(linksLarge_.size(), 20, monitor_, 0.0, 1.0, "progress.generatingJaccardStructures");
-      nodeToNeighL = new HashMap<NID.WithName, Set<NID.WithName>>();
+      nodeToNeighL = new HashMap<NetNode, Set<NetNode>>();
     
       for (NetLink link : linksLarge_) {
         lr.report();
-        NID.WithName src = link.getSrcID(), trg = link.getTrgID();
+        NetNode src = link.getSrcNode(), trg = link.getTrgNode();
       
         if (nodeToNeighL.get(src) == null) {
-          nodeToNeighL.put(src, new HashSet<NID.WithName>());
+          nodeToNeighL.put(src, new HashSet<NetNode>());
         }
         if (nodeToNeighL.get(trg) == null) {
-          nodeToNeighL.put(trg, new HashSet<NID.WithName>());
+          nodeToNeighL.put(trg, new HashSet<NetNode>());
         }
         nodeToNeighL.get(src).add(trg);
         nodeToNeighL.get(trg).add(src);
       }
     
-      for (NID.WithName node : lonersLarge_) {
-        nodeToNeighL.put(node, new HashSet<NID.WithName>());
+      for (NetNode node : lonersLarge_) {
+        nodeToNeighL.put(node, new HashSet<NetNode>());
       }
       return;
     }

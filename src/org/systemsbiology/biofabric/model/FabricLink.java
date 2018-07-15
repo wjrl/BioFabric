@@ -24,6 +24,7 @@ import java.util.Map;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.modelAPI.AugRelation;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.NID;
 
@@ -33,13 +34,13 @@ import org.systemsbiology.biofabric.util.NID;
 */
 
 public class FabricLink implements NetLink, Cloneable, AttributeLoader.AttributeKey {
-  private NID.WithName srcID_;
-  private NID.WithName trgID_;
+  private NetNode srcID_;
+  private NetNode trgID_;
   private String relation_;
   private Boolean directed_;
   private boolean isShadow_;
 
-  public FabricLink(NID.WithName srcID, NID.WithName trgID, String relation, boolean isShadow, Boolean directed) {
+  public FabricLink(NetNode srcID, NetNode trgID, String relation, boolean isShadow, Boolean directed) {
     if ((srcID == null) || (trgID == null) || (relation == null)) {
       throw new IllegalArgumentException();
     }
@@ -50,7 +51,7 @@ public class FabricLink implements NetLink, Cloneable, AttributeLoader.Attribute
     directed_ = directed;
   }
   
-  public FabricLink(NID.WithName srcID, NID.WithName trgID, String relation, boolean isShadow) {
+  public FabricLink(NetNode srcID, NetNode trgID, String relation, boolean isShadow) {
     this(srcID, trgID, relation, isShadow, null);
   }
     
@@ -91,11 +92,11 @@ public class FabricLink implements NetLink, Cloneable, AttributeLoader.Attribute
     return;
   }
   
-  public NID.WithName getTrgID() {
+  public NetNode getTrgNode() {
     return (trgID_);
   }
 
-  public NID.WithName getSrcID() {
+  public NetNode getSrcNode() {
     return (srcID_);
   } 
   
@@ -144,7 +145,7 @@ public class FabricLink implements NetLink, Cloneable, AttributeLoader.Attribute
     return (buf.toString());
   }
   
-  public String toEOAString(Map<NID.WithName, BioFabricNetwork.NodeInfo> nodeInfo) {
+  public String toEOAString(Map<NetNode, BioFabricNetwork.NodeInfo> nodeInfo) {
     StringBuffer buf = new StringBuffer();
     buf.append(nodeInfo.get(srcID_).getNodeName());
     if (isShadow_) {
@@ -207,10 +208,10 @@ public class FabricLink implements NetLink, Cloneable, AttributeLoader.Attribute
     if (this.isShadow_ != other.isShadow()) {
       return (false);
     }    
-    if (!this.srcID_.equals(other.getTrgID())) {
+    if (!this.srcID_.equals(other.getTrgNode())) {
       return (false);
     }
-    return (this.trgID_.equals(other.getSrcID()));
+    return (this.trgID_.equals(other.getSrcNode()));
   }
    
    public boolean shadowPair(FabricLink other) {

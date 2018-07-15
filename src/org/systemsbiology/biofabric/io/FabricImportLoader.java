@@ -31,7 +31,9 @@ import java.util.Map;
 import java.util.Set;
 
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.model.FabricNode;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
@@ -98,8 +100,8 @@ public abstract class FabricImportLoader {
    */
   
   protected abstract void consumeTokens(String[] tokens, UniqueLabeller idGen, List<NetLink> links,
-                                        Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins,
-                                        HashMap<String, NID.WithName> nameToID, FileImportStats stats) throws IOException;
+                                        Set<NetNode> loneNodeIDs, Map<String, String> nameMap, Integer magBins,
+                                        Map<String, NetNode> nameToID, FileImportStats stats) throws IOException;
   
   /***************************************************************************
    **
@@ -107,12 +109,12 @@ public abstract class FabricImportLoader {
    */
   
   public FileImportStats importFabric(File infile, UniqueLabeller idGen, List<NetLink> links,
-                                      Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins,
+                                      Set<NetNode> loneNodeIDs, Map<String, String> nameMap, Integer magBins,
                                       BTProgressMonitor monitor) throws AsynchExitRequestException, IOException {
     
     FileImportStats retval = new FileImportStats();
     long fileLen = infile.length();
-    HashMap<String, NID.WithName> nameToID = new HashMap<String, NID.WithName>();
+    HashMap<String, NetNode> nameToID = new HashMap<String, NetNode>();
     BufferedReader in = null;
     ArrayList<String[]> tokSets = new ArrayList<String[]>();
     LoopReporter lr = new LoopReporter(fileLen, 20, monitor, 0.0, 1.0, "progress.readingFile");
@@ -203,14 +205,14 @@ public abstract class FabricImportLoader {
    ** Get an actual node ID
    */
   
-  protected NID.WithName nameToNode(String inString, UniqueLabeller idGen, Map<String, NID.WithName> nameToID) {
+  protected NetNode nameToNode(String inString, UniqueLabeller idGen, Map<String, NetNode> nameToID) {
     
     String normName = DataUtil.normKey(inString);
     
-    NID.WithName nodeID = nameToID.get(normName);
+    NetNode nodeID = nameToID.get(normName);
     if (nodeID == null) {
       NID nid = idGen.getNextOID();
-      nodeID = new NID.WithName(nid, inString);
+      nodeID = new FabricNode(nid, inString);
       nameToID.put(normName, nodeID);
     }
     return (nodeID);
@@ -221,7 +223,7 @@ public abstract class FabricImportLoader {
    ** Get an actual node ID
    */
   
-  protected void buildLinkAndShadow(NID.WithName srcID, NID.WithName trgID, String rel, List<NetLink> links) {
+  protected void buildLinkAndShadow(NetNode srcID, NetNode trgID, String rel, List<NetLink> links) {
     
     FabricLink nextLink = new FabricLink(srcID, trgID, rel, false);
     links.add(nextLink);

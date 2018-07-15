@@ -30,6 +30,7 @@ import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.modelAPI.Network;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
@@ -101,11 +102,11 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
                                               boolean shadow, List<String> linkGroups) throws AsynchExitRequestException { 
     
     NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
-    TreeMap<Integer, NID.WithName> invert = new TreeMap<Integer, NID.WithName>();
-    for (NID.WithName node : rbd.nodeOrder.keySet()) {
+    TreeMap<Integer, NetNode> invert = new TreeMap<Integer, NetNode>();
+    for (NetNode node : rbd.nodeOrder.keySet()) {
       invert.put(rbd.nodeOrder.get(node), node);
     }
-    ArrayList<NID.WithName> order = new ArrayList<NID.WithName>(invert.values());
+    ArrayList<NetNode> order = new ArrayList<NetNode>(invert.values());
     return (calcGroupLinkAnnotsCycle(links, order, monitor, 
                                      shadow, narbd.cycleBounds, linkGroups));
   }
@@ -115,7 +116,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
   ** Write out link annotation file
   */
     
-  private AnnotationSet calcGroupLinkAnnotsCycle(List<NetLink> links, List<NID.WithName> nodes,
+  private AnnotationSet calcGroupLinkAnnotsCycle(List<NetLink> links, List<NetNode> nodes,
                                                  BTProgressMonitor monitor, 
                                                  boolean shadow, 
                                                  List<AlignCycleLayout.CycleBounds> bounds, 
@@ -124,14 +125,14 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
     String which = (shadow) ? "progress.linkAnnotationShad" : "progress.linkAnnotationNoShad";
     LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0, 1.0, which); 
       
-    HashMap<NID.WithName, Integer> nodeOrder = new HashMap<NID.WithName, Integer>();
+    HashMap<NetNode, Integer> nodeOrder = new HashMap<NetNode, Integer>();
     for (int i = 0; i < nodes.size(); i++) {
       nodeOrder.put(nodes.get(i), Integer.valueOf(i));      
     }
     
-    NID.WithName currZoner = null;
+    NetNode currZoner = null;
     AlignCycleLayout.CycleBounds currLooper = new AlignCycleLayout.CycleBounds(null, null, false, false);
-    HashSet<NID.WithName> seen = new HashSet<NID.WithName>();
+    HashSet<NetNode> seen = new HashSet<NetNode>();
     int cycle = 0;
 
     AnnotationSet retval = new AnnotationSet();
@@ -148,7 +149,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
         continue;
       }
       UiUtil.fixMePrintout("FIRST CYCLE BEING MISSED (check via looper[1] != looper[0] test omitted");
-      NID.WithName zoner = getZoneNode(link, nodeOrder, link.isShadow());
+      NetNode zoner = getZoneNode(link, nodeOrder, link.isShadow());
       if (first) {
         first = false;
         System.out.println("zoner " + zoner);
@@ -191,14 +192,14 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
   ** a regular link
   */
     
-  private NID.WithName getZoneNode(NetLink link, Map<NID.WithName, Integer> nodes, boolean isShadow) {
-    int zeroIndex = nodes.get(link.getSrcID()).intValue();
-    int oneIndex = nodes.get(link.getTrgID()).intValue();
+  private NetNode getZoneNode(NetLink link, Map<NetNode, Integer> nodes, boolean isShadow) {
+    int zeroIndex = nodes.get(link.getSrcNode()).intValue();
+    int oneIndex = nodes.get(link.getTrgNode()).intValue();
     if (isShadow) {
-      NID.WithName botnode = (zeroIndex < oneIndex) ? link.getTrgID() : link.getSrcID();
+      NetNode botnode = (zeroIndex < oneIndex) ? link.getTrgNode() : link.getSrcNode();
       return (botnode);
     } else {
-      NID.WithName topnode = (zeroIndex < oneIndex) ? link.getSrcID() : link.getTrgID();
+      NetNode topnode = (zeroIndex < oneIndex) ? link.getSrcNode() : link.getTrgNode();
       return (topnode); 
     }
   }

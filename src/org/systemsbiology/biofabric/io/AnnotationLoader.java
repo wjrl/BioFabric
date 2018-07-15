@@ -35,8 +35,8 @@ import java.util.regex.Pattern;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.util.DataUtil;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
@@ -96,7 +96,7 @@ public class AnnotationLoader {
   		                                               BioFabricNetwork bfn, BTProgressMonitor monitor) throws AsynchExitRequestException, IOException {
     
     long fileLen = infile.length();    
-    Map<String, Set<NID.WithName>> nameToIDs = bfn.getNormNameToIDs();
+    Map<String, Set<NetNode>> nameToIDs = bfn.getNormNameToIDs();
     BufferedReader in = null;
     ArrayList<String[]> tokSets = new ArrayList<String[]>();
     LoopReporter lr = new LoopReporter(fileLen, 20, monitor, 0.0, 1.0, "progress.readingFile");
@@ -131,10 +131,10 @@ public class AnnotationLoader {
 	    // what we have:
 	    //
       AnnotationSet aSet = new AnnotationSet();
-	    HashMap<NID.WithName, Integer> idToRow = new HashMap<NID.WithName, Integer>();
+	    HashMap<NetNode, Integer> idToRow = new HashMap<NetNode, Integer>();
 	    int numNodes = bfn.getRowCount();
 	    for (int i = 0; i < numNodes; i++) {
-	      NID.WithName nid = bfn.getNodeIDForRow(Integer.valueOf(i));
+	      NetNode nid = bfn.getNodeIDForRow(Integer.valueOf(i));
 	      idToRow.put(nid, Integer.valueOf(i));
 	    }
 	    for (int i = 0; i < numLines; i++) {
@@ -221,7 +221,7 @@ public class AnnotationLoader {
   */
 
   protected void consumeTokensForLink(String[] tokens, Map<Boolean, Map<FabricLink, Integer>> linksToCols, 
-                                      Map<String, Set<NID.WithName>> nameToID, 
+                                      Map<String, Set<NetNode>> nameToID, 
                                       Map<Boolean, AnnotationSet> aSets,
                                       ReadStats stats, Matcher mainMatch) throws IOException {
 
@@ -291,7 +291,7 @@ public class AnnotationLoader {
   ** Consume token for a link, make a link
   */
 
-  private FabricLink parseLink(String token, Map<String, Set<NID.WithName>> nameToID,
+  private FabricLink parseLink(String token, Map<String, Set<NetNode>> nameToID,
                                ReadStats stats, Matcher mainMatch) throws IOException {
     mainMatch.reset(token);
     if (!mainMatch.matches()) {
@@ -305,7 +305,7 @@ public class AnnotationLoader {
     String rel = mainMatch.group(3).trim();
     String trg = mainMatch.group(4).trim();
     boolean isShadow = sha.equals("shdw");
-    Set<NID.WithName> srcIDs = nameToID.get(DataUtil.normKey(src));
+    Set<NetNode> srcIDs = nameToID.get(DataUtil.normKey(src));
     if (srcIDs == null) {
       stats.badTok = src;
       stats.errStr = "annotLoad.nodeNotFound";
@@ -315,8 +315,8 @@ public class AnnotationLoader {
       stats.errStr = "annotLoad.multiNodesForName";
       throw new IOException();   
     }
-    NID.WithName srcID = srcIDs.iterator().next();
-    Set<NID.WithName> trgIDs = nameToID.get(DataUtil.normKey(trg));
+    NetNode srcID = srcIDs.iterator().next();
+    Set<NetNode> trgIDs = nameToID.get(DataUtil.normKey(trg));
     if (trgIDs == null) {
       stats.badTok = trg;
       stats.errStr = "annotLoad.nodeNotFound";
@@ -326,7 +326,7 @@ public class AnnotationLoader {
       stats.errStr = "annotLoad.multiNodesForName";
       throw new IOException();   
     }
-    NID.WithName trgID = trgIDs.iterator().next();
+    NetNode trgID = trgIDs.iterator().next();
     UiUtil.fixMePrintout("NO! Cannot assume undirected");
     FabricLink nextLink = new FabricLink(srcID, trgID, rel, isShadow, false);
     return (nextLink);
@@ -353,8 +353,8 @@ public class AnnotationLoader {
   ** Consume tokens, make Annotations
   */
 
-  protected void consumeTokens(String[] tokens, Map<NID.WithName, Integer> idToRow, 
-                               Map<String, Set<NID.WithName>> nameToID, AnnotationSet aSet,
+  protected void consumeTokens(String[] tokens, Map<NetNode, Integer> idToRow, 
+                               Map<String, Set<NetNode>> nameToID, AnnotationSet aSet,
                                ReadStats stats) throws IOException {
     
     
@@ -405,11 +405,11 @@ public class AnnotationLoader {
   ** Node ID to row
   */
 
-  private int nameToRow(String nodeID, Map<NID.WithName, Integer> idToRow, 
-                        Map<String, Set<NID.WithName>> nameToID, 
+  private int nameToRow(String nodeID, Map<NetNode, Integer> idToRow, 
+                        Map<String, Set<NetNode>> nameToID, 
                         ReadStats stats) throws IOException {
   
-    Set<NID.WithName> forID = nameToID.get(DataUtil.normKey(nodeID));
+    Set<NetNode> forID = nameToID.get(DataUtil.normKey(nodeID));
     if (forID == null) {
       stats.badTok = nodeID;
       stats.errStr = "annotLoad.nodeNotFound";
@@ -419,7 +419,7 @@ public class AnnotationLoader {
       stats.errStr = "annotLoad.multiNodesForName";
       throw new IOException();   
     }
-    NID.WithName nidwn = forID.iterator().next();
+    NetNode nidwn = forID.iterator().next();
     Integer rowNum = idToRow.get(nidwn);
     if (rowNum == null) {
       throw new IllegalStateException();

@@ -22,9 +22,6 @@ package org.systemsbiology.biofabric.ioAPI;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,7 +31,7 @@ import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.modelAPI.AugRelation;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
 
 
@@ -105,7 +102,7 @@ public interface FileLoadFlows {
   ** Second step for loading from SIF (and GW)
   */
     
-  public boolean handleDirectionsDupsAndShadows(List<NetLink> links, Set<NID.WithName> loneNodeIDs, 
+  public boolean handleDirectionsDupsAndShadows(List<NetLink> links, Set<NetNode> loneNodeIDs, 
   		                                           boolean binMag, SortedMap<AugRelation, Boolean> relaMap,
   		                                           Set<NetLink> reducedLinks, File holdIt, boolean doForceUndirected);
    
@@ -114,8 +111,8 @@ public interface FileLoadFlows {
    ** Load from file and directly receive link set and loners set
    */
   
-  public boolean loadFromASource(File file, ArrayList<NetLink> links,
-                                 HashSet<NID.WithName> loneNodes, Integer magBins,
+  public boolean loadFromASource(File file, List<NetLink> links,
+                                 Set<NetNode> loneNodes, Integer magBins,
                                  UniqueLabeller idGen, boolean loadOnly, FileLoadType type);
   
   /***************************************************************************
@@ -168,7 +165,7 @@ public interface FileLoadFlows {
   ** Load the file. Map keys are strings or Links
   */
      
-  public Map<AttributeLoader.AttributeKey, String> loadTheFile(File file, Map<String, Set<NID.WithName>> nameToIDs, boolean forNodes);
+  public Map<AttributeLoader.AttributeKey, String> loadTheFile(File file, Map<String, Set<NetNode>> nameToIDs, boolean forNodes);
  
   /***************************************************************************
   **

@@ -88,6 +88,7 @@ import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.modelAPI.AugRelation;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
@@ -1442,7 +1443,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                                                         haveSelection, buildingSels);      
         fsd.setVisible(true);
         if (fsd.itemWasFound()) {
-          Set<NID.WithName> matches = fsd.getMatches();
+          Set<NetNode> matches = fsd.getMatches();
           boolean doDiscard = fsd.discardSelections();
           bfw_.getFabricPanel().installSearchResult(matches, doDiscard);
         }
@@ -1482,12 +1483,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     public void actionPerformed(ActionEvent e) {
       try {
-        Set<NID.WithName> allNodeIDs = bfp_.getNetwork().getNodeSetIDs();
-        Map<String, Set<NID.WithName>> normNameToIDs = bfp_.getNetwork().getNormNameToIDs();
+        Set<NetNode> allNodeIDs = bfp_.getNetwork().getNodeSetIDs();
+        Map<String, Set<NetNode>> normNameToIDs = bfp_.getNetwork().getNormNameToIDs();
         CompareNodesSetupDialog fsd = new CompareNodesSetupDialog(topWindow_, allNodeIDs, normNameToIDs);      
         fsd.setVisible(true);
         if (fsd.haveResult()) {
-          Set<NID.WithName> result = fsd.getResults();
+          Set<NetNode> result = fsd.getResults();
           bfp_.installSearchResult(result, true);          
           bfp_.addFirstNeighbors();
           bfp_.selectionsToSubmodel();
@@ -1739,7 +1740,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       if (file == null) {
         return (true);
       }
-      Map<String, Set<NID.WithName>> nameToIDs = bfp_.getNetwork().getNormNameToIDs();
+      Map<String, Set<NetNode>> nameToIDs = bfp_.getNetwork().getNormNameToIDs();
       Map<AttributeLoader.AttributeKey, String> edgeAttributes = flf_.loadTheFile(file, nameToIDs, false);
       if (edgeAttributes == null) {
         return (true);
@@ -1851,8 +1852,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     protected boolean performOperation() {
-    	Set<NID.WithName> sels = bfp_.getNodeSelections();
-      NID.WithName selNode = (sels.size() == 1) ? sels.iterator().next() : null;
+    	Set<NetNode> sels = bfp_.getNodeSelections();
+      NetNode selNode = (sels.size() == 1) ? sels.iterator().next() : null;
     	
     	ClusterLayoutSetupDialog clsd = new ClusterLayoutSetupDialog(topWindow_, bfp_.getNetwork(), selNode);
       clsd.setVisible(true);      
@@ -2068,8 +2069,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         
     public void actionPerformed(ActionEvent e) {
       try {
-        Set<NID.WithName> sels = bfp_.getNodeSelections();
-        NID.WithName selNode = (sels.size() == 1) ? sels.iterator().next() : null;
+        Set<NetNode> sels = bfp_.getNodeSelections();
+        NetNode selNode = (sels.size() == 1) ? sels.iterator().next() : null;
         BreadthFirstLayoutDialog bfl = new BreadthFirstLayoutDialog(topWindow_, selNode, bfw_.getFabricPanel().getNetwork());
         bfl.setVisible(true);          
         if (bfl.haveResult()) {
@@ -2898,10 +2899,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     protected void writeItOut(File file) throws IOException {
       PrintWriter out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8")));        
-      Set<NID.WithName> sels = bfp_.getNodeSelections();
-      Iterator<NID.WithName> sit = sels.iterator();
+      Set<NetNode> sels = bfp_.getNodeSelections();
+      Iterator<NetNode> sit = sels.iterator();
       while (sit.hasNext()) {
-        NID.WithName node = sit.next();
+        NetNode node = sit.next();
         out.println(node.getName());
       }
       out.close();

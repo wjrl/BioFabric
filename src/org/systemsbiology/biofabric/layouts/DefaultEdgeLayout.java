@@ -36,9 +36,9 @@ import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.modelAPI.AugRelation;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 import org.systemsbiology.biofabric.workerAPI.LoopReporter;
@@ -92,7 +92,7 @@ public class DefaultEdgeLayout implements EdgeLayout {
   ** Relayout the network, but can accept a subset of network links and nodes.
   */
   
-  public SortedMap<Integer, NetLink> layoutEdges(Map<NID.WithName, Integer> nodeOrder,
+  public SortedMap<Integer, NetLink> layoutEdges(Map<NetNode, Integer> nodeOrder,
   		                                              Set<NetLink> allLinks,
   		                                              List<String> linkGroups,
   		                                              BioFabricNetwork.LayoutMode layoutMode,
@@ -101,10 +101,10 @@ public class DefaultEdgeLayout implements EdgeLayout {
     // Build target->row map:
     //
     
-    HashMap<NID.WithName, Integer> targToRow = new HashMap<NID.WithName, Integer>();
-    Iterator<NID.WithName> trit = nodeOrder.keySet().iterator();
+    HashMap<NetNode, Integer> targToRow = new HashMap<NetNode, Integer>();
+    Iterator<NetNode> trit = nodeOrder.keySet().iterator();
     while (trit.hasNext()) {
-      NID.WithName target = trit.next();
+      NetNode target = trit.next();
       Integer rowObj = nodeOrder.get(target);
       targToRow.put(target, rowObj);
     }
@@ -300,12 +300,12 @@ public class DefaultEdgeLayout implements EdgeLayout {
    
   public static class DefaultFabricLinkLocater implements Comparator<NetLink> {
   	
-  	private Map<NID.WithName, Integer> nodeToRow_;
+  	private Map<NetNode, Integer> nodeToRow_;
   	private List<String> relOrder_;
   	private Map<String, String> augToRel_;
   	BioFabricNetwork.LayoutMode layMode_;
   	
-  	public DefaultFabricLinkLocater(Map<NID.WithName, Integer> nodeToRow, List<String> relOrder,
+  	public DefaultFabricLinkLocater(Map<NetNode, Integer> nodeToRow, List<String> relOrder,
   			                            Map<String, String> augToRel, BioFabricNetwork.LayoutMode layMode) {
   		nodeToRow_ = nodeToRow;
   		augToRel_ = augToRel;
@@ -324,10 +324,10 @@ public class DefaultEdgeLayout implements EdgeLayout {
   	    return (0);
   	  }
   	  
-  		NID.WithName l1s = link1.getSrcID();
-  		NID.WithName l1t = link1.getTrgID();
-  		NID.WithName l2s = link2.getSrcID();
-  		NID.WithName l2t = link2.getTrgID();
+  		NetNode l1s = link1.getSrcNode();
+  		NetNode l1t = link1.getTrgNode();
+  		NetNode l2s = link2.getSrcNode();
+  		NetNode l2t = link2.getTrgNode();
   		
   		Integer l1sR = nodeToRow_.get(l1s);
   	  Integer l1tR = nodeToRow_.get(l1t);  			
