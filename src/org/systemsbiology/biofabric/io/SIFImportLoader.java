@@ -20,13 +20,12 @@
 package org.systemsbiology.biofabric.io;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
 
 /****************************************************************************
@@ -104,8 +103,8 @@ public class SIFImportLoader extends FabricImportLoader {
   */
 
   protected void consumeTokens(String[] tokens, UniqueLabeller idGen, List<NetLink> links, 
-  		                         Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, Integer magBins, 
-  		                         HashMap<String, NID.WithName> nameToID, FileImportStats stats) throws IOException {
+  		                         Set<NetNode> loneNodeIDs, Map<String, String> nameMap, Integer magBins, 
+  		                         Map<String, NetNode> nameToID, FileImportStats stats) throws IOException {
     if (tokens.length == 3) {
       String source = tokens[0].trim();
       source = stripQuotes(source);
@@ -124,8 +123,8 @@ public class SIFImportLoader extends FabricImportLoader {
       // Map the name to an ID, if none yet, get a new ID and assign it
       //
       
-      NID.WithName srcID = nameToNode(source, idGen, nameToID);
-      NID.WithName trgID = nameToNode(target, idGen, nameToID);
+      NetNode srcID = nameToNode(source, idGen, nameToID);
+      NetNode trgID = nameToNode(target, idGen, nameToID);
 
       String rel = tokens[1].trim();
       rel = stripQuotes(rel);
@@ -141,7 +140,7 @@ public class SIFImportLoader extends FabricImportLoader {
       loner = stripQuotes(loner);
       loner = mapName(loner, nameMap);
        
-      NID.WithName lonerID = nameToNode(loner, idGen, nameToID);  
+      NetNode lonerID = nameToNode(loner, idGen, nameToID);  
       loneNodeIDs.add(lonerID); 
     }
     return;

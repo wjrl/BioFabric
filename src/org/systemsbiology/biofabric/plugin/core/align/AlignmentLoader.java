@@ -31,8 +31,8 @@ import java.util.StringTokenizer;
 
 import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 
@@ -83,14 +83,14 @@ public class AlignmentLoader {
    ** Process an alignment (.align) file
    */
   
-  public String readAlignment(File infile, Map<NID.WithName, NID.WithName> mapG1ToG2, NetAlignFileStats stats,
-                              ArrayList<NetLink> linksGraph1, HashSet<NID.WithName> loneNodesGraph1,
-                              ArrayList<NetLink> linksGraph2, HashSet<NID.WithName> loneNodesGraph2)
+  public String readAlignment(File infile, Map<NetNode, NetNode> mapG1ToG2, NetAlignFileStats stats,
+                              ArrayList<NetLink> linksGraph1, HashSet<NetNode> loneNodesGraph1,
+                              ArrayList<NetLink> linksGraph2, HashSet<NetNode> loneNodesGraph2)
           throws IOException {
   
     PluginResourceManager rMan = PluginSupportFactory.getResourceManager(pluginClassName_);
     
-    Map<String, NID.WithName> G1nameToNID, G2nameToNID;
+    Map<String, NetNode> G1nameToNID, G2nameToNID;
     try {
     	BuildExtractor bex = PluginSupportFactory.getBuildExtractor();
       G1nameToNID = makeStringMap(bex.extractNodes(linksGraph1, loneNodesGraph1, null));
@@ -130,7 +130,7 @@ public class AlignmentLoader {
 	        throw (new IOException(msg));
 	      }
 	      
-	      NID.WithName nodeG1 = G1nameToNID.get(strNameG1), nodeG2 = G2nameToNID.get(strNameG2);
+	      NetNode nodeG1 = G1nameToNID.get(strNameG1), nodeG2 = G2nameToNID.get(strNameG2);
 	      
 	      if (mapG1ToG2.containsKey(nodeG1)) {
 	        
@@ -202,14 +202,14 @@ public class AlignmentLoader {
   
   /***************************************************************************
    **
-   ** Map node name to NID.WithName using node set
+   ** Map node name to NetNode using node set
    */
   
-  private static Map<String,NID.WithName> makeStringMap(Set<NID.WithName> nodes) {
+  private static Map<String,NetNode> makeStringMap(Set<NetNode> nodes) {
   
-    Map<String,NID.WithName> retval = new HashMap<String, NID.WithName>();
+    Map<String,NetNode> retval = new HashMap<String, NetNode>();
     
-    for (NID.WithName node : nodes) {
+    for (NetNode node : nodes) {
       retval.put(node.getName(), node);
     }
     return retval;

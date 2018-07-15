@@ -39,11 +39,11 @@ import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
 
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.util.ChoiceContent;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 
@@ -77,7 +77,7 @@ public class FabricSearchDialog extends JDialog {
   private JComboBox matchTypeCombo_;
   private JCheckBox discardSelections_;
   private BioFabricNetwork bfn_;
-  private Set<NID.WithName> result_;
+  private Set<NetNode> result_;
   private boolean doDiscard_;
 
   ////////////////////////////////////////////////////////////////////////////
@@ -172,7 +172,7 @@ public class FabricSearchDialog extends JDialog {
   ** 
   */
   
-  public Set<NID.WithName> getMatches() {
+  public Set<NetNode> getMatches() {
     return (result_);
   }
   

@@ -26,7 +26,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 
 import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 import org.systemsbiology.biofabric.workerAPI.LoopReporter;
@@ -56,9 +56,9 @@ public class CycleFinder {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  private Set<NID.WithName> nodes_;
+  private Set<NetNode> nodes_;
   private Set<NetLink> links_;
-  private HashMap<NID.WithName, Set<NetLink>> linksForNode_;  
+  private HashMap<NetNode, Set<NetLink>> linksForNode_;  
   private Integer white_;
   private Integer grey_;
   private Integer black_;
@@ -74,11 +74,11 @@ public class CycleFinder {
   ** Constructor
   */
 
-  public CycleFinder(Set<NID.WithName> nodes, Set<NetLink> links, 
+  public CycleFinder(Set<NetNode> nodes, Set<NetLink> links, 
   		               BTProgressMonitor monitor) throws AsynchExitRequestException {
     nodes_ = nodes;
     links_ = links;
-    linksForNode_ = new HashMap<NID.WithName, Set<NetLink>>();
+    linksForNode_ = new HashMap<NetNode, Set<NetLink>>();
     
     LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.cycleFinderSetup");
 
@@ -86,10 +86,10 @@ public class CycleFinder {
     while (lit.hasNext()) {
       NetLink link = lit.next();
       lr.report();
-      Set<NetLink> linksForSrc = linksForNode_.get(link.getSrcID());
+      Set<NetLink> linksForSrc = linksForNode_.get(link.getSrcNode());
       if (linksForSrc == null) {
         linksForSrc = new HashSet<NetLink>();
-        linksForNode_.put(link.getSrcID(), linksForSrc);
+        linksForNode_.put(link.getSrcNode(), linksForSrc);
       }
       linksForSrc.add(link);
     }
@@ -119,10 +119,10 @@ public class CycleFinder {
     LoopReporter lr0 = new LoopReporter(nodes_.size(), 20, monitor, 0.0, 1.0, "progress.cycleFinderVisitPass1");
     
     
-    HashMap<NID.WithName, Integer> colors = new HashMap<NID.WithName, Integer>();
-    Iterator<NID.WithName> vit = nodes_.iterator();
+    HashMap<NetNode, Integer> colors = new HashMap<NetNode, Integer>();
+    Iterator<NetNode> vit = nodes_.iterator();
     while (vit.hasNext()) {
-      NID.WithName node = vit.next();
+      NetNode node = vit.next();
       lr0.report();
       colors.put(node, white_);
     }
@@ -136,7 +136,7 @@ public class CycleFinder {
  
     vit = nodes_.iterator();
     while (vit.hasNext()) {
-      NID.WithName node = vit.next();      
+      NetNode node = vit.next();      
       Integer color = colors.get(node);
       if (color.equals(white_)) {
         if (visit(node, colors, lr)) {
@@ -155,7 +155,7 @@ public class CycleFinder {
   ** Visit a node.  Return true if a cycle
   */
 
-  private boolean visit(NID.WithName vertex, Map<NID.WithName, Integer> colors, LoopReporter lr) throws AsynchExitRequestException {
+  private boolean visit(NetNode vertex, Map<NetNode, Integer> colors, LoopReporter lr) throws AsynchExitRequestException {
     colors.put(vertex, grey_);
     lr.report();
     Set<NetLink> linksForVertex = linksForNode_.get(vertex);
@@ -163,12 +163,12 @@ public class CycleFinder {
       Iterator<NetLink> lit = linksForVertex.iterator();
       while (lit.hasNext()) {
         NetLink link = lit.next();
-        Integer targColor = colors.get(link.getTrgID());
+        Integer targColor = colors.get(link.getTrgNode());
         if (targColor.equals(grey_)) {
           System.err.println("link " + link + "creates cycle");
           return (true);          
         } else if (targColor.equals(white_)) {
-          if (visit(link.getTrgID(), colors, lr)) {
+          if (visit(link.getTrgNode(), colors, lr)) {
             return (true);
           }
         }

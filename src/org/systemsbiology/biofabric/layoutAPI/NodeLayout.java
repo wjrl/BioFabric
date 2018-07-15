@@ -26,7 +26,7 @@ import java.util.TreeMap;
 
 import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 import org.systemsbiology.biofabric.workerAPI.LoopReporter;
@@ -62,9 +62,9 @@ public abstract class NodeLayout {
   ** Relayout the nodes!
   */
   
-  public abstract List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd, 
-												  		                    Params params,
-												  		                    BTProgressMonitor monitor) throws AsynchExitRequestException;
+  public abstract List<NetNode> doNodeLayout(BuildData.RelayoutBuildData rbd, 
+												  		               Params params,
+												  		               BTProgressMonitor monitor) throws AsynchExitRequestException;
   
   
   /***************************************************************************
@@ -72,13 +72,13 @@ public abstract class NodeLayout {
   ** Install node orders
   */
   
-  public void installNodeOrder(List<NID.WithName> targetIDs, BuildData.RelayoutBuildData rbd, 
+  public void installNodeOrder(List<NetNode> targetIDs, BuildData.RelayoutBuildData rbd, 
   		                         BTProgressMonitor monitor) throws AsynchExitRequestException {
     int currRow = 0;
     LoopReporter lr = new LoopReporter(targetIDs.size(), 20, monitor, 0.0, 1.0, "progress.installOrdering");
     
-    HashMap<NID.WithName, Integer> nodeOrder = new HashMap<NID.WithName, Integer>();
-    for (NID.WithName target : targetIDs) {
+    HashMap<NetNode, Integer> nodeOrder = new HashMap<NetNode, Integer>();
+    for (NetNode target : targetIDs) {
       lr.report();
       Integer rowTag = Integer.valueOf(currRow++);
       nodeOrder.put(target, rowTag);
@@ -93,20 +93,20 @@ public abstract class NodeLayout {
   ** Utility conversion
   */
 
-  protected List<NID.WithName> convertOrderToMap(BioFabricNetwork bfn, 
-                                                 BuildData.RelayoutBuildData rbd, 
-  		                                           List<Integer> orderedStringRows) { 
-    HashMap<NID.WithName, Integer> nOrd = new HashMap<NID.WithName, Integer>();
-    TreeMap<Integer, NID.WithName> rev = new TreeMap<Integer, NID.WithName>();
+  protected List<NetNode> convertOrderToMap(BioFabricNetwork bfn, 
+                                            BuildData.RelayoutBuildData rbd, 
+  		                                      List<Integer> orderedStringRows) { 
+    HashMap<NetNode, Integer> nOrd = new HashMap<NetNode, Integer>();
+    TreeMap<Integer, NetNode> rev = new TreeMap<Integer, NetNode>();
     int numOsr = orderedStringRows.size();
     for (int i = 0; i < numOsr; i++) {
       Integer intval = orderedStringRows.get(i);
-      NID.WithName nid = bfn.getNodeIDForRow(intval);
+      NetNode nid = bfn.getNodeIDForRow(intval);
       nOrd.put(nid, Integer.valueOf(i));
       rev.put(Integer.valueOf(i), nid);      
     }
     rbd.setNodeOrder(nOrd);
-    return (new ArrayList<NID.WithName>(rev.values()));
+    return (new ArrayList<NetNode>(rev.values()));
   }
   
   /***************************************************************************

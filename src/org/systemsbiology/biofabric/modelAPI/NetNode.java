@@ -19,11 +19,15 @@
 
 package org.systemsbiology.biofabric.modelAPI;
 
+import org.systemsbiology.biofabric.util.NID;
+
 /****************************************************************************
 **
 ** This is the interface for network links that plugins can use
 */
 
-public interface NetNode {
+public interface NetNode extends Comparable<NetNode> {
   public String getName();
+  public int compareTo(NetNode other);
+  public NID.WithName getNID();
 }

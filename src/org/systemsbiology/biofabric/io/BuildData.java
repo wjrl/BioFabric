@@ -44,6 +44,7 @@ import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.BioFabricNetwork.LinkInfo;
 import org.systemsbiology.biofabric.model.BioFabricNetwork.NodeInfo;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.modelAPI.Network;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.util.DataUtil;
@@ -144,22 +145,22 @@ public abstract class BuildData {
   public static class RelayoutBuildData extends BuildData {
     public BioFabricNetwork bfn;
     public Set<NetLink> allLinks;
-    public Set<NID.WithName> loneNodeIDs;
+    public Set<NetNode> loneNodeIDs;
     public FabricColorGenerator colGen;
-    public Map<NID.WithName, Integer> nodeOrder;
-    public List<NID.WithName> existingIDOrder;
+    public Map<NetNode, Integer> nodeOrder;
+    public List<NetNode> existingIDOrder;
     public SortedMap<Integer, NetLink> linkOrder;
     public List<String> linkGroups;
     public boolean showLinkGroupAnnotations;
-    public Set<NID.WithName> allNodeIDs;
-    public Map<NID.WithName, String> clustAssign;
+    public Set<NetNode> allNodeIDs;
+    public Map<NetNode, String> clustAssign;
     public Network.LayoutMode layoutMode;
     public UniqueLabeller idGen;
     
     public ControlTopLayout.CtrlMode cMode; 
     public ControlTopLayout.TargMode tMode;
     public List<String> fixedOrder; 
-    public Map<String, Set<NID.WithName>> normNameToIDs;
+    public Map<String, Set<NetNode>> normNameToIDs;
     public Boolean pointUp;
     
     public AnnotationSet nodeAnnotForLayout;
@@ -184,8 +185,8 @@ public abstract class BuildData {
     }
     
     public RelayoutBuildData(UniqueLabeller idGen,
-    		                     Set<NetLink> allLinks, Set<NID.WithName> loneNodeIDs, 
-    		                     Map<NID.WithName, String> clustAssign, 
+    		                     Set<NetLink> allLinks, Set<NetNode> loneNodeIDs, 
+    		                     Map<NetNode, String> clustAssign, 
     		                     FabricColorGenerator colGen, BuildMode mode) {
       super(mode);
       this.bfn = null;
@@ -213,16 +214,16 @@ public abstract class BuildData {
       return;
     }
      
-    public Map<String, Set<NID.WithName>> genNormNameToID() {
-    	HashMap<String, Set<NID.WithName>> retval = new HashMap<String, Set<NID.WithName>>();
-    	Iterator<NID.WithName> nit = this.allNodeIDs.iterator();
+    public Map<String, Set<NetNode>> genNormNameToID() {
+    	HashMap<String, Set<NetNode>> retval = new HashMap<String, Set<NetNode>>();
+    	Iterator<NetNode> nit = this.allNodeIDs.iterator();
     	while (nit.hasNext()) {
-    		NID.WithName nodeID = nit.next();
+    		NetNode nodeID = nit.next();
     		String name = nodeID.getName();
   		  String nameNorm = DataUtil.normKey(name);
-  	   	Set<NID.WithName> forName = retval.get(nameNorm);
+  	   	Set<NetNode> forName = retval.get(nameNorm);
   		  if (forName == null) {
-  			  forName = new HashSet<NID.WithName>();
+  			  forName = new HashSet<NetNode>();
   			  retval.put(nameNorm, forName);
   		  }
   		  forName.add(nodeID);
@@ -231,18 +232,18 @@ public abstract class BuildData {
     }
     
     public void setNodeOrderFromAttrib(Map<AttributeLoader.AttributeKey, String> nodeOrderIn) {
-      this.nodeOrder = new HashMap<NID.WithName, Integer>();
-      Map<String, Set<NID.WithName>> nameToID = genNormNameToID();
+      this.nodeOrder = new HashMap<NetNode, Integer>();
+      Map<String, Set<NetNode>> nameToID = genNormNameToID();
       for (AttributeLoader.AttributeKey key : nodeOrderIn.keySet()) {
         try {
           Integer newRow = Integer.valueOf(nodeOrderIn.get(key));
           String keyName = ((AttributeLoader.StringKey)key).key;
           String normName = DataUtil.normKey(keyName);        
-          Set<NID.WithName> ids = nameToID.get(normName);
+          Set<NetNode> ids = nameToID.get(normName);
           if (ids.size() != 1) {
           	throw new IllegalStateException();
           }
-          NID.WithName id = ids.iterator().next();
+          NetNode id = ids.iterator().next();
           this.nodeOrder.put(id, newRow);
         } catch (NumberFormatException nfex) {
           throw new IllegalStateException();
@@ -251,7 +252,7 @@ public abstract class BuildData {
       return;
     }
     
-    public void setNodeOrder(Map<NID.WithName, Integer> nodeOrder) {
+    public void setNodeOrder(Map<NetNode, Integer> nodeOrder) {
       this.nodeOrder = nodeOrder;
       return;
     }
@@ -394,23 +395,6 @@ public abstract class BuildData {
       this.rank = rank;
       this.id = id;
       this.byLink = byLink;
-    } 
-  }
-  
-  /***************************************************************************
-  **
-  ** For storing column assignments
-  */  
-  
-  public static class ColumnAssign  {
-    public HashMap<Integer, NID.WithName> columnToSource;
-    public HashMap<Integer, NID.WithName> columnToTarget;
-    public int columnCount;
-
-    ColumnAssign() {
-      this.columnToSource = new HashMap<Integer, NID.WithName>();
-      this.columnToTarget = new HashMap<Integer, NID.WithName>();
-      this.columnCount = 0;
     } 
   }
 }

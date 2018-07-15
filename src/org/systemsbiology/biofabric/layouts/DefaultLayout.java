@@ -34,7 +34,7 @@ import java.util.TreeSet;
 import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 import org.systemsbiology.biofabric.workerAPI.LoopReporter;
@@ -78,12 +78,12 @@ public class DefaultLayout extends NodeLayout {
   ** Relayout the network!
   */
   
-  public List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd, 
+  public List<NetNode> doNodeLayout(BuildData.RelayoutBuildData rbd, 
   		                                   Params params,
   		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
       
-    List<NID.WithName> startNodeIDs = (params == null) ? null : ((DefaultParams)params).startNodes;
-    List<NID.WithName> targetIDs = defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs, startNodeIDs, monitor);
+    List<NetNode> startNodeIDs = (params == null) ? null : ((DefaultParams)params).startNodes;
+    List<NetNode> targetIDs = defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs, startNodeIDs, monitor);
 
     //
     // Now have the ordered list of targets we are going to display.
@@ -99,9 +99,9 @@ public class DefaultLayout extends NodeLayout {
   ** Calculate default node order. Used by several other layout classes
   */
 
-  public List<NID.WithName> defaultNodeOrder(Set<NetLink> allLinks,
-  		                                       Set<NID.WithName> loneNodes, 
-  		                                       List<NID.WithName> startNodes, 
+  public List<NetNode> defaultNodeOrder(Set<NetLink> allLinks,
+  		                                       Set<NetNode> loneNodes, 
+  		                                       List<NetNode> startNodes, 
   		                                       BTProgressMonitor monitor) throws AsynchExitRequestException { 
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
@@ -112,11 +112,11 @@ public class DefaultLayout extends NodeLayout {
     // we go there first:
     // 
     
-    HashMap<NID.WithName, Integer> linkCounts = new HashMap<NID.WithName, Integer>();
-    HashMap<NID.WithName, Set<NID.WithName>> targsPerSource = new HashMap<NID.WithName, Set<NID.WithName>>();
-    ArrayList<NID.WithName> targets = new ArrayList<NID.WithName>();
+    HashMap<NetNode, Integer> linkCounts = new HashMap<NetNode, Integer>();
+    HashMap<NetNode, Set<NetNode>> targsPerSource = new HashMap<NetNode, Set<NetNode>>();
+    ArrayList<NetNode> targets = new ArrayList<NetNode>();
          
-    HashSet<NID.WithName> targsToGo = new HashSet<NID.WithName>();
+    HashSet<NetNode> targsToGo = new HashSet<NetNode>();
     
     int numLink = allLinks.size();
     LoopReporter lr = new LoopReporter(numLink, 20, monitor, 0.0, 0.25, "progress.calculateNodeDegree");
@@ -125,17 +125,17 @@ public class DefaultLayout extends NodeLayout {
     while (alit.hasNext()) {
       NetLink nextLink = alit.next();
       lr.report();
-      NID.WithName sidwn = nextLink.getSrcID();
-      NID.WithName tidwn = nextLink.getTrgID();
-      Set<NID.WithName> targs = targsPerSource.get(sidwn);
+      NetNode sidwn = nextLink.getSrcNode();
+      NetNode tidwn = nextLink.getTrgNode();
+      Set<NetNode> targs = targsPerSource.get(sidwn);
       if (targs == null) {
-        targs = new HashSet<NID.WithName>();
+        targs = new HashSet<NetNode>();
         targsPerSource.put(sidwn, targs);
       }
       targs.add(tidwn);
       targs = targsPerSource.get(tidwn);
       if (targs == null) {
-        targs = new HashSet<NID.WithName>();
+        targs = new HashSet<NetNode>();
         targsPerSource.put(tidwn, targs);
       }
       targs.add(sidwn);
@@ -154,15 +154,15 @@ public class DefaultLayout extends NodeLayout {
     
     lr = new LoopReporter(linkCounts.size(), 20, monitor, 0.25, 0.50, "progress.rankByDegree");
     
-    TreeMap<Integer, SortedSet<NID.WithName>> countRank = new TreeMap<Integer, SortedSet<NID.WithName>>(Collections.reverseOrder());
-    Iterator<NID.WithName> lcit = linkCounts.keySet().iterator();
+    TreeMap<Integer, SortedSet<NetNode>> countRank = new TreeMap<Integer, SortedSet<NetNode>>(Collections.reverseOrder());
+    Iterator<NetNode> lcit = linkCounts.keySet().iterator();
     while (lcit.hasNext()) {
-      NID.WithName src = lcit.next();
+      NetNode src = lcit.next();
       lr.report();
       Integer count = linkCounts.get(src);
-      SortedSet<NID.WithName> perCount = countRank.get(count);
+      SortedSet<NetNode> perCount = countRank.get(count);
       if (perCount == null) {
-        perCount = new TreeSet<NID.WithName>();
+        perCount = new TreeSet<NetNode>();
         countRank.put(count, perCount);
       }
       perCount.add(src);
@@ -174,7 +174,7 @@ public class DefaultLayout extends NodeLayout {
     //
     
     if ((startNodes != null) && !startNodes.isEmpty()) {
-      ArrayList<NID.WithName> queue = new ArrayList<NID.WithName>();
+      ArrayList<NetNode> queue = new ArrayList<NetNode>();
       targsToGo.removeAll(startNodes);
       targets.addAll(startNodes);
       queue.addAll(startNodes);
@@ -193,12 +193,12 @@ public class DefaultLayout extends NodeLayout {
       Iterator<Integer> crit = countRank.keySet().iterator();
       while (crit.hasNext()) {
         Integer key = crit.next();
-        SortedSet<NID.WithName> perCount = countRank.get(key);
-        Iterator<NID.WithName> pcit = perCount.iterator();
+        SortedSet<NetNode> perCount = countRank.get(key);
+        Iterator<NetNode> pcit = perCount.iterator();
         while (pcit.hasNext()) {
-          NID.WithName node = pcit.next();
+          NetNode node = pcit.next();
           if (targsToGo.contains(node)) {
-            ArrayList<NID.WithName> queue = new ArrayList<NID.WithName>();
+            ArrayList<NetNode> queue = new ArrayList<NetNode>();
             targsToGo.remove(node);
             targets.add(node);
             addMyKidsNR(targets, targsPerSource, linkCounts, targsToGo, node, queue, monitor, 0.75, 1.0);
@@ -213,13 +213,13 @@ public class DefaultLayout extends NodeLayout {
     // we drop it:
     //
     
-    HashSet<NID.WithName> remains = new HashSet<NID.WithName>(loneNodes);
+    HashSet<NetNode> remains = new HashSet<NetNode>(loneNodes);
     // If we have a huge number of lone nodes, the removeAll() set operation is
     // taking FOREVER, e.g. remains 190804 targets 281832. Use different approach?
     System.err.println("remains " + remains.size() + " targets " + targets.size());
     remains.removeAll(targets);
     System.err.println("remains now " + remains.size());
-    targets.addAll(new TreeSet<NID.WithName>(remains));
+    targets.addAll(new TreeSet<NetNode>(remains));
     return (targets);
   }
         
@@ -228,24 +228,24 @@ public class DefaultLayout extends NodeLayout {
   ** Ordering of neighbor nodes. 
   */
   
-  private List<NID.WithName> orderMyKids(Map<NID.WithName, Set<NID.WithName>> targsPerSource, 
-  		                                   Map<NID.WithName, Integer> linkCounts, 
-                                         Set<NID.WithName> targsToGo, NID.WithName node) {
-    Set<NID.WithName> targs = targsPerSource.get(node);
+  private List<NetNode> orderMyKids(Map<NetNode, Set<NetNode>> targsPerSource, 
+  		                                   Map<NetNode, Integer> linkCounts, 
+                                         Set<NetNode> targsToGo, NetNode node) {
+    Set<NetNode> targs = targsPerSource.get(node);
     if (targs == null) {
-    	return (new ArrayList<NID.WithName>());
+    	return (new ArrayList<NetNode>());
     }
     //
     // Get the kids ordered highest degree to lowest, with lex ordering if equal degree:
     //
-    TreeMap<Integer, SortedSet<NID.WithName>> kidMap = new TreeMap<Integer, SortedSet<NID.WithName>>(Collections.reverseOrder());
-    Iterator<NID.WithName> tait = targs.iterator();
+    TreeMap<Integer, SortedSet<NetNode>> kidMap = new TreeMap<Integer, SortedSet<NetNode>>(Collections.reverseOrder());
+    Iterator<NetNode> tait = targs.iterator();
     while (tait.hasNext()) {  
-      NID.WithName nextTarg = tait.next(); 
+      NetNode nextTarg = tait.next(); 
       Integer count = linkCounts.get(nextTarg);
-      SortedSet<NID.WithName> perCount = kidMap.get(count);
+      SortedSet<NetNode> perCount = kidMap.get(count);
       if (perCount == null) {
-        perCount = new TreeSet<NID.WithName>();
+        perCount = new TreeSet<NetNode>();
         kidMap.put(count, perCount);
       }
       perCount.add(nextTarg);
@@ -255,13 +255,13 @@ public class DefaultLayout extends NodeLayout {
     // Go through that map and return an ordered list of neighbors *that have not yet been placed!!*
     //
     
-    ArrayList<NID.WithName> myKidsToProc = new ArrayList<NID.WithName>();
-    Iterator<SortedSet<NID.WithName>> kmit = kidMap.values().iterator();
+    ArrayList<NetNode> myKidsToProc = new ArrayList<NetNode>();
+    Iterator<SortedSet<NetNode>> kmit = kidMap.values().iterator();
     while (kmit.hasNext()) {  
-      SortedSet<NID.WithName> perCount = kmit.next(); 
-      Iterator<NID.WithName> pcit = perCount.iterator();
+      SortedSet<NetNode> perCount = kmit.next(); 
+      Iterator<NetNode> pcit = perCount.iterator();
       while (pcit.hasNext()) {  
-        NID.WithName kid = pcit.next();
+        NetNode kid = pcit.next();
         if (targsToGo.contains(kid)) { 
           myKidsToProc.add(kid);
         }
@@ -275,9 +275,9 @@ public class DefaultLayout extends NodeLayout {
   ** Handle all kids of the given node by adding it to the queue and flushing the queue:
   */
   
-  private void addMyKidsNR(List<NID.WithName> targets, Map<NID.WithName, Set<NID.WithName>> targsPerSource, 
-                           Map<NID.WithName, Integer> linkCounts, 
-                           Set<NID.WithName> targsToGo, NID.WithName node, List<NID.WithName> queue,
+  private void addMyKidsNR(List<NetNode> targets, Map<NetNode, Set<NetNode>> targsPerSource, 
+                           Map<NetNode, Integer> linkCounts, 
+                           Set<NetNode> targsToGo, NetNode node, List<NetNode> queue,
                            BTProgressMonitor monitor, double startFrac, double endFrac) 
                           	 throws AsynchExitRequestException {
     queue.add(node);
@@ -290,24 +290,24 @@ public class DefaultLayout extends NodeLayout {
   ** Node ordering, non-recursive:
   */
   
-  private void flushQueue(List<NID.WithName> targets, 
-  		                    Map<NID.WithName, Set<NID.WithName>> targsPerSource, 
-                          Map<NID.WithName, Integer> linkCounts, 
-                          Set<NID.WithName> targsToGo, List<NID.WithName> queue, 
+  private void flushQueue(List<NetNode> targets, 
+  		                    Map<NetNode, Set<NetNode>> targsPerSource, 
+                          Map<NetNode, Integer> linkCounts, 
+                          Set<NetNode> targsToGo, List<NetNode> queue, 
                           BTProgressMonitor monitor, double startFrac, double endFrac) 
                             throws AsynchExitRequestException {
   	
   	LoopReporter lr = new LoopReporter(targsToGo.size(), 20, monitor, startFrac, endFrac, "progress.nodeOrdering");
   	int lastSize = targsToGo.size();	
     while (!queue.isEmpty()) {
-      NID.WithName node = queue.remove(0);
+      NetNode node = queue.remove(0);
       int ttgSize = targsToGo.size();
       lr.report(lastSize - ttgSize);
       lastSize = ttgSize;
-      List<NID.WithName> myKids = orderMyKids(targsPerSource, linkCounts, targsToGo, node);
-      Iterator<NID.WithName> ktpit = myKids.iterator(); 
+      List<NetNode> myKids = orderMyKids(targsPerSource, linkCounts, targsToGo, node);
+      Iterator<NetNode> ktpit = myKids.iterator(); 
       while (ktpit.hasNext()) {  
-        NID.WithName kid = ktpit.next();
+        NetNode kid = ktpit.next();
         if (targsToGo.contains(kid)) {
           targsToGo.remove(kid);
           targets.add(kid);
@@ -326,9 +326,9 @@ public class DefaultLayout extends NodeLayout {
   
   public static class DefaultParams implements Params {
         
-    public List<NID.WithName> startNodes;
+    public List<NetNode> startNodes;
 
-    public DefaultParams(List<NID.WithName> startNodes) {
+    public DefaultParams(List<NetNode> startNodes) {
       this.startNodes = startNodes;
     } 
   }

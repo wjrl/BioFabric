@@ -69,6 +69,7 @@ import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.ui.BasicZoomTargetSupport;
 import org.systemsbiology.biofabric.ui.CursorManager;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -155,7 +156,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
   
   // Selection-related data:
   private HashSet<FabricLink> currLinkSelections_; 
-  private HashSet<NID.WithName> currNodeSelections_; 
+  private HashSet<NetNode> currNodeSelections_; 
   private HashSet<Integer> currColSelections_;
   
   private ArrayList<BioFabricNetwork.NodeInfo> targetList_;
@@ -190,8 +191,8 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
   private boolean doBuildSelect_;
   private CursorManager cursorMgr_;
   private BioFabricWindow bfw_;
-  private Map<NID.WithName, Rectangle2D> nodeNameLocations_;
-  private Map<NID.WithName, List<Rectangle2D>> drainNameLocations_;
+  private Map<NetNode, Rectangle2D> nodeNameLocations_;
+  private Map<NetNode, List<Rectangle2D>> drainNameLocations_;
   private QuadTree forSelections_;
    
   private PopupMenuControl popCtrl_;
@@ -241,7 +242,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
       myPanel_.addMouseMotionListener(new MouseMotionHandler());
     } 
     currLinkSelections_ = new HashSet<FabricLink>();
-    currNodeSelections_ = new HashSet<NID.WithName>();
+    currNodeSelections_ = new HashSet<NetNode>();
     currColSelections_ = new HashSet<Integer>();
     targetList_ = new ArrayList<BioFabricNetwork.NodeInfo>();
     linkList_ = new ArrayList<BioFabricNetwork.LinkInfo>();
@@ -638,7 +639,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
   ** Get node selections
   */
 
-  public Set<NID.WithName> getNodeSelections() {
+  public Set<NetNode> getNodeSelections() {
     return (currNodeSelections_);
   }
   
@@ -647,7 +648,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
   ** Get detail panel
   */
 
-  public void installSearchResult(Set<NID.WithName> results, boolean doDiscard) {
+  public void installSearchResult(Set<NetNode> results, boolean doDiscard) {
     
     if (doDiscard) {
       currLinkSelections_.clear();
@@ -837,7 +838,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
   private TourStatus goToDrainZone(boolean selectedOnly) {
     // FIX ME? Issues with this working with non-drain nodes?
      UiUtil.fixMePrintout("Handle cycling through multiple drain zones");
-    NID.WithName nodeName = bfn_.getNodeIDForRow(Integer.valueOf(tourFocus_.y));
+    NetNode nodeName = bfn_.getNodeIDForRow(Integer.valueOf(tourFocus_.y));
     if (nodeName == null) {
       return (null);
     }
@@ -869,8 +870,8 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
           continue;
         }
       }
-      NID.WithName target = bfn_.getTargetIDForColumn(testCol, showShadows);
-      NID.WithName source = bfn_.getSourceIDForColumn(testCol, showShadows);
+      NetNode target = bfn_.getTargetIDForColumn(testCol, showShadows);
+      NetNode source = bfn_.getSourceIDForColumn(testCol, showShadows);
       if ((target != null) && (source != null)) {
         if (target.equals(nodeName) || source.equals(nodeName)) {
           return (handleTourStop(i, tourFocus_.y, testCol, (selectedOnly) ? nodeName : null));
@@ -887,7 +888,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
   */
 
   private TourStatus goLeftRight(int inc, boolean selectedOnly) {
-    NID.WithName nodeName = bfn_.getNodeIDForRow(Integer.valueOf(tourFocus_.y));
+    NetNode nodeName = bfn_.getNodeIDForRow(Integer.valueOf(tourFocus_.y));
     if (nodeName == null) {
       return (null);
     }
@@ -913,8 +914,8 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
           continue;
         }
       }
-      NID.WithName target = bfn_.getTargetIDForColumn(testCol, showShadows);
-      NID.WithName source = bfn_.getSourceIDForColumn(testCol, showShadows);
+      NetNode target = bfn_.getTargetIDForColumn(testCol, showShadows);
+      NetNode source = bfn_.getSourceIDForColumn(testCol, showShadows);
       if ((target != null) && (source != null)) {
         if (target.equals(nodeName) || source.equals(nodeName)) {
           return (handleTourStop(i, tourFocus_.y, testCol, (selectedOnly) ? nodeName : null));
@@ -943,7 +944,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
   */
 
   private TourStatus goFarLeftRight(boolean goRight, boolean selectedOnly) {
-    NID.WithName nodeName = bfn_.getNodeIDForRow(Integer.valueOf(tourFocus_.y));
+    NetNode nodeName = bfn_.getNodeIDForRow(Integer.valueOf(tourFocus_.y));
     if (nodeName == null) {
       return (null);
     }
@@ -977,8 +978,8 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
         if (!currColSelections_.contains(testCol)) {
           continue;
         }
-        NID.WithName target = bfn_.getTargetIDForColumn(testCol, showShadows);
-        NID.WithName source = bfn_.getSourceIDForColumn(testCol, showShadows);
+        NetNode target = bfn_.getTargetIDForColumn(testCol, showShadows);
+        NetNode source = bfn_.getSourceIDForColumn(testCol, showShadows);
         if ((target != null) && (source != null)) {
           if (target.equals(node.getNodeIDWithName()) || source.equals(node.getNodeIDWithName())) {
             return (handleTourStop(useCol, tourFocus_.y, testCol, nodeName));
@@ -987,8 +988,8 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
       }
     } else {
       Integer testCol = Integer.valueOf(useCol); 
-      NID.WithName target = bfn_.getTargetIDForColumn(testCol, showShadows);
-      NID.WithName source = bfn_.getSourceIDForColumn(testCol, showShadows);
+      NetNode target = bfn_.getTargetIDForColumn(testCol, showShadows);
+      NetNode source = bfn_.getSourceIDForColumn(testCol, showShadows);
       if ((target != null) && (source != null)) {
         return (handleTourStop(useCol, tourFocus_.y, testCol, null));
       }   
@@ -1001,7 +1002,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
   ** For finding stops that are selected
   */
 
-  private SortedSet<Integer> findSelectedLinkStops(NID.WithName nodeName) {
+  private SortedSet<Integer> findSelectedLinkStops(NetNode nodeName) {
     TreeSet<Integer> retval = new TreeSet<Integer>();
     boolean showShadows = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getDisplayShadows();
     BioFabricNetwork.NodeInfo node = bfn_.getNodeDefinition(nodeName);
@@ -1014,8 +1015,8 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
       if (!currColSelections_.contains(testCol)) {
         continue;
       }
-      NID.WithName target = bfn_.getTargetIDForColumn(testCol, showShadows);
-      NID.WithName source = bfn_.getSourceIDForColumn(testCol, showShadows);
+      NetNode target = bfn_.getTargetIDForColumn(testCol, showShadows);
+      NetNode source = bfn_.getSourceIDForColumn(testCol, showShadows);
       if ((target != null) && (source != null)) {
         if (target.equals(node.getNodeIDWithName()) || source.equals(node.getNodeIDWithName())) { 
           retval.add(testCol);
@@ -1055,7 +1056,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     //
     // Outside of row bounds:
     //
-    NID.WithName nodeName = bfn_.getNodeIDForRow(rowObj);
+    NetNode nodeName = bfn_.getNodeIDForRow(rowObj);
     if (nodeName == null) {
       return (false);
     }
@@ -1089,7 +1090,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
   ** Setup and bookkeeping after tour stop is changed
   */
 
-  private TourStatus handleTourStop(int x, int y, Integer col, NID.WithName selectedOnlyNodeName) {      
+  private TourStatus handleTourStop(int x, int y, Integer col, NetNode selectedOnlyNodeName) {      
     tourFocus_.setLocation(x, y);
     floaterSet_.tourRect = buildFocusBox(tourFocus_);
     handleFloaterChange();
@@ -1249,8 +1250,8 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
    
     BioFabricNetwork.Extents ext = new BioFabricNetwork.Extents(bfn_, monitor);
     painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), shadeNodes, 
-									         showShadows, ext, new HashMap<NID.WithName, Rectangle2D>(), 
-									         new HashMap<NID.WithName, List<Rectangle2D>>(), worldRectNetAR_, 
+									         showShadows, ext, new HashMap<NetNode, Rectangle2D>(), 
+									         new HashMap<NetNode, List<Rectangle2D>>(), worldRectNetAR_, 
 									         bfn_.getNodeAnnotations(), bfn_.getLinkAnnotations(Boolean.valueOf(showShadows)), monitor);
     
     handleFloaterChange();
@@ -1277,8 +1278,8 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
   
     Rectangle2D linksAndNodes = new Rectangle2D.Double(0.0, 0.0, netWidth, netHeight);
  
-    nodeNameLocations_ = new HashMap<NID.WithName, Rectangle2D>();
-    drainNameLocations_ = new HashMap<NID.WithName, List<Rectangle2D>>();
+    nodeNameLocations_ = new HashMap<NetNode, Rectangle2D>();
+    drainNameLocations_ = new HashMap<NetNode, List<Rectangle2D>>();
     BioFabricNetwork.Extents ext = new BioFabricNetwork.Extents(bfn_, monitor);
     Rectangle2D fullNetRect = painter_.buildObjCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), 
 													    		                   shadeNodes, showShadows, ext, nodeNameLocations_, 
@@ -1303,10 +1304,10 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     LoopReporter lr = new LoopReporter(drainNameLocations_.size(), 20, monitor, 0.0, 1.0, "progress.drainsToQuad");
 
     forSelections_ = new QuadTree(fullNetRect, 5);
-    Iterator<NID.WithName> kit = drainNameLocations_.keySet().iterator();
+    Iterator<NetNode> kit = drainNameLocations_.keySet().iterator();
     int count = 0;
     while (kit.hasNext()) {
-    	NID.WithName nid = kit.next();
+    	NetNode nid = kit.next();
     	lr.report();
     	List<Rectangle2D> rects = drainNameLocations_.get(nid);
     	int numR = rects.size();
@@ -1983,11 +1984,11 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     MouseLocInfo retval = new MouseLocInfo();
     Integer colObj = Integer.valueOf(cprc.x);
     Integer rowObj = Integer.valueOf(cprc.y);
-    NID.WithName target = bfn_.getNodeIDForRow(rowObj);
+    NetNode target = bfn_.getNodeIDForRow(rowObj);
     boolean showShadows = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getDisplayShadows();
-    NID.WithName src = bfn_.getSourceIDForColumn(colObj, showShadows);
-    NID.WithName trg = bfn_.getTargetIDForColumn(colObj, showShadows);
-    NID.WithName drain = bfn_.getDrainForColumn(colObj, showShadows);
+    NetNode src = bfn_.getSourceIDForColumn(colObj, showShadows);
+    NetNode trg = bfn_.getTargetIDForColumn(colObj, showShadows);
+    NetNode drain = bfn_.getDrainForColumn(colObj, showShadows);
 
     retval.nodeAnnotations.clear();
     AnnotationSet ansn = bfn_.getNodeAnnotations();
@@ -2031,8 +2032,8 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
         if ((minRow <= cprc.y) && (maxRow >= cprc.y)) {
         	FabricLink flink = li.getLink();
         	retval.linkDesc = flink.toDisplayString();
-          retval.linkSrcDesc = flink.getSrcID().getName();
-          retval.linkTrgDesc = flink.getTrgID().getName();
+          retval.linkSrcDesc = flink.getSrcNode().getName();
+          retval.linkTrgDesc = flink.getTrgNode().getName();
         }     
       }
     }
@@ -2074,7 +2075,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
   */  
   
   public void selectionLogicPoint(Point rcbp, Point sloc,
-                                  boolean showShadows, Set<NID.WithName> nodes, Set<FabricLink> links, 
+                                  boolean showShadows, Set<NetNode> nodes, Set<FabricLink> links, 
                                   Set<Integer> cols, boolean shiftPressed) { 
 
 
@@ -2099,9 +2100,9 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
         Integer col = cit.next();
         colRange.update(col.intValue());
       }
-      Iterator<NID.WithName> nit = nodes.iterator();
+      Iterator<NetNode> nit = nodes.iterator();
       while (nit.hasNext()) {
-        NID.WithName node = nit.next();
+        NetNode node = nit.next();
         int row = bfn_.getNodeDefinition(node).nodeRow;
         nodeRange.update(row);
       }     
@@ -2127,11 +2128,11 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     // Do we have a drain zone from a one point click?
     //
     
-    NID.WithName gotDrain = null;
+    NetNode gotDrain = null;
     Point2D worldPt = viewToWorld(sloc);
-    Iterator<NID.WithName> dnlit = drainNameLocations_.keySet().iterator(); 
+    Iterator<NetNode> dnlit = drainNameLocations_.keySet().iterator(); 
     while (dnlit.hasNext()) {
-      NID.WithName target = dnlit.next();
+      NetNode target = dnlit.next();
       List<Rectangle2D> nameLocs = drainNameLocations_.get(target);
       for (Rectangle2D zone : nameLocs) {
         if (zone.contains(worldPt)) {
@@ -2159,7 +2160,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     //
     
     Integer rowObj = Integer.valueOf(row);
-    NID.WithName target = bfn_.getNodeIDForRow(rowObj);          
+    NetNode target = bfn_.getNodeIDForRow(rowObj);          
     Integer colObj = Integer.valueOf(col);
     
     //
@@ -2216,8 +2217,8 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
           cols.add(colObj);
         }
         // If told to remove, we remove the link. Otherwise, we add link, AND the node.
-        NID.WithName src = bfn_.getSourceIDForColumn(colObj, showShadows); 
-        NID.WithName trg = bfn_.getTargetIDForColumn(colObj, showShadows);
+        NetNode src = bfn_.getSourceIDForColumn(colObj, showShadows); 
+        NetNode trg = bfn_.getTargetIDForColumn(colObj, showShadows);
         if (removeIt) {
           links.remove(linf.getLink());
         } else {
@@ -2255,8 +2256,8 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
         for (int i = colRange.min; i < colRange.max; i++) {
           Integer colObj2 = Integer.valueOf(i);
           cols.add(colObj2);
-          NID.WithName src = bfn_.getSourceIDForColumn(colObj2, showShadows); 
-          NID.WithName trg = bfn_.getTargetIDForColumn(colObj2, showShadows);
+          NetNode src = bfn_.getSourceIDForColumn(colObj2, showShadows); 
+          NetNode trg = bfn_.getTargetIDForColumn(colObj2, showShadows);
           BioFabricNetwork.LinkInfo linf2 = bfn_.getLinkDefinition(colObj2, showShadows);
           links.add(linf2.getLink().clone());
           nodes.add(src);
@@ -2266,7 +2267,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
      if (nodeAdd && (nodeRange.min != Integer.MAX_VALUE)) {
         for (int i = nodeRange.min; i < nodeRange.max; i++) {
           Integer rowObj2 = Integer.valueOf(i);
-          NID.WithName target2 = bfn_.getNodeIDForRow(rowObj2);
+          NetNode target2 = bfn_.getNodeIDForRow(rowObj2);
           nodes.add(target2);
         }
       }
@@ -2279,7 +2280,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
   ** Run the selection logic
   */  
   
-  public void selectionLogicRect(Rectangle rect, boolean showShadows, Set<NID.WithName> nodes, Set<FabricLink> links, 
+  public void selectionLogicRect(Rectangle rect, boolean showShadows, Set<NetNode> nodes, Set<FabricLink> links, 
                                  Set<Integer> cols) { 
 
 
@@ -2309,7 +2310,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     //
     
     //Integer rowObj = Integer.valueOf(row);
-   // 	NID.WithName target = bfn_.getNodeIDForRow(rowObj);
+   // 	NetNode target = bfn_.getNodeIDForRow(rowObj);
         	
     for (int col = startCol; col <= endCol; col++) {               
       Integer colObj = Integer.valueOf(col);
@@ -2321,8 +2322,8 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
         boolean endOK = (lend >= startRow) && (lend <= endRow);
         if (startOK || endOK) {
           cols.add(colObj);
-          NID.WithName src = bfn_.getSourceIDForColumn(colObj, showShadows); 
-          NID.WithName trg = bfn_.getTargetIDForColumn(colObj, showShadows);
+          NetNode src = bfn_.getSourceIDForColumn(colObj, showShadows); 
+          NetNode trg = bfn_.getTargetIDForColumn(colObj, showShadows);
      
           links.add(linf.getLink().clone());
           nodes.add(src);
@@ -2338,7 +2339,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
   ** Build needed selection geometry
   */  
   
-  public void buildSelectionGeometry(NID.WithName newStartName, Rectangle newStartRect) {     
+  public void buildSelectionGeometry(NetNode newStartName, Rectangle newStartRect) {     
     Point focus = new Point();
     boolean showShadows = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getDisplayShadows(); 
     //
@@ -2346,9 +2347,9 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     //
     targetList_.clear();
     TreeMap<Integer, Rectangle> sortTargs = new TreeMap<Integer, Rectangle>();
-    Iterator<NID.WithName> tgit = currNodeSelections_.iterator();
+    Iterator<NetNode> tgit = currNodeSelections_.iterator();
     while (tgit.hasNext()) {
-      NID.WithName target = tgit.next();
+      NetNode target = tgit.next();
       BioFabricNetwork.NodeInfo targetInf = bfn_.getNodeDefinition(target);
       targetList_.add(targetInf);
       Rectangle2D targName = nodeNameLocations_.get(target);
@@ -2519,7 +2520,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     if ((ld != null) && !ld.inLinkRowRange(tourFocus_.y)) {
       ld = null;
     }
-    NID.WithName nodeForRow = bfn_.getNodeIDForRow(Integer.valueOf(tourFocus_.y));
+    NetNode nodeForRow = bfn_.getNodeIDForRow(Integer.valueOf(tourFocus_.y));
     SortedSet<Integer> okStops = (selectionOnly) ? null : findSelectedLinkStops(nodeForRow);
     boolean nodeAlive = (!selectionOnly) ? true : currNodeSelections_.contains(nodeForRow);
     return (new TourStatus(vals, bfn_, ld, tourFocus_, okStops, nodeAlive, false));    
@@ -2572,7 +2573,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     Point2D inWorldR = rowColToWorld(new Point(prtc.x + limit, prtc.y));
     for (int i = minY; i <= maxY; i++) {
       Integer testRow = Integer.valueOf(i);
-      NID.WithName nodeName = bfn_.getNodeIDForRow(testRow);
+      NetNode nodeName = bfn_.getNodeIDForRow(testRow);
       if (nodeName != null) {
         Rectangle2D nnl = nodeNameLocations_.get(nodeName);
         Point2D nameCenter = new Point2D.Double(nnl.getCenterX(), nnl.getCenterY());
@@ -2722,7 +2723,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
           if ((linf != null) && !linf.inLinkRowRange(tourFocus_.y)) {
             linf = null;
           }
-          NID.WithName nodeForRow = bfn_.getNodeIDForRow(Integer.valueOf(tourFocus_.y));
+          NetNode nodeForRow = bfn_.getNodeIDForRow(Integer.valueOf(tourFocus_.y));
           SortedSet<Integer> okStops = (forSelOnly) ? findSelectedLinkStops(nodeForRow) : null;
           boolean nodeAlive = (!forSelOnly) ? true : currNodeSelections_.contains(nodeForRow);
           fnt_.installNames(new TourStatus(loc, bfn_, linf, tourFocus_, okStops, nodeAlive, tstatUS));
@@ -2902,7 +2903,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
       try {
         Point loc = new Point(x, y);
         Point rcp = transToRowCol(loc);
-        HashSet<NID.WithName> nodes = new HashSet<NID.WithName>();
+        HashSet<NetNode> nodes = new HashSet<NetNode>();
         HashSet<FabricLink> links = new HashSet<FabricLink>();
         HashSet<Integer> cols = new HashSet<Integer>();
         boolean showShadows = FabricDisplayOptionsManager.getMgr().getDisplayOptions().getDisplayShadows(); 
@@ -2911,7 +2912,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
           FabricLink fabLink = links.iterator().next();
           popCtrl_.showLinkPopup(fabLink, loc); 
         } else if (!nodes.isEmpty()) {
-          NID.WithName nodeName = nodes.iterator().next();
+          NetNode nodeName = nodes.iterator().next();
           popCtrl_.showNodePopup(nodeName, loc); 
         }  
       } catch (Exception ex) {

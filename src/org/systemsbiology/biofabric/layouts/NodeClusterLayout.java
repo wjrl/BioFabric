@@ -40,7 +40,9 @@ import org.systemsbiology.biofabric.io.BuildData;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.model.FabricNode;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.NID;
@@ -82,7 +84,7 @@ public class NodeClusterLayout extends NodeLayout {
   **
   */
   
-   public List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd, 
+   public List<NetNode> doNodeLayout(BuildData.RelayoutBuildData rbd, 
 							                            Params crParams,
 							                            BTProgressMonitor monitor) throws AsynchExitRequestException { 
      
@@ -94,11 +96,11 @@ public class NodeClusterLayout extends NodeLayout {
     
     TreeMap<String, BuildData.RelayoutBuildData> perClust = new TreeMap<String, BuildData.RelayoutBuildData>();
     HashMap<Tuple, List<NetLink>> interClust = new HashMap<Tuple, List<NetLink>>();
-    HashSet<NID.WithName> interNodesOnly = new HashSet<NID.WithName>();
+    HashSet<NetNode> interNodesOnly = new HashSet<NetNode>();
     
-    HashMap<NID.WithName, Integer> fullNodeDegree = null;
+    HashMap<NetNode, Integer> fullNodeDegree = null;
     if (params.cLay == ClusterParams.ClustLayout.BREADTH_CONN_FIRST) {
-      fullNodeDegree = new HashMap<NID.WithName, Integer>();
+      fullNodeDegree = new HashMap<NetNode, Integer>();
     } 	
     
     // Future...
@@ -110,8 +112,8 @@ public class NodeClusterLayout extends NodeLayout {
     Iterator<NetLink> flit = rbd.allLinks.iterator();
     while (flit.hasNext()) {
       NetLink fl = flit.next();
-      NID.WithName source = fl.getSrcID();
-      NID.WithName target = fl.getTrgID();
+      NetNode source = fl.getSrcNode();
+      NetNode target = fl.getTrgNode();
       if (fullNodeDegree != null) {
       	Integer count = fullNodeDegree.get(source);
         count = (count == null) ? Integer.valueOf(1) : Integer.valueOf(count.intValue() + 1);
@@ -127,9 +129,9 @@ public class NodeClusterLayout extends NodeLayout {
         BuildData.RelayoutBuildData rbdpc = perClust.get(srcClust);
         if (rbdpc == null) {
           rbdpc = new BuildData.RelayoutBuildData(new UniqueLabeller(),
-    		                                                 new HashSet<NetLink>(), new HashSet<NID.WithName>(),
-    		                                                 new HashMap<NID.WithName, String>(), rbd.colGen, intraLay);
-          rbdpc.allNodeIDs = new HashSet<NID.WithName>();
+    		                                                 new HashSet<NetLink>(), new HashSet<NetNode>(),
+    		                                                 new HashMap<NetNode, String>(), rbd.colGen, intraLay);
+          rbdpc.allNodeIDs = new HashSet<NetNode>();
           perClust.put(srcClust, rbdpc);
         }
         rbdpc.allLinks.add(fl);
@@ -152,14 +154,14 @@ public class NodeClusterLayout extends NodeLayout {
     // Need to deal with "clusters" of nodes that have no internal links!
     //  
     
-    for (NID.WithName node : rbd.allNodeIDs) {
+    for (NetNode node : rbd.allNodeIDs) {
     	String clust = params.getClusterForNode(node);
     	BuildData.RelayoutBuildData rbdpc = perClust.get(clust);
     	if (rbdpc == null) {
     		rbdpc = new BuildData.RelayoutBuildData(new UniqueLabeller(),
-    		                                        new HashSet<NetLink>(), new HashSet<NID.WithName>(),
-    		                                        new HashMap<NID.WithName, String>(), rbd.colGen, intraLay);
-        rbdpc.allNodeIDs = new HashSet<NID.WithName>();
+    		                                        new HashSet<NetLink>(), new HashSet<NetNode>(),
+    		                                        new HashMap<NetNode, String>(), rbd.colGen, intraLay);
+        rbdpc.allNodeIDs = new HashSet<NetNode>();
         perClust.put(clust, rbdpc);
     	}  		
       addClusterNode(rbdpc, node); 
@@ -189,12 +191,12 @@ public class NodeClusterLayout extends NodeLayout {
     		throw new IllegalStateException();
     }
     
-    Map<String, List<NID.WithName>> hubs = null;
+    Map<String, List<NetNode>> hubs = null;
     if (params.cLay == ClusterParams.ClustLayout.BREADTH_CONN_FIRST) {
       hubs = rankInterClustHubs(interClust, params, fullNodeDegree);	
     }
 
-    ArrayList<NID.WithName> allTargets = new ArrayList<NID.WithName>();
+    ArrayList<NetNode> allTargets = new ArrayList<NetNode>();
 
     Iterator<String> pcit = bfc.iterator(); 
     while (pcit.hasNext()) {
@@ -203,19 +205,19 @@ public class NodeClusterLayout extends NodeLayout {
       if (pcrbd == null) {
       	continue;
       }
-      List<NID.WithName> targets;
+      List<NetNode> targets;
       if (intraLay == BuildData.BuildMode.DEFAULT_LAYOUT) {
         DefaultLayout dl = new DefaultLayout();
-        List<NID.WithName> starts = (hubs == null) ? null : hubs.get(clustName);
+        List<NetNode> starts = (hubs == null) ? null : hubs.get(clustName);
         targets = dl.defaultNodeOrder(pcrbd.allLinks, pcrbd.loneNodeIDs, starts, monitor); 
       // Future enhancement:
       //} else if (intraLay == BuildData.BuildMode.CLUSTERED_LAYOUT) {      	
         //NodeSimilarityLayout.ClusterParams crp = new NodeSimilarityLayout.ClusterParams();
     	  //NodeSimilarityLayout nslLayout = new NodeSimilarityLayout();
-    	  //pcrbd.existingIDOrder = new ArrayList<NID.WithName>(pcrbd.allNodeIDs);
+    	  //pcrbd.existingIDOrder = new ArrayList<NetNode>(pcrbd.allNodeIDs);
         // The idea is to use the NodeSimilarityLayout on each cluster....
         //targets = nslLayout.doClusteredLayoutOrder(pcrbd, crp, monitor, startFrac, endFrac);
-    	  //targets = new ArrayList<NID.WithName>();
+    	  //targets = new ArrayList<NetNode>();
       } else {
       	throw new IllegalStateException();
       }
@@ -249,8 +251,8 @@ public class NodeClusterLayout extends NodeLayout {
     	boolean interClustLink = false;
     	while (ksit.hasNext()) {
     		NetLink daLink = ksit.next();
-    		String srcClust = params.getClusterForNode(daLink.getSrcID());
-        String trgClust = params.getClusterForNode(daLink.getTrgID());
+    		String srcClust = params.getClusterForNode(daLink.getSrcNode());
+        String trgClust = params.getClusterForNode(daLink.getTrgNode());
         if (srcClust.equals(trgClust)) {
         	if ((currClust != null) && !currClust.equals(srcClust)) {
         		drainTime = true;
@@ -328,9 +330,9 @@ public class NodeClusterLayout extends NodeLayout {
     
     AnnotationSet retval = new AnnotationSet();  
     
-    TreeMap<Integer, NID.WithName> invert = new TreeMap<Integer, NID.WithName>();
+    TreeMap<Integer, NetNode> invert = new TreeMap<Integer, NetNode>();
     
-    for (NID.WithName node : rbd.nodeOrder.keySet()) {
+    for (NetNode node : rbd.nodeOrder.keySet()) {
       invert.put(rbd.nodeOrder.get(node), node);
     }
      
@@ -338,7 +340,7 @@ public class NodeClusterLayout extends NodeLayout {
     Integer startRow = null;
     Integer lastKey = invert.lastKey();
     for (Integer row : invert.keySet()) {
-      NID.WithName node = invert.get(row);
+      NetNode node = invert.get(row);
       String clust = params.getClusterForNode(node);
       if (currClust == null) {
         currClust = clust;
@@ -412,8 +414,8 @@ public class NodeClusterLayout extends NodeLayout {
   	for (int i = 0; i < linkList.size() ; i++) {
   		NetLink fl = linkList.get(i);
   
-  		String srcClust = params.getClusterForNode(fl.getSrcID());
-      String trgClust = params.getClusterForNode(fl.getTrgID());
+  		String srcClust = params.getClusterForNode(fl.getSrcNode());
+      String trgClust = params.getClusterForNode(fl.getTrgNode());
   		if (srcClust.equals(trgClust)) {
   			MinMax mmc = clustRanges.get(srcClust);
   			if (mmc == null) {
@@ -453,9 +455,9 @@ public class NodeClusterLayout extends NodeLayout {
   ** Helper
   */
   
-  private void addClusterNode(BuildData.RelayoutBuildData rbd, NID.WithName nid) { 
+  private void addClusterNode(BuildData.RelayoutBuildData rbd, NetNode nid) { 
     if (!rbd.allNodeIDs.contains(nid)) {
-    	boolean ok = rbd.idGen.addExistingLabel(nid.getNID().getInternal());
+    	boolean ok = rbd.idGen.addExistingLabel(nid.getNID().getNID().getInternal());
     	if (!ok) {
     		throw new IllegalStateException();
     	}
@@ -469,11 +471,11 @@ public class NodeClusterLayout extends NodeLayout {
   ** Count map maintenance
   */
   
-  private void addToCount(Map<String, Map<NID.WithName, Integer>> countMap, String clust, NID.WithName node) { 
+  private void addToCount(Map<String, Map<NetNode, Integer>> countMap, String clust, NetNode node) { 
  	
-    Map<NID.WithName, Integer> perClust = countMap.get(clust);
+    Map<NetNode, Integer> perClust = countMap.get(clust);
     if (perClust == null) {
-    	perClust = new HashMap<NID.WithName, Integer>();
+    	perClust = new HashMap<NetNode, Integer>();
     	countMap.put(clust, perClust);
     }
     Integer count = perClust.get(node);
@@ -490,46 +492,46 @@ public class NodeClusterLayout extends NodeLayout {
   ** in the pile.
   */
   
-  private Map<String, List<NID.WithName>> rankInterClustHubs(Map<Tuple, List<NetLink>> interLinks, 
+  private Map<String, List<NetNode>> rankInterClustHubs(Map<Tuple, List<NetLink>> interLinks, 
   		                                                       ClusterParams params, 
-  		                                                       Map<NID.WithName, Integer> fullNodeDegree) { 
+  		                                                       Map<NetNode, Integer> fullNodeDegree) { 
  	
   	// Map(ClusterID -> Map(NodeID, InterClustDegree)):
-  	Map<String, Map<NID.WithName, Integer>> preRetval = new HashMap<String, Map<NID.WithName, Integer>>();
+  	Map<String, Map<NetNode, Integer>> preRetval = new HashMap<String, Map<NetNode, Integer>>();
   	for (Tuple tup : interLinks.keySet()) {
   	  List<NetLink> forTup = interLinks.get(tup);
   	  for (NetLink link : forTup) {
   	  	// Tup order is NOT src, trg, but lo, hi:
-  	    addToCount(preRetval, params.getClusterForNode(link.getSrcID()), link.getSrcID());
-  	    addToCount(preRetval, params.getClusterForNode(link.getTrgID()), link.getTrgID());
+  	    addToCount(preRetval, params.getClusterForNode(link.getSrcNode()), link.getSrcNode());
+  	    addToCount(preRetval, params.getClusterForNode(link.getTrgNode()), link.getTrgNode());
   	  }
   	}
   	
   	// Map(ClusterID -> List(NodeID)):
-    Map<String, List<NID.WithName>> retval = new HashMap<String, List<NID.WithName>>();  
+    Map<String, List<NetNode>> retval = new HashMap<String, List<NetNode>>();  
     for (String clust: preRetval.keySet()) {
-    	Map<NID.WithName, Integer> degMap = preRetval.get(clust);
+    	Map<NetNode, Integer> degMap = preRetval.get(clust);
     	// Map(SortedInterClustDegree->Map(SortedFullNodeDegree, Set(SortedNodeName))):
-    	TreeMap<Integer, SortedMap<Integer, SortedSet<NID.WithName>>> invert = 
-      	new TreeMap<Integer, SortedMap<Integer, SortedSet<NID.WithName>>>(Collections.reverseOrder());
-    	for (NID.WithName node : degMap.keySet()) {
+    	TreeMap<Integer, SortedMap<Integer, SortedSet<NetNode>>> invert = 
+      	new TreeMap<Integer, SortedMap<Integer, SortedSet<NetNode>>>(Collections.reverseOrder());
+    	for (NetNode node : degMap.keySet()) {
     		Integer interClustDeg = degMap.get(node);
-    		SortedMap<Integer, SortedSet<NID.WithName>> perInterDeg = invert.get(interClustDeg);
+    		SortedMap<Integer, SortedSet<NetNode>> perInterDeg = invert.get(interClustDeg);
     		if (perInterDeg == null) {
-    			perInterDeg = new TreeMap<Integer, SortedSet<NID.WithName>>(Collections.reverseOrder());
+    			perInterDeg = new TreeMap<Integer, SortedSet<NetNode>>(Collections.reverseOrder());
     			invert.put(interClustDeg, perInterDeg);
     		}
     		Integer fnDeg = fullNodeDegree.get(node);
-    		SortedSet<NID.WithName> perFullDeg = perInterDeg.get(fnDeg);
+    		SortedSet<NetNode> perFullDeg = perInterDeg.get(fnDeg);
     		if (perFullDeg == null) {
-    			perFullDeg = new TreeSet<NID.WithName>();
+    			perFullDeg = new TreeSet<NetNode>();
     			perInterDeg.put(fnDeg, perFullDeg);
     		}
     		perFullDeg.add(node);
     	}
-    	List<NID.WithName> flat = new ArrayList<NID.WithName>();
-      for (SortedMap<Integer, SortedSet<NID.WithName>> perInterDeg : invert.values()) {
-      	for (SortedSet<NID.WithName> perFull : perInterDeg.values()) {
+    	List<NetNode> flat = new ArrayList<NetNode>();
+      for (SortedMap<Integer, SortedSet<NetNode>> perInterDeg : invert.values()) {
+      	for (SortedSet<NetNode> perFull : perInterDeg.values()) {
       	  flat.addAll(perFull);
         }
       }
@@ -587,11 +589,11 @@ public class NodeClusterLayout extends NodeLayout {
                                               BTProgressMonitor monitor) throws AsynchExitRequestException {
     
   	UniqueLabeller uLab = new UniqueLabeller();
-  	Map<String, NID.WithName> fakeNodes = new HashMap<String, NID.WithName>();
+  	Map<String, NetNode> fakeNodes = new HashMap<String, NetNode>();
   	
   	for (String clu : params.getClusters()) {
   	  NID pnid = uLab.getNextOID();
-  	  fakeNodes.put(clu, new NID.WithName(pnid, clu));	
+  	  fakeNodes.put(clu, new FabricNode(pnid, clu));	
   	}
   	
   	Set<NetLink> links = new HashSet<NetLink>();
@@ -602,12 +604,12 @@ public class NodeClusterLayout extends NodeLayout {
   		links.add(pseudo);
   	}
   	
-  	List<NID.WithName> useRoots = null;
+  	List<NetNode> useRoots = null;
   	if (startClust != null) {
-  		useRoots = new ArrayList<NID.WithName>();
+  		useRoots = new ArrayList<NetNode>();
   		useRoots.add(fakeNodes.get(startClust));
   	}
-    GraphSearcher gs = new GraphSearcher(new HashSet<NID.WithName>(fakeNodes.values()), links);
+    GraphSearcher gs = new GraphSearcher(new HashSet<NetNode>(fakeNodes.values()), links);
     List<GraphSearcher.QueueEntry> qes = gs.breadthSearch(useRoots, true, monitor);
     ArrayList<String> retval = new ArrayList<String>(); 
     for (GraphSearcher.QueueEntry aqe : qes) {
@@ -636,18 +638,18 @@ public class NodeClusterLayout extends NodeLayout {
     public Order order;
     public InterLink iLink;
     public ClustLayout cLay;
-    public NID.WithName startNode;
+    public NetNode startNode;
     public boolean saveAssign;
-    private Map<NID.WithName, String> nodeClusters_;
+    private Map<NetNode, String> nodeClusters_;
 
     public ClusterParams(Source source, Order order, InterLink iLink, ClustLayout cLay, String startNode, 
     		                 Map<AttributeLoader.AttributeKey, String> nodeClusterAttributes, 
-    		                 Map<String, NID.WithName> nodes, boolean saveAssign) {
+    		                 Map<String, NetNode> nodes, boolean saveAssign) {
     	
     	if (nodeClusterAttributes != null) {
-    	  nodeClusters_ = new HashMap<NID.WithName, String>();
+    	  nodeClusters_ = new HashMap<NetNode, String>();
         for (AttributeLoader.AttributeKey key : nodeClusterAttributes.keySet()) {
-          NID.WithName nodeID = nodes.get(DataUtil.normKey(((AttributeLoader.StringKey)key).key));
+          NetNode nodeID = nodes.get(DataUtil.normKey(((AttributeLoader.StringKey)key).key));
           nodeClusters_.put(nodeID, nodeClusterAttributes.get(key));
         }
       }
@@ -669,26 +671,26 @@ public class NodeClusterLayout extends NodeLayout {
     	return (source.equals(Source.FILE));
     }
 
-    public void install(Map<AttributeLoader.AttributeKey, String> nodeClusterAttributes, Map<String, NID.WithName> nodes) {   	
+    public void install(Map<AttributeLoader.AttributeKey, String> nodeClusterAttributes, Map<String, NetNode> nodes) {   	
     	if (nodeClusterAttributes != null) {
-    	  nodeClusters_ = new HashMap<NID.WithName, String>();
+    	  nodeClusters_ = new HashMap<NetNode, String>();
         for (AttributeLoader.AttributeKey key : nodeClusterAttributes.keySet()) {
-        	NID.WithName nodeID = nodes.get(DataUtil.normKey(((AttributeLoader.StringKey)key).key));    	
+        	NetNode nodeID = nodes.get(DataUtil.normKey(((AttributeLoader.StringKey)key).key));    	
           nodeClusters_.put(nodeID, nodeClusterAttributes.get(key));
         }
       }
     }
     
-    public void assign(Map<NID.WithName, String> nodeClusterAssign) {   	
+    public void assign(Map<NetNode, String> nodeClusterAssign) {   	
     	nodeClusters_ = nodeClusterAssign;
       return;
     }
  
-    public String getClusterForNode(NID.WithName nodeID) {   	
+    public String getClusterForNode(NetNode nodeID) {   	
     	return (nodeClusters_.get(nodeID));
     }  
     
-    public Map<NID.WithName, String> getClusterAssign() {   	
+    public Map<NetNode, String> getClusterAssign() {   	
     	return (nodeClusters_);
     }  
     

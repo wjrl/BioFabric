@@ -38,6 +38,7 @@ import java.util.Set;
 
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.util.DoubMinMax;
@@ -540,8 +541,8 @@ public class PaintCacheSmall {
   
   public Rectangle2D buildObjCache(List<BioFabricNetwork.NodeInfo> targets, List<BioFabricNetwork.LinkInfo> links, 
 				                           boolean shadeNodes, boolean showShadows, BioFabricNetwork.Extents ext, 
-				                           Map<NID.WithName, Rectangle2D> nameMap, 
-				                           Map<NID.WithName, List<Rectangle2D>> drainMap, Rectangle2D netBounds,
+				                           Map<NetNode, Rectangle2D> nameMap, 
+				                           Map<NetNode, List<Rectangle2D>> drainMap, Rectangle2D netBounds,
 				                           AnnotationSet nodeAnnot, AnnotationSet linkAnnot, 
 				                           BTProgressMonitor monitor) throws AsynchExitRequestException {
   	
@@ -699,8 +700,8 @@ public class PaintCacheSmall {
   private void buildNodeTextAndRect(BioFabricNetwork.NodeInfo target,
                                     FontRenderContext frc, 
                                     FabricColorGenerator colGen, Map<Integer, MinMax> linkExtents, 
-                                    boolean shadeNodes, boolean showShadows, Map<NID.WithName, Rectangle2D> nameMap, 
-                                    Map<NID.WithName, List<Rectangle2D>> drainMap, ArrayList<QuadTree.Payload> payloadCache) {
+                                    boolean shadeNodes, boolean showShadows, Map<NetNode, Rectangle2D> nameMap, 
+                                    Map<NetNode, List<Rectangle2D>> drainMap, ArrayList<QuadTree.Payload> payloadCache) {
  
     //
     // Left end node label sizing and Y:

@@ -34,6 +34,8 @@ import javax.swing.JPanel;
 import javax.swing.JOptionPane;
 
 import org.systemsbiology.biofabric.cmd.CommandSet;
+import org.systemsbiology.biofabric.model.FabricNode;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.utils.EditableTable;
 import org.systemsbiology.biofabric.util.DataUtil;
@@ -58,10 +60,10 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
   ////////////////////////////////////////////////////////////////////////////  
 
   private static final long serialVersionUID = 1L;
-  private Set<NID.WithName> result_;
+  private Set<NetNode> result_;
   private EditableTable<NodeListTableModel.TableRow> est_;
-  private Set<NID.WithName> allNodeIDs_;
-  private Map<String, Set<NID.WithName>> normNameToID_;
+  private Set<NetNode> allNodeIDs_;
+  private Map<String, Set<NetNode>> normNameToID_;
  
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -74,7 +76,7 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
   ** Constructor 
   */ 
 
-  public CompareNodesSetupDialog(JFrame parent, Set<NID.WithName> allNodeIDs, Map<String, Set<NID.WithName>> normNameToID) { 
+  public CompareNodesSetupDialog(JFrame parent, Set<NetNode> allNodeIDs, Map<String, Set<NetNode>> normNameToID) { 
     super(parent, "compareNodesSetup.title", new Dimension(600, 500), 2);
     result_ = null;
     allNodeIDs_ = allNodeIDs;
@@ -113,7 +115,7 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
   ** 
   */
   
-  public Set<NID.WithName> getResults() {
+  public Set<NetNode> getResults() {
     return (result_);
   }  
 
@@ -178,7 +180,7 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
     }
       
     
-    List<NID.WithName> applyValues() {
+    List<NetNode> applyValues() {
       List<TableRow> vals = getValuesFromTable();
       
       //
@@ -187,7 +189,7 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
       //
       
       ResourceManager rMan = ResourceManager.getManager();
-      ArrayList<NID.WithName> seenTags = new ArrayList<NID.WithName>();
+      ArrayList<NetNode> seenTags = new ArrayList<NetNode>();
       int size = vals.size();
       if (size == 0) {
         return (seenTags);
@@ -214,11 +216,11 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
         }
                 
         String normTag = DataUtil.normKey(tag);
-        Set<NID.WithName> haveIDs = normNameToID_.get(normTag);
+        Set<NetNode> haveIDs = normNameToID_.get(normTag);
         boolean gotIt = (haveIDs != null);
         if (gotIt) {
         	gotIt = false;
-        	for (NID.WithName haveID : haveIDs) {
+        	for (NetNode haveID : haveIDs) {
         		if (allNodeIDs_.contains(haveID)) {
         			gotIt = true;
         			break;
@@ -233,7 +235,7 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
             
           return (null);
         }
-        seenTags.add(new NID.WithName(new NID(row.nid), tag));
+        seenTags.add(new FabricNode(new NID(row.nid), tag));
       }
       
       return (seenTags);
@@ -253,13 +255,13 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
   */
   
   protected boolean stashForOK() {
-    List<NID.WithName> av = ((NodeListTableModel)est_.getModel()).applyValues();    
+    List<NetNode> av = ((NodeListTableModel)est_.getModel()).applyValues();    
     if (av == null) {
       result_ = null;
       return (false);
     }
     
-    result_ = new HashSet<NID.WithName>(av);
+    result_ = new HashSet<NetNode>(av);
     return (true);
   } 
   
