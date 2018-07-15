@@ -19,10 +19,6 @@
 
 package org.systemsbiology.biofabric.utilAPI;
 
-import java.util.ResourceBundle;
-import java.util.HashMap;
-import java.util.MissingResourceException;
-
 /****************************************************************************
 **
 ** Resource Manager.

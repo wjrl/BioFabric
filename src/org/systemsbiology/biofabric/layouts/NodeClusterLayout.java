@@ -101,8 +101,11 @@ public class NodeClusterLayout extends NodeLayout {
       fullNodeDegree = new HashMap<NID.WithName, Integer>();
     } 	
     
-    BuildData.BuildMode intraLay = (params.cLay == ClusterParams.ClustLayout.SIMILAR) ? BuildData.BuildMode.CLUSTERED_LAYOUT
-            																																					: BuildData.BuildMode.DEFAULT_LAYOUT;
+    // Future...
+    // BuildData.BuildMode intraLay = (params.cLay == ClusterParams.ClustLayout.SIMILAR) ? BuildData.BuildMode.CLUSTERED_LAYOUT
+    //        																																					 : BuildData.BuildMode.DEFAULT_LAYOUT;
+    
+    BuildData.BuildMode intraLay = BuildData.BuildMode.DEFAULT_LAYOUT;    
       
     Iterator<NetLink> flit = rbd.allLinks.iterator();
     while (flit.hasNext()) {
@@ -201,18 +204,20 @@ public class NodeClusterLayout extends NodeLayout {
       	continue;
       }
       List<NID.WithName> targets;
-      if (intraLay == BuildData.BuildMode.CLUSTERED_LAYOUT) {
-        NodeSimilarityLayout.ClusterParams crp = new NodeSimilarityLayout.ClusterParams();
-    	  NodeSimilarityLayout nslLayout = new NodeSimilarityLayout();
-    	  pcrbd.existingIDOrder = new ArrayList<NID.WithName>(pcrbd.allNodeIDs);
-    	 // FAIL
-    	  UiUtil.fixMePrintout("What am I trying to do here?");
-        //targets = nslLayout.doClusteredLayoutOrder(pcrbd, crp, monitor, startFrac, endFrac);
-    	  targets = new ArrayList<NID.WithName>();
-      } else {
+      if (intraLay == BuildData.BuildMode.DEFAULT_LAYOUT) {
         DefaultLayout dl = new DefaultLayout();
         List<NID.WithName> starts = (hubs == null) ? null : hubs.get(clustName);
-        targets = dl.defaultNodeOrder(pcrbd.allLinks, pcrbd.loneNodeIDs, starts, monitor);  
+        targets = dl.defaultNodeOrder(pcrbd.allLinks, pcrbd.loneNodeIDs, starts, monitor); 
+      // Future enhancement:
+      //} else if (intraLay == BuildData.BuildMode.CLUSTERED_LAYOUT) {      	
+        //NodeSimilarityLayout.ClusterParams crp = new NodeSimilarityLayout.ClusterParams();
+    	  //NodeSimilarityLayout nslLayout = new NodeSimilarityLayout();
+    	  //pcrbd.existingIDOrder = new ArrayList<NID.WithName>(pcrbd.allNodeIDs);
+        // The idea is to use the NodeSimilarityLayout on each cluster....
+        //targets = nslLayout.doClusteredLayoutOrder(pcrbd, crp, monitor, startFrac, endFrac);
+    	  //targets = new ArrayList<NID.WithName>();
+      } else {
+      	throw new IllegalStateException();
       }
       allTargets.addAll(targets);
     }
@@ -603,7 +608,7 @@ public class NodeClusterLayout extends NodeLayout {
   		useRoots.add(fakeNodes.get(startClust));
   	}
     GraphSearcher gs = new GraphSearcher(new HashSet<NID.WithName>(fakeNodes.values()), links);
-    List<GraphSearcher.QueueEntry> qes = gs.breadthSearch(useRoots, monitor);
+    List<GraphSearcher.QueueEntry> qes = gs.breadthSearch(useRoots, true, monitor);
     ArrayList<String> retval = new ArrayList<String>(); 
     for (GraphSearcher.QueueEntry aqe : qes) {
       retval.add(aqe.name.getName());
@@ -618,13 +623,13 @@ public class NodeClusterLayout extends NodeLayout {
   
   public static class ClusterParams implements NodeLayout.Params {
         
-    public enum Source {STORED, FILE, PLUGIN};
+    public enum Source {STORED, FILE}; // , PLUGIN}; Future enhancement
     
     public enum Order {NAME, NODE_SIZE, LINK_SIZE, BREADTH};
     
     public enum InterLink {INLINE, BETWEEN};
     
-    public enum ClustLayout {BREADTH_CONN_FIRST, BREADTH, SIMILAR};
+    public enum ClustLayout {BREADTH_CONN_FIRST, BREADTH} // , SIMILAR}; Future enhancement
     
           
     public Source source;
@@ -699,7 +704,8 @@ public class NodeClusterLayout extends NodeLayout {
       	retval.add(new TrueObjChoiceContent<Source>(rMan.getString("nodeClusterParams.stored"), Source.STORED));
       }
       retval.add(new TrueObjChoiceContent<Source>(rMan.getString("nodeClusterParams.file"), Source.FILE));
-      retval.add(new TrueObjChoiceContent<Source>(rMan.getString("nodeClusterParams.plugin"), Source.PLUGIN));   
+      // Future enhancement...
+      // retval.add(new TrueObjChoiceContent<Source>(rMan.getString("nodeClusterParams.plugin"), Source.PLUGIN));   
       return (retval);
     }
     
@@ -716,7 +722,8 @@ public class NodeClusterLayout extends NodeLayout {
       Vector<TrueObjChoiceContent<ClustLayout>> retval = new Vector<TrueObjChoiceContent<ClustLayout>>();
       retval.add(new TrueObjChoiceContent<ClustLayout>(rMan.getString("nodeClusterParams.breadthConnFirst"), ClustLayout.BREADTH_CONN_FIRST));
       retval.add(new TrueObjChoiceContent<ClustLayout>(rMan.getString("nodeClusterParams.breadth"), ClustLayout.BREADTH));
-      retval.add(new TrueObjChoiceContent<ClustLayout>(rMan.getString("nodeClusterParams.similar"), ClustLayout.SIMILAR));   
+      // Future
+      // retval.add(new TrueObjChoiceContent<ClustLayout>(rMan.getString("nodeClusterParams.similar"), ClustLayout.SIMILAR));   
       return (retval);
     }
         

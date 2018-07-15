@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2016 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -140,7 +140,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
     });
     
     userName_ = new JTextField((currSel_ == null) ? "" : currSel_.getName().trim());
-    nameLabel_ = new JLabel("bFirst.selectName");
+    nameLabel_ = new JLabel(rMan_.getString("bFirst.selectName"));
  //   userName_.setEnabled(userSpec_.isSelected());
    // nameLabel_.setEnabled(userSpec_.isSelected());   
     addLabeledWidget(nameLabel_, userName_, false, false); 

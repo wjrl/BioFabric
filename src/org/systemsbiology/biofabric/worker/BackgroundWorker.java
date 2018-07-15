@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2009 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -49,7 +49,7 @@ public class BackgroundWorker implements Runnable, BTProgressMonitor {
   protected Timer checkCancelTimer_;
   protected boolean isForeground_;
   private BackgroundCore core_;
-
+  
   public BackgroundWorker() {
     this(null, false);
   }

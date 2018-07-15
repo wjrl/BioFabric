@@ -1320,7 +1320,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       finished_ = true;
       forRecovery_ = false;
       try {
-        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true);
+        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true, null);
         SIFReaderRunner runner = new SIFReaderRunner(file, idGen, links, loneNodeIDs, nameMap, sss, magBins, relMap, holdIt_, bfw);                                                        
         bfw.setCore(runner);
         bfw.launchWorker();       
@@ -1339,7 +1339,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       finished_ = true;
       forRecovery_ = false;
       try {
-        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true);
+        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true, null);
         GWReaderRunner runner = new GWReaderRunner(file, idGen, links, loneNodeIDs, nameMap, gws, magBins, relMap, holdIt_, bfw);                                                      
         bfw.setCore(runner);
         bfw.launchWorker();       
@@ -1354,7 +1354,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       finished_ = true;
       forRecovery_ = (holdIt == null);
       try {
-      	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true);
+      	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true, null);
         ReaderRunner runner = new ReaderRunner(sup, file, compressed, holdIt_, bfw);                                                      
         bfw.setCore(runner);
         bfw.launchWorker(); 
@@ -1474,7 +1474,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       holdIt_ = holdIt;
       finished_ = true;
       try {
-        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netPreprocess.waitTitle", "netPreprocess.wait", true);
+        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netPreprocess.waitTitle", "netPreprocess.wait", true, null);
         PreprocessRunner runner = new PreprocessRunner(links, relaMap, reducedLinks, culledLinks, holdIt_, bfw);                                                        
         bfw.setCore(runner);
         bfw.launchWorker();  
@@ -1565,7 +1565,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     public void doBackgroundWrite(File file) {
     	file_ = file;
       try { 
-      	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileWrite.waitTitle", "fileWrite.wait", true);
+      	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileWrite.waitTitle", "fileWrite.wait", true, null);
     	  WriterRunner runner = new WriterRunner(file, bfw);
         bfw.setCore(runner);
         bfw.launchWorker();       
@@ -1577,7 +1577,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     
     public void doBackgroundWrite(OutputStream stream) {
     	file_ = null;
-    	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileWrite.waitTitle", "fileWrite.wait", true);
+    	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileWrite.waitTitle", "fileWrite.wait", true, null);
       WriterRunner runner = new WriterRunner(stream, bfw);
       try {                                                                
         bfw.setCore(runner);
@@ -1854,7 +1854,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private BFWorker bfwk_;
     
     NetworkBuilder(boolean isMain, File holdIt) {
-    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netBuild.waitTitle", "netBuild.wait", true); 
+    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netBuild.waitTitle", "netBuild.wait", true, null); 
       runner_ = new NewNetworkRunner(isMain, holdIt, bfwk_);
       holdIt_ = holdIt;
     }
@@ -2056,7 +2056,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private BFWorker bfwk_;
       
     public NetworkRelayout() {
-    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netRelayout.waitTitle", "netRelayout.wait", true);
+    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netRelayout.waitTitle", "netRelayout.wait", true, null);
       runner_ = new NetworkRelayoutRunner(bfwk_); 
       bfwk_.setCore(runner_);
     }
@@ -2291,7 +2291,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       try {
         holdIt_ = holdIt;
         bfp_.shutdown();
-        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netRecolor.waitTitle", "netRecolor.wait", true);
+        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netRecolor.waitTitle", "netRecolor.wait", true, null);
         RecolorNetworkRunner runner = new RecolorNetworkRunner(isMain, holdIt_, bfw);                                                              
         bfw.setCore(runner);
         bfw.launchWorker();      
