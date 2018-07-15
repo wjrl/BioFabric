@@ -906,7 +906,7 @@ public class BioFabricNetwork implements Network {
       mainB = getNodeIDForRow(B.topRow());
     }
     
-    return mainA.equals(mainB);
+    return (mainA.equals(mainB));
   }
   
   /***************************************************************************
@@ -915,7 +915,7 @@ public class BioFabricNetwork implements Network {
   
   private NID.WithName findZoneNode(MinMax mm, List<LinkInfo> links) {
     
-    LinkInfo li = links.get(mm.min);  // checking the minimum of the minmax is enough...?
+    LinkInfo li = links.get(mm.min); // checking min is enough
 
     if (li.isShadow()) {
       return (getNodeIDForRow(li.bottomRow()));
