@@ -260,7 +260,12 @@ public class BackgroundWorkerClient {
       progressBar_.setIndeterminate(false);
     }
     if (progressMessage_ != null) {
-    	String locMsg = (pluginRMan_ == null) ? ResourceManager.getManager().getString(message) :  pluginRMan_.getPluginString(message);   
+    	ResourceManager rMan = ResourceManager.getManager();
+    	String locMsg = (pluginRMan_ == null) ? rMan.getString(message) :  pluginRMan_.getPluginString(message);
+    	// Passthrough. If plugin does not provide or override, we check the core resources:
+    	if (locMsg.equals(message)) {
+    		locMsg = rMan.getString(message);
+    	}
       progressMessage_.setText(locMsg);
       progressMessage_.invalidate();
       progressDialog_.validate();
