@@ -200,7 +200,7 @@ public class SetLayout extends NodeLayout {
     HashSet<NID.WithName> setNodes = new HashSet<NID.WithName>();
     HashSet<NID.WithName> elementNodes = new HashSet<NID.WithName>();     
     
-    LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.setLayoutSetExtracton"); 
+    LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.setLayoutSetExtraction"); 
     
     for (NetLink link : links) {
       lr.report();

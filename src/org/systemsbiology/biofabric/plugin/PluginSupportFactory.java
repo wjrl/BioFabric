@@ -61,10 +61,10 @@ public class PluginSupportFactory {
   
   public static BFWorker getBFWorker(BackgroundWorkerOwner owner,
                                      JFrame topWindow, BackgroundWorkerControlManager suw, String waitTitle, 
-                                     String waitMsg, boolean allowCancels) {
+                                     String waitMsg, boolean allowCancels, String pluginName) {
   	
   	BackgroundWorker bw = new BackgroundWorker();
-    BackgroundWorkerClient bwc = new BackgroundWorkerClient(owner, bw, topWindow, suw, waitTitle, waitMsg, allowCancels);
+    BackgroundWorkerClient bwc = new BackgroundWorkerClient(owner, bw, topWindow, suw, waitTitle, waitMsg, allowCancels, pluginName);
   	return (new WorkerClientBundle(bw, bwc));
   }
   

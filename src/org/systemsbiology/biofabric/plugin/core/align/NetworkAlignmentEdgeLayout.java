@@ -1,5 +1,5 @@
 /*
-**    File created by Rishi Desai
+**    Copyright (C) 2018 Rishi Desai
 **
 **    Copyright (C) 2003-2017 Institute for Systems Biology
 **                            Seattle, Washington, USA.
