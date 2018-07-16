@@ -40,6 +40,8 @@ import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
+import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
+import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.util.DoubMinMax;
 import org.systemsbiology.biofabric.util.MinMax;
@@ -698,9 +700,9 @@ public class PaintCacheSmall {
   */
   
   private void buildNodeTextAndRect(BioFabricNetwork.NodeInfo target,
-                                    FontRenderContext frc, 
-                                    FabricColorGenerator colGen, Map<Integer, MinMax> linkExtents, 
-                                    boolean shadeNodes, boolean showShadows, Map<NetNode, Rectangle2D> nameMap, 
+                                    FontRenderContext frc,
+                                    FabricColorGenerator colGen, Map<Integer, MinMax> linkExtents,
+                                    boolean shadeNodes, boolean showShadows, Map<NetNode, Rectangle2D> nameMap,
                                     Map<NetNode, List<Rectangle2D>> drainMap, ArrayList<QuadTree.Payload> payloadCache) {
  
     //
@@ -712,7 +714,7 @@ public class PaintCacheSmall {
     // Easiest font height hack is to scale it by ~.67: 
     double scaleHeight = labelBounds.getHeight() * LABEL_FONT_HEIGHT_SCALE_;
     double namey = (target.nodeRow * BioFabricPanel.GRID_SIZE) + (scaleHeight / 2.0);
-    double namex = (colmm.min * BioFabricPanel.GRID_SIZE) - labelBounds.getWidth() - BB_HALF_WIDTH_ - NODE_LABEL_X_SHIM_;      
+    double namex = (colmm.min * BioFabricPanel.GRID_SIZE) - labelBounds.getWidth() - BB_HALF_WIDTH_ - NODE_LABEL_X_SHIM_;
     labelBounds.setRect(namex, namey - scaleHeight, labelBounds.getWidth(), scaleHeight);
     
     //
@@ -736,7 +738,7 @@ public class PaintCacheSmall {
     //
     
     List<Rectangle2D> rectList = new ArrayList<Rectangle2D>();
-      
+    
     // Drain zone Y: Lifted slightly above node line and link boxes:
     
     double tnamey = (target.nodeRow - DRAIN_ZONE_ROW_OFFSET_) * BioFabricPanel.GRID_SIZE;
@@ -745,19 +747,24 @@ public class PaintCacheSmall {
     // Drain zone info for each zone:
     //
     
-    List<BioFabricNetwork.DrainZone> zones = target.getDrainZones(showShadows);  
-    DrainZoneInfo[] dzis = new DrainZoneInfo[zones.size()];
+    List<BioFabricNetwork.DrainZone> zones = target.getDrainZones(showShadows);
  
     //
     // Process each zone:
     //
     
-    for (int i = 0; i < zones.size(); i++) {      
+    for (int i = 0; i < zones.size(); i++) {
       DrainZoneInfo curr = new DrainZoneInfo(zones.get(i));
-      dzis[i] = curr;
       if (curr.dzmm == null) {
-        continue;  
+        continue;
       }
+      
+      //
+      // Check if drain zone can show text
+      //
+  
+      FabricDisplayOptions options = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
+      curr.greaterThanMinDZ = (curr.diff >= options.getMinDrainZone());
       
       // Drain zone sizing / rotation:
       
@@ -777,7 +784,7 @@ public class PaintCacheSmall {
                    (float)(dumpScaleHeight / 2.0);
           curr.dumpRect.setRect(tnamex - dumpScaleHeight, tnamey - curr.dumpRect.getWidth(),
                                 dumpScaleHeight, curr.dumpRect.getWidth());
-	      } else {  
+	      } else {
           tnamex = (curr.dzmm.min * BioFabricPanel.GRID_SIZE) +
                   ((curr.diff * BioFabricPanel.GRID_SIZE) / 2.0F) - ((int) curr.dumpRect.getWidth() / 2);
           curr.dumpRect.setRect(tnamex, tnamey - dumpScaleHeight, curr.dumpRect.getWidth(), dumpScaleHeight);
@@ -793,23 +800,26 @@ public class PaintCacheSmall {
 	      }
 	      
 	    }
-    
-	    //
-	    // Output the node label and (optional) drain zone label.  If we are using a tiny font for the drain
-	    // zone, it goes out last to get drawn above the links.
-	    //
-	    TextPath drain = new TextPath(Color.BLACK, target.getNodeName(), tnamex, tnamey, 
-	                                  curr.dumpRect, curr.doRotateName, curr.font);
-	    nkk = Integer.toString(nameKeyCount_++);
-	    pay = new QuadTree.Payload(curr.dumpRect, nkk);
-	    payloadCache.add(pay);
-	    if (curr.font == TextPath.FontSizes.TINY) {  
-	    	nameKeyToPaintThird_.put(nkk, drain);
-	    	nameKeyToNodeID_.put(nkk, target.getNodeID());
-	    } else {
-	    	nameKeyToPaintSecond_.put(nkk, drain);
-	    	nameKeyToNodeID_.put(nkk, target.getNodeID());
-	    }
+	    
+	    if (curr.greaterThanMinDZ) { // only draw text if greater than min drain zone
+       
+	      //
+          // Output the node label and (optional) drain zone label.  If we are using a tiny font for the drain
+          // zone, it goes out last to get drawn above the links.
+          //
+          TextPath drain = new TextPath(Color.BLACK, target.getNodeName(), tnamex, tnamey,
+                  curr.dumpRect, curr.doRotateName, curr.font);
+          nkk = Integer.toString(nameKeyCount_++);
+          pay = new QuadTree.Payload(curr.dumpRect, nkk);
+          payloadCache.add(pay);
+          if (curr.font == TextPath.FontSizes.TINY) {
+            nameKeyToPaintThird_.put(nkk, drain);
+            nameKeyToNodeID_.put(nkk, target.getNodeID());
+          } else {
+            nameKeyToPaintSecond_.put(nkk, drain);
+            nameKeyToNodeID_.put(nkk, target.getNodeID());
+          }
+        }
       
       if (curr.dumpRect != null) {
         rectList.add((Rectangle2D) curr.dumpRect.clone());
@@ -831,10 +841,21 @@ public class PaintCacheSmall {
     private boolean doRotateName;
     private Rectangle2D dumpRect;
     private MinMax dzmm;
+    private boolean greaterThanMinDZ;
     
 
     DrainZoneInfo(BioFabricNetwork.DrainZone dz) {
       this.dzmm = dz.getMinMax().clone();
+      this.diff = this.dzmm.max - this.dzmm.min;
+    }
+  
+    /***************************************************************************
+     **
+     ** Set if drain zone can show text or not
+     */
+    
+    private void setGreaterThanMinDZ(boolean greaterThanMinDZ) {
+      this.greaterThanMinDZ = greaterThanMinDZ;
     }
     
     /***************************************************************************

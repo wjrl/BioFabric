@@ -325,11 +325,11 @@ public class WordLinkComm {
     Iterator onit = allLinks.iterator();
     while (onit.hasNext()) {
       FabricLink nfl = (FabricLink)onit.next();
-      out.print(nfl.getSrcID());
+//      out.print(nfl.getSrcID());
       out.print("\t");
       out.print(nfl.getAugRelation().relation);
       out.print("\t");
-      out.println(nfl.getTrgID());
+//      out.println(nfl.getTrgID());
     }
     out.close();   
     return;
@@ -393,9 +393,9 @@ public class WordLinkComm {
             String col = (String)origOrder.get(nextLink);
             String rel = nextLink.getAugRelation().relation;
             String pref = (nextLink.getAugRelation().isShadow) ? "shdw(" : "(";
-            String asText = nextLink.getSrcID() + " " + pref + rel + ") " + nextLink.getTrgID();
+//            String asText = nextLink.getSrcID() + " " + pref + rel + ") " + nextLink.getTrgID();
             Integer colI = Integer.valueOf(col);
-            perGrp.put(colI, asText);          
+//            perGrp.put(colI, asText);
           }
         }      
 
