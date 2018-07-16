@@ -561,6 +561,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     //
     
     zcs_.setZoomPoints(zoomVals); 
+    zcs_.setZoomLevels(zooms); 
    
     return (zooms);
   }

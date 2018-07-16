@@ -305,13 +305,6 @@ public class QuadTree {
   	  return (retval);
     }
 	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
 	  /***************************************************************************
 	  **
 	  ** Given a rectangle and a depth, fill in the children at the depth that

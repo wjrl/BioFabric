@@ -54,6 +54,7 @@ public class ZoomCommandSupport {
   private ZoomTarget sup_;
   private JScrollPane jsp_;
   private double[] zoomVals_;
+  private int[] zooms_;
   private int currZoomIndex_;
   private double customZoom_;
   private ZoomResult fullModelZoom_;
@@ -84,6 +85,26 @@ public class ZoomCommandSupport {
   //
   ////////////////////////////////////////////////////////////////////////////    
 
+  /***************************************************************************
+  **
+  ** Set zooms (used to drive quadtree depth)
+  */
+
+  public void setZoomLevels(int[] zooms) {
+    zooms_ = zooms;
+    return;
+  }
+  
+  /***************************************************************************
+  **
+  ** Get zooms (used to drive quadtree depth on recolor operations)
+  */
+
+  public int[] getZoomLevels() {
+  	System.out.println("Ses " + zooms_.length);
+    return (zooms_);
+  }
+  
   /***************************************************************************
   **
   ** Set zoom vals (do only at the start)

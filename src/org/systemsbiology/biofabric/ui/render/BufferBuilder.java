@@ -161,7 +161,7 @@ public class BufferBuilder {
   ** Simple overview one-shot
   */
   
-  public BufferedImage buildOneBuf(int[] zooms) {
+  public BufferedImage buildOneBuf() {
     screenDim_ = new Dimension();
     worldRect_ = new Rectangle2D.Double();
     binRender_.dimsForBuf(screenDim_, worldRect_); // Both will give same answer... 
