@@ -2422,7 +2422,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         bfp_.setBufBuilder(bb);      
       } else {
         BufferBuilder bb = new BufferBuilder(bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
-        topImage = bb.buildOneBuf(preZooms);      
+        topImage = bb.buildOneBuf();      
         bfp_.setBufBuilder(null);
       }
     }
@@ -2440,15 +2440,15 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     screenSize.setSize((int)(screenSize.getWidth() * 0.8), (int)(screenSize.getHeight() * 0.4));
     colGen_.newColorModel();
     bfp_.changePaint(monitor);
-    int[] preZooms = bfp_.getZoomController().getZoomIndices();
+    int[] zoomLevels = bfp_.getZoomController().getZoomLevels();
     BufferedImage topImage = null;
     if (forMain) {
       BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
-      topImage = bb.buildBufs(preZooms, bfp_, 24, monitor);
+      topImage = bb.buildBufs(zoomLevels, bfp_, 24, monitor);
       bfp_.setBufBuilder(bb);      
     } else {
       BufferBuilder bb = new BufferBuilder(bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
-      topImage = bb.buildOneBuf(preZooms);      
+      topImage = bb.buildOneBuf();      
       bfp_.setBufBuilder(null);
     }
     return (topImage);
