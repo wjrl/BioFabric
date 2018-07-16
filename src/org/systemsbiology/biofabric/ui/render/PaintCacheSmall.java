@@ -764,7 +764,8 @@ public class PaintCacheSmall {
       //
   
       FabricDisplayOptions options = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
-      curr.greaterThanMinDZ = (curr.diff >= options.getMinDrainZone());
+      curr.setGreaterThanMinDZ(curr.diff + 1 >= options.getMinDrainZone());
+      // + 1 because #links in (a,b) is b-a+1
       
       // Drain zone sizing / rotation:
       
