@@ -187,13 +187,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public static final int HIER_DAG_LAYOUT              = 51;
   public static final int WORLD_BANK_LAYOUT            = 52;
   public static final int LOAD_WITH_EDGE_WEIGHTS       = 53;
-  public static final int LOAD_NET_ALIGN_GROUPS        = 54;
-  public static final int LOAD_NET_ALIGN_ORPHAN_EDGES  = 55;
-  public static final int NET_ALIGN_SCORES             = 56;
-  public static final int LOAD_FROM_GW                 = 57;
+  public static final int LOAD_FROM_GW                 = 54;
   
-  public static final int ADD_NODE_ANNOTATIONS         = 58;
-  public static final int ADD_LINK_ANNOTATIONS         = 59;
+  public static final int ADD_NODE_ANNOTATIONS         = 55;
+  public static final int ADD_LINK_ANNOTATIONS         = 56;
  
   public static final int GENERAL_PUSH   = 0x01;
   public static final int ALLOW_NAV_PUSH = 0x02;

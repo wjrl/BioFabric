@@ -659,7 +659,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       if (type == FileLoadFlows.FileLoadType.SIF) {
         finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
       } else if (type == FileLoadFlows.FileLoadType.GW) {
-        finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
+        // need to process gw liks if no relations provided
+        finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, nodeNames, sss, true, magBins, relMap, holdIt);
       } else {
         throw (new IllegalArgumentException("File type not identified"));
       }
@@ -672,6 +673,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
           sss = (new SIFImportLoader()).importFabric(file, idGen, links, loneNodes, nodeNames, magBins, null);
         } else if (type == FileLoadFlows.FileLoadType.GW) {
           sss = (new GWImportLoader()).importFabric(file, idGen, links, loneNodes, nodeNames, magBins, null);
+          (new GWImportLoader.GWRelationManager()).process(links, topWindow_, null);
         } else {
           throw (new IllegalArgumentException("File type not identified"));
         }
@@ -728,7 +730,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     if (type == FileLoadFlows.FileLoadType.SIF) {
       finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, null, sss, magBins, relMap, holdIt);
     } else if (type == FileLoadFlows.FileLoadType.GW) {
-      finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, null, sss, magBins, relMap, holdIt);
+      // no need for gw processing because links will be post-processed anyways (e.g. net align)
+      finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, null, sss, false, magBins, relMap, holdIt);
     } else {
       throw (new IllegalArgumentException("File type not identified"));
     }
@@ -1333,14 +1336,14 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     public boolean doBackgroundGWRead(File file, UniqueLabeller idGen,
                                       List<NetLink> links, Set<NetNode> loneNodeIDs,
                                       Map<String, String> nameMap, FabricImportLoader.FileImportStats gws,
-                                      Integer magBins, SortedMap<AugRelation, Boolean> relMap,
-                                      File holdIt) {
+                                      boolean needsGWProcess, Integer magBins,
+                                      SortedMap<AugRelation, Boolean> relMap, File holdIt) {
       holdIt_ = holdIt;
       finished_ = true;
       forRecovery_ = false;
       try {
         BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true, null);
-        GWReaderRunner runner = new GWReaderRunner(file, idGen, links, loneNodeIDs, nameMap, gws, magBins, relMap, holdIt_, bfw);                                                      
+        GWReaderRunner runner = new GWReaderRunner(file, idGen, links, loneNodeIDs, nameMap, gws, magBins, relMap, needsGWProcess, holdIt_, bfw);
         bfw.setCore(runner);
         bfw.launchWorker();       
       } catch (Exception ex) {
@@ -1640,6 +1643,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private FabricImportLoader.FileImportStats sss_;
     private Integer magBins_;
     private SortedMap<AugRelation, Boolean> relaMap_;
+    private boolean needsGWProcessing_;
     private File restoreCacheFile_;
     private BFWorker bfwk_;
     
@@ -1647,7 +1651,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
                           Set<NetNode> loneNodeIDs, Map<String, String> nameMap,
                           FabricImportLoader.FileImportStats gws,
                           Integer magBins, SortedMap<AugRelation, Boolean> relaMap,
-                          File restoreCacheFile, BFWorker bfwk) {
+                          boolean needsGWProcessing, File restoreCacheFile, BFWorker bfwk) {
      
       bfwk_ = bfwk;
       myFile_ = file;
@@ -1658,6 +1662,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       sss_ = gws;
       magBins_ = magBins;
       relaMap_ = relaMap;
+      needsGWProcessing_ = needsGWProcessing;
       restoreCacheFile_ = restoreCacheFile;
     }
   
@@ -1676,8 +1681,10 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         FabricImportLoader.FileImportStats sss = 
         		(new GWImportLoader()).importFabric(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, monitor);
         sss_.copyInto(sss);
+        if (needsGWProcessing_) { // only process links/default rel if needed
+          (new GWImportLoader.GWRelationManager()).process(links_, topWindow_, monitor);
+        }
         PluginSupportFactory.getBuildExtractor().extractRelations(links_, relaMap_, monitor);
-        
         return (new Boolean(true));
       } catch (IOException ioe) {
         bfwk_.stashException(ioe);

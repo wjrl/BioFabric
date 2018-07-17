@@ -23,7 +23,14 @@ package org.systemsbiology.biofabric.plugin.core.align;
 
 import java.awt.Dimension;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
+import org.systemsbiology.biofabric.ui.dialogs.utils.DialogSupport;
+import org.systemsbiology.biofabric.util.ExceptionHandler;
+import org.systemsbiology.biofabric.util.FixedJButton;
 
 public class GWRelationDialog extends BTStashResultsDialog {
   
@@ -34,6 +41,8 @@ public class GWRelationDialog extends BTStashResultsDialog {
   ////////////////////////////////////////////////////////////////////////////
   
   private JFrame parent_;
+  private FixedJButton buttonOK_;
+  private JTextField textField_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -41,15 +50,103 @@ public class GWRelationDialog extends BTStashResultsDialog {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  public GWRelationDialog(JFrame parent) {
-    super(parent, "networkAlignment.relationDialog", new Dimension(400, 400), 2);
+  public GWRelationDialog(JFrame parent, final String defaultRelation) {
+    super(parent, "fileRead.relationDialog", new Dimension(400, 200), 2);
+    this.parent_ = parent;
     
+    addWidgetFullRow(new JLabel("fileRead.relationMessage"), false, true);
     
-    
+    textField_ = new JTextField(defaultRelation);
+    textField_.getDocument().addDocumentListener(new DocumentListener() {
+      public void insertUpdate(DocumentEvent e) {
+        try {
+          manageOKButton();
+        } catch (Exception ex) {
+          ExceptionHandler.getHandler().displayException(ex);
+        }
+      }
+  
+      public void removeUpdate(DocumentEvent e) {
+        try {
+          manageOKButton();
+        } catch (Exception ex) {
+          ExceptionHandler.getHandler().displayException(ex);
+        }
+      }
+  
+      public void changedUpdate(DocumentEvent e) {
+        try {
+          manageOKButton();
+        } catch (Exception ex) {
+          ExceptionHandler.getHandler().displayException(ex);
+        }
+      }
+    });
+  
+    JLabel label = new JLabel("Rel");
+    addLabeledWidget(label, textField_, false, false);
+  
+    //
+    // OK button
+    //
+  
+    DialogSupport.Buttons buttons = finishConstruction();
+  
+    buttonOK_ = buttons.okButton;
+    buttonOK_.setEnabled(true);
+  
+    setLocationRelativeTo(parent);
   }
   
+  public String getRelation() {
+    return (textField_.getText().trim());
+  }
+  
+  /**
+   * Check whether OK button should be activated or deactivated
+   */
+  
+  private void manageOKButton () {
+    if (hasMinRequirements()) {
+      buttonOK_.setEnabled(true);
+    } else {
+      buttonOK_.setEnabled(false);
+    }
+    return;
+  }
+  
+  /**
+   * Check whether dialog has textfield with text
+   */
+  
+  private boolean hasMinRequirements() {
+    String text = textField_.getText().trim();
+    return (!text.isEmpty() && text.split(" ").length == 1);
+  }
+  
+  @Override
+  public void okAction() {
+    try {
+      super.okAction();
+    } catch (Exception ex) {
+      // should never happen because OK button won't activate without min requirements
+      ExceptionHandler.getHandler().displayException(ex);
+    }
+    return;
+  }
+  
+  @Override
+  public void closeAction() {
+    try {
+      super.closeAction();
+    } catch (Exception ex) {
+      ExceptionHandler.getHandler().displayException(ex);
+    }
+  }
+  
+  @Override
   protected boolean stashForOK() {
-    return false;
+    return (hasMinRequirements());
   }
   
 }
