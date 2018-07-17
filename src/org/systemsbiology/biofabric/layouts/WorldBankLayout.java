@@ -32,7 +32,7 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
@@ -93,7 +93,7 @@ public class WorldBankLayout extends NodeLayout {
   */
   
   @Override
-  public boolean criteriaMet(BuildData.RelayoutBuildData rbd,
+  public boolean criteriaMet(BuildData rbd,
                              BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                                LayoutCriterionFailureException {
     //
@@ -106,9 +106,9 @@ public class WorldBankLayout extends NodeLayout {
     // NOTE 2: Note the "popular" hubs in the world bank network ARE NOT THEMSELVES INTERACTING. 
     
     
-    LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.hDagLayoutCriteriaCheck");
+    LoopReporter lr = new LoopReporter(rbd.getLinks().size(), 20, monitor, 0.0, 1.0, "progress.hDagLayoutCriteriaCheck");
     
-    for (NetLink aLink : rbd.allLinks) {
+    for (NetLink aLink : rbd.getLinks()) {
       lr.report();
       //if (!aLink.isDirected()) {
        // throw new LayoutCriterionFailureException();
@@ -128,11 +128,11 @@ public class WorldBankLayout extends NodeLayout {
   ** Relayout the network!
   */
   
-  public List<NetNode> doNodeLayout(BuildData.RelayoutBuildData rbd,
-  																			 Params params,
-  		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NetNode> doNodeLayout(BuildData rbd,
+  																  Params params,
+  		                              BTProgressMonitor monitor) throws AsynchExitRequestException {
     
-    List<NetNode> targets = calcNodeOrder(rbd.allLinks, rbd.loneNodeIDs, monitor);       
+    List<NetNode> targets = calcNodeOrder(rbd.getLinks(), rbd.getSingletonNodes(), monitor);       
 
     //
     // Now have the ordered list of targets we are going to display.

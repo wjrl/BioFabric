@@ -41,7 +41,8 @@ import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.modelAPI.Network;
 import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.io.AttributeLoader;
-import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.io.BuildDataImpl;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.layoutAPI.EdgeLayout;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
@@ -149,11 +150,12 @@ public class BioFabricNetwork implements Network {
   ** Constructor
   */
 
-  public BioFabricNetwork(BuildData bd, PlugInManager pMan, BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public BioFabricNetwork(BuildData rbd, PlugInManager pMan, BTProgressMonitor monitor) throws AsynchExitRequestException {
   	nodeIDGenerator_ = new UniqueLabeller();
+  	BuildDataImpl bd = (BuildDataImpl)rbd;
   	pMan_ = pMan;
   	layoutMode_ = Network.LayoutMode.UNINITIALIZED_MODE;
-  	BuildData.BuildMode mode = bd.getMode();
+  	BuildDataImpl.BuildMode mode = bd.getMode();
     nodeAnnot_ = new AnnotationSet();
     Map<Boolean, AnnotationSet> linkAnnots_ = new HashMap<Boolean, AnnotationSet>();
     linkAnnots_.put(Boolean.TRUE, new AnnotationSet());
@@ -173,38 +175,33 @@ public class BioFabricNetwork implements Network {
       case SET_LAYOUT:
       case WORLD_BANK_LAYOUT:
         standardBuildDataInit(bd);
-        BuildData.RelayoutBuildData rbd = (BuildData.RelayoutBuildData)bd;
-        transferRelayoutBuildData(rbd);
-        relayoutNetwork(rbd, monitor);
+        transferRelayoutBuildData(bd);
+        relayoutNetwork(bd, monitor);
         break;
       case BUILD_FROM_PLUGIN:
         standardBuildDataInit(bd);
-        rbd = (BuildData.RelayoutBuildData)bd;
-        transferRelayoutBuildData(rbd);
+        transferRelayoutBuildData(bd);
         bd.processSpecialtyBuildData();
-        processLinks(rbd, monitor);
+        processLinks(bd, monitor);
         break;
       case BUILD_FOR_SUBMODEL:
-        BuildData.SelectBuildData sbd = (BuildData.SelectBuildData)bd;
-        colGen_ = sbd.fullNet.colGen_;
-        this.linkGrouping_ = new ArrayList<String>(sbd.fullNet.linkGrouping_);
-        this.showLinkGroupAnnotations_ = sbd.fullNet.showLinkGroupAnnotations_;
-        this.layoutMode_ = sbd.fullNet.layoutMode_;
-        fillSubModel(sbd.fullNet, sbd.subNodes, sbd.subLinks);
+        colGen_ = bd.fullNet.colGen_;
+        this.linkGrouping_ = new ArrayList<String>(bd.fullNet.linkGrouping_);
+        this.showLinkGroupAnnotations_ = bd.fullNet.showLinkGroupAnnotations_;
+        this.layoutMode_ = bd.fullNet.layoutMode_;
+        fillSubModel(bd.fullNet, bd.subNodes, bd.subLinks);
         break;
       case BUILD_FROM_XML:
       case SHADOW_LINK_CHANGE:
-        BioFabricNetwork built = ((BuildData.PreBuiltBuildData)bd).bfn;
-        standardBuildDataTransfer(built);
+        standardBuildDataTransfer(bd.getExistingNetwork());
         break;
       case BUILD_FROM_SIF:
         standardBuildDataInit(bd);
-        BuildData.RelayoutBuildData obd = (BuildData.RelayoutBuildData)bd;
         linkGrouping_ = new ArrayList<String>();
         showLinkGroupAnnotations_ = false;
         layoutMode_ = LayoutMode.UNINITIALIZED_MODE;
-        colGen_ = obd.colGen;
-        processLinks(obd, monitor);
+        colGen_ = bd.getColorGen();
+        processLinks(bd, monitor);
         break;
       default:
         throw new IllegalArgumentException();
@@ -237,11 +234,11 @@ public class BioFabricNetwork implements Network {
   ** Build support
   */
   
-  private void transferRelayoutBuildData(BuildData.RelayoutBuildData bd) { 
-    this.linkGrouping_ = new ArrayList<String>(bd.linkGroups);
-    this.showLinkGroupAnnotations_ = bd.showLinkGroupAnnotations;
-    this.colGen_ = bd.colGen;
-    this.layoutMode_ = bd.layoutMode;
+  private void transferRelayoutBuildData(BuildDataImpl bd) { 
+    this.linkGrouping_ = new ArrayList<String>(bd.getGroupOrder());
+    this.showLinkGroupAnnotations_ = bd.getShowLinkGroupAnnotations();
+    this.colGen_ = bd.getColorGen();
+    this.layoutMode_ = bd.getGroupOrderMode();
     return;
   }
  
@@ -603,11 +600,12 @@ public class BioFabricNetwork implements Network {
   ** Process a link set
   */
 
-  private void processLinks(BuildData.RelayoutBuildData rbd, BTProgressMonitor monitor) throws AsynchExitRequestException {
+  private void processLinks(BuildData bd, BTProgressMonitor monitor) throws AsynchExitRequestException {
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
     //
 
+  	BuildDataImpl rbd = (BuildDataImpl)bd;
   	NodeLayout layout = rbd.getNodeLayout();
     List<NetNode> targetIDs = layout.doNodeLayout(rbd, null, monitor);
     
@@ -615,7 +613,7 @@ public class BioFabricNetwork implements Network {
     // Now have the ordered list of targets we are going to display.
     //
 
-    fillNodesFromOrder(targetIDs, rbd.colGen, rbd.clustAssign, monitor);
+    fillNodesFromOrder(targetIDs, rbd.getColorGen(), rbd.clustAssign, monitor);
 
     //
     // This now assigns the link to its column. The RelayoutBuildData gives us
@@ -629,12 +627,15 @@ public class BioFabricNetwork implements Network {
     edgeLayout.preProcessEdges(rbd, monitor);
     
     edgeLayout.layoutEdges(rbd, monitor);
-    specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, false, monitor);
+    specifiedLinkToColumn(rbd.getColorGen(), rbd.getLinkOrder(), false, monitor);
     
-    UiUtil.fixMePrintout("Node Annotations and Link Grouping for NetAlign in processLinks");
-    this.nodeAnnot_ = rbd.nodeAnnotForLayout;
-    this.linkAnnots_ = rbd.linkAnnotsForLayout;
-    this.linkGrouping_ = rbd.linkGroups;
+    //
+    // If node annotations, link annotations, or group order has been set, install those now:
+    //
+    
+    nodeAnnot_ = rbd.getNodeAnnotations();
+    linkAnnots_ = rbd.getLinkAnnotations();
+    linkGrouping_ = rbd.getGroupOrder();
 
     //
     // Determine the start & end of each target row needed to handle the incoming
@@ -646,7 +647,7 @@ public class BioFabricNetwork implements Network {
     //
     // For the lone nodes, they are assigned into the last column:
     //
-    loneNodesToLastColumn(rbd.loneNodeIDs, monitor);
+    loneNodesToLastColumn(rbd.getSingletonNodes(), monitor);
     return;
   }
   
@@ -655,27 +656,28 @@ public class BioFabricNetwork implements Network {
   ** Relayout the network!
   */
   
-  private void relayoutNetwork(BuildData.RelayoutBuildData rbd, BTProgressMonitor monitor) throws AsynchExitRequestException {
-    BuildData.BuildMode mode = rbd.getMode();
-    installLinkGroups(rbd.linkGroups);
-    setShowLinkGroupAnnotations(rbd.showLinkGroupAnnotations);
-    setLayoutMode(rbd.layoutMode);
-    boolean specifiedNodeOrder = (mode == BuildData.BuildMode.NODE_ATTRIB_LAYOUT) || 
-                                 (mode == BuildData.BuildMode.DEFAULT_LAYOUT) ||
-                                 (mode == BuildData.BuildMode.CONTROL_TOP_LAYOUT) ||
-                                 (mode == BuildData.BuildMode.HIER_DAG_LAYOUT) ||
-                                 (mode == BuildData.BuildMode.MULTI_MODE_DAG_LAYOUT) ||
-                                 (mode == BuildData.BuildMode.SET_LAYOUT) ||
-                                 (mode == BuildData.BuildMode.WORLD_BANK_LAYOUT) ||
-                                 (mode == BuildData.BuildMode.NODE_CLUSTER_LAYOUT) || 
-                                 (mode == BuildData.BuildMode.CLUSTERED_LAYOUT) || 
-                                 (mode == BuildData.BuildMode.REORDER_LAYOUT); 
+  private void relayoutNetwork(BuildData bd, BTProgressMonitor monitor) throws AsynchExitRequestException {
+  	BuildDataImpl rbd = (BuildDataImpl)bd;
+    BuildDataImpl.BuildMode mode = rbd.getMode();
+    installLinkGroups(rbd.getGroupOrder());
+    setShowLinkGroupAnnotations(rbd.getShowLinkGroupAnnotations());
+    setLayoutMode(rbd.getGroupOrderMode());
+    boolean specifiedNodeOrder = (mode == BuildDataImpl.BuildMode.NODE_ATTRIB_LAYOUT) || 
+                                 (mode == BuildDataImpl.BuildMode.DEFAULT_LAYOUT) ||
+                                 (mode == BuildDataImpl.BuildMode.CONTROL_TOP_LAYOUT) ||
+                                 (mode == BuildDataImpl.BuildMode.HIER_DAG_LAYOUT) ||
+                                 (mode == BuildDataImpl.BuildMode.MULTI_MODE_DAG_LAYOUT) ||
+                                 (mode == BuildDataImpl.BuildMode.SET_LAYOUT) ||
+                                 (mode == BuildDataImpl.BuildMode.WORLD_BANK_LAYOUT) ||
+                                 (mode == BuildDataImpl.BuildMode.NODE_CLUSTER_LAYOUT) || 
+                                 (mode == BuildDataImpl.BuildMode.CLUSTERED_LAYOUT) || 
+                                 (mode == BuildDataImpl.BuildMode.REORDER_LAYOUT); 
 
     List<NetNode> targetIDs;
     if (specifiedNodeOrder) {
-      targetIDs = specifiedIDOrder(rbd.allNodeIDs, rbd.nodeOrder);
+      targetIDs = specifiedIDOrder(rbd.getAllNodes(), rbd.getNodeOrder());
     } else {       
-      targetIDs = rbd.existingIDOrder;
+      targetIDs = rbd.getExistingIDOrder();
     }
    
     //
@@ -683,20 +685,24 @@ public class BioFabricNetwork implements Network {
     // Build target->row maps and the inverse:
     //
 
-    fillNodesFromOrder(targetIDs, rbd.colGen, rbd.clustAssign, monitor);
+    fillNodesFromOrder(targetIDs, rbd.getColorGen(), rbd.clustAssign, monitor);
 
     //
     // Ordering of links:
     //
   
-    if ((rbd.linkOrder == null) || rbd.linkOrder.isEmpty() || (mode == BuildData.BuildMode.GROUP_PER_NODE_CHANGE) || (mode == BuildData.BuildMode.GROUP_PER_NETWORK_CHANGE)) {
-      if ((rbd.nodeOrder == null) || rbd.nodeOrder.isEmpty()) {
-        rbd.nodeOrder = new HashMap<NetNode, Integer>();
+    SortedMap<Integer, NetLink> lor = rbd.getLinkOrder();
+    Map<NetNode, Integer> nor = rbd.getNodeOrder();
+    
+    if ((lor == null) || lor.isEmpty() || (mode == BuildDataImpl.BuildMode.GROUP_PER_NODE_CHANGE) || (mode == BuildDataImpl.BuildMode.GROUP_PER_NETWORK_CHANGE)) {
+      if ((nor == null) || nor.isEmpty()) {
+        Map<NetNode, Integer> norNew = new HashMap<NetNode, Integer>();
         int numT = targetIDs.size();
         for (int i = 0; i < numT; i++) {
           NetNode targID = targetIDs.get(i);
-          rbd.nodeOrder.put(targID, Integer.valueOf(i));
+          norNew.put(targID, Integer.valueOf(i));
         }
+        rbd.setNodeOrder(norNew);
       }
       (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
     }
@@ -705,10 +711,10 @@ public class BioFabricNetwork implements Network {
     // This now assigns the link to its column, based on user specification
     //
   
-    specifiedLinkToColumn(rbd.colGen, rbd.linkOrder, ((mode == BuildData.BuildMode.LINK_ATTRIB_LAYOUT) || 
-    		                                              (mode == BuildData.BuildMode.NODE_CLUSTER_LAYOUT) ||
-    		                                              (mode == BuildData.BuildMode.GROUP_PER_NODE_CHANGE) ||
-    		                                              (mode == BuildData.BuildMode.GROUP_PER_NETWORK_CHANGE)), monitor);
+    specifiedLinkToColumn(rbd.getColorGen(), lor, ((mode == BuildDataImpl.BuildMode.LINK_ATTRIB_LAYOUT) || 
+    		                                           (mode == BuildDataImpl.BuildMode.NODE_CLUSTER_LAYOUT) ||
+    		                                           (mode == BuildDataImpl.BuildMode.GROUP_PER_NODE_CHANGE) ||
+    		                                           (mode == BuildDataImpl.BuildMode.GROUP_PER_NETWORK_CHANGE)), monitor);
       
     //
     // Determine the start & end of each target row needed to handle the incoming
@@ -721,14 +727,14 @@ public class BioFabricNetwork implements Network {
     // For the lone nodes, they are assigned into the last column:
     //
 
-    loneNodesToLastColumn(rbd.loneNodeIDs, monitor);
+    loneNodesToLastColumn(rbd.getSingletonNodes(), monitor);
     
     //
     // If we have node/link annotations, install them
     //
-      
-    nodeAnnot_ = rbd.nodeAnnotForLayout;
-    linkAnnots_ = rbd.linkAnnotsForLayout;
+    
+    nodeAnnot_ = rbd.getNodeAnnotations();
+    linkAnnots_ = rbd.getLinkAnnotations();
 
     return;
   }

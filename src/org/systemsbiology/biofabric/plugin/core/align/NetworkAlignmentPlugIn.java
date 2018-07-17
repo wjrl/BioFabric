@@ -38,6 +38,7 @@ import javax.swing.JOptionPane;
 import org.systemsbiology.biofabric.ioAPI.PluginWhiteboard;
 import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
 import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.io.GWImportLoader;
 import org.systemsbiology.biofabric.modelAPI.Network;
 import org.systemsbiology.biofabric.modelAPI.AugRelation;
@@ -54,7 +55,6 @@ import org.systemsbiology.biofabric.util.AttributeExtractor;
 import org.systemsbiology.biofabric.util.CharacterEntityMapper;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.Indenter;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
 import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
@@ -520,13 +520,16 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
                                            UniqueLabeller idGen, File align, File holdIt) {
 
     HashMap<NetNode, String> emptyClustMap = new HashMap<NetNode, String>();
-    NetworkAlignmentBuildData nabd = 
-      new NetworkAlignmentBuildData(idGen, allLargerNodes, allSmallerNodes, reducedLinks, loneNodeIDs, mergedToCorrect,
-                                    isAlignedNode, report, emptyClustMap,
-                                    viewType, mapG1toG2, perfectMap, linksLarge, lonersLarge, mode);
 
+    BuildData bd = PluginSupportFactory.getBuildDataForPlugin(idGen, reducedLinks, loneNodeIDs, emptyClustMap, null);
+    bd.setLayoutMode(Network.LayoutMode.PER_NETWORK_MODE);
+    NetworkAlignmentBuildData nabd = new NetworkAlignmentBuildData(allLargerNodes, allSmallerNodes, mergedToCorrect,
+                                                                   isAlignedNode, report,
+                                                                   viewType, mapG1toG2, perfectMap, linksLarge, lonersLarge, mode);
+    bd.setPluginBuildData(nabd);
+  
     try {
-      flf_.buildNetworkForPlugIn(nabd, holdIt); 
+      flf_.buildNetworkForPlugIn(bd, holdIt, className_); 
     } catch (OutOfMemoryError oom) {
       ExceptionHandler.getHandler().displayOutOfMemory(oom);
       return (false);

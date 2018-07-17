@@ -32,15 +32,13 @@ import java.util.Vector;
 
 import org.systemsbiology.biofabric.analysis.CycleFinder;
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
-import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
-import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout.DefaultFabricLinkLocater;
+import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.modelAPI.NetNode;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.TrueObjChoiceContent;
 import org.systemsbiology.biofabric.util.UiUtil;
@@ -156,7 +154,7 @@ public class ControlTopLayout extends NodeLayout {
   */
   
   @Override
-  public boolean criteriaMet(BuildData.RelayoutBuildData rbd,
+  public boolean criteriaMet(BuildData rbd,
                              BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                                LayoutCriterionFailureException {
     //
@@ -165,7 +163,7 @@ public class ControlTopLayout extends NodeLayout {
     // Do we handle singleton nodes OK???
     //
     
-    LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.ControlTopLayoutCriteriaCheck");
+    LoopReporter lr = new LoopReporter(rbd.getLinks().size(), 20, monitor, 0.0, 1.0, "progress.ControlTopLayoutCriteriaCheck");
     
     if ((fixedOrder_ != null) && (normNameToIDs_ == null)) {
       throw new LayoutCriterionFailureException();
@@ -181,29 +179,29 @@ public class ControlTopLayout extends NodeLayout {
   ** Order the nodes
   */
   
-  public List<NetNode> doNodeLayout(BuildData.RelayoutBuildData rbd,
-  																			 Params params,
-  		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NetNode> doNodeLayout(BuildData rbd,
+  																  Params params,
+  		                              BTProgressMonitor monitor) throws AsynchExitRequestException {
 									    
     
     List<NetNode> ctrlList;
-    SortedSet<NetNode> cnSet = new TreeSet<NetNode>(controlNodes(rbd.allNodeIDs, rbd.allLinks, monitor));
+    SortedSet<NetNode> cnSet = new TreeSet<NetNode>(controlNodes(rbd.getAllNodes(), rbd.getLinks(), monitor));
     List<NetNode> dfo = null;
     
     switch (ctrlMode_) {
       case CTRL_PARTIAL_ORDER:
-        dfo = allNodeOrder(rbd.allNodeIDs, rbd.allLinks, false, monitor);
-        ctrlList = controlSortPartialOrder(rbd.allNodeIDs, rbd.allLinks, cnSet, dfo, false, monitor);
+        dfo = allNodeOrder(rbd.getAllNodes(), rbd.getLinks(), false, monitor);
+        ctrlList = controlSortPartialOrder(rbd.getAllNodes(), rbd.getLinks(), cnSet, dfo, false, monitor);
         break;
       case CTRL_INTRA_DEGREE_ONLY:       
-        ctrlList = controlSortIntraDegreeOnly(rbd.allNodeIDs, rbd.allLinks, cnSet, false, monitor);
+        ctrlList = controlSortIntraDegreeOnly(rbd.getAllNodes(), rbd.getLinks(), cnSet, false, monitor);
         break;
       case CTRL_DEGREE_ONLY:
-        dfo = allNodeOrder(rbd.allNodeIDs, rbd.allLinks, false, monitor);
+        dfo = allNodeOrder(rbd.getAllNodes(), rbd.getLinks(), false, monitor);
         ctrlList = listToSublist(cnSet, dfo, monitor);
         break;   
       case CTRL_MEDIAN_TARGET_DEGREE:
-        ctrlList = orderCtrlMedianTargetDegree(rbd.allNodeIDs, rbd.allLinks, false, monitor);
+        ctrlList = orderCtrlMedianTargetDegree(rbd.getAllNodes(), rbd.getLinks(), false, monitor);
         break;        
       case FIXED_LIST:
         ctrlList = null; // forcedTop;
@@ -216,22 +214,22 @@ public class ControlTopLayout extends NodeLayout {
     
     switch (targMode_) {
       case GRAY_CODE:
-        nodeOrder = targetsBySourceGrayCode(ctrlList,cnSet, rbd.allNodeIDs, rbd.allLinks, monitor);
+        nodeOrder = targetsBySourceGrayCode(ctrlList,cnSet, rbd.getAllNodes(), rbd.getLinks(), monitor);
         break;
       case NODE_DEGREE_ODOMETER_SOURCE:
-        nodeOrder = targetsByNodeDegreeOdometerSourceMultigraph(ctrlList, cnSet, rbd.allNodeIDs, rbd.allLinks, monitor);
+        nodeOrder = targetsByNodeDegreeOdometerSourceMultigraph(ctrlList, cnSet, rbd.getAllNodes(), rbd.getLinks(), monitor);
         break;
       case TARGET_DEGREE:
         if (dfo == null) {
-          dfo = allNodeOrder(rbd.allNodeIDs, rbd.allLinks, false, monitor);
+          dfo = allNodeOrder(rbd.getAllNodes(), rbd.getLinks(), false, monitor);
         }
-        Set<NetNode> targs = new HashSet<NetNode>(rbd.allNodeIDs);
+        Set<NetNode> targs = new HashSet<NetNode>(rbd.getAllNodes());
         targs.removeAll(cnSet);
         nodeOrder = new ArrayList<NetNode>(ctrlList);
         nodeOrder.addAll(listToSublist(targs, dfo, monitor));
         break;
       case BREADTH_ORDER:
-        nodeOrder = orderTargetsBreadth(ctrlList, cnSet, rbd.allNodeIDs, rbd.allLinks, false, monitor);
+        nodeOrder = orderTargetsBreadth(ctrlList, cnSet, rbd.getAllNodes(), rbd.getLinks(), false, monitor);
         break;
       default:
         throw new IllegalStateException();
@@ -339,8 +337,8 @@ public class ControlTopLayout extends NodeLayout {
     // This fixes the order of the testing of up links so it is deterministic:
     //
     
-    DefaultFabricLinkLocater dfll = 
-      new DefaultFabricLinkLocater(nodeToRow, null, null, BioFabricNetwork.LayoutMode.UNINITIALIZED_MODE);
+    DefaultEdgeLayout.DefaultFabricLinkLocater dfll = 
+      new DefaultEdgeLayout.DefaultFabricLinkLocater(nodeToRow, null, null, BioFabricNetwork.LayoutMode.UNINITIALIZED_MODE);
     TreeSet<NetLink> upLinkOrder = new TreeSet<NetLink>(dfll);
     upLinkOrder.addAll(upLinks);
 

@@ -31,7 +31,7 @@ import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.analysis.CycleFinder;
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
-import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
@@ -92,7 +92,7 @@ public class HierDAGLayout extends NodeLayout {
   */
   
   @Override
-  public boolean criteriaMet(BuildData.RelayoutBuildData rbd,
+  public boolean criteriaMet(BuildData rbd,
   		                       BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                              LayoutCriterionFailureException {
   	//
@@ -100,9 +100,9 @@ public class HierDAGLayout extends NodeLayout {
   	// 2) There are no cycles in the network
   	//
 	  
-	  LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.hDagLayoutCriteriaCheck");
+	  LoopReporter lr = new LoopReporter(rbd.getLinks().size(), 20, monitor, 0.0, 1.0, "progress.hDagLayoutCriteriaCheck");
 	  
-    for (NetLink aLink : rbd.allLinks) {
+    for (NetLink aLink : rbd.getLinks()) {
       lr.report();
       if (!aLink.isDirected()) {
     	  throw new LayoutCriterionFailureException();
@@ -110,7 +110,7 @@ public class HierDAGLayout extends NodeLayout {
     }
     lr.finish();
 	  
-  	CycleFinder cf = new CycleFinder(rbd.allNodeIDs, rbd.allLinks, monitor);
+  	CycleFinder cf = new CycleFinder(rbd.getAllNodes(), rbd.getLinks(), monitor);
     if (cf.hasACycle(monitor)) {
       throw new LayoutCriterionFailureException();
     }
@@ -122,9 +122,9 @@ public class HierDAGLayout extends NodeLayout {
   ** Generate the Node ordering
   */
   
-  public List<NetNode> doNodeLayout(BuildData.RelayoutBuildData rbd,
-  		                                   Params params,
-  		   																 BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NetNode> doNodeLayout(BuildData rbd,
+  		                              Params params,
+  		   													  BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     List<NetNode> targets = orderByNodeDegree(rbd, monitor);       
 
@@ -143,13 +143,13 @@ public class HierDAGLayout extends NodeLayout {
   ** Get the ordering of nodes by node degree:
   */
   
-  private List<NetNode> orderByNodeDegree(BuildData.RelayoutBuildData rbd, 
-  		                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
+  private List<NetNode> orderByNodeDegree(BuildData rbd, 
+  		                                    BTProgressMonitor monitor) throws AsynchExitRequestException {
     
-    HashSet<NetNode> nodesToGo = new HashSet<NetNode>(rbd.allNodeIDs);
+    HashSet<NetNode> nodesToGo = new HashSet<NetNode>(rbd.getAllNodes());
     
     // Build map of sources to targets, also record in and out degrees of each node:
-    linksToSources(rbd.allNodeIDs, rbd.allLinks, monitor);
+    linksToSources(rbd.getAllNodes(), rbd.getLinks(), monitor);
     
     List<NetNode> placeList = extractRoots(monitor);
     addToPlaceList(placeList);
