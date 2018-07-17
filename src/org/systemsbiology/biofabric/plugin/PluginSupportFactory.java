@@ -19,11 +19,20 @@
 
 package org.systemsbiology.biofabric.plugin;
 
+import java.util.Map;
+import java.util.Set;
+
 import javax.swing.JFrame;
 
+import org.systemsbiology.biofabric.io.BuildDataImpl;
 import org.systemsbiology.biofabric.io.BuildExtractorImpl;
 import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
+import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.util.ResourceManager;
+import org.systemsbiology.biofabric.util.UniqueLabeller;
 import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
 import org.systemsbiology.biofabric.worker.BackgroundWorker;
 import org.systemsbiology.biofabric.worker.BackgroundWorkerClient;
@@ -75,5 +84,18 @@ public class PluginSupportFactory {
   
   public static PluginResourceManager getResourceManager(String pluginName) {
   	return (new ResourceManager.ForPlugins(pluginName));
-  }  
+  } 
+  
+  /***************************************************************************
+  **
+  ** Get a BuildData
+  */
+  
+  public static BuildData getBuildDataForPlugin(UniqueLabeller idGen,
+										  		                      Set<NetLink> allLinks, Set<NetNode> loneNodeIDs, 
+										  		                      Map<NetNode, String> clustAssign, 
+										  		                      FabricColorGenerator colGen) {
+  	 
+    return (new BuildDataImpl(idGen, allLinks, loneNodeIDs, clustAssign, colGen, BuildDataImpl.BuildMode.BUILD_FROM_PLUGIN));
+  }
 }

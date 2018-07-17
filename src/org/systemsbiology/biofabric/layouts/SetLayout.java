@@ -31,12 +31,11 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
-import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.modelAPI.NetNode;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 import org.systemsbiology.biofabric.workerAPI.LoopReporter;
@@ -99,7 +98,7 @@ public class SetLayout extends NodeLayout {
   */
   
   @Override
-  public boolean criteriaMet(BuildData.RelayoutBuildData rbd,
+  public boolean criteriaMet(BuildData rbd,
                              BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                                LayoutCriterionFailureException {
     //
@@ -109,14 +108,15 @@ public class SetLayout extends NodeLayout {
     // 4) Not a multigraph.
     //
     
-    LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.setLayoutCriteriaCheck"); 
+    LoopReporter lr = new LoopReporter(rbd.getLinks().size(), 20, monitor, 0.0, 1.0, "progress.setLayoutCriteriaCheck"); 
     
-    if (!((rbd.loneNodeIDs == null) || rbd.loneNodeIDs.isEmpty())) {
+    
+    if (!((rbd.getSingletonNodes() == null) || rbd.getSingletonNodes().isEmpty())) {
       throw new LayoutCriterionFailureException();
     }
      
     HashSet<String> rels = new HashSet<String>();
-    for (NetLink aLink : rbd.allLinks) {
+    for (NetLink aLink : rbd.getLinks()) {
       lr.report();
       if (!aLink.isDirected()) {
         throw new LayoutCriterionFailureException();
@@ -130,7 +130,7 @@ public class SetLayout extends NodeLayout {
     
     elemsPerSet_ = new HashMap<NetNode, Set<NetNode>>();
     setsPerElem_ = new HashMap<NetNode, Set<NetNode>>();    
-    extractSets(rbd.allLinks, monitor);
+    extractSets(rbd.getLinks(), monitor);
  
     return (true);  
   }
@@ -140,9 +140,9 @@ public class SetLayout extends NodeLayout {
   ** Order the nodes
   */
   
-  public List<NetNode> doNodeLayout(BuildData.RelayoutBuildData rbd,
-  		                                   Params params,
-                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NetNode> doNodeLayout(BuildData rbd,
+  		                              Params params,
+                                    BTProgressMonitor monitor) throws AsynchExitRequestException {
         
     //
     // We order the sets by cardinality, largest first. Ties broken by lexicographic order:

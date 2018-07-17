@@ -55,6 +55,7 @@ import javax.swing.filechooser.FileFilter;
 import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.cmd.HeadlessOracle;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
 import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
 import org.systemsbiology.biofabric.layoutAPI.EdgeLayout;
@@ -204,8 +205,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Do network build for a plug-in that provides the needed custom BuildData
   */ 
      
-  public void buildNetworkForPlugIn(BuildData.RelayoutBuildData pluginData, File holdIt) { 
-    NetworkBuilder nb = new FileLoadFlowsImpl.NetworkBuilder(true, holdIt);
+  public void buildNetworkForPlugIn(BuildData pluginData, File holdIt, String pluginName) { 
+    NetworkBuilder nb = new FileLoadFlowsImpl.NetworkBuilder(true, holdIt, pluginName);
     nb.setForPlugInBuild(pluginData);
     nb.doNetworkBuild();
     return;
@@ -216,7 +217,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Do basic relayout
   */ 
      
-  public void doBasicRelayout(BuildData.BuildMode bMode) { 
+  public void doBasicRelayout(BuildDataImpl.BuildMode bMode) { 
     (new NetworkRelayout()).doNetworkRelayout(bfp_.getNetwork(), bMode); 
     return;
   }
@@ -229,7 +230,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   public void doDefaultRelayout(DefaultLayout.Params params) { 
     NetworkRelayout nb = new NetworkRelayout();
     nb.setParams(params);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.DEFAULT_LAYOUT); 
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.DEFAULT_LAYOUT); 
     return;
   }
 
@@ -241,7 +242,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   public void doConnectivityRelayout(NodeSimilarityLayout.ClusterParams params) { 
     NetworkRelayout nb = new NetworkRelayout();
     nb.setParams(params);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.CLUSTERED_LAYOUT);    
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.CLUSTERED_LAYOUT);    
     return;
   }
     
@@ -261,8 +262,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
    
     BioFabricNetwork bfn = bfp_.getNetwork();
     if (bfn != null) {
-      NetworkBuilder nb = new NetworkBuilder(true, holdIt);
-      nb.setForDisplayOptionChange(bfn, BuildData.BuildMode.SHADOW_LINK_CHANGE);
+      NetworkBuilder nb = new NetworkBuilder(true, holdIt, null);
+      nb.setForDisplayOptionChange(bfn, BuildDataImpl.BuildMode.SHADOW_LINK_CHANGE);
       nb.doNetworkBuild();
     }
     return;
@@ -294,7 +295,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   public void doShapeMatchRelayout(NodeSimilarityLayout.ResortParams params) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setParams(params);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.REORDER_LAYOUT);   
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.REORDER_LAYOUT);   
     return;
   }
 
@@ -306,7 +307,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   public void doLinkGroupRelayout(BioFabricNetwork bfn, List<String> groupOrder, 
                                   BioFabricNetwork.LayoutMode mode, 
                                   boolean showGroupLinkAnnotations, 
-                                  BuildData.BuildMode bmode) {
+                                  BuildDataImpl.BuildMode bmode) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setGroupOrderAndMode(groupOrder, mode, showGroupLinkAnnotations);
     nb.doNetworkRelayout(bfn, bmode);
@@ -321,7 +322,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
    public void doSetRelayout(boolean pointUp) {
      NetworkRelayout nb = new NetworkRelayout();
      nb.setPointUp(pointUp);
-     nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.SET_LAYOUT);
+     nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.SET_LAYOUT);
      return;
    }
   
@@ -333,7 +334,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   public void doHierDagRelayout(boolean pointUp) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setPointUp(pointUp);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.HIER_DAG_LAYOUT); 
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.HIER_DAG_LAYOUT); 
     return;
   }
   
@@ -346,7 +347,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
                                    ControlTopLayout.TargMode tMode, List<String> fixedList) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setControlTopModes(cMode, tMode, fixedList);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.CONTROL_TOP_LAYOUT); 
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.CONTROL_TOP_LAYOUT); 
     return;
   }
   
@@ -358,7 +359,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   public void doNetworkClusterRelayout(NodeClusterLayout.ClusterParams params) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setParams(params);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.NODE_CLUSTER_LAYOUT);
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.NODE_CLUSTER_LAYOUT);
     return;
   }
 
@@ -370,7 +371,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   public void doNetworkLinkRelayout(SortedMap<Integer, NetLink> modifiedAndChecked) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setLinkOrder(modifiedAndChecked);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.LINK_ATTRIB_LAYOUT);  
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.LINK_ATTRIB_LAYOUT);  
     return;
   }
 
@@ -382,7 +383,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   public void doNetworkRelayout(Map<AttributeLoader.AttributeKey, String> nodeAttributes) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setNodeOrderFromAttrib(nodeAttributes);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.NODE_ATTRIB_LAYOUT);   
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.NODE_ATTRIB_LAYOUT);   
     return;
   }
 
@@ -420,8 +421,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   		                                    Set<NetNode> loneNodeIDs, 
   		                                    Set<NetLink> reducedLinks, File holdIt) {
   	try {
-      NetworkBuilder nb = new NetworkBuilder(true, holdIt);
-      nb.setForSifBuild(idGen, reducedLinks, loneNodeIDs, BuildData.BuildMode.BUILD_FROM_SIF);  
+      NetworkBuilder nb = new NetworkBuilder(true, holdIt, null);
+      nb.setForSifBuild(idGen, reducedLinks, loneNodeIDs, BuildDataImpl.BuildMode.BUILD_FROM_SIF);  
       if (this.headlessOracle_ == null) {
         nb.doNetworkBuild();            
       } else {
@@ -835,8 +836,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   */ 
     
   public boolean postXMLLoad(FabricFactory ff, String fileName, File holdIt) {  
-    NetworkBuilder nb = new NetworkBuilder(true, holdIt); 
-    nb.setBuildDataForXMLLoad(ff.getFabricNetwork(), BuildData.BuildMode.BUILD_FROM_XML);
+    NetworkBuilder nb = new NetworkBuilder(true, holdIt, null); 
+    nb.setBuildDataForXMLLoad(ff.getFabricNetwork(), BuildDataImpl.BuildMode.BUILD_FROM_XML);
     nb.doNetworkBuild();
     manageWindowTitle(fileName);
     return (true);
@@ -1853,36 +1854,36 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private File holdIt_;  // For recovery
     private BFWorker bfwk_;
     
-    NetworkBuilder(boolean isMain, File holdIt) {
-    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netBuild.waitTitle", "netBuild.wait", true, null); 
+    NetworkBuilder(boolean isMain, File holdIt, String forPlugin) {
+    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netBuild.waitTitle", "netBuild.wait", true, forPlugin); 
       runner_ = new NewNetworkRunner(isMain, holdIt, bfwk_);
       holdIt_ = holdIt;
     }
     
     void setForSifBuild(UniqueLabeller idGen, Set<NetLink> links, 
-                        Set<NetNode> loneNodeIDs, BuildData.BuildMode bMode) {
-      if (bMode != BuildData.BuildMode.BUILD_FROM_SIF) {
+                        Set<NetNode> loneNodeIDs, BuildDataImpl.BuildMode bMode) {
+      if (bMode != BuildDataImpl.BuildMode.BUILD_FROM_SIF) {
         throw new IllegalArgumentException();
       }
       runner_.setBuildDataForSIF(idGen, links, loneNodeIDs, bMode);
       return;
     }
     
-    void setForPlugInBuild(BuildData.RelayoutBuildData bData) {
+    void setForPlugInBuild(BuildData bData) {
       runner_.setBuildDataForPlugin(bData);
       return;
     }
     
-    void setForDisplayOptionChange(BioFabricNetwork bfn, BuildData.BuildMode bMode) {
-      if (bMode != BuildData.BuildMode.SHADOW_LINK_CHANGE) {
+    void setForDisplayOptionChange(BioFabricNetwork bfn, BuildDataImpl.BuildMode bMode) {
+      if (bMode != BuildDataImpl.BuildMode.SHADOW_LINK_CHANGE) {
         throw new IllegalArgumentException();
       }
       runner_.setBuildDataForOptionChange(bfn, bMode);
       return;
     }
 
-    void setBuildDataForXMLLoad(BioFabricNetwork bfn, BuildData.BuildMode bMode) {
-      if (bMode != BuildData.BuildMode.BUILD_FROM_XML) {
+    void setBuildDataForXMLLoad(BioFabricNetwork bfn, BuildDataImpl.BuildMode bMode) {
+      if (bMode != BuildDataImpl.BuildMode.BUILD_FROM_XML) {
         throw new IllegalArgumentException();
       }
       runner_.setBuildDataForXMLLoad(bfn, bMode); 
@@ -1940,6 +1941,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       return;
     }
   }
+  
   /***************************************************************************
   **
   ** Build New Network
@@ -1951,11 +1953,11 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private UniqueLabeller idGen_;
     private Set<NetLink> links_; 
     private Set<NetNode> loneNodeIDs_;
-    private BuildData.BuildMode bMode_;
+    private BuildDataImpl.BuildMode bMode_;
     private BioFabricNetwork bfn_;
     private File holdIt_;
     private long linkCount_;
-    private BuildData.RelayoutBuildData plugInBuildData_;
+    private BuildDataImpl plugInBuildData_;
     private BFWorker bfwk_;
     
 
@@ -1970,7 +1972,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     }
     
     void setBuildDataForSIF(UniqueLabeller idGen, Set<NetLink> links, Set<NetNode> loneNodeIDs,
-                            BuildData.BuildMode bMode) {    
+                            BuildDataImpl.BuildMode bMode) {    
       idGen_ = idGen;
       links_ = links; 
       loneNodeIDs_ = loneNodeIDs;
@@ -1979,20 +1981,20 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       return;
     }
     
-    void setBuildDataForPlugin(BuildData.RelayoutBuildData bd) {
-      bMode_ = bd.getMode();
-      plugInBuildData_ = bd;
+    void setBuildDataForPlugin(BuildData bd) {
+      plugInBuildData_ = (BuildDataImpl)bd;
+      bMode_ = plugInBuildData_.getMode();
       return;
     }
     
-    void setBuildDataForOptionChange(BioFabricNetwork bfn, BuildData.BuildMode bMode) {
+    void setBuildDataForOptionChange(BioFabricNetwork bfn, BuildDataImpl.BuildMode bMode) {
       bfn_ = bfn;
       linkCount_ = bfn.getLinkCount(true);
       bMode_ = bMode;
       return;
     }
     
-    void setBuildDataForXMLLoad(BioFabricNetwork bfn, BuildData.BuildMode bMode) {
+    void setBuildDataForXMLLoad(BioFabricNetwork bfn, BuildDataImpl.BuildMode bMode) {
       bfn_ = bfn;
       linkCount_ = bfn.getLinkCount(true);
       bMode_ = bMode;
@@ -2003,13 +2005,13 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       switch (bMode_) {
         case BUILD_FROM_SIF:
           HashMap<NetNode, String> emptyMap = new HashMap<NetNode, String>();
-          return (new BuildData.RelayoutBuildData(idGen_, links_, loneNodeIDs_, emptyMap, colGen_, bMode_));
+          return (new BuildDataImpl(idGen_, links_, loneNodeIDs_, emptyMap, colGen_, bMode_));
         case BUILD_FROM_PLUGIN:
           plugInBuildData_.setColorGen(colGen_);
           return (plugInBuildData_);
         case SHADOW_LINK_CHANGE:
         case BUILD_FROM_XML:
-          return (new BuildData.PreBuiltBuildData(bfn_, bMode_));   
+          return (new BuildDataImpl(bfn_, bMode_));   
         default:
           throw new IllegalStateException();    
       }
@@ -2093,12 +2095,12 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       return;
     }
     
-    public void doNetworkRelayout(BioFabricNetwork bfn, BuildData.BuildMode bMode) {
+    public void doNetworkRelayout(BioFabricNetwork bfn, BuildDataImpl.BuildMode bMode) {
       try {
         holdIt_ = File.createTempFile("BioFabricHold", ".zip");
         holdIt_.deleteOnExit();
         runner_.setNetworkAndMode(holdIt_, bfn, bMode); 
-        if (bMode == BuildData.BuildMode.REORDER_LAYOUT) {
+        if (bMode == BuildDataImpl.BuildMode.REORDER_LAYOUT) {
           bfwk_.makeSuperChart();
         }
         bfwk_.launchWorker();         
@@ -2161,8 +2163,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     
   private class NetworkRelayoutRunner implements BackgroundCore {
  
-    private BuildData.RelayoutBuildData rbd_;
-    private BuildData.BuildMode mode_;
+    private BuildDataImpl rbd_;
+    private BuildDataImpl.BuildMode mode_;
     private NodeLayout.Params params_;
     private BioFabricNetwork bfn_;
     private Map<AttributeLoader.AttributeKey, String> nodeAttrib_;
@@ -2185,7 +2187,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     	return (new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)); 
     }
 
-    void setNetworkAndMode(File holdIt, BioFabricNetwork bfn, BuildData.BuildMode bMode) {
+    void setNetworkAndMode(File holdIt, BioFabricNetwork bfn, BuildDataImpl.BuildMode bMode) {
       holdIt_ = holdIt;
       bfn_ = bfn;
       mode_ = bMode;
@@ -2233,7 +2235,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       if ((holdIt_ != null) && (holdIt_.length() == 0)) {
         buildRestoreCache(holdIt_, monitor);
       }
-      rbd_ = new BuildData.RelayoutBuildData(bfn_, mode_, monitor);
+      rbd_ = new BuildDataImpl(bfn_, mode_, monitor);
       if (nodeAttrib_ != null) {
         rbd_.setNodeOrderFromAttrib(nodeAttrib_);   
       } else if ((groupOrder_ != null) && (layMode_ != null)) {
@@ -2374,12 +2376,12 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   */
   
   public void buildEmptyNetwork() {
-    BuildData.RelayoutBuildData obd = new BuildData.RelayoutBuildData(new UniqueLabeller(),
-                                                                      new HashSet<NetLink>(), 
-                                                                      new HashSet<NetNode>(), 
-                                                                      new HashMap<NetNode, String>(),
-                                                                      colGen_, 
-                                                                      BuildData.BuildMode.BUILD_FROM_SIF);
+    BuildData obd = new BuildDataImpl(new UniqueLabeller(),
+                                      new HashSet<NetLink>(), 
+                                      new HashSet<NetNode>(), 
+                                      new HashMap<NetNode, String>(),
+                                      colGen_, 
+                                      BuildDataImpl.BuildMode.BUILD_FROM_SIF);
     try {
       newModelOperations(obd, true);
     } catch (IOException ioex) {

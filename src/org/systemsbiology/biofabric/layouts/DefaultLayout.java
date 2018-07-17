@@ -31,7 +31,7 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.modelAPI.NetNode;
@@ -78,12 +78,12 @@ public class DefaultLayout extends NodeLayout {
   ** Relayout the network!
   */
   
-  public List<NetNode> doNodeLayout(BuildData.RelayoutBuildData rbd, 
-  		                                   Params params,
-  		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NetNode> doNodeLayout(BuildData rbd, 
+  		                              Params params,
+  		                              BTProgressMonitor monitor) throws AsynchExitRequestException {
       
     List<NetNode> startNodeIDs = (params == null) ? null : ((DefaultParams)params).startNodes;
-    List<NetNode> targetIDs = defaultNodeOrder(rbd.allLinks, rbd.loneNodeIDs, startNodeIDs, monitor);
+    List<NetNode> targetIDs = defaultNodeOrder(rbd.getLinks(), rbd.getSingletonNodes(), startNodeIDs, monitor);
 
     //
     // Now have the ordered list of targets we are going to display.

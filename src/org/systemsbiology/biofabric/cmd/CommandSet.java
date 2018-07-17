@@ -77,7 +77,8 @@ import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.event.SelectionChangeListener;
 import org.systemsbiology.biofabric.io.AttributeLoader;
-import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
+import org.systemsbiology.biofabric.io.BuildDataImpl;
 import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
 import org.systemsbiology.biofabric.io.FileLoadFlowsImpl;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
@@ -115,7 +116,6 @@ import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FileExtensionFilters;
 import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.InvalidInputException;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
@@ -1885,7 +1885,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private static final long serialVersionUID = 1L;
     
     LayoutTopControlAction(boolean doIcon) {
-      super(doIcon, "command.TopControlLayout", "command.TopControlLayoutMnem", BuildData.BuildMode.CONTROL_TOP_LAYOUT);
+      super(doIcon, "command.TopControlLayout", "command.TopControlLayoutMnem", BuildDataImpl.BuildMode.CONTROL_TOP_LAYOUT);
     }
     
     @Override
@@ -1926,7 +1926,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private static final long serialVersionUID = 1L;
     
     HierDAGLayoutAction(boolean doIcon) {
-      super(doIcon, "command.HierDAGLayout", "command.HierDAGLayoutMnem", BuildData.BuildMode.HIER_DAG_LAYOUT);
+      super(doIcon, "command.HierDAGLayout", "command.HierDAGLayoutMnem", BuildDataImpl.BuildMode.HIER_DAG_LAYOUT);
     }
     
     @Override
@@ -1956,7 +1956,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private static final long serialVersionUID = 1L;
     
     SetLayoutAction(boolean doIcon) {
-      super(doIcon, "command.SetLayout", "command.SetLayoutMnem", BuildData.BuildMode.SET_LAYOUT);
+      super(doIcon, "command.SetLayout", "command.SetLayoutMnem", BuildDataImpl.BuildMode.SET_LAYOUT);
     }
     
     @Override
@@ -2041,7 +2041,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private static final long serialVersionUID = 1L;
     
     WorldBankLayoutAction(boolean doIcon) {
-      super(doIcon, "command.WorldBankLayout", "command.WorldBankLayoutMnem", BuildData.BuildMode.WORLD_BANK_LAYOUT);
+      super(doIcon, "command.WorldBankLayout", "command.WorldBankLayoutMnem", BuildDataImpl.BuildMode.WORLD_BANK_LAYOUT);
     }
   }
 
@@ -2097,9 +2097,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   private abstract class BasicLayoutAction extends ChecksForEnabled {
     
     private static final long serialVersionUID = 1L;
-    private BuildData.BuildMode bMode_;
+    private BuildDataImpl.BuildMode bMode_;
     
-    BasicLayoutAction(boolean doIcon, String nameTag, String mnemTag, BuildData.BuildMode bMode) {
+    BasicLayoutAction(boolean doIcon, String nameTag, String mnemTag, BuildDataImpl.BuildMode bMode) {
       ResourceManager rMan = ResourceManager.getManager(); 
       putValue(Action.NAME, rMan.getString(nameTag));
       if (doIcon) {
@@ -2286,11 +2286,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       BioFabricNetwork.LayoutMode mode = lgsd.getChosenMode();
       boolean showLinkAnnotations = lgsd.showLinkAnnotations();
 
-      BuildData.BuildMode bmode; 
+      BuildDataImpl.BuildMode bmode; 
       if (mode == BioFabricNetwork.LayoutMode.PER_NODE_MODE) {
-        bmode = BuildData.BuildMode.GROUP_PER_NODE_CHANGE;
+        bmode = BuildDataImpl.BuildMode.GROUP_PER_NODE_CHANGE;
       } else if (mode == BioFabricNetwork.LayoutMode.PER_NETWORK_MODE) {
-      	bmode = BuildData.BuildMode.GROUP_PER_NETWORK_CHANGE;
+      	bmode = BuildDataImpl.BuildMode.GROUP_PER_NETWORK_CHANGE;
       } else {
         throw new IllegalStateException();
       }

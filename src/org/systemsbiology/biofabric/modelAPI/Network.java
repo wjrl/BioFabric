@@ -20,47 +20,7 @@
 package org.systemsbiology.biofabric.modelAPI;
 
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.TreeSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
-import org.xml.sax.Attributes;
-
-import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
-import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.analysis.Link;
-import org.systemsbiology.biofabric.io.AttributeLoader;
-import org.systemsbiology.biofabric.io.BuildData;
-import org.systemsbiology.biofabric.io.FabricFactory;
-import org.systemsbiology.biofabric.layoutAPI.EdgeLayout;
-import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
-import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
-import org.systemsbiology.biofabric.parser.GlueStick;
-import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
-import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
-import org.systemsbiology.biofabric.plugin.PlugInManager;
-import org.systemsbiology.biofabric.ui.FabricColorGenerator;
-import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
-import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
-import org.systemsbiology.biofabric.util.AttributeExtractor;
-import org.systemsbiology.biofabric.util.CharacterEntityMapper;
-import org.systemsbiology.biofabric.util.DataUtil;
-import org.systemsbiology.biofabric.util.Indenter;
-import org.systemsbiology.biofabric.util.MinMax;
-import org.systemsbiology.biofabric.util.NID;
-import org.systemsbiology.biofabric.util.UiUtil;
-import org.systemsbiology.biofabric.util.UniqueLabeller;
-import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
-import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
-import org.systemsbiology.biofabric.workerAPI.LoopReporter;
 
 /****************************************************************************
 **
