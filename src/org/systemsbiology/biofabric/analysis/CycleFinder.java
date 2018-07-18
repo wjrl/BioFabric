@@ -165,7 +165,6 @@ public class CycleFinder {
         NetLink link = lit.next();
         Integer targColor = colors.get(link.getTrgNode());
         if (targColor.equals(grey_)) {
-          System.err.println("link " + link + "creates cycle");
           return (true);          
         } else if (targColor.equals(white_)) {
           if (visit(link.getTrgNode(), colors, lr)) {

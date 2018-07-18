@@ -73,24 +73,23 @@ public class BuildDataImpl implements BuildData {
   //////////////////////////////////////////////////////////////////////////// 
   
   public enum BuildMode {DEFAULT_LAYOUT,
-                       REORDER_LAYOUT ,
-                       CLUSTERED_LAYOUT ,
-                       SHADOW_LINK_CHANGE,
-                       GROUP_PER_NODE_CHANGE,
-                       BUILD_FOR_SUBMODEL,
-                       BUILD_FROM_XML,
-                       BUILD_FROM_SIF,
-                       NODE_ATTRIB_LAYOUT,
-                       LINK_ATTRIB_LAYOUT,
-                       NODE_CLUSTER_LAYOUT,
-                       CONTROL_TOP_LAYOUT,
-                       HIER_DAG_LAYOUT,
-                       MULTI_MODE_DAG_LAYOUT,
-                       WORLD_BANK_LAYOUT,
-                       SET_LAYOUT,
-                       GROUP_PER_NETWORK_CHANGE,
-                       BUILD_FROM_PLUGIN
-                      };
+                         REORDER_LAYOUT ,
+                         CLUSTERED_LAYOUT ,
+                         SHADOW_LINK_CHANGE,
+                         GROUP_PER_NODE_CHANGE,
+                         BUILD_FOR_SUBMODEL,
+                         BUILD_FROM_XML,
+                         BUILD_FROM_SIF,
+                         NODE_ATTRIB_LAYOUT,
+                         LINK_ATTRIB_LAYOUT,
+                         NODE_CLUSTER_LAYOUT,
+                         CONTROL_TOP_LAYOUT,
+                         HIER_DAG_LAYOUT,
+                         WORLD_BANK_LAYOUT,
+                         SET_LAYOUT,
+                         GROUP_PER_NETWORK_CHANGE,
+                         BUILD_FROM_PLUGIN
+                        };
                                                 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -98,7 +97,7 @@ public class BuildDataImpl implements BuildData {
   //
   ////////////////////////////////////////////////////////////////////////////
                          
-  private BuildMode mode;
+  private BuildMode mode_;
   
   //
   // For selection builds:
@@ -171,7 +170,7 @@ public class BuildDataImpl implements BuildData {
   ////////////////////////////////////////////////////////////////////////////   
         
   public BuildDataImpl(BuildMode mode) {
-    this.mode = mode;
+    this.mode_ = mode;
   }
   
   public BuildDataImpl(BioFabricNetwork fullNet, List<BioFabricNetwork.NodeInfo> subNodes, List<BioFabricNetwork.LinkInfo> subLinks) {
@@ -259,7 +258,7 @@ public class BuildDataImpl implements BuildData {
   }
   
   public BuildMode getMode() {
-    return (mode);
+    return (mode_);
   }  
   
   public boolean canRestore() {
@@ -412,7 +411,7 @@ public class BuildDataImpl implements BuildData {
   }
 
   public boolean needsLayoutForRelayout() {
-    switch (mode) {
+    switch (mode_) {
       case DEFAULT_LAYOUT:
       case WORLD_BANK_LAYOUT:
       case CONTROL_TOP_LAYOUT:
@@ -448,7 +447,7 @@ public class BuildDataImpl implements BuildData {
   	  }
     }
 
-  	switch (mode) {
+  	switch (mode_) {
   	  case DEFAULT_LAYOUT:
   	  case BUILD_FROM_SIF:
   	  	return (new DefaultLayout());
@@ -469,9 +468,7 @@ public class BuildDataImpl implements BuildData {
         System.out.print(link + " means what?");            
         return (new SetLayout(pointUp.booleanValue() ? SetLayout.LinkMeans.BELONGS_TO : SetLayout.LinkMeans.CONTAINS)); 
   	  default:
-  	  	System.err.println("Mode = " + mode);
-  	  	UiUtil.fixMePrintout("Should throw exception");
-  	  	return (new DefaultLayout());
+  	  	throw new IllegalStateException();
   	} 	
   }
 
@@ -484,7 +481,7 @@ public class BuildDataImpl implements BuildData {
   	  }
     }
 
-  	switch (mode) {
+  	switch (mode_) {
   	  case REORDER_LAYOUT:
       case CLUSTERED_LAYOUT:  
       case NODE_CLUSTER_LAYOUT:

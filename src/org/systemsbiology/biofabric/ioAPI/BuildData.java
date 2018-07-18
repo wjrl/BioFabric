@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 
-import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.layoutAPI.EdgeLayout;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;

@@ -340,11 +340,9 @@ public class AnnotationLoader {
   
   protected String stripQuotes(String inString) {
     String procString = inString.trim();
-    System.err.println(procString);
     if ((procString.indexOf("\"") == 0) && (procString.lastIndexOf("\"") == (procString.length() - 1))) {
       procString = procString.replaceAll("\"", "");
     }
-    System.err.println(procString);
     return (procString);
   }
   

@@ -301,17 +301,26 @@ public class AlignCycleLayout extends NodeLayout {
     //
     //
     // Tag on lone nodes.  If a node is by itself, but also shows up in the links,
-    // we drop it:
+    // we drop it.
+    //
+    // Used to do a set removeAll() operation, but discovered the operation was
+    // taking FOREVER, e.g. remains 190804 targets 281832. So do this in a loop
+    // that can be monitored for progress:
     //
     
-    HashSet<NetNode> remains = new HashSet<NetNode>(loneNodes);
-    // If we have a huge number of lone nodes, the removeAll() set operation is
-    // taking FOREVER, e.g. remains 190804 targets 281832. Use different approach?
-    System.err.println("remains " + remains.size() + " targets " + targets.size());
-    remains.removeAll(targets);
-    System.err.println("remains now " + remains.size());
-    targets.addAll(new TreeSet<NetNode>(remains));
+    LoopReporter lr2 = new LoopReporter(loneNodes.size(), 20, monitor, 0.0, 0.25, "progress.addSingletonsToTargets");
+    HashSet<NetNode> targSet = new HashSet<NetNode>(targets);
+    TreeSet<NetNode> remains = new TreeSet<NetNode>();
     
+    for (NetNode lnod : loneNodes) {
+    	if (!targSet.contains(lnod)) {
+    		lr2.report();
+    		remains.add(lnod); 		
+    	}    	
+    }
+    lr2.finish();
+    targets.addAll(remains);
+       
     return (targets);
   }
         

@@ -171,7 +171,6 @@ public class BioFabricNetwork implements Network {
       case NODE_CLUSTER_LAYOUT:
       case CONTROL_TOP_LAYOUT: 
       case HIER_DAG_LAYOUT:
-      case MULTI_MODE_DAG_LAYOUT:
       case SET_LAYOUT:
       case WORLD_BANK_LAYOUT:
         standardBuildDataInit(bd);
@@ -666,7 +665,6 @@ public class BioFabricNetwork implements Network {
                                  (mode == BuildDataImpl.BuildMode.DEFAULT_LAYOUT) ||
                                  (mode == BuildDataImpl.BuildMode.CONTROL_TOP_LAYOUT) ||
                                  (mode == BuildDataImpl.BuildMode.HIER_DAG_LAYOUT) ||
-                                 (mode == BuildDataImpl.BuildMode.MULTI_MODE_DAG_LAYOUT) ||
                                  (mode == BuildDataImpl.BuildMode.SET_LAYOUT) ||
                                  (mode == BuildDataImpl.BuildMode.WORLD_BANK_LAYOUT) ||
                                  (mode == BuildDataImpl.BuildMode.NODE_CLUSTER_LAYOUT) || 
@@ -704,17 +702,18 @@ public class BioFabricNetwork implements Network {
         }
         rbd.setNodeOrder(norNew);
       }
-      (new DefaultEdgeLayout()).layoutEdges(rbd, monitor);
+      lor = (new DefaultEdgeLayout()).layoutEdges(rbd.getNodeOrder(), rbd.getLinks(), 
+    		                                          rbd.getGroupOrder(), rbd.getGroupOrderMode(), monitor);
     }
 
     //
     // This now assigns the link to its column, based on user specification
     //
   
-    specifiedLinkToColumn(rbd.getColorGen(), lor, ((mode == BuildDataImpl.BuildMode.LINK_ATTRIB_LAYOUT) || 
-    		                                           (mode == BuildDataImpl.BuildMode.NODE_CLUSTER_LAYOUT) ||
-    		                                           (mode == BuildDataImpl.BuildMode.GROUP_PER_NODE_CHANGE) ||
-    		                                           (mode == BuildDataImpl.BuildMode.GROUP_PER_NETWORK_CHANGE)), monitor);
+		specifiedLinkToColumn(rbd.getColorGen(), lor, ((mode == BuildDataImpl.BuildMode.LINK_ATTRIB_LAYOUT) || 
+		  		                                         (mode == BuildDataImpl.BuildMode.NODE_CLUSTER_LAYOUT) ||
+		  		                                         (mode == BuildDataImpl.BuildMode.GROUP_PER_NODE_CHANGE) ||
+		  		                                         (mode == BuildDataImpl.BuildMode.GROUP_PER_NETWORK_CHANGE)), monitor);
       
     //
     // Determine the start & end of each target row needed to handle the incoming
@@ -969,7 +968,6 @@ public class BioFabricNetwork implements Network {
     while (r2tit.hasNext()) {
       Integer row = r2tit.next();
       lr.report();
-      UiUtil.fixMePrintout("y2kr-SC-s3-0.010-importance-0.990.0.bif has GPI8::852755 nid=9655 duplicated");
       NetNode nodeID = rowToTargID_.get(row);
       NodeInfo ni = getNodeDefinition(nodeID);
       ni.writeXML(out, ind, row.intValue());
