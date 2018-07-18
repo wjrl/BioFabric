@@ -665,7 +665,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       } else {
         throw (new IllegalArgumentException("File type not identified"));
       }
-      if (!finished) { // do not continue if failed
+      if (!finished) {
         return (true);
       }
     } else {
@@ -674,7 +674,11 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
           sss = (new SIFImportLoader()).importFabric(file, idGen, links, loneNodes, nodeNames, magBins, null);
         } else if (type == FileLoadFlows.FileLoadType.GW) {
           sss = (new GWImportLoader()).importFabric(file, idGen, links, loneNodes, nodeNames, magBins, null);
-          (new GWImportLoader.GWRelationManager()).process(links, topWindow_, null);
+          boolean finished = (new GWImportLoader.GWRelationManager()).process(links, topWindow_, null);
+          if (!finished) {
+            // should not happen
+            return (false);
+          }
         } else {
           throw (new IllegalArgumentException("File type not identified"));
         }
@@ -1682,8 +1686,13 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         FabricImportLoader.FileImportStats sss = 
         		(new GWImportLoader()).importFabric(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, monitor);
         sss_.copyInto(sss);
-        if (needsGWProcessing_) { // only process links/default rel if needed
-          (new GWImportLoader.GWRelationManager()).process(links_, topWindow_, monitor);
+        
+        if (needsGWProcessing_) {
+          boolean finshed = (new GWImportLoader.GWRelationManager()).process(links_, topWindow_, monitor);
+          if (!finshed) {
+            // should not happen
+            return (null);
+          }
         }
         PluginSupportFactory.getBuildExtractor().extractRelations(links_, relaMap_, monitor);
         return (new Boolean(true));

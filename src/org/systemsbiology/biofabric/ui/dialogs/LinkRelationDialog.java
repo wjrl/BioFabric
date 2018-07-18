@@ -1,5 +1,5 @@
 /*
- **    File created by Rishi Desai
+ **    Copyright (C) 2018 Rishi Desai
  **
  **    Copyright (C) 2003-2018 Institute for Systems Biology
  **                            Seattle, Washington, USA.
@@ -19,11 +19,15 @@
  **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-package org.systemsbiology.biofabric.plugin.core.align;
+package org.systemsbiology.biofabric.ui.dialogs;
 
 import java.awt.Dimension;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
+import java.text.MessageFormat;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -31,8 +35,9 @@ import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.utils.DialogSupport;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
+import org.systemsbiology.biofabric.util.ResourceManager;
 
-public class GWRelationDialog extends BTStashResultsDialog {
+public class LinkRelationDialog extends BTStashResultsDialog {
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -43,6 +48,7 @@ public class GWRelationDialog extends BTStashResultsDialog {
   private JFrame parent_;
   private FixedJButton buttonOK_;
   private JTextField textField_;
+  private final String DEFAULT_RELATION_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -50,13 +56,18 @@ public class GWRelationDialog extends BTStashResultsDialog {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  public GWRelationDialog(JFrame parent, final String defaultRelation) {
-    super(parent, "fileRead.relationDialog", new Dimension(400, 200), 2);
+  public LinkRelationDialog(JFrame parent, final String default_relation) {
+    super(parent, "dialog.relationTitle", new Dimension(600, 200), 2);
     this.parent_ = parent;
+    this.DEFAULT_RELATION_ = default_relation;
     
-    addWidgetFullRow(new JLabel("fileRead.relationMessage"), false, true);
+    final ResourceManager rMan = ResourceManager.getManager();
     
-    textField_ = new JTextField(defaultRelation);
+    String msg = MessageFormat.format(rMan.getString("dialog.relationMessage"), "GW");
+    JLabel msgLabel = new JLabel(msg);
+    addWidgetFullRow(msgLabel, false, false);
+    
+    textField_ = new JTextField(DEFAULT_RELATION_);
     textField_.getDocument().addDocumentListener(new DocumentListener() {
       public void insertUpdate(DocumentEvent e) {
         try {
@@ -65,7 +76,7 @@ public class GWRelationDialog extends BTStashResultsDialog {
           ExceptionHandler.getHandler().displayException(ex);
         }
       }
-  
+      
       public void removeUpdate(DocumentEvent e) {
         try {
           manageOKButton();
@@ -73,7 +84,7 @@ public class GWRelationDialog extends BTStashResultsDialog {
           ExceptionHandler.getHandler().displayException(ex);
         }
       }
-  
+      
       public void changedUpdate(DocumentEvent e) {
         try {
           manageOKButton();
@@ -82,31 +93,61 @@ public class GWRelationDialog extends BTStashResultsDialog {
         }
       }
     });
-  
-    JLabel label = new JLabel("Rel");
+    
+    JLabel label = new JLabel(rMan.getString("dialog.linkRelation"));
     addLabeledWidget(label, textField_, false, false);
-  
+    
     //
-    // OK button
+    // OK and Cancel button
     //
-  
+    
     DialogSupport.Buttons buttons = finishConstruction();
-  
+    
     buttonOK_ = buttons.okButton;
-    buttonOK_.setEnabled(true);
-  
+    manageOKButton();
+    
+    FixedJButton buttonCancel = buttons.cancelButton;
+    buttonCancel.setEnabled(false);   // cancel button must always be disabled
+    
+    //
+    // if user closes dialog, go with what is in text-field.
+    // if text-field is empty or mis-formatted, use default relation
+    //
+    
+    this.addWindowListener(new WindowListener() {
+      public void windowClosing(WindowEvent e) {
+        String msg = MessageFormat.format(rMan.getString("dialog.relationWarning"), getRelation());
+        JOptionPane.showMessageDialog(parent_, msg,
+                rMan.getString("dialog.relationWarningTitle"),
+                JOptionPane.WARNING_MESSAGE);
+        stashResults(true);
+      }
+      
+      public void windowClosed(WindowEvent e) {}
+      public void windowOpened(WindowEvent e) {}
+      public void windowIconified(WindowEvent e) {}
+      public void windowDeiconified(WindowEvent e) {}
+      public void windowActivated(WindowEvent e) {}
+      public void windowDeactivated(WindowEvent e) {}
+    });
+    
     setLocationRelativeTo(parent);
   }
   
+  /**
+   * * Return the relation (or default value)
+   */
+  
   public String getRelation() {
-    return (textField_.getText().trim());
+    String ret = textField_.getText().trim();
+    return (hasMinRequirements() ? ret : DEFAULT_RELATION_);
   }
   
   /**
    * Check whether OK button should be activated or deactivated
    */
   
-  private void manageOKButton () {
+  private void manageOKButton() {
     if (hasMinRequirements()) {
       buttonOK_.setEnabled(true);
     } else {
@@ -116,12 +157,12 @@ public class GWRelationDialog extends BTStashResultsDialog {
   }
   
   /**
-   * Check whether dialog has textfield with text
+   * Check whether textfield has correct text
    */
   
   private boolean hasMinRequirements() {
     String text = textField_.getText().trim();
-    return (!text.isEmpty() && text.split(" ").length == 1);
+    return (! text.isEmpty() && text.split(" ").length == 1);
   }
   
   @Override
@@ -129,19 +170,9 @@ public class GWRelationDialog extends BTStashResultsDialog {
     try {
       super.okAction();
     } catch (Exception ex) {
-      // should never happen because OK button won't activate without min requirements
       ExceptionHandler.getHandler().displayException(ex);
     }
     return;
-  }
-  
-  @Override
-  public void closeAction() {
-    try {
-      super.closeAction();
-    } catch (Exception ex) {
-      ExceptionHandler.getHandler().displayException(ex);
-    }
   }
   
   @Override

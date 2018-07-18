@@ -35,7 +35,7 @@ import javax.swing.JFrame;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.modelAPI.NetNode;
-import org.systemsbiology.biofabric.plugin.core.align.GWRelationDialog;
+import org.systemsbiology.biofabric.ui.dialogs.LinkRelationDialog;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
@@ -257,11 +257,11 @@ public class GWImportLoader extends FabricImportLoader {
         return (true);
       }
       
-      GWRelationDialog dialog = new GWRelationDialog(parent, DEFAULT_RELATION);
+      LinkRelationDialog dialog = new LinkRelationDialog(parent, DEFAULT_RELATION);
       dialog.setVisible(true);
       if (!dialog.haveResult()) {
-        // should never happen (AFTER DIALOG IS FINISHED)
-        throw (new IllegalStateException("GW Relation Dialog does not have results"));
+        // should not happen, should always have relation returned
+        return (false);
       }
       
       final String newRel = dialog.getRelation();
