@@ -285,10 +285,6 @@ public class DefaultEdgeLayout implements EdgeLayout {
       }	 
   	}
   	if (topRel == null) {
-  	  System.err.println(augR + " " + relToMatch);
-  	  for (String aRel : allRels) {
-  	    System.err.println(aRel);
-  	  }
   		throw new IllegalStateException();
   	}
     return (topRel.equals(relToMatch));

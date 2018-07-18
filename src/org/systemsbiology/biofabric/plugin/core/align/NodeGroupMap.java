@@ -557,7 +557,6 @@ public class NodeGroupMap {
       for (NetNode node : mapG1toG2_.keySet()) {
         NetNode converted = perfectG1toG2_.get(node);
         if (converted == null) {
-//          System.err.println("no Entrez match for " + node);
           continue;
         }
         NetNode matchedWith = mapG1toG2_.get(node);
