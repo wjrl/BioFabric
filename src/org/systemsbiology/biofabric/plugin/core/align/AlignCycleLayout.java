@@ -31,12 +31,11 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.modelAPI.NetNode;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
@@ -88,11 +87,11 @@ public class AlignCycleLayout extends NodeLayout {
   */
   
   @Override
-  public boolean criteriaMet(BuildData.RelayoutBuildData rbd,
+  public boolean criteriaMet(BuildData rbd,
                              BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                                LayoutCriterionFailureException {
     
-    NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
+    NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd.getPluginBuildData();
     maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectG1toG2, narbd.allLargerNodes, 
                               narbd.allSmallerNodes, monitor);
     if (maps_ == null) {
@@ -118,9 +117,9 @@ public class AlignCycleLayout extends NodeLayout {
   ** Relayout the network!
   */
   
-  public List<NetNode> doNodeLayout(BuildData.RelayoutBuildData rbd, 
-  		                                   Params params,
-  		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NetNode> doNodeLayout(BuildData rbd, 
+  		                              Params params,
+  		                              BTProgressMonitor monitor) throws AsynchExitRequestException {
       
     List<NetNode> targetIDs = doNodeOrder(rbd, params, monitor);
 
@@ -138,9 +137,9 @@ public class AlignCycleLayout extends NodeLayout {
   ** Relayout the network!
   */
   
-  public List<NetNode> doNodeOrder(BuildData.RelayoutBuildData rbd, 
-                                        Params params,
-                                        BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NetNode> doNodeOrder(BuildData rbd, 
+                                   Params params,
+                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
       
     
     //
@@ -150,20 +149,20 @@ public class AlignCycleLayout extends NodeLayout {
     
     List<NetNode> startNodeIDs = null;
     
-    NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
+    NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd.getPluginBuildData();
     
     if (maps_ == null) {
       maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectG1toG2, narbd.allLargerNodes, 
                                 narbd.allSmallerNodes, monitor);
     }
     
-    Set<NetNode> allNodes = genAllNodes(narbd);
+    Set<NetNode> allNodes = genAllNodes(rbd);
     Map<NetNode, String> nodesToPathElem = genNodeToPathElem(allNodes);
     Map<String, NetNode> pathElemToNode = genPathElemToNode(allNodes); 
     Map<String, AlignPath> alignPaths = calcAlignPaths(maps_);
     List<CycleBounds> cycleBounds = new ArrayList<CycleBounds>();
         
-    List<NetNode> targetIDs = alignPathNodeOrder(rbd.allLinks, rbd.loneNodeIDs, 
+    List<NetNode> targetIDs = alignPathNodeOrder(rbd.getLinks(), rbd.getSingletonNodes(), 
                                                       startNodeIDs, alignPaths, 
                                                       nodesToPathElem,
                                                       pathElemToNode,
@@ -302,17 +301,26 @@ public class AlignCycleLayout extends NodeLayout {
     //
     //
     // Tag on lone nodes.  If a node is by itself, but also shows up in the links,
-    // we drop it:
+    // we drop it.
+    //
+    // Used to do a set removeAll() operation, but discovered the operation was
+    // taking FOREVER, e.g. remains 190804 targets 281832. So do this in a loop
+    // that can be monitored for progress:
     //
     
-    HashSet<NetNode> remains = new HashSet<NetNode>(loneNodes);
-    // If we have a huge number of lone nodes, the removeAll() set operation is
-    // taking FOREVER, e.g. remains 190804 targets 281832. Use different approach?
-    System.err.println("remains " + remains.size() + " targets " + targets.size());
-    remains.removeAll(targets);
-    System.err.println("remains now " + remains.size());
-    targets.addAll(new TreeSet<NetNode>(remains));
+    LoopReporter lr2 = new LoopReporter(loneNodes.size(), 20, monitor, 0.0, 0.25, "progress.addSingletonsToTargets");
+    HashSet<NetNode> targSet = new HashSet<NetNode>(targets);
+    TreeSet<NetNode> remains = new TreeSet<NetNode>();
     
+    for (NetNode lnod : loneNodes) {
+    	if (!targSet.contains(lnod)) {
+    		lr2.report();
+    		remains.add(lnod); 		
+    	}    	
+    }
+    lr2.finish();
+    targets.addAll(remains);
+       
     return (targets);
   }
         
@@ -519,15 +527,15 @@ public class AlignCycleLayout extends NodeLayout {
   ** Get all nodes
   */
   
-  private Set<NetNode> genAllNodes(NetworkAlignmentBuildData narbd) { 
+  private Set<NetNode> genAllNodes(BuildData narbd) { 
 
     Set<NetNode> allNodes = new HashSet<NetNode>();
      
-     for (NetLink link : narbd.allLinks) {
+     for (NetLink link : narbd.getLinks()) {
        allNodes.add(link.getSrcNode());
        allNodes.add(link.getTrgNode());
      }
-     allNodes.addAll(narbd.loneNodeIDs);
+     allNodes.addAll(narbd.getSingletonNodes());
      return (allNodes);
    } 
    

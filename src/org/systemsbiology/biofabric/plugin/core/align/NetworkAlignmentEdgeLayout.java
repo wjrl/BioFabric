@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.modelAPI.Network;
@@ -71,7 +71,7 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
    */
   
   @Override
-  public void preProcessEdges(BuildData.RelayoutBuildData rbd,
+  public void preProcessEdges(BuildData rbd,
                               BTProgressMonitor monitor) throws AsynchExitRequestException {
     installLinkGroups(rbd, monitor);
     return;
@@ -94,12 +94,11 @@ public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
    ** Note: some link groups may not be present.
    */
   
-  private void installLinkGroups(BuildData.RelayoutBuildData rbd, BTProgressMonitor monitor)
-          throws AsynchExitRequestException {
+  private void installLinkGroups(BuildData rbd, BTProgressMonitor monitor) throws AsynchExitRequestException {
     
-    LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.orderingLinkGroups");
+    LoopReporter lr = new LoopReporter(rbd.getLinks().size(), 20, monitor, 0.0, 1.0, "progress.orderingLinkGroups");
     Set<String> relations = new HashSet<String>();
-    for (NetLink link : rbd.allLinks) {
+    for (NetLink link : rbd.getLinks()) {
       relations.add(link.getRelation());
       lr.report();
     }

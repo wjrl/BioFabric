@@ -19,7 +19,7 @@
 
 package org.systemsbiology.biofabric.layoutAPI;
 
-import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 
@@ -41,8 +41,7 @@ public interface EdgeLayout {
   ** Relayout the whole network!
   */
   
-  public void layoutEdges(BuildData.RelayoutBuildData rbd, 
-  		                    BTProgressMonitor monitor) throws AsynchExitRequestException;
+  public void layoutEdges(BuildData rbd, BTProgressMonitor monitor) throws AsynchExitRequestException;
   
   
   /***************************************************************************
@@ -50,8 +49,7 @@ public interface EdgeLayout {
   ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
   */
   
-  public void preProcessEdges(BuildData.RelayoutBuildData rbd, 
-  		                        BTProgressMonitor monitor) throws AsynchExitRequestException;
+  public void preProcessEdges(BuildData rbd, BTProgressMonitor monitor) throws AsynchExitRequestException;
    
 
 }

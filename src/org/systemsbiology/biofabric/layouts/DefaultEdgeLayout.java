@@ -30,7 +30,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.layoutAPI.EdgeLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
@@ -82,7 +82,7 @@ public class DefaultEdgeLayout implements EdgeLayout {
   ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
   */
   
-  public void preProcessEdges(BuildData.RelayoutBuildData rbd, 
+  public void preProcessEdges(BuildData rbd, 
   		                        BTProgressMonitor monitor) throws AsynchExitRequestException {
   	return;
   }
@@ -161,12 +161,13 @@ public class DefaultEdgeLayout implements EdgeLayout {
   ** Relayout the whole network!
   */
   
-  public void layoutEdges(BuildData.RelayoutBuildData rbd, 
+  public void layoutEdges(BuildData rbd, 
   		                    BTProgressMonitor monitor) throws AsynchExitRequestException {
    
-    SortedMap<Integer, NetLink> retval = layoutEdges(rbd.nodeOrder, rbd.allLinks, rbd.linkGroups, rbd.layoutMode, monitor);
+    SortedMap<Integer, NetLink> retval = layoutEdges(rbd.getNodeOrder(), rbd.getLinks(), 
+    		                                             rbd.getGroupOrder(), rbd.getGroupOrderMode(), monitor);
     rbd.setLinkOrder(retval);
-    if (rbd.showLinkGroupAnnotations) {
+    if (rbd.getShowLinkGroupAnnotations()) {
       installLinkAnnotations(rbd, monitor);
     } else {
       rbd.setLinkAnnotations(null);
@@ -179,19 +180,19 @@ public class DefaultEdgeLayout implements EdgeLayout {
   ** Install link annotations for 
   */
   
-  protected void installLinkAnnotations(BuildData.RelayoutBuildData rbd, BTProgressMonitor monitor)
+  protected void installLinkAnnotations(BuildData rbd, BTProgressMonitor monitor)
     throws AsynchExitRequestException {
   
-    LoopReporter lr = new LoopReporter(rbd.linkOrder.size(), 20, monitor, 0, 1.0, "progress.linkAnnotationPrep");  
+    LoopReporter lr = new LoopReporter(rbd.getLinkOrder().size(), 20, monitor, 0, 1.0, "progress.linkAnnotationPrep");  
     List<NetLink> linkList = new ArrayList<NetLink>();  
-    for (NetLink link : rbd.linkOrder.values()) {   
+    for (NetLink link : rbd.getLinkOrder().values()) {   
       linkList.add(link);
       lr.report();
     }
     lr.finish();
     
-    AnnotationSet nonShdwAnnots = calcGroupLinkAnnots(rbd, linkList, monitor, false, rbd.linkGroups);
-    AnnotationSet withShdwAnnots = calcGroupLinkAnnots(rbd, linkList, monitor, true, rbd.linkGroups);
+    AnnotationSet nonShdwAnnots = calcGroupLinkAnnots(rbd, linkList, monitor, false, rbd.getGroupOrder());
+    AnnotationSet withShdwAnnots = calcGroupLinkAnnots(rbd, linkList, monitor, true, rbd.getGroupOrder());
     
     Map<Boolean, AnnotationSet> linkAnnots = new HashMap<Boolean, AnnotationSet>();
     linkAnnots.put(true, withShdwAnnots);
@@ -206,7 +207,7 @@ public class DefaultEdgeLayout implements EdgeLayout {
   ** Calculate link group link annotations 
   */
     
-  protected AnnotationSet calcGroupLinkAnnots(BuildData.RelayoutBuildData rbd, 
+  protected AnnotationSet calcGroupLinkAnnots(BuildData rbd, 
                                               List<NetLink> links, BTProgressMonitor monitor, 
                                               boolean shadow, List<String> linkGroups) throws AsynchExitRequestException {   
     
@@ -284,10 +285,6 @@ public class DefaultEdgeLayout implements EdgeLayout {
       }	 
   	}
   	if (topRel == null) {
-  	  System.err.println(augR + " " + relToMatch);
-  	  for (String aRel : allRels) {
-  	    System.err.println(aRel);
-  	  }
   		throw new IllegalStateException();
   	}
     return (topRel.equals(relToMatch));

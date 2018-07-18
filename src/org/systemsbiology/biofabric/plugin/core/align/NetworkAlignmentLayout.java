@@ -34,14 +34,13 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
@@ -85,19 +84,19 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Relayout the network!
    */
   
-  public List<NetNode> doNodeLayout(BuildData.RelayoutBuildData rbd, Params params, BTProgressMonitor monitor)
+  public List<NetNode> doNodeLayout(BuildData rbd, Params params, BTProgressMonitor monitor)
           throws AsynchExitRequestException {
     
-    NetworkAlignmentBuildData nabd = (NetworkAlignmentBuildData) rbd;
+    NetworkAlignmentBuildData nabd = (NetworkAlignmentBuildData)rbd.getPluginBuildData();
     
     List<NetNode> targetIDs;
     
     switch (nabd.view) {
       case GROUP:
-        targetIDs = bfsNodeGroupLayout(nabd, monitor);
+        targetIDs = bfsNodeGroupLayout(rbd, monitor);
         break;
       case ORPHAN:
-        targetIDs = (new DefaultLayout()).defaultNodeOrder(nabd.allLinks, nabd.loneNodeIDs, null, monitor);
+        targetIDs = (new DefaultLayout()).defaultNodeOrder(rbd.getLinks(), rbd.getSingletonNodes(), null, monitor);
         break;
       case CYCLE:
         targetIDs = (new AlignCycleLayout()).doNodeOrder(rbd, params, monitor);
@@ -106,7 +105,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
         throw new IllegalStateException();
     }
     
-    installNodeOrder(targetIDs, nabd, monitor);
+    installNodeOrder(targetIDs, rbd, monitor);
     return (new ArrayList<NetNode>(targetIDs));
   }
   
@@ -115,8 +114,8 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Breadth first search based on node groups
    */
 
-  private List<NetNode> bfsNodeGroupLayout(NetworkAlignmentBuildData nabd,
-                                                BTProgressMonitor monitor) throws AsynchExitRequestException {
+  private List<NetNode> bfsNodeGroupLayout(BuildData bd,
+                                           BTProgressMonitor monitor) throws AsynchExitRequestException {
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
     //
@@ -131,10 +130,10 @@ public class NetworkAlignmentLayout extends NodeLayout {
     
     HashSet<NetNode> targsToGo = new HashSet<NetNode>();
     
-    int numLink = nabd.allLinks.size();
+    int numLink = bd.getLinks().size();
     LoopReporter lr = new LoopReporter(numLink, 20, monitor, 0.0, 0.25, "progress.calculateNodeDegree");
     
-    Iterator<NetLink> alit = nabd.allLinks.iterator();
+    Iterator<NetLink> alit = bd.getLinks().iterator();
     while (alit.hasNext()) {
       NetLink nextLink = alit.next();
       lr.report();
@@ -166,12 +165,13 @@ public class NetworkAlignmentLayout extends NodeLayout {
     //
     
     NodeGroupMap grouper;
+    NetworkAlignmentBuildData nabd = (NetworkAlignmentBuildData)bd.getPluginBuildData();
     
     if (nabd.mode == NodeGroupMap.PerfectNGMode.NODE_CORRECTNESS ||
             nabd.mode == NodeGroupMap.PerfectNGMode.JACCARD_SIMILARITY) {
-      grouper = new NodeGroupMap(nabd, defaultNGOrderWithCorrect, ngAnnotcolorsWithCorrect, monitor);
+      grouper = new NodeGroupMap(bd, defaultNGOrderWithCorrect, ngAnnotcolorsWithCorrect, monitor);
     } else {
-      grouper = new NodeGroupMap(nabd, defaultNGOrderWithoutCorrect, ngAnnotColorsWithoutCorrect, monitor);
+      grouper = new NodeGroupMap(bd, defaultNGOrderWithoutCorrect, ngAnnotColorsWithoutCorrect, monitor);
     }
     
     // master list of nodes in each group
@@ -180,7 +180,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       classToGroup.put(i, new ArrayList<NetNode>());
     }
     // fill the master list with nodes
-    Set<NetNode> allNodes = PluginSupportFactory.getBuildExtractor().extractNodes(nabd.allLinks, nabd.loneNodeIDs, monitor);
+    Set<NetNode> allNodes = PluginSupportFactory.getBuildExtractor().extractNodes(bd.getLinks(), bd.getSingletonNodes(), monitor);
     for (NetNode node : allNodes) {
       int nodeClass = grouper.getIndex(node);
       classToGroup.get(nodeClass).add(node);
@@ -241,7 +241,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       throw new IllegalStateException("target numGroups not equal to all-nodes numGroups");
     }
 
-    installAnnotations(nabd, targetsGroup, grouper);
+    installAnnotations(bd, targetsGroup, grouper);
     
     UiUtil.fixMePrintout("Loop Reporter all messed up in NetworkAlignmentLayout.FlushQueue");
     return (targets);
@@ -354,7 +354,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
    ** Install Layer Zero Node Annotations
    */
   
-  private void installAnnotations(NetworkAlignmentBuildData nabd,
+  private void installAnnotations(BuildData bd,
                                   SortedMap<Integer, List<NetNode>> targetsGroup, NodeGroupMap grouper) {
     
     AnnotationSet layerZeroAnnots = new AnnotationSet();
@@ -372,7 +372,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
   
       min += group.size(); // update current minimum
     }
-    nabd.setNodeAnnotations(layerZeroAnnots);
+    bd.setNodeAnnotations(layerZeroAnnots);
     return;
   }
   

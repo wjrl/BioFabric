@@ -26,13 +26,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.systemsbiology.biofabric.io.BuildData;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.modelAPI.Network;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
@@ -77,7 +76,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
   */
   
   @Override
-  public void preProcessEdges(BuildData.RelayoutBuildData rbd, 
+  public void preProcessEdges(BuildData rbd, 
                               BTProgressMonitor monitor) throws AsynchExitRequestException {
     
     List<String> groupOrder = new ArrayList<String>();
@@ -97,14 +96,14 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
   */ 
   
   @Override
-  protected AnnotationSet calcGroupLinkAnnots(BuildData.RelayoutBuildData rbd, 
+  protected AnnotationSet calcGroupLinkAnnots(BuildData rbd, 
                                               List<NetLink> links, BTProgressMonitor monitor, 
                                               boolean shadow, List<String> linkGroups) throws AsynchExitRequestException { 
     
-    NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
+    NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd.getPluginBuildData();
     TreeMap<Integer, NetNode> invert = new TreeMap<Integer, NetNode>();
-    for (NetNode node : rbd.nodeOrder.keySet()) {
-      invert.put(rbd.nodeOrder.get(node), node);
+    for (NetNode node : rbd.getNodeOrder().keySet()) {
+      invert.put(rbd.getNodeOrder().get(node), node);
     }
     ArrayList<NetNode> order = new ArrayList<NetNode>(invert.values());
     return (calcGroupLinkAnnotsCycle(links, order, monitor, 

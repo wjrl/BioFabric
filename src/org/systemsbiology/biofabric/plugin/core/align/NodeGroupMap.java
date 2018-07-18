@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
@@ -103,10 +104,20 @@ public class NodeGroupMap {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  public NodeGroupMap(NetworkAlignmentBuildData nabd, String[] nodeGroupOrder, String[][] colorMap,
+  public NodeGroupMap(BuildData bd, String[] nodeGroupOrder, String[][] colorMap,
                       BTProgressMonitor monitor) throws AsynchExitRequestException {
-    this(nabd.allLinks, nabd.loneNodeIDs, nabd.mapG1toG2, nabd.perfectG1toG2, nabd.linksLarge, nabd.lonersLarge,
-            nabd.mergedToCorrectNC, nabd.isAlignedNode, nabd.mode, nodeGroupOrder, colorMap, monitor);
+    this(bd.getLinks(), 
+    		 bd.getSingletonNodes(), 
+    		 ((NetworkAlignmentBuildData)bd.getPluginBuildData()).mapG1toG2, 
+    		 ((NetworkAlignmentBuildData)bd.getPluginBuildData()).perfectG1toG2, 
+    		 ((NetworkAlignmentBuildData)bd.getPluginBuildData()).linksLarge, 
+    		 ((NetworkAlignmentBuildData)bd.getPluginBuildData()).lonersLarge,
+         ((NetworkAlignmentBuildData)bd.getPluginBuildData()).mergedToCorrectNC, 
+         ((NetworkAlignmentBuildData)bd.getPluginBuildData()).isAlignedNode, 
+         ((NetworkAlignmentBuildData)bd.getPluginBuildData()).mode, 
+         nodeGroupOrder, 
+         colorMap, 
+         monitor);
   }
   
   public NodeGroupMap(Set<NetLink> allLinks, Set<NetNode> loneNodeIDs,
@@ -546,7 +557,6 @@ public class NodeGroupMap {
       for (NetNode node : mapG1toG2_.keySet()) {
         NetNode converted = perfectG1toG2_.get(node);
         if (converted == null) {
-//          System.err.println("no Entrez match for " + node);
           continue;
         }
         NetNode matchedWith = mapG1toG2_.get(node);
