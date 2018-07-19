@@ -221,7 +221,7 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
         myData_.nodeCount = bfn.getNodeCount();
         myData_.linkCount = bfn.getLinkCount(false);
         myData_.fullShadowLinkCount = bfn.getLinkCount(true);
-        enabled_ = true;
+        enabled_ = (myData_.nodeCount > 0);
       } else {
         myData_.nodeCount = 0;
         myData_.linkCount = 0;
