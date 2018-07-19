@@ -67,6 +67,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   private final NetworkAlignmentBuildData.ViewType analysisType_;
   private JFrame parent_;
   private JButton perfectBrowse;
+  private MatchingJLabel perfectFileMatch_;
   private JTextField graph1Field_, graph2Field_, alignField_, perfectField_;
   private File graph1File_, graph2File_, alignmentFile_, perfectAlignFile_; // perfect Alignment is optional
   private FixedJButton buttonOK_;
@@ -110,9 +111,9 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     
     initTextFields();
 
-    MatchingJLabel graph1FileMatch, graph2FileMatch, alignFileMatch, perfectFileMatch;
+    MatchingJLabel graph1FileMatch, graph2FileMatch, alignFileMatch;
     JLabel perfectFileName = new JLabel(rMan.getPluginString("networkAlignment.perfect")); // only to use as a reference, not in dialog
-    perfectFileMatch = new MatchingJLabel(rMan.getPluginString("networkAlignment.perfect"), perfectFileName);
+    perfectFileMatch_ = new MatchingJLabel(rMan.getPluginString("networkAlignment.perfect"), perfectFileName);
     graph1FileMatch = new MatchingJLabel(rMan.getPluginString("networkAlignment.graph1"), perfectFileName);
     graph2FileMatch = new MatchingJLabel(rMan.getPluginString("networkAlignment.graph2"), perfectFileName);
     alignFileMatch = new MatchingJLabel(rMan.getPluginString("networkAlignment.alignment"), perfectFileName);
@@ -120,7 +121,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     graph1FileMatch.setHorizontalAlignment(SwingConstants.CENTER);
     graph2FileMatch.setHorizontalAlignment(SwingConstants.CENTER);
     alignFileMatch.setHorizontalAlignment(SwingConstants.CENTER);
-    perfectFileMatch.setHorizontalAlignment(SwingConstants.CENTER);
+    perfectFileMatch_.setHorizontalAlignment(SwingConstants.CENTER);
     
     undirectedConfirm_.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
@@ -169,7 +170,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     panAlign.add(alignmentBrowse);
   
     JPanel panPerfect = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    panPerfect.add(perfectFileMatch);
+    panPerfect.add(perfectFileMatch_);
     panPerfect.add(perfectField_);
     panPerfect.add(perfectBrowse);
    
@@ -200,15 +201,14 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     perfectNGsCombo_.addItemListener(new ItemListener() {
       public void itemStateChanged(ItemEvent e) {
         try {
-          managePerfectFieldButton();
+          managePerfectButtons();
           manageOKButton();
         } catch (Exception ex) {
           ExceptionHandler.getHandler().displayException(ex);
         }
       }
     });
-    perfectBrowse.setEnabled(false);
-    perfectField_.setEnabled(false);
+    managePerfectButtons();
     
     //
     // No Perfect Alignment for Orphan Layout
@@ -378,13 +378,15 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
    * Check whether Perfect text-field and browse should be activated or deactivated
    */
   
-  private void managePerfectFieldButton() {
+  private void managePerfectButtons() {
     if (perfectNGsCombo_.getSelectedIndex() == NO_PERFECT_IDX) {
       perfectField_.setEnabled(false);
       perfectBrowse.setEnabled(false);
+      perfectFileMatch_.setEnabled(false);  // gray out label
     } else {
       perfectField_.setEnabled(true);
       perfectBrowse.setEnabled(true);
+      perfectFileMatch_.setEnabled(true);
     }
     return;
   }

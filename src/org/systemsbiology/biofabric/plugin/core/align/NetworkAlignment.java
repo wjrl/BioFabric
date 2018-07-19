@@ -447,7 +447,6 @@ public class NetworkAlignment {
               "progress.orphanEdgesContext");
       
       List<NetLink> blueEdgesPlusContext = new ArrayList<NetLink>();
-      blueEdgesPlusContext.get(0);
       for (NetLink link : mergedLinks) { // add the edges connecting to the nodes of interest (one hop away)
         
         NetNode src = link.getSrcNode(), trg = link.getTrgNode();
