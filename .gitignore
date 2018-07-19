@@ -1,4 +1,8 @@
-# Created by .ignore support plugin (hsz.mobi)
+/bin/
 .idea/
 BioFabric.iml
 out/
+.DS_Store
+.project
+.classpath
+

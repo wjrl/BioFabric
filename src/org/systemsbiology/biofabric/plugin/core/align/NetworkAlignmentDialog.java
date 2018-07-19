@@ -184,11 +184,16 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     addWidgetFullRow(panAlign, true);
   
     JLabel perfectNGLabel = new JLabel(rMan.getPluginString("networkAlignment.perfectNodeGroups"));
-    String[] choices = new String[4];
+    
+    int numChoices = (analysisType_ == NetworkAlignmentBuildData.ViewType.CYCLE) ? 2 : 4;
+   
+    String[] choices = new String[numChoices];
     choices[NO_PERFECT_IDX] = rMan.getPluginString("networkAlignment.nonePerfect");
     choices[WITH_PERFECT_IDX] = rMan.getPluginString("networkAlignment.noneWithPerfect");
-    choices[NC_IDX] = rMan.getPluginString("networkAlignment.nodeCorrectness");
-    choices[JS_IDX] = rMan.getPluginString("networkAlignment.jaccardSimilarity");
+    if (analysisType_ != NetworkAlignmentBuildData.ViewType.CYCLE) {
+    	choices[NC_IDX] = rMan.getPluginString("networkAlignment.nodeCorrectnessGroupOption");
+    	choices[JS_IDX] = rMan.getPluginString("networkAlignment.jaccardSimilarityGroupOption");
+    }
     
     perfectNGsCombo_ = new JComboBox(choices); // have to use unchecked for v1.6
     

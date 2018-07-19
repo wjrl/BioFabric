@@ -254,9 +254,9 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     HashSet<NetNode> lonersGraphA = new HashSet<NetNode>();
     
     if (GWImportLoader.isGWFile(nadi.graphA)) {
-      flf_.loadFromASource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true, FileLoadFlows.FileLoadType.GW);
+      flf_.loadFromASource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true, FileLoadFlows.FileLoadType.GW, false);
     } else {
-      flf_.loadFromASource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true, FileLoadFlows.FileLoadType.SIF);
+      flf_.loadFromASource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true, FileLoadFlows.FileLoadType.SIF, false);
     } // assume it's sif if it's not gw
     
     
@@ -264,9 +264,9 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     HashSet<NetNode> lonersGraphB = new HashSet<NetNode>();
     
     if (GWImportLoader.isGWFile(nadi.graphB)) {
-      flf_.loadFromASource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true, FileLoadFlows.FileLoadType.GW);
+      flf_.loadFromASource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true, FileLoadFlows.FileLoadType.GW, false);
     } else {
-      flf_.loadFromASource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true, FileLoadFlows.FileLoadType.SIF);
+      flf_.loadFromASource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true, FileLoadFlows.FileLoadType.SIF, false);
     }
     
     return (networkAlignmentStepTwo(nadi, linksGraphA, lonersGraphA, linksGraphB, lonersGraphB, idGen, outType));
@@ -430,11 +430,12 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
   
     if (finished) { // for main alignment      
-      finished = flf_.handleDirectionsDupsAndShadows(mergedLinks, mergedLoneNodeIDs, false, relMap, reducedLinks, holdIt, true);
+      finished = flf_.handleDirectionsDupsAndShadows(mergedLinks, mergedLoneNodeIDs, false, relMap, reducedLinks, holdIt, true, false);
     }
     
     if (finished && doingPerfectGroup) { // for perfect alignment
-      finished = flf_.handleDirectionsDupsAndShadows(mergedLinksPerfect, mergedLoneNodeIDsPerfect, false, relMapPerfect, reducedLinksPerfect, holdIt, true);
+      finished = flf_.handleDirectionsDupsAndShadows(mergedLinksPerfect, mergedLoneNodeIDsPerfect, false, relMapPerfect, 
+      																							 reducedLinksPerfect, holdIt, true, true);
     }
   
     if (finished) { // Score Report
