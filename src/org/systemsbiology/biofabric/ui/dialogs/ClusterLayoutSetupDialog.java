@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2016 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -37,15 +37,15 @@ import javax.swing.JTextField;
 
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.io.AttributeLoader;
-import org.systemsbiology.biofabric.io.FileLoadFlows;
+import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.BuildExtractor;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.TrueObjChoiceContent;
 
@@ -75,7 +75,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
   private JComboBox interCombo_;
   private JComboBox cLayoutCombo_;
   private JCheckBox saveAssignBox_;
-  private NID.WithName currSel_;
+  private NetNode currSel_;
   private JLabel nameLabel_;
   private JTextField userName_;
   private BioFabricNetwork bfn_;
@@ -93,7 +93,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
   ** Constructor 
   */ 
   
-  public ClusterLayoutSetupDialog(JFrame parent, BioFabricNetwork bfn, NID.WithName selNode) {     
+  public ClusterLayoutSetupDialog(JFrame parent, BioFabricNetwork bfn, NetNode selNode) {     
     super(parent, "nodeClusterLayout.title", new Dimension(600, 350), 2);
     results_ = null;
     bfn_ = bfn;
@@ -140,7 +140,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
     });
     
     userName_ = new JTextField((currSel_ == null) ? "" : currSel_.getName().trim());
-    nameLabel_ = new JLabel("bFirst.selectName");
+    nameLabel_ = new JLabel(rMan_.getString("bFirst.selectName"));
  //   userName_.setEnabled(userSpec_.isSelected());
    // nameLabel_.setEnabled(userSpec_.isSelected());   
     addLabeledWidget(nameLabel_, userName_, false, false); 
@@ -205,9 +205,9 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
     String selName = userName_.getText();
     if ((selName != null) && !selName.trim().equals("")) {
     	String cand = selName.trim();
-    	Map<String, Set<NID.WithName>> nn2ids = bfn_.getNormNameToIDs();
-      Map<String, NID.WithName> nn2id = BuildExtractor.reduceNameSetToOne(nn2ids);
-      NID.WithName nidCand = nn2id.get(DataUtil.normKey(cand));
+    	Map<String, Set<NetNode>> nn2ids = bfn_.getNormNameToIDs();
+      Map<String, NetNode> nn2id = PluginSupportFactory.getBuildExtractor().reduceNameSetToOne(nn2ids);
+      NetNode nidCand = nn2id.get(DataUtil.normKey(cand));
     	if (bfn_.getNodeDefinition(nidCand) == null) {
         ResourceManager rMan = ResourceManager.getManager();
         JOptionPane.showMessageDialog(parent_, 
@@ -298,7 +298,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
     //
     
     HashSet<AttributeLoader.AttributeKey> asUpper = new HashSet<AttributeLoader.AttributeKey>();
-    Iterator<NID.WithName> rttvit = bfn.getNodeSetIDs().iterator();
+    Iterator<NetNode> rttvit = bfn.getNodeSetIDs().iterator();
     while (rttvit.hasNext()) {
       asUpper.add(new AttributeLoader.StringKey(rttvit.next().getName()));
     }
@@ -309,8 +309,8 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
                                     JOptionPane.WARNING_MESSAGE);
       return (false);
     }
-    Map<String, Set<NID.WithName>> nn2ids = bfn.getNormNameToIDs();
-    Map<String, NID.WithName> nn2id = BuildExtractor.reduceNameSetToOne(nn2ids);
+    Map<String, Set<NetNode>> nn2ids = bfn.getNormNameToIDs();
+    Map<String, NetNode> nn2id = PluginSupportFactory.getBuildExtractor().reduceNameSetToOne(nn2ids);
     params.install(nodeAttributes, nn2id);
     return (true);
   }

@@ -61,7 +61,7 @@ public class FabricDisplayOptions implements Cloneable {
   private static final double DEFAULT_LINK_DARKER_LEVEL_ = 0.43;
   private static final boolean DEFAULT_DISPLAY_SHADOWS_ = false;
   private static final boolean DEFAULT_SHADE_NODES_ = false;
-  private static final int DEFAULT_MIN_DRAIN_ZONE = 1;
+  private static final int DEFAULT_MIN_DRAIN_ZONE_ = 1;
   private static final boolean DEFAULT_OFFER_NODE_BROWSER_ = false;
   private static final boolean DEFAULT_OFFER_LINK_BROWSER_ = false;
   private static final boolean DEFAULT_OFFER_MOUSEOVER_VIEW_ = false;
@@ -107,7 +107,7 @@ public class FabricDisplayOptions implements Cloneable {
     linkDarkerLevel_ = DEFAULT_LINK_DARKER_LEVEL_;
     displayShadows_ = DEFAULT_DISPLAY_SHADOWS_;
     shadeNodes_ = DEFAULT_SHADE_NODES_;
-    minDrainZone_ = DEFAULT_MIN_DRAIN_ZONE;
+    minDrainZone_ = DEFAULT_MIN_DRAIN_ZONE_;
     browserURL_ = DEFAULT_BROWSER_URL_;
     browserLinkURL_ = DEFAULT_LINK_BROWSER_URL_;
     minShadSubLinks_ = DEFAULT_MINIMIZE_SHADOW_SUBMODEL_LINKS_;
@@ -125,7 +125,7 @@ public class FabricDisplayOptions implements Cloneable {
 
   FabricDisplayOptions(String selectionOpaqueLevelStr, String nodeLighterLevelStr, 
                        String linkDarkerLevelStr, String displayShadowsStr,
-                       String shadeNodesStr, String minShadSubLinksStr, 
+                       String shadeNodesStr, String minDrainZoneStr, String minShadSubLinksStr,
                        String offerNodeBrowser, String offerLinkBrowser, String offerMouseOverView,
                        String browserURL, String browserLinkURL, String mouseOverURL) throws IOException {
     
@@ -169,6 +169,12 @@ public class FabricDisplayOptions implements Cloneable {
       shadeNodes_ = Boolean.valueOf(shadeNodesStr).booleanValue();
     } else {
       shadeNodes_ = DEFAULT_SHADE_NODES_;
+    }
+    
+    if (minDrainZoneStr != null) {
+      minDrainZone_ = Integer.valueOf(minDrainZoneStr).intValue();
+    } else {
+      minDrainZone_ = DEFAULT_MIN_DRAIN_ZONE_;
     }
     
     if (minShadSubLinksStr != null) {
@@ -530,6 +536,12 @@ public class FabricDisplayOptions implements Cloneable {
       out.print(shadeNodes_);    
       out.print("\" ");
     }
+  
+    if (minDrainZone_ != DEFAULT_MIN_DRAIN_ZONE_) {
+      out.print("minDrainZone=\"");
+      out.print(minDrainZone_);
+      out.print("\" ");
+    }
     
     if (minShadSubLinks_ != DEFAULT_MINIMIZE_SHADOW_SUBMODEL_LINKS_) {
       out.print("minShadSubLinks=\"");
@@ -613,6 +625,7 @@ public class FabricDisplayOptions implements Cloneable {
       String linkDarkerLevelStr = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "linkDark", false);
       String displayShadowsStr = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "shadows", false);
       String shadeNodesStr = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "shading", false);
+      String minDrainZoneStr = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "minDrainZone",false);
       String minShadSubLinks = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "minShadSubLinks", false);
       String offerNodeBrowserStr = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "offerNodeBrowser", false);
       String offerLinkBrowserStr = AttributeExtractor.extractAttribute(elemName, attrs, "displayOptions", "offerLinkBrowser", false);
@@ -626,7 +639,7 @@ public class FabricDisplayOptions implements Cloneable {
       
       return (new FabricDisplayOptions(selectionOpaqueLevelStr, nodeLighterLevelStr, 
                                        linkDarkerLevelStr, displayShadowsStr,
-                                       shadeNodesStr, minShadSubLinks, 
+                                       shadeNodesStr, minDrainZoneStr, minShadSubLinks,
                                        offerNodeBrowserStr, offerLinkBrowserStr, offerMouseOverViewStr,
                                        browserURL, browserLinkURL, mouseOverURL));        
     }

@@ -31,12 +31,14 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
-import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
+import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
+import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
+import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
+import org.systemsbiology.biofabric.workerAPI.LoopReporter;
 
 /****************************************************************************
 **
@@ -65,8 +67,8 @@ public class SetLayout extends NodeLayout {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  private Map<NID.WithName, Set<NID.WithName>> elemsPerSet_;
-  private Map<NID.WithName, Set<NID.WithName>> setsPerElem_;
+  private Map<NetNode, Set<NetNode>> elemsPerSet_;
+  private Map<NetNode, Set<NetNode>> setsPerElem_;
   private LinkMeans direction_;
 
   ////////////////////////////////////////////////////////////////////////////
@@ -96,7 +98,7 @@ public class SetLayout extends NodeLayout {
   */
   
   @Override
-  public boolean criteriaMet(BuildData.RelayoutBuildData rbd,
+  public boolean criteriaMet(BuildData rbd,
                              BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                                LayoutCriterionFailureException {
     //
@@ -106,14 +108,15 @@ public class SetLayout extends NodeLayout {
     // 4) Not a multigraph.
     //
     
-    LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.setLayoutCriteriaCheck"); 
+    LoopReporter lr = new LoopReporter(rbd.getLinks().size(), 20, monitor, 0.0, 1.0, "progress.setLayoutCriteriaCheck"); 
     
-    if (!((rbd.loneNodeIDs == null) || rbd.loneNodeIDs.isEmpty())) {
+    
+    if (!((rbd.getSingletonNodes() == null) || rbd.getSingletonNodes().isEmpty())) {
       throw new LayoutCriterionFailureException();
     }
      
     HashSet<String> rels = new HashSet<String>();
-    for (FabricLink aLink : rbd.allLinks) {
+    for (NetLink aLink : rbd.getLinks()) {
       lr.report();
       if (!aLink.isDirected()) {
         throw new LayoutCriterionFailureException();
@@ -125,9 +128,9 @@ public class SetLayout extends NodeLayout {
     }
     lr.finish();
     
-    elemsPerSet_ = new HashMap<NID.WithName, Set<NID.WithName>>();
-    setsPerElem_ = new HashMap<NID.WithName, Set<NID.WithName>>();    
-    extractSets(rbd.allLinks, monitor);
+    elemsPerSet_ = new HashMap<NetNode, Set<NetNode>>();
+    setsPerElem_ = new HashMap<NetNode, Set<NetNode>>();    
+    extractSets(rbd.getLinks(), monitor);
  
     return (true);  
   }
@@ -137,21 +140,21 @@ public class SetLayout extends NodeLayout {
   ** Order the nodes
   */
   
-  public List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd,
-  		                                   Params params,
-                                         BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NetNode> doNodeLayout(BuildData rbd,
+  		                              Params params,
+                                    BTProgressMonitor monitor) throws AsynchExitRequestException {
         
     //
     // We order the sets by cardinality, largest first. Ties broken by lexicographic order:
     //
     
-    Map<Integer, SortedSet<NID.WithName>> byDegree = new TreeMap<Integer, SortedSet<NID.WithName>>(Collections.reverseOrder());
-    for (NID.WithName set : elemsPerSet_.keySet()) {
-      Set<NID.WithName> elems = elemsPerSet_.get(set);
+    Map<Integer, SortedSet<NetNode>> byDegree = new TreeMap<Integer, SortedSet<NetNode>>(Collections.reverseOrder());
+    for (NetNode set : elemsPerSet_.keySet()) {
+      Set<NetNode> elems = elemsPerSet_.get(set);
       Integer card = Integer.valueOf(elems.size());
-      SortedSet<NID.WithName> setsWithCard = byDegree.get(card);
+      SortedSet<NetNode> setsWithCard = byDegree.get(card);
       if (setsWithCard == null) {
-        setsWithCard = new TreeSet<NID.WithName>();
+        setsWithCard = new TreeSet<NetNode>();
         byDegree.put(card, setsWithCard);
       }
       setsWithCard.add(set);
@@ -161,11 +164,11 @@ public class SetLayout extends NodeLayout {
     // Now we create an ordered list of the sets:
     //
     
-    ArrayList<NID.WithName> setList = new ArrayList<NID.WithName>();
-    for (SortedSet<NID.WithName> forDeg : byDegree.values()) {
+    ArrayList<NetNode> setList = new ArrayList<NetNode>();
+    for (SortedSet<NetNode> forDeg : byDegree.values()) {
       setList.addAll(forDeg);
     }
-    ArrayList<NID.WithName> nodeOrder = new ArrayList<NID.WithName>(setList);
+    ArrayList<NetNode> nodeOrder = new ArrayList<NetNode>(setList);
 
     SortedSet<GraphSearcher.SourcedNodeGray> snds = GraphSearcher.nodeGraySetWithSourceFromMap(setList, setsPerElem_);
     for (GraphSearcher.SourcedNodeGray node : snds) {   
@@ -186,7 +189,7 @@ public class SetLayout extends NodeLayout {
   ** Extract the set information from the network
   */
 
-  private void extractSets(Set<FabricLink> links,
+  private void extractSets(Set<NetLink> links,
                            BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                              LayoutCriterionFailureException {
   
@@ -195,35 +198,35 @@ public class SetLayout extends NodeLayout {
     // ("BELONGS_TO") or the opposite ("CONTAINS"):
     //
     
-    HashSet<NID.WithName> setNodes = new HashSet<NID.WithName>();
-    HashSet<NID.WithName> elementNodes = new HashSet<NID.WithName>();     
+    HashSet<NetNode> setNodes = new HashSet<NetNode>();
+    HashSet<NetNode> elementNodes = new HashSet<NetNode>();     
     
-    LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.setLayoutSetExtracton"); 
+    LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.setLayoutSetExtraction"); 
     
-    for (FabricLink link : links) {
+    for (NetLink link : links) {
       lr.report();
-      NID.WithName set = (direction_ == LinkMeans.CONTAINS) ? link.getSrcID() : link.getTrgID();
-      NID.WithName elem = (direction_ == LinkMeans.CONTAINS) ? link.getTrgID() : link.getSrcID();
+      NetNode set = (direction_ == LinkMeans.CONTAINS) ? link.getSrcNode() : link.getTrgNode();
+      NetNode elem = (direction_ == LinkMeans.CONTAINS) ? link.getTrgNode() : link.getSrcNode();
       setNodes.add(set);
       elementNodes.add(elem);
       
-      Set<NID.WithName> forSet = elemsPerSet_.get(set);
+      Set<NetNode> forSet = elemsPerSet_.get(set);
       if (forSet == null) {
-        forSet = new HashSet<NID.WithName>();
+        forSet = new HashSet<NetNode>();
         elemsPerSet_.put(set, forSet);
       }
       forSet.add(elem);
       
-      Set<NID.WithName> forElem = setsPerElem_.get(elem);
+      Set<NetNode> forElem = setsPerElem_.get(elem);
       if (forElem == null) {
-        forElem = new HashSet<NID.WithName>();
+        forElem = new HashSet<NetNode>();
         setsPerElem_.put(elem, forElem);
       }
       forElem.add(set);  
     }
     lr.finish();
     
-    HashSet<NID.WithName> intersect = new HashSet<NID.WithName>(setNodes);
+    HashSet<NetNode> intersect = new HashSet<NetNode>(setNodes);
     intersect.retainAll(elementNodes);
     if (!intersect.isEmpty()) {
       throw new LayoutCriterionFailureException();

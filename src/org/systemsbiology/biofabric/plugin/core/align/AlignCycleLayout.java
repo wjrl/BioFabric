@@ -31,15 +31,15 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.systemsbiology.biofabric.layouts.LayoutCriterionFailureException;
-import org.systemsbiology.biofabric.layouts.NodeLayout;
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
-import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
+import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
+import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.util.UiUtil;
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
+import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
+import org.systemsbiology.biofabric.workerAPI.LoopReporter;
 
 /****************************************************************************
 **
@@ -87,11 +87,11 @@ public class AlignCycleLayout extends NodeLayout {
   */
   
   @Override
-  public boolean criteriaMet(BuildData.RelayoutBuildData rbd,
+  public boolean criteriaMet(BuildData rbd,
                              BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                                LayoutCriterionFailureException {
     
-    NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
+    NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd.getPluginBuildData();
     maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectG1toG2, narbd.allLargerNodes, 
                               narbd.allSmallerNodes, monitor);
     if (maps_ == null) {
@@ -117,11 +117,11 @@ public class AlignCycleLayout extends NodeLayout {
   ** Relayout the network!
   */
   
-  public List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd, 
-  		                                   Params params,
-  		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NetNode> doNodeLayout(BuildData rbd, 
+  		                              Params params,
+  		                              BTProgressMonitor monitor) throws AsynchExitRequestException {
       
-    List<NID.WithName> targetIDs = doNodeOrder(rbd, params, monitor);
+    List<NetNode> targetIDs = doNodeOrder(rbd, params, monitor);
 
     //
     // Now have the ordered list of targets we are going to display.
@@ -137,9 +137,9 @@ public class AlignCycleLayout extends NodeLayout {
   ** Relayout the network!
   */
   
-  public List<NID.WithName> doNodeOrder(BuildData.RelayoutBuildData rbd, 
-                                        Params params,
-                                        BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NetNode> doNodeOrder(BuildData rbd, 
+                                   Params params,
+                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
       
     
     //
@@ -147,22 +147,22 @@ public class AlignCycleLayout extends NodeLayout {
     // Thus, skip allowing the user to mess with this for now.
     //
     
-    List<NID.WithName> startNodeIDs = null;
+    List<NetNode> startNodeIDs = null;
     
-    NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd;
+    NetworkAlignmentBuildData narbd = (NetworkAlignmentBuildData)rbd.getPluginBuildData();
     
     if (maps_ == null) {
       maps_ = normalizeAlignMap(narbd.mapG1toG2, narbd.perfectG1toG2, narbd.allLargerNodes, 
                                 narbd.allSmallerNodes, monitor);
     }
     
-    Set<NID.WithName> allNodes = genAllNodes(narbd);
-    Map<NID.WithName, String> nodesToPathElem = genNodeToPathElem(allNodes);
-    Map<String, NID.WithName> pathElemToNode = genPathElemToNode(allNodes); 
+    Set<NetNode> allNodes = genAllNodes(rbd);
+    Map<NetNode, String> nodesToPathElem = genNodeToPathElem(allNodes);
+    Map<String, NetNode> pathElemToNode = genPathElemToNode(allNodes); 
     Map<String, AlignPath> alignPaths = calcAlignPaths(maps_);
     List<CycleBounds> cycleBounds = new ArrayList<CycleBounds>();
         
-    List<NID.WithName> targetIDs = alignPathNodeOrder(rbd.allLinks, rbd.loneNodeIDs, 
+    List<NetNode> targetIDs = alignPathNodeOrder(rbd.getLinks(), rbd.getSingletonNodes(), 
                                                       startNodeIDs, alignPaths, 
                                                       nodesToPathElem,
                                                       pathElemToNode,
@@ -177,12 +177,12 @@ public class AlignCycleLayout extends NodeLayout {
   ** Calculate alignPath node order.
   */
 
-  private List<NID.WithName> alignPathNodeOrder(Set<FabricLink> allLinks,
-  		                                          Set<NID.WithName> loneNodes, 
-  		                                          List<NID.WithName> startNodes,
+  private List<NetNode> alignPathNodeOrder(Set<NetLink> allLinks,
+  		                                          Set<NetNode> loneNodes, 
+  		                                          List<NetNode> startNodes,
   		                                          Map<String, AlignPath> alignPaths,
-  		                                          Map<NID.WithName, String> nodesToPathElem,
-  		                                          Map<String, NID.WithName> pathElemToNode,
+  		                                          Map<NetNode, String> nodesToPathElem,
+  		                                          Map<String, NetNode> pathElemToNode,
   		                                          List<CycleBounds> cycleBounds,
   		                                          BTProgressMonitor monitor) throws AsynchExitRequestException { 
     //
@@ -201,30 +201,30 @@ public class AlignCycleLayout extends NodeLayout {
     
     // 
     
-    HashMap<NID.WithName, Integer> linkCounts = new HashMap<NID.WithName, Integer>();
-    HashMap<NID.WithName, Set<NID.WithName>> targsPerSource = new HashMap<NID.WithName, Set<NID.WithName>>();
-    ArrayList<NID.WithName> targets = new ArrayList<NID.WithName>();
+    HashMap<NetNode, Integer> linkCounts = new HashMap<NetNode, Integer>();
+    HashMap<NetNode, Set<NetNode>> targsPerSource = new HashMap<NetNode, Set<NetNode>>();
+    ArrayList<NetNode> targets = new ArrayList<NetNode>();
          
-    HashSet<NID.WithName> targsToGo = new HashSet<NID.WithName>();
+    HashSet<NetNode> targsToGo = new HashSet<NetNode>();
     
     int numLink = allLinks.size();
     LoopReporter lr = new LoopReporter(numLink, 20, monitor, 0.0, 0.25, "progress.calculateNodeDegree");
     
-    Iterator<FabricLink> alit = allLinks.iterator();
+    Iterator<NetLink> alit = allLinks.iterator();
     while (alit.hasNext()) {
-      FabricLink nextLink = alit.next();
+      NetLink nextLink = alit.next();
       lr.report();
-      NID.WithName sidwn = nextLink.getSrcID();
-      NID.WithName tidwn = nextLink.getTrgID();
-      Set<NID.WithName> targs = targsPerSource.get(sidwn);
+      NetNode sidwn = nextLink.getSrcNode();
+      NetNode tidwn = nextLink.getTrgNode();
+      Set<NetNode> targs = targsPerSource.get(sidwn);
       if (targs == null) {
-        targs = new HashSet<NID.WithName>();
+        targs = new HashSet<NetNode>();
         targsPerSource.put(sidwn, targs);
       }
       targs.add(tidwn);
       targs = targsPerSource.get(tidwn);
       if (targs == null) {
-        targs = new HashSet<NID.WithName>();
+        targs = new HashSet<NetNode>();
         targsPerSource.put(tidwn, targs);
       }
       targs.add(sidwn);
@@ -243,15 +243,15 @@ public class AlignCycleLayout extends NodeLayout {
     
     lr = new LoopReporter(linkCounts.size(), 20, monitor, 0.25, 0.50, "progress.rankByDegree");
     
-    TreeMap<Integer, SortedSet<NID.WithName>> countRank = new TreeMap<Integer, SortedSet<NID.WithName>>(Collections.reverseOrder());
-    Iterator<NID.WithName> lcit = linkCounts.keySet().iterator();
+    TreeMap<Integer, SortedSet<NetNode>> countRank = new TreeMap<Integer, SortedSet<NetNode>>(Collections.reverseOrder());
+    Iterator<NetNode> lcit = linkCounts.keySet().iterator();
     while (lcit.hasNext()) {
-      NID.WithName src = lcit.next();
+      NetNode src = lcit.next();
       lr.report();
       Integer count = linkCounts.get(src);
-      SortedSet<NID.WithName> perCount = countRank.get(count);
+      SortedSet<NetNode> perCount = countRank.get(count);
       if (perCount == null) {
-        perCount = new TreeSet<NID.WithName>();
+        perCount = new TreeSet<NetNode>();
         countRank.put(count, perCount);
       }
       perCount.add(src);
@@ -267,14 +267,14 @@ public class AlignCycleLayout extends NodeLayout {
       Iterator<Integer> crit = countRank.keySet().iterator();
       while (crit.hasNext()) {
         Integer key = crit.next();
-        SortedSet<NID.WithName> perCount = countRank.get(key);
-        Iterator<NID.WithName> pcit = perCount.iterator();
+        SortedSet<NetNode> perCount = countRank.get(key);
+        Iterator<NetNode> pcit = perCount.iterator();
         while (pcit.hasNext()) {
-          NID.WithName node = pcit.next();
+          NetNode node = pcit.next();
           if (targsToGo.contains(node)) {
             String nodeKey = nodesToPathElem.get(node);
             AlignPath ac = alignPaths.get(nodeKey);
-            ArrayList<NID.WithName> queue = new ArrayList<NID.WithName>();
+            ArrayList<NetNode> queue = new ArrayList<NetNode>();
             if (ac == null) {
               targsToGo.remove(node);
               targets.add(node);
@@ -282,13 +282,13 @@ public class AlignCycleLayout extends NodeLayout {
             } else {
               List<String> unlooped = ac.getReorderedKidsStartingAtKidOrStart(nodeKey);
               for (String ulnode : unlooped) { 
-                NID.WithName daNode = pathElemToNode.get(ulnode);
+                NetNode daNode = pathElemToNode.get(ulnode);
                 targsToGo.remove(daNode);
                 targets.add(daNode);
                 queue.add(daNode);
               }
-              NID.WithName boundsStart = pathElemToNode.get(unlooped.get(0));
-              NID.WithName boundsEnd = pathElemToNode.get(unlooped.get(unlooped.size() - 1));
+              NetNode boundsStart = pathElemToNode.get(unlooped.get(0));
+              NetNode boundsEnd = pathElemToNode.get(unlooped.get(unlooped.size() - 1));
               cycleBounds.add(new CycleBounds(boundsStart, boundsEnd, ac.correct, ac.isCycle));
             }
             flushQueue(targets, targsPerSource, linkCounts, targsToGo, queue, alignPaths, nodesToPathElem,
@@ -301,17 +301,26 @@ public class AlignCycleLayout extends NodeLayout {
     //
     //
     // Tag on lone nodes.  If a node is by itself, but also shows up in the links,
-    // we drop it:
+    // we drop it.
+    //
+    // Used to do a set removeAll() operation, but discovered the operation was
+    // taking FOREVER, e.g. remains 190804 targets 281832. So do this in a loop
+    // that can be monitored for progress:
     //
     
-    HashSet<NID.WithName> remains = new HashSet<NID.WithName>(loneNodes);
-    // If we have a huge number of lone nodes, the removeAll() set operation is
-    // taking FOREVER, e.g. remains 190804 targets 281832. Use different approach?
-    System.err.println("remains " + remains.size() + " targets " + targets.size());
-    remains.removeAll(targets);
-    System.err.println("remains now " + remains.size());
-    targets.addAll(new TreeSet<NID.WithName>(remains));
+    LoopReporter lr2 = new LoopReporter(loneNodes.size(), 20, monitor, 0.0, 0.25, "progress.addSingletonsToTargets");
+    HashSet<NetNode> targSet = new HashSet<NetNode>(targets);
+    TreeSet<NetNode> remains = new TreeSet<NetNode>();
     
+    for (NetNode lnod : loneNodes) {
+    	if (!targSet.contains(lnod)) {
+    		lr2.report();
+    		remains.add(lnod); 		
+    	}    	
+    }
+    lr2.finish();
+    targets.addAll(remains);
+       
     return (targets);
   }
         
@@ -320,33 +329,33 @@ public class AlignCycleLayout extends NodeLayout {
   ** Node ordering
   */
   
-  private List<NID.WithName> orderMyKids(Map<NID.WithName, Set<NID.WithName>> targsPerSource, 
-  		                                   Map<NID.WithName, Integer> linkCounts, 
-                                         Set<NID.WithName> targsToGo, NID.WithName node) {
-    Set<NID.WithName> targs = targsPerSource.get(node);
+  private List<NetNode> orderMyKids(Map<NetNode, Set<NetNode>> targsPerSource, 
+  		                                   Map<NetNode, Integer> linkCounts, 
+                                         Set<NetNode> targsToGo, NetNode node) {
+    Set<NetNode> targs = targsPerSource.get(node);
     if (targs == null) {
-    	return (new ArrayList<NID.WithName>());
+    	return (new ArrayList<NetNode>());
     }
-    TreeMap<Integer, SortedSet<NID.WithName>> kidMap = new TreeMap<Integer, SortedSet<NID.WithName>>(Collections.reverseOrder());
-    Iterator<NID.WithName> tait = targs.iterator();
+    TreeMap<Integer, SortedSet<NetNode>> kidMap = new TreeMap<Integer, SortedSet<NetNode>>(Collections.reverseOrder());
+    Iterator<NetNode> tait = targs.iterator();
     while (tait.hasNext()) {  
-      NID.WithName nextTarg = tait.next(); 
+      NetNode nextTarg = tait.next(); 
       Integer count = linkCounts.get(nextTarg);
-      SortedSet<NID.WithName> perCount = kidMap.get(count);
+      SortedSet<NetNode> perCount = kidMap.get(count);
       if (perCount == null) {
-        perCount = new TreeSet<NID.WithName>();
+        perCount = new TreeSet<NetNode>();
         kidMap.put(count, perCount);
       }
       perCount.add(nextTarg);
     }
     
-    ArrayList<NID.WithName> myKidsToProc = new ArrayList<NID.WithName>();
-    Iterator<SortedSet<NID.WithName>> kmit = kidMap.values().iterator();
+    ArrayList<NetNode> myKidsToProc = new ArrayList<NetNode>();
+    Iterator<SortedSet<NetNode>> kmit = kidMap.values().iterator();
     while (kmit.hasNext()) {  
-      SortedSet<NID.WithName> perCount = kmit.next(); 
-      Iterator<NID.WithName> pcit = perCount.iterator();
+      SortedSet<NetNode> perCount = kmit.next(); 
+      Iterator<NetNode> pcit = perCount.iterator();
       while (pcit.hasNext()) {  
-        NID.WithName kid = pcit.next();
+        NetNode kid = pcit.next();
         if (targsToGo.contains(kid)) { 
           myKidsToProc.add(kid);
         }
@@ -360,13 +369,13 @@ public class AlignCycleLayout extends NodeLayout {
   ** Node ordering, non-recursive:
   */
   
-  private void flushQueue(List<NID.WithName> targets, 
-  		                    Map<NID.WithName, Set<NID.WithName>> targsPerSource, 
-                          Map<NID.WithName, Integer> linkCounts, 
-                          Set<NID.WithName> targsToGo, List<NID.WithName> queue,
+  private void flushQueue(List<NetNode> targets, 
+  		                    Map<NetNode, Set<NetNode>> targsPerSource, 
+                          Map<NetNode, Integer> linkCounts, 
+                          Set<NetNode> targsToGo, List<NetNode> queue,
                           Map<String, AlignPath> alignPaths,
-                          Map<NID.WithName, String> nodesToPathElem,
-                          Map<String, NID.WithName> pathElemToNode,
+                          Map<NetNode, String> nodesToPathElem,
+                          Map<String, NetNode> pathElemToNode,
                           List<CycleBounds> cycleBounds,
                           BTProgressMonitor monitor, double startFrac, double endFrac) 
                             throws AsynchExitRequestException {
@@ -374,19 +383,19 @@ public class AlignCycleLayout extends NodeLayout {
   	LoopReporter lr = new LoopReporter(targsToGo.size(), 20, monitor, startFrac, endFrac, "progress.nodeOrdering");
   	int lastSize = targsToGo.size();	
     while (!queue.isEmpty()) {
-      NID.WithName node = queue.remove(0);
+      NetNode node = queue.remove(0);
       int ttgSize = targsToGo.size();
       lr.report(lastSize - ttgSize);
       lastSize = ttgSize;
-      List<NID.WithName> myKids = orderMyKids(targsPerSource, linkCounts, targsToGo, node);
-      Iterator<NID.WithName> ktpit = myKids.iterator(); 
+      List<NetNode> myKids = orderMyKids(targsPerSource, linkCounts, targsToGo, node);
+      Iterator<NetNode> ktpit = myKids.iterator(); 
       while (ktpit.hasNext()) {  
-        NID.WithName kid = ktpit.next();
+        NetNode kid = ktpit.next();
         if (targsToGo.contains(kid)) {
           // here we add the entire cycle containing the kid. If kid is not in a cycle (unaligned), we just add
           // kid. If not a cycle but a path, we add the first kid in the path, then all following kids. If a cycle,
           // we start with the kid, and loop back around to the kid in front of us.
-          // nodesToPathElem is of form NID.WithName(G1:G2) -> "G1"
+          // nodesToPathElem is of form NetNode(G1:G2) -> "G1"
           String kidKey = nodesToPathElem.get(kid);
           AlignPath ac = alignPaths.get(kidKey);
           if (ac == null) {
@@ -397,14 +406,14 @@ public class AlignCycleLayout extends NodeLayout {
             targsToGo.removeAll(ac.pathNodes);
             List<String> unlooped = ac.getReorderedKidsStartingAtKidOrStart(kidKey);
             for (String ulnode : unlooped) { 
-              NID.WithName daNode = pathElemToNode.get(ulnode);
+              NetNode daNode = pathElemToNode.get(ulnode);
               targsToGo.remove(daNode);
               targets.add(daNode);
               queue.add(daNode);
             }
             
-            NID.WithName boundsStart = pathElemToNode.get(unlooped.get(0));
-            NID.WithName boundsEnd = pathElemToNode.get(unlooped.get(unlooped.size() - 1));
+            NetNode boundsStart = pathElemToNode.get(unlooped.get(0));
+            NetNode boundsEnd = pathElemToNode.get(unlooped.get(unlooped.size() - 1));
             cycleBounds.add(new CycleBounds(boundsStart, boundsEnd, ac.correct, ac.isCycle));
           }
         }
@@ -422,10 +431,10 @@ public class AlignCycleLayout extends NodeLayout {
   ** (if available) to create the cycle/path map. 
   */
   
-  private NodeMaps normalizeAlignMap(Map<NID.WithName, NID.WithName> align, 
-                                     Map<NID.WithName, NID.WithName> perfectAlign,
-                                     Set<NID.WithName> allLargerNodes,
-                                     Set<NID.WithName> allSmallerNodes,                                     
+  private NodeMaps normalizeAlignMap(Map<NetNode, NetNode> align, 
+                                     Map<NetNode, NetNode> perfectAlign,
+                                     Set<NetNode> allLargerNodes,
+                                     Set<NetNode> allSmallerNodes,                                     
                                      BTProgressMonitor monitor)  throws AsynchExitRequestException {
     
     //
@@ -436,7 +445,7 @@ public class AlignCycleLayout extends NodeLayout {
     UiUtil.fixMePrintout("Actually check loop progress");
     
     HashSet<String> keyNames = new HashSet<String>();
-    for (NID.WithName key : align.keySet()) {
+    for (NetNode key : align.keySet()) {
       if (keyNames.contains(key.getName())) {
         return (null); 
       }
@@ -444,7 +453,7 @@ public class AlignCycleLayout extends NodeLayout {
     }
     
     HashSet<String> valNames = new HashSet<String>();
-    for (NID.WithName value : align.values()) {
+    for (NetNode value : align.values()) {
       if (valNames.contains(value.getName())) {
         return (null); 
       }
@@ -461,7 +470,7 @@ public class AlignCycleLayout extends NodeLayout {
     //
     
     HashSet<String> largeNames = new HashSet<String>();
-    for (NID.WithName large : allLargerNodes) {
+    for (NetNode large : allLargerNodes) {
       if (largeNames.contains(large.getName())) {
         return (null); 
       }
@@ -469,7 +478,7 @@ public class AlignCycleLayout extends NodeLayout {
     }
     
     HashSet<String> smallNames = new HashSet<String>();
-    for (NID.WithName small : allSmallerNodes) {
+    for (NetNode small : allSmallerNodes) {
       if (smallNames.contains(small.getName())) {
         return (null); 
       }
@@ -491,8 +500,8 @@ public class AlignCycleLayout extends NodeLayout {
       } 
       backMap = new HashMap<String, String>();
       correctMap = new HashMap<String, String>();
-      for (NID.WithName key : perfectAlign.keySet()) {
-        NID.WithName val = perfectAlign.get(key);
+      for (NetNode key : perfectAlign.keySet()) {
+        NetNode val = perfectAlign.get(key);
         backMap.put(val.getName(), key.getName());
         correctMap.put(key.getName(), val.getName());
       }
@@ -500,8 +509,8 @@ public class AlignCycleLayout extends NodeLayout {
     
     Map<String, String> nameToName = new HashMap<String, String>();
      
-    for (NID.WithName key : align.keySet()) {
-       NID.WithName matchNode = align.get(key);
+    for (NetNode key : align.keySet()) {
+       NetNode matchNode = align.get(key);
        // Gotta be unique:
        if (nameToName.containsKey(key)) {
          throw new IllegalStateException();
@@ -518,28 +527,28 @@ public class AlignCycleLayout extends NodeLayout {
   ** Get all nodes
   */
   
-  private Set<NID.WithName> genAllNodes(NetworkAlignmentBuildData narbd) { 
+  private Set<NetNode> genAllNodes(BuildData narbd) { 
 
-    Set<NID.WithName> allNodes = new HashSet<NID.WithName>();
+    Set<NetNode> allNodes = new HashSet<NetNode>();
      
-     for (FabricLink link : narbd.allLinks) {
-       allNodes.add(link.getSrcID());
-       allNodes.add(link.getTrgID());
+     for (NetLink link : narbd.getLinks()) {
+       allNodes.add(link.getSrcNode());
+       allNodes.add(link.getTrgNode());
      }
-     allNodes.addAll(narbd.loneNodeIDs);
+     allNodes.addAll(narbd.getSingletonNodes());
      return (allNodes);
    } 
    
   /***************************************************************************
   **
-  ** Get map from network NID.WithName (of form G1::G2) to path elem (G1)
+  ** Get map from network NetNode (of form G1::G2) to path elem (G1)
   */
   
-  private Map<NID.WithName, String> genNodeToPathElem(Set<NID.WithName> allNodes) { 
+  private Map<NetNode, String> genNodeToPathElem(Set<NetNode> allNodes) { 
 
-     Map<NID.WithName, String> n2pe = new HashMap<NID.WithName, String>();
+     Map<NetNode, String> n2pe = new HashMap<NetNode, String>();
      
-     for (NID.WithName key : allNodes) {
+     for (NetNode key : allNodes) {
        String[] toks = key.getName().split("::");
        if (toks.length == 2) {
          n2pe.put(key, toks[0]);
@@ -556,11 +565,11 @@ public class AlignCycleLayout extends NodeLayout {
   ** Inverse of above
   */
   
-  private Map<String, NID.WithName> genPathElemToNode(Set<NID.WithName> allNodes) { 
+  private Map<String, NetNode> genPathElemToNode(Set<NetNode> allNodes) { 
 
-    Map<String, NID.WithName> pe2n = new HashMap<String, NID.WithName>();
+    Map<String, NetNode> pe2n = new HashMap<String, NetNode>();
     
-    for (NID.WithName key : allNodes) {
+    for (NetNode key : allNodes) {
       String[] toks = key.getName().split("::");
       if (toks.length == 2) {
         pe2n.put(toks[0], key);
@@ -708,9 +717,9 @@ public class AlignCycleLayout extends NodeLayout {
   
   public static class DefaultParams implements Params {
         
-    public List<NID.WithName> startNodes;
+    public List<NetNode> startNodes;
 
-    public DefaultParams(List<NID.WithName> startNodes) {
+    public DefaultParams(List<NetNode> startNodes) {
       this.startNodes = startNodes;
     } 
   }
@@ -741,12 +750,12 @@ public class AlignCycleLayout extends NodeLayout {
   
   public static class CycleBounds  {
         
-    public NID.WithName boundStart;
-    public NID.WithName boundEnd;
+    public NetNode boundStart;
+    public NetNode boundEnd;
     public boolean isCorrect;
     public boolean isCycle;
 
-    CycleBounds(NID.WithName boundStart, NID.WithName boundEnd, boolean isCorrect, boolean isCycle) {
+    CycleBounds(NetNode boundStart, NetNode boundEnd, boolean isCorrect, boolean isCycle) {
       this.boundStart = boundStart;
       this.boundEnd = boundEnd;
       this.isCorrect = isCorrect;

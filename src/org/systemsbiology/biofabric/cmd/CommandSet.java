@@ -77,18 +77,22 @@ import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.event.SelectionChangeListener;
 import org.systemsbiology.biofabric.io.AttributeLoader;
-import org.systemsbiology.biofabric.io.FileLoadFlows;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
+import org.systemsbiology.biofabric.io.BuildDataImpl;
+import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
+import org.systemsbiology.biofabric.io.FileLoadFlowsImpl;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.BuildExtractor;
-import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.modelAPI.AugRelation;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.plugin.PlugInManager;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
@@ -108,15 +112,14 @@ import org.systemsbiology.biofabric.ui.dialogs.PointUpOrDownDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ReorderLayoutParamsDialog;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.ui.display.FabricMagnifyingTool;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FileExtensionFilters;
 import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.InvalidInputException;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 /****************************************************************************
@@ -184,13 +187,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   public static final int HIER_DAG_LAYOUT              = 51;
   public static final int WORLD_BANK_LAYOUT            = 52;
   public static final int LOAD_WITH_EDGE_WEIGHTS       = 53;
-  public static final int LOAD_NET_ALIGN_GROUPS        = 54;
-  public static final int LOAD_NET_ALIGN_ORPHAN_EDGES  = 55;
-  public static final int NET_ALIGN_SCORES             = 56;
-  public static final int LOAD_FROM_GW                 = 57;
+  public static final int LOAD_FROM_GW                 = 54;
   
-  public static final int ADD_NODE_ANNOTATIONS         = 58;
-  public static final int ADD_LINK_ANNOTATIONS         = 59;
+  public static final int ADD_NODE_ANNOTATIONS         = 55;
+  public static final int ADD_LINK_ANNOTATIONS         = 56;
  
   public static final int GENERAL_PUSH   = 0x01;
   public static final int ALLOW_NAV_PUSH = 0x02;
@@ -216,7 +216,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   private HashMap<Integer, ChecksForEnabled> noIcons_;
   private HashMap<String, ChecksForEnabled> plugInCmds_;
   private FabricColorGenerator colGen_;
-  private FileLoadFlows flf_;
+  private FileLoadFlowsImpl flf_;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -345,6 +345,13 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       bfp_.repaint();
       return;
     }
+    
+    // No model? Nothing to do...
+    // Fix for issue #89
+    if (!bfp_.hasAModel()) {
+    	return;
+    }
+    
     
     if (needRecolor && !needRebuild) {  
       flf_.doRecolor(isForMain_);
@@ -730,7 +737,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     colGen_.newColorModel();
     isForMain_ = isMain;
     pMan_ = pMan;
-    flf_ = new FileLoadFlows(bfw_, pMan_, colGen_, this, headlessOracle, isMain);
+    flf_ = new FileLoadFlowsImpl(bfw_, pMan_, colGen_, this, headlessOracle, isMain);
     isAMac_ = System.getProperty("os.name").toLowerCase().startsWith("mac os x");
     FabricDisplayOptionsManager.getMgr().addTracker(this);
     EventManager mgr = EventManager.getManager();
@@ -1433,7 +1440,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
                                                         haveSelection, buildingSels);      
         fsd.setVisible(true);
         if (fsd.itemWasFound()) {
-          Set<NID.WithName> matches = fsd.getMatches();
+          Set<NetNode> matches = fsd.getMatches();
           boolean doDiscard = fsd.discardSelections();
           bfw_.getFabricPanel().installSearchResult(matches, doDiscard);
         }
@@ -1473,12 +1480,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     public void actionPerformed(ActionEvent e) {
       try {
-        Set<NID.WithName> allNodeIDs = bfp_.getNetwork().getNodeSetIDs();
-        Map<String, Set<NID.WithName>> normNameToIDs = bfp_.getNetwork().getNormNameToIDs();
+        Set<NetNode> allNodeIDs = bfp_.getNetwork().getNodeSetIDs();
+        Map<String, Set<NetNode>> normNameToIDs = bfp_.getNetwork().getNormNameToIDs();
         CompareNodesSetupDialog fsd = new CompareNodesSetupDialog(topWindow_, allNodeIDs, normNameToIDs);      
         fsd.setVisible(true);
         if (fsd.haveResult()) {
-          Set<NID.WithName> result = fsd.getResults();
+          Set<NetNode> result = fsd.getResults();
           bfp_.installSearchResult(result, true);          
           bfp_.addFirstNeighbors();
           bfp_.selectionsToSubmodel();
@@ -1730,12 +1737,12 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       if (file == null) {
         return (true);
       }
-      Map<String, Set<NID.WithName>> nameToIDs = bfp_.getNetwork().getNormNameToIDs();
+      Map<String, Set<NetNode>> nameToIDs = bfp_.getNetwork().getNormNameToIDs();
       Map<AttributeLoader.AttributeKey, String> edgeAttributes = flf_.loadTheFile(file, nameToIDs, false);
       if (edgeAttributes == null) {
         return (true);
       }
-      SortedMap<Integer, FabricLink> modifiedAndChecked = bfp_.getNetwork().checkNewLinkOrder(edgeAttributes);      
+      SortedMap<Integer, NetLink> modifiedAndChecked = bfp_.getNetwork().checkNewLinkOrder(edgeAttributes);      
       if (modifiedAndChecked == null) { 
         ResourceManager rMan = ResourceManager.getManager();
         JOptionPane.showMessageDialog(topWindow_, rMan.getString("attribRead.badColMessage"),
@@ -1842,8 +1849,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     protected boolean performOperation() {
-    	Set<NID.WithName> sels = bfp_.getNodeSelections();
-      NID.WithName selNode = (sels.size() == 1) ? sels.iterator().next() : null;
+    	Set<NetNode> sels = bfp_.getNodeSelections();
+      NetNode selNode = (sels.size() == 1) ? sels.iterator().next() : null;
     	
     	ClusterLayoutSetupDialog clsd = new ClusterLayoutSetupDialog(topWindow_, bfp_.getNetwork(), selNode);
       clsd.setVisible(true);      
@@ -1875,7 +1882,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private static final long serialVersionUID = 1L;
     
     LayoutTopControlAction(boolean doIcon) {
-      super(doIcon, "command.TopControlLayout", "command.TopControlLayoutMnem", BuildData.BuildMode.CONTROL_TOP_LAYOUT);
+      super(doIcon, "command.TopControlLayout", "command.TopControlLayoutMnem", BuildDataImpl.BuildMode.CONTROL_TOP_LAYOUT);
     }
     
     @Override
@@ -1916,7 +1923,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private static final long serialVersionUID = 1L;
     
     HierDAGLayoutAction(boolean doIcon) {
-      super(doIcon, "command.HierDAGLayout", "command.HierDAGLayoutMnem", BuildData.BuildMode.HIER_DAG_LAYOUT);
+      super(doIcon, "command.HierDAGLayout", "command.HierDAGLayoutMnem", BuildDataImpl.BuildMode.HIER_DAG_LAYOUT);
     }
     
     @Override
@@ -1946,7 +1953,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private static final long serialVersionUID = 1L;
     
     SetLayoutAction(boolean doIcon) {
-      super(doIcon, "command.SetLayout", "command.SetLayoutMnem", BuildData.BuildMode.SET_LAYOUT);
+      super(doIcon, "command.SetLayout", "command.SetLayoutMnem", BuildDataImpl.BuildMode.SET_LAYOUT);
     }
     
     @Override
@@ -2031,7 +2038,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     private static final long serialVersionUID = 1L;
     
     WorldBankLayoutAction(boolean doIcon) {
-      super(doIcon, "command.WorldBankLayout", "command.WorldBankLayoutMnem", BuildData.BuildMode.WORLD_BANK_LAYOUT);
+      super(doIcon, "command.WorldBankLayout", "command.WorldBankLayoutMnem", BuildDataImpl.BuildMode.WORLD_BANK_LAYOUT);
     }
   }
 
@@ -2059,8 +2066,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         
     public void actionPerformed(ActionEvent e) {
       try {
-        Set<NID.WithName> sels = bfp_.getNodeSelections();
-        NID.WithName selNode = (sels.size() == 1) ? sels.iterator().next() : null;
+        Set<NetNode> sels = bfp_.getNodeSelections();
+        NetNode selNode = (sels.size() == 1) ? sels.iterator().next() : null;
         BreadthFirstLayoutDialog bfl = new BreadthFirstLayoutDialog(topWindow_, selNode, bfw_.getFabricPanel().getNetwork());
         bfl.setVisible(true);          
         if (bfl.haveResult()) {
@@ -2087,9 +2094,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   private abstract class BasicLayoutAction extends ChecksForEnabled {
     
     private static final long serialVersionUID = 1L;
-    private BuildData.BuildMode bMode_;
+    private BuildDataImpl.BuildMode bMode_;
     
-    BasicLayoutAction(boolean doIcon, String nameTag, String mnemTag, BuildData.BuildMode bMode) {
+    BasicLayoutAction(boolean doIcon, String nameTag, String mnemTag, BuildDataImpl.BuildMode bMode) {
       ResourceManager rMan = ResourceManager.getManager(); 
       putValue(Action.NAME, rMan.getString(nameTag));
       if (doIcon) {
@@ -2257,14 +2264,14 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       BioFabricNetwork bfn = bfp_.getNetwork();
       List<String> currentTags = bfn.getLinkGroups();
       boolean showGroupAnnot = bfn.getShowLinkGroupAnnotations();
-      ArrayList<FabricLink> links = new ArrayList<FabricLink>(bfn.getAllLinks(true));
-      TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
+      ArrayList<NetLink> links = new ArrayList<NetLink>(bfn.getAllLinks(true));
+      TreeMap<AugRelation, Boolean> relMap = new TreeMap<AugRelation, Boolean>();
       try {
-        BuildExtractor.extractRelations(links, relMap, null);
+        PluginSupportFactory.getBuildExtractor().extractRelations(links, relMap, null);
       } catch (AsynchExitRequestException aerx) {
       	// Should not happen...
       }
-      Set<FabricLink.AugRelation> allRelations = relMap.keySet(); 
+      Set<AugRelation> allRelations = relMap.keySet(); 
       BioFabricNetwork.LayoutMode currMode = bfn.getLayoutMode();
       LinkGroupingSetupDialog lgsd = 
         new LinkGroupingSetupDialog(topWindow_, currentTags, showGroupAnnot, currMode, allRelations);
@@ -2276,11 +2283,11 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       BioFabricNetwork.LayoutMode mode = lgsd.getChosenMode();
       boolean showLinkAnnotations = lgsd.showLinkAnnotations();
 
-      BuildData.BuildMode bmode; 
+      BuildDataImpl.BuildMode bmode; 
       if (mode == BioFabricNetwork.LayoutMode.PER_NODE_MODE) {
-        bmode = BuildData.BuildMode.GROUP_PER_NODE_CHANGE;
+        bmode = BuildDataImpl.BuildMode.GROUP_PER_NODE_CHANGE;
       } else if (mode == BioFabricNetwork.LayoutMode.PER_NETWORK_MODE) {
-      	bmode = BuildData.BuildMode.GROUP_PER_NETWORK_CHANGE;
+      	bmode = BuildDataImpl.BuildMode.GROUP_PER_NETWORK_CHANGE;
       } else {
         throw new IllegalStateException();
       }
@@ -2889,10 +2896,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     
     protected void writeItOut(File file) throws IOException {
       PrintWriter out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8")));        
-      Set<NID.WithName> sels = bfp_.getNodeSelections();
-      Iterator<NID.WithName> sit = sels.iterator();
+      Set<NetNode> sels = bfp_.getNodeSelections();
+      Iterator<NetNode> sit = sels.iterator();
       while (sit.hasNext()) {
-        NID.WithName node = sit.next();
+        NetNode node = sit.next();
         out.println(node.getName());
       }
       out.close();

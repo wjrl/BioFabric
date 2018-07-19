@@ -17,41 +17,40 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.layouts;
-
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
+package org.systemsbiology.biofabric.utilAPI;
 
 /****************************************************************************
 **
-** This is the interface for edge layout algorithms
+** Resource Manager.
 */
 
-public interface EdgeLayout {
-
-	////////////////////////////////////////////////////////////////////////////
+public interface PluginResourceManager {
+  
+  ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-   
+ 
   /***************************************************************************
-  **
-  ** Relayout the whole network!
+  ** 
+  **  Set a bundle for a plugin
   */
-  
-  public void layoutEdges(BuildData.RelayoutBuildData rbd, 
-  		                    BTProgressMonitor monitor) throws AsynchExitRequestException;
-  
-  
-  /***************************************************************************
-  **
-  ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
-  */
-  
-  public void preProcessEdges(BuildData.RelayoutBuildData rbd, 
-  		                        BTProgressMonitor monitor) throws AsynchExitRequestException;
-   
 
+  public void setPluginBundle(String bundleName);
+	
+  /***************************************************************************
+  ** 
+  ** Get a resource String for a plugin
+  */
+
+  public String getPluginString(String key);
+ 
+  /***************************************************************************
+  ** 
+  ** Get a resource Character for plugin
+  */
+
+  public char getPluginChar(String key);
+ 
 }

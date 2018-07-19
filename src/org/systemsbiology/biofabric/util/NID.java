@@ -24,6 +24,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.systemsbiology.biofabric.modelAPI.NetNode;
+
 public class NID implements Cloneable, Comparable<NID> {
   
   private final String id_;
@@ -99,9 +101,9 @@ public class NID implements Cloneable, Comparable<NID> {
 	  }
 	  
 	  @Override
-	  public NID clone() {
+	  public NID.WithName clone() {
 	    try {
-	      NID newVal = (NID)super.clone();
+	      NID.WithName newVal = (NID.WithName)super.clone();
 	      return (newVal);
 	    } catch (CloneNotSupportedException ex) {
 	      throw new IllegalStateException();     

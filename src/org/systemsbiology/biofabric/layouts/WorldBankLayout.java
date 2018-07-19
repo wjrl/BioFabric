@@ -32,13 +32,15 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
-import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
+import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
+import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.util.UiUtil;
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
+import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
+import org.systemsbiology.biofabric.workerAPI.LoopReporter;
 
 /****************************************************************************
 **
@@ -91,7 +93,7 @@ public class WorldBankLayout extends NodeLayout {
   */
   
   @Override
-  public boolean criteriaMet(BuildData.RelayoutBuildData rbd,
+  public boolean criteriaMet(BuildData rbd,
                              BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                                LayoutCriterionFailureException {
     //
@@ -104,9 +106,9 @@ public class WorldBankLayout extends NodeLayout {
     // NOTE 2: Note the "popular" hubs in the world bank network ARE NOT THEMSELVES INTERACTING. 
     
     
-    LoopReporter lr = new LoopReporter(rbd.allLinks.size(), 20, monitor, 0.0, 1.0, "progress.hDagLayoutCriteriaCheck");
+    LoopReporter lr = new LoopReporter(rbd.getLinks().size(), 20, monitor, 0.0, 1.0, "progress.hDagLayoutCriteriaCheck");
     
-    for (FabricLink aLink : rbd.allLinks) {
+    for (NetLink aLink : rbd.getLinks()) {
       lr.report();
       //if (!aLink.isDirected()) {
        // throw new LayoutCriterionFailureException();
@@ -126,11 +128,11 @@ public class WorldBankLayout extends NodeLayout {
   ** Relayout the network!
   */
   
-  public List<NID.WithName> doNodeLayout(BuildData.RelayoutBuildData rbd,
-  																			 Params params,
-  		                                   BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public List<NetNode> doNodeLayout(BuildData rbd,
+  																  Params params,
+  		                              BTProgressMonitor monitor) throws AsynchExitRequestException {
     
-    List<NID.WithName> targets = calcNodeOrder(rbd.allLinks, rbd.loneNodeIDs, monitor);       
+    List<NetNode> targets = calcNodeOrder(rbd.getLinks(), rbd.getSingletonNodes(), monitor);       
 
     //
     // Now have the ordered list of targets we are going to display.
@@ -146,7 +148,7 @@ public class WorldBankLayout extends NodeLayout {
   ** Bump count
   */
 
-  private void bumpDaCount(Map<NID.WithName, Integer> countMap, NID.WithName dNode) {    
+  private void bumpDaCount(Map<NetNode, Integer> countMap, NetNode dNode) {    
     Integer inc = countMap.get(dNode);
     if (inc == null) {
       countMap.put(dNode, Integer.valueOf(1));
@@ -161,10 +163,10 @@ public class WorldBankLayout extends NodeLayout {
   ** Track neighbors
   */
 
-  private void addANeighbor(Map<NID.WithName, SortedSet<NID.WithName>> neighMap, NID.WithName daNode, NID.WithName daNeigh) {    
-    SortedSet<NID.WithName> forNode = neighMap.get(daNode);
+  private void addANeighbor(Map<NetNode, SortedSet<NetNode>> neighMap, NetNode daNode, NetNode daNeigh) {    
+    SortedSet<NetNode> forNode = neighMap.get(daNode);
     if (forNode == null) {
-      forNode = new TreeSet<NID.WithName>();
+      forNode = new TreeSet<NetNode>();
       neighMap.put(daNode, forNode);
     }
     forNode.add(daNeigh);
@@ -177,18 +179,18 @@ public class WorldBankLayout extends NodeLayout {
   ** degree->sortedSet(node) map:
   */
 
-  private SortedMap<Integer, SortedSet<NID.WithName>> invertCountMap(Map<NID.WithName, Integer> countMap, 
+  private SortedMap<Integer, SortedSet<NetNode>> invertCountMap(Map<NetNode, Integer> countMap, 
   		                                                               BTProgressMonitor monitor) throws AsynchExitRequestException { 
 
     LoopReporter lr = new LoopReporter(countMap.size(), 20, monitor, 0.0, 1.0, "progress.sortingByDegree");
   	    
-  	TreeMap<Integer, SortedSet<NID.WithName>> retval = new TreeMap<Integer, SortedSet<NID.WithName>>(Collections.reverseOrder());
-    for (NID.WithName daKey : countMap.keySet()) {
+  	TreeMap<Integer, SortedSet<NetNode>> retval = new TreeMap<Integer, SortedSet<NetNode>>(Collections.reverseOrder());
+    for (NetNode daKey : countMap.keySet()) {
       lr.report();
       Integer daCount = countMap.get(daKey);
-      SortedSet<NID.WithName> forCount = retval.get(daCount);
+      SortedSet<NetNode> forCount = retval.get(daCount);
       if (forCount == null) {
-        forCount = new TreeSet<NID.WithName>();
+        forCount = new TreeSet<NetNode>();
         retval.put(daCount, forCount);
       }
       forCount.add(daKey);
@@ -202,9 +204,9 @@ public class WorldBankLayout extends NodeLayout {
   ** Flatten a map
   */
 
-  private List<NID.WithName> flattenDaCount(SortedMap<Integer, SortedSet<NID.WithName>> invCountMap) { 
-    ArrayList<NID.WithName> retval = new ArrayList<NID.WithName>();
-    Iterator<SortedSet<NID.WithName>> icmit = invCountMap.values().iterator();
+  private List<NetNode> flattenDaCount(SortedMap<Integer, SortedSet<NetNode>> invCountMap) { 
+    ArrayList<NetNode> retval = new ArrayList<NetNode>();
+    Iterator<SortedSet<NetNode>> icmit = invCountMap.values().iterator();
     while (icmit.hasNext()) {
       retval.addAll(icmit.next());
     }
@@ -216,19 +218,19 @@ public class WorldBankLayout extends NodeLayout {
   ** Calculate node order
   */
 
-  private List<NID.WithName> calcNodeOrder(Set<FabricLink> allLinks, Set<NID.WithName> loneNodes,
+  private List<NetNode> calcNodeOrder(Set<NetLink> allLinks, Set<NetNode> loneNodes,
   		                                     BTProgressMonitor monitor) throws AsynchExitRequestException {
  
-    HashMap<NID.WithName, Integer> node2Degree = new HashMap<NID.WithName, Integer>();
-    HashMap<NID.WithName, SortedSet<NID.WithName>> node2Neighbor = new HashMap<NID.WithName, SortedSet<NID.WithName>>(); 
-    HashSet<NID.WithName> allNodes = new HashSet<NID.WithName>();
+    HashMap<NetNode, Integer> node2Degree = new HashMap<NetNode, Integer>();
+    HashMap<NetNode, SortedSet<NetNode>> node2Neighbor = new HashMap<NetNode, SortedSet<NetNode>>(); 
+    HashSet<NetNode> allNodes = new HashSet<NetNode>();
     
     LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor, 0.0, 1.0, "progress.wblCalcNodeOrder");
 
-    for (FabricLink nextLink : allLinks) {
+    for (NetLink nextLink : allLinks) {
       lr.report();
-      NID.WithName source = nextLink.getSrcID();
-      NID.WithName target = nextLink.getTrgID();
+      NetNode source = nextLink.getSrcNode();
+      NetNode target = nextLink.getTrgNode();
  
       //
       // Track all link-related nodes:
@@ -252,7 +254,7 @@ public class WorldBankLayout extends NodeLayout {
     }
     lr.finish();
     
-    SortedMap<Integer, SortedSet<NID.WithName>> degree2Nodes = invertCountMap(node2Degree, monitor);
+    SortedMap<Integer, SortedSet<NetNode>> degree2Nodes = invertCountMap(node2Degree, monitor);
     
     //
     // For nodes that have *one* neighbor, collect those popular neighbors (i.e. hubs):
@@ -260,15 +262,15 @@ public class WorldBankLayout extends NodeLayout {
     
     LoopReporter lr2 = new LoopReporter(node2Neighbor.size(), 20, monitor, 0.0, 1.0, "progress.wblPopNeighbors");
     
-    HashMap<NID.WithName, Set<NID.WithName>> oneNeighbor = new HashMap<NID.WithName, Set<NID.WithName>>();
-    for (NID.WithName node : node2Neighbor.keySet()) {
+    HashMap<NetNode, Set<NetNode>> oneNeighbor = new HashMap<NetNode, Set<NetNode>>();
+    for (NetNode node : node2Neighbor.keySet()) {
       lr2.report();
-      SortedSet<NID.WithName> nextDoor = node2Neighbor.get(node);
+      SortedSet<NetNode> nextDoor = node2Neighbor.get(node);
       if (nextDoor.size() == 1) {        
-        NID.WithName popular = nextDoor.first();
-        Set<NID.WithName> popFriends = oneNeighbor.get(popular);
+        NetNode popular = nextDoor.first();
+        Set<NetNode> popFriends = oneNeighbor.get(popular);
         if (popFriends == null) {
-          popFriends = new HashSet<NID.WithName>();
+          popFriends = new HashSet<NetNode>();
           oneNeighbor.put(popular, popFriends);
         }
         popFriends.add(node);
@@ -279,14 +281,14 @@ public class WorldBankLayout extends NodeLayout {
     LoopReporter lr3 = new LoopReporter(degree2Nodes.size(), 0, monitor, 0.0, 1.0, "progress.addingSatellites");
     
     
-    ArrayList<NID.WithName> targets = new ArrayList<NID.WithName>();
-    HashSet<NID.WithName> tSet = new HashSet<NID.WithName>(); // For rapid lookup
+    ArrayList<NetNode> targets = new ArrayList<NetNode>();
+    HashSet<NetNode> tSet = new HashSet<NetNode>(); // For rapid lookup
     
     //
     // Do this in decreasing degree order for the popular neighbors (hubs):
     //
     
-    Set<NID.WithName> populars = oneNeighbor.keySet();
+    Set<NetNode> populars = oneNeighbor.keySet();
     
     for (Integer deg : degree2Nodes.keySet()) {
       lr3.report();
@@ -300,15 +302,15 @@ public class WorldBankLayout extends NodeLayout {
       //
       // Crank thru the populars at a particular degree:
       //
-      SortedSet<NID.WithName> forDeg = degree2Nodes.get(deg);
-      for (NID.WithName degNode : forDeg) {
+      SortedSet<NetNode> forDeg = degree2Nodes.get(deg);
+      for (NetNode degNode : forDeg) {
         if (populars.contains(degNode)) {
           targets.add(degNode); // Add the popular node
           tSet.add(degNode);
-          HashMap<NID.WithName, Integer> forDaPop = new HashMap<NID.WithName, Integer>();
+          HashMap<NetNode, Integer> forDaPop = new HashMap<NetNode, Integer>();
           // Get the unpopular friends:
-          Set<NID.WithName> unpopFriends = oneNeighbor.get(degNode);
-          for (NID.WithName unPop : unpopFriends) {
+          Set<NetNode> unpopFriends = oneNeighbor.get(degNode);
+          for (NetNode unPop : unpopFriends) {
             Integer upd = node2Degree.get(unPop);
             forDaPop.put(unPop, upd);            
           }
@@ -317,8 +319,8 @@ public class WorldBankLayout extends NodeLayout {
           // out the friends into two separate sets (e.g. in-country versus between country) as
           // is done in the classic world-bank layout. That requires link groups to be defined:
           //
-          SortedMap<Integer, SortedSet<NID.WithName>> invFor = invertCountMap(forDaPop, null);
-          List<NID.WithName> fdc = flattenDaCount(invFor);
+          SortedMap<Integer, SortedSet<NetNode>> invFor = invertCountMap(forDaPop, null);
+          List<NetNode> fdc = flattenDaCount(invFor);
           targets.addAll(fdc); 
           tSet.addAll(fdc);
         }
@@ -330,14 +332,14 @@ public class WorldBankLayout extends NodeLayout {
     // Handle all remaining unplaced (linked) nodes! This is purely in order of decreasing degree.
     //
     
-    HashSet<NID.WithName> stillToPlace = new HashSet<NID.WithName>(allNodes);
+    HashSet<NetNode> stillToPlace = new HashSet<NetNode>(allNodes);
     stillToPlace.removeAll(targets);
 
     LoopReporter lr4 = new LoopReporter(degree2Nodes.size(), 0, monitor, 0.0, 1.0, "progress.addingGlobalNodes");
     
-    for (SortedSet<NID.WithName> fdeg : degree2Nodes.values()) {
+    for (SortedSet<NetNode> fdeg : degree2Nodes.values()) {
       lr4.report();
-      for (NID.WithName chkNode : fdeg) {
+      for (NetNode chkNode : fdeg) {
         if (stillToPlace.contains(chkNode)) {
           targets.add(chkNode);
         }
@@ -351,9 +353,9 @@ public class WorldBankLayout extends NodeLayout {
     // we drop it:
     //
     
-    HashSet<NID.WithName> remains = new HashSet<NID.WithName>(loneNodes);
+    HashSet<NetNode> remains = new HashSet<NetNode>(loneNodes);
     remains.removeAll(targets);
-    targets.addAll(new TreeSet<NID.WithName>(remains));
+    targets.addAll(new TreeSet<NetNode>(remains));
     return (targets);
   } 
 }

@@ -55,22 +55,26 @@ import javax.swing.filechooser.FileFilter;
 import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.cmd.HeadlessOracle;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
+import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
+import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
+import org.systemsbiology.biofabric.layoutAPI.EdgeLayout;
+import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
+import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
-import org.systemsbiology.biofabric.layouts.EdgeLayout;
-import org.systemsbiology.biofabric.layouts.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
-import org.systemsbiology.biofabric.layouts.NodeLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.BuildExtractor;
-import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.modelAPI.AugRelation;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.ProgressFilterInputStream;
 import org.systemsbiology.biofabric.parser.SUParser;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.plugin.PlugInManager;
 import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -79,21 +83,20 @@ import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.dialogs.RelationDirectionDialog;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.BackgroundWorker;
-import org.systemsbiology.biofabric.util.BackgroundWorkerClient;
-import org.systemsbiology.biofabric.util.BackgroundWorkerControlManager;
-import org.systemsbiology.biofabric.util.BackgroundWorkerOwner;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FileExtensionFilters;
 import org.systemsbiology.biofabric.util.GarbageRequester;
 import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.InvalidInputException;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
+import org.systemsbiology.biofabric.workerAPI.BFWorker;
+import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
+import org.systemsbiology.biofabric.workerAPI.BackgroundCore;
+import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
+import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerOwner;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 /****************************************************************************
@@ -101,7 +104,7 @@ import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 ** Handles File Loading Tasks
 */
 
-public class FileLoadFlows {
+public class FileLoadFlowsImpl implements FileLoadFlows {
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -166,7 +169,7 @@ public class FileLoadFlows {
   ** Constructor 
   */ 
   
-  public FileLoadFlows(BioFabricWindow bfw, PlugInManager pMan,
+  public FileLoadFlowsImpl(BioFabricWindow bfw, PlugInManager pMan,
                        FabricColorGenerator colGen, CommandSet cSet,
                        HeadlessOracle headlessOracle, boolean isForMain) {
     bfw_ = bfw;
@@ -202,8 +205,8 @@ public class FileLoadFlows {
   ** Do network build for a plug-in that provides the needed custom BuildData
   */ 
      
-  public void buildNetworkForPlugIn(BuildData.RelayoutBuildData pluginData, File holdIt) { 
-    NetworkBuilder nb = new FileLoadFlows.NetworkBuilder(true, holdIt);
+  public void buildNetworkForPlugIn(BuildData pluginData, File holdIt, String pluginName) { 
+    NetworkBuilder nb = new FileLoadFlowsImpl.NetworkBuilder(true, holdIt, pluginName);
     nb.setForPlugInBuild(pluginData);
     nb.doNetworkBuild();
     return;
@@ -214,7 +217,7 @@ public class FileLoadFlows {
   ** Do basic relayout
   */ 
      
-  public void doBasicRelayout(BuildData.BuildMode bMode) { 
+  public void doBasicRelayout(BuildDataImpl.BuildMode bMode) { 
     (new NetworkRelayout()).doNetworkRelayout(bfp_.getNetwork(), bMode); 
     return;
   }
@@ -227,7 +230,7 @@ public class FileLoadFlows {
   public void doDefaultRelayout(DefaultLayout.Params params) { 
     NetworkRelayout nb = new NetworkRelayout();
     nb.setParams(params);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.DEFAULT_LAYOUT); 
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.DEFAULT_LAYOUT); 
     return;
   }
 
@@ -239,7 +242,7 @@ public class FileLoadFlows {
   public void doConnectivityRelayout(NodeSimilarityLayout.ClusterParams params) { 
     NetworkRelayout nb = new NetworkRelayout();
     nb.setParams(params);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.CLUSTERED_LAYOUT);    
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.CLUSTERED_LAYOUT);    
     return;
   }
     
@@ -259,8 +262,8 @@ public class FileLoadFlows {
    
     BioFabricNetwork bfn = bfp_.getNetwork();
     if (bfn != null) {
-      NetworkBuilder nb = new NetworkBuilder(true, holdIt);
-      nb.setForDisplayOptionChange(bfn, BuildData.BuildMode.SHADOW_LINK_CHANGE);
+      NetworkBuilder nb = new NetworkBuilder(true, holdIt, null);
+      nb.setForDisplayOptionChange(bfn, BuildDataImpl.BuildMode.SHADOW_LINK_CHANGE);
       nb.doNetworkBuild();
     }
     return;
@@ -279,7 +282,6 @@ public class FileLoadFlows {
     } catch (IOException ioex) {
       holdIt = null;
     }
-    System.out.println("Lotsa problems here (nulls) if non-main has never been launched");
     NetworkRecolor nb = new NetworkRecolor(); 
     nb.doNetworkRecolor(isForMain, holdIt);
     return;
@@ -293,7 +295,7 @@ public class FileLoadFlows {
   public void doShapeMatchRelayout(NodeSimilarityLayout.ResortParams params) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setParams(params);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.REORDER_LAYOUT);   
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.REORDER_LAYOUT);   
     return;
   }
 
@@ -305,7 +307,7 @@ public class FileLoadFlows {
   public void doLinkGroupRelayout(BioFabricNetwork bfn, List<String> groupOrder, 
                                   BioFabricNetwork.LayoutMode mode, 
                                   boolean showGroupLinkAnnotations, 
-                                  BuildData.BuildMode bmode) {
+                                  BuildDataImpl.BuildMode bmode) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setGroupOrderAndMode(groupOrder, mode, showGroupLinkAnnotations);
     nb.doNetworkRelayout(bfn, bmode);
@@ -320,7 +322,7 @@ public class FileLoadFlows {
    public void doSetRelayout(boolean pointUp) {
      NetworkRelayout nb = new NetworkRelayout();
      nb.setPointUp(pointUp);
-     nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.SET_LAYOUT);
+     nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.SET_LAYOUT);
      return;
    }
   
@@ -332,7 +334,7 @@ public class FileLoadFlows {
   public void doHierDagRelayout(boolean pointUp) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setPointUp(pointUp);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.HIER_DAG_LAYOUT); 
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.HIER_DAG_LAYOUT); 
     return;
   }
   
@@ -345,7 +347,7 @@ public class FileLoadFlows {
                                    ControlTopLayout.TargMode tMode, List<String> fixedList) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setControlTopModes(cMode, tMode, fixedList);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.CONTROL_TOP_LAYOUT); 
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.CONTROL_TOP_LAYOUT); 
     return;
   }
   
@@ -357,7 +359,7 @@ public class FileLoadFlows {
   public void doNetworkClusterRelayout(NodeClusterLayout.ClusterParams params) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setParams(params);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.NODE_CLUSTER_LAYOUT);
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.NODE_CLUSTER_LAYOUT);
     return;
   }
 
@@ -366,10 +368,10 @@ public class FileLoadFlows {
   ** Do network link relayout
   */ 
      
-  public void doNetworkLinkRelayout(SortedMap<Integer, FabricLink> modifiedAndChecked) {
+  public void doNetworkLinkRelayout(SortedMap<Integer, NetLink> modifiedAndChecked) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setLinkOrder(modifiedAndChecked);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.LINK_ATTRIB_LAYOUT);  
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.LINK_ATTRIB_LAYOUT);  
     return;
   }
 
@@ -381,7 +383,7 @@ public class FileLoadFlows {
   public void doNetworkRelayout(Map<AttributeLoader.AttributeKey, String> nodeAttributes) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setNodeOrderFromAttrib(nodeAttributes);
-    nb.doNetworkRelayout(bfp_.getNetwork(), BuildData.BuildMode.NODE_ATTRIB_LAYOUT);   
+    nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.NODE_ATTRIB_LAYOUT);   
     return;
   }
 
@@ -416,11 +418,11 @@ public class FileLoadFlows {
   */
     
   private boolean buildTheNetworkFomLinks(File file, UniqueLabeller idGen,
-  		                                    Set<NID.WithName> loneNodeIDs, 
-  		                                    Set<FabricLink> reducedLinks, File holdIt) {
+  		                                    Set<NetNode> loneNodeIDs, 
+  		                                    Set<NetLink> reducedLinks, File holdIt) {
   	try {
-      NetworkBuilder nb = new NetworkBuilder(true, holdIt);
-      nb.setForSifBuild(idGen, reducedLinks, loneNodeIDs, BuildData.BuildMode.BUILD_FROM_SIF);  
+      NetworkBuilder nb = new NetworkBuilder(true, holdIt, null);
+      nb.setForSifBuild(idGen, reducedLinks, loneNodeIDs, BuildDataImpl.BuildMode.BUILD_FROM_SIF);  
       if (this.headlessOracle_ == null) {
         nb.doNetworkBuild();            
       } else {
@@ -462,9 +464,9 @@ public class FileLoadFlows {
   ** Second step for loading from SIF
   */
     
-  public boolean handleDirectionsDupsAndShadows(List<FabricLink> links, Set<NID.WithName> loneNodeIDs, 
-  		                                           boolean binMag, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
-  		                                           Set<FabricLink> reducedLinks, File holdIt, boolean doForceUndirected) {
+  public boolean handleDirectionsDupsAndShadows(List<NetLink> links, Set<NetNode> loneNodeIDs, 
+  		                                           boolean binMag, SortedMap<AugRelation, Boolean> relaMap,
+  		                                           Set<NetLink> reducedLinks, File holdIt, boolean doForceUndirected) {
     
     
     ResourceManager rMan = ResourceManager.getManager(); 
@@ -488,7 +490,7 @@ public class FileLoadFlows {
               return (true);
             }
             
-            HashSet<FabricLink.AugRelation> needed = new HashSet<FabricLink.AugRelation>(relaMap.keySet());
+            HashSet<AugRelation> needed = new HashSet<AugRelation>(relaMap.keySet());
           
             boolean tooMany = false;
             Iterator<AttributeLoader.AttributeKey> rit = relAttributes.keySet().iterator();
@@ -497,8 +499,8 @@ public class FileLoadFlows {
               String key = sKey.key;
               String val = relAttributes.get(sKey);
               Boolean dirVal = Boolean.valueOf(val);
-              FabricLink.AugRelation forNorm = new FabricLink.AugRelation(key, false);
-              FabricLink.AugRelation forShad = new FabricLink.AugRelation(key, true);
+              AugRelation forNorm = new AugRelation(key, false);
+              AugRelation forShad = new AugRelation(key, true);
               boolean matched = false;
               if (needed.contains(forNorm)) {
                 matched = true;
@@ -527,7 +529,7 @@ public class FileLoadFlows {
         }
       }
       
-      HashSet<FabricLink> culledLinks = new HashSet<FabricLink>();
+      HashSet<NetLink> culledLinks = new HashSet<NetLink>();
       
       if (headlessOracle_ == null) {
         boolean didFinish = backPreprocess(links, relaMap, reducedLinks, culledLinks, holdIt);
@@ -574,13 +576,13 @@ public class FileLoadFlows {
       //
       
       if (binMag) {
-      	HashSet<FabricLink> binnedLinks = new HashSet<FabricLink>();
+      	HashSet<NetLink> binnedLinks = new HashSet<NetLink>();
         Pattern p = Pattern.compile("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?");
         
-        Iterator<FabricLink> alit = reducedLinks.iterator();
+        Iterator<NetLink> alit = reducedLinks.iterator();
         while (alit.hasNext()) {
-          FabricLink nextLink = alit.next();
-          FabricLink.AugRelation rel = nextLink.getAugRelation();
+          NetLink nextLink = alit.next();
+          AugRelation rel = nextLink.getAugRelation();
           Matcher m = p.matcher(rel.relation);
           int magCount = 0;
           if (m.find()) {      
@@ -611,8 +613,8 @@ public class FileLoadFlows {
   ** Do preprocessing
   */
   
-  public boolean backPreprocess(List<FabricLink> links, SortedMap<FabricLink.AugRelation, Boolean> relMap,
-                            Set<FabricLink> reducedLinks, Set<FabricLink> culledLinks, File holdIt) {
+  public boolean backPreprocess(List<NetLink> links, SortedMap<AugRelation, Boolean> relMap,
+                            Set<NetLink> reducedLinks, Set<NetLink> culledLinks, File holdIt) {
     PreprocessNetwork pn = new PreprocessNetwork();
     boolean didFinish = pn.doNetworkPreprocess(links, relMap, reducedLinks, culledLinks, holdIt);
     return (didFinish);
@@ -624,7 +626,7 @@ public class FileLoadFlows {
    */
   
   public boolean loadFromASource(File file, Map<AttributeLoader.AttributeKey, String> nameMap,
-                                 Integer magBins, UniqueLabeller idGen, FileLoadType type) {
+                                 Integer magBins, UniqueLabeller idGen, FileLoadFlows.FileLoadType type) {
     
     HashMap<String, String> nodeNames = null;
     if (nameMap != null) {
@@ -642,10 +644,10 @@ public class FileLoadFlows {
       holdIt = null;
     }
   
-    ArrayList<FabricLink> links = new ArrayList<FabricLink>();
-    HashSet<NID.WithName> loneNodes = new HashSet<NID.WithName>();
-    TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
-    HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
+    ArrayList<NetLink> links = new ArrayList<NetLink>();
+    HashSet<NetNode> loneNodes = new HashSet<NetNode>();
+    TreeMap<AugRelation, Boolean> relMap = new TreeMap<AugRelation, Boolean>();
+    HashSet<NetLink> reducedLinks = new HashSet<NetLink>();
     FabricImportLoader.FileImportStats sss;
     
     if ((file.length() > FILE_LENGTH_FOR_BACKGROUND_FILE_READ) && (headlessOracle_ == null)) {
@@ -655,27 +657,32 @@ public class FileLoadFlows {
       // This gets file in:
       //
       boolean finished;
-      if (type == FileLoadType.SIF) {
+      if (type == FileLoadFlows.FileLoadType.SIF) {
         finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
-      } else if (type == FileLoadType.GW) {
-        finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
+      } else if (type == FileLoadFlows.FileLoadType.GW) {
+        // need to process gw liks if no relations provided
+        finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, nodeNames, sss, true, magBins, relMap, holdIt);
       } else {
         throw (new IllegalArgumentException("File type not identified"));
       }
-      if (!finished) { // do not continue if failed
+      if (!finished) {
         return (true);
       }
-      return (true);
     } else {
       try {
-        if (type == FileLoadType.SIF) {
+        if (type == FileLoadFlows.FileLoadType.SIF) {
           sss = (new SIFImportLoader()).importFabric(file, idGen, links, loneNodes, nodeNames, magBins, null);
-        } else if (type == FileLoadType.GW) {
+        } else if (type == FileLoadFlows.FileLoadType.GW) {
           sss = (new GWImportLoader()).importFabric(file, idGen, links, loneNodes, nodeNames, magBins, null);
+          boolean finished = (new GWImportLoader.GWRelationManager()).process(links, topWindow_, null);
+          if (!finished) {
+            // should not happen
+            return (false);
+          }
         } else {
           throw (new IllegalArgumentException("File type not identified"));
         }
-        BuildExtractor.extractRelations(links, relMap, null);
+        PluginSupportFactory.getBuildExtractor().extractRelations(links, relMap, null);
       } catch (AsynchExitRequestException axex) {
         // Should never happen
         return (false);
@@ -705,9 +712,9 @@ public class FileLoadFlows {
    ** Load from file and directly receive link set and loners set
    */
   
-  public boolean loadFromASource(File file, ArrayList<FabricLink> links,
-                                 HashSet<NID.WithName> loneNodes, Integer magBins,
-                                 UniqueLabeller idGen, boolean loadOnly, FileLoadType type) {
+  public boolean loadFromASource(File file, List<NetLink> links,
+                                 Set<NetNode> loneNodes, Integer magBins,
+                                 UniqueLabeller idGen, boolean loadOnly, FileLoadFlows.FileLoadType type) {
     
     File holdIt;
     try {
@@ -717,18 +724,19 @@ public class FileLoadFlows {
       holdIt = null;
     }
   
-    HashSet<FabricLink> reducedLinks = new HashSet<FabricLink>();
-    TreeMap<FabricLink.AugRelation, Boolean> relMap = new TreeMap<FabricLink.AugRelation, Boolean>();
+    HashSet<NetLink> reducedLinks = new HashSet<NetLink>();
+    TreeMap<AugRelation, Boolean> relMap = new TreeMap<AugRelation, Boolean>();
     FabricImportLoader.FileImportStats sss = new FabricImportLoader.FileImportStats();
   
     // Always do background read- not worth checking file size- most files will likely be large
     BackgroundFileReader br = new BackgroundFileReader();
     // This gets file in:
     boolean finished;
-    if (type == FileLoadType.SIF) {
+    if (type == FileLoadFlows.FileLoadType.SIF) {
       finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, null, sss, magBins, relMap, holdIt);
-    } else if (type == FileLoadType.GW) {
-      finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, null, sss, magBins, relMap, holdIt);
+    } else if (type == FileLoadFlows.FileLoadType.GW) {
+      // no need for gw processing because links will be post-processed anyways (e.g. net align)
+      finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, null, sss, false, magBins, relMap, holdIt);
     } else {
       throw (new IllegalArgumentException("File type not identified"));
     }
@@ -768,12 +776,13 @@ public class FileLoadFlows {
   ** Preprocess ops that are either run in forground or background:
   */ 
     
-  private void preprocess(List<FabricLink> links, 
-  		                    SortedMap<FabricLink.AugRelation, Boolean> relaMap,
-  	                      Set<FabricLink> reducedLinks, Set<FabricLink> culledLinks,  
+  private void preprocess(List<NetLink> links, 
+  		                    SortedMap<AugRelation, Boolean> relaMap,
+  	                      Set<NetLink> reducedLinks, Set<NetLink> culledLinks,  
   	                      BTProgressMonitor monitor) throws AsynchExitRequestException {
-    BuildExtractor.assignDirections(links, relaMap, monitor);
-    BuildExtractor.preprocessLinks(links, reducedLinks, culledLinks, monitor);
+  	BuildExtractor bex = PluginSupportFactory.getBuildExtractor();
+    bex.assignDirections(links, relaMap, monitor);
+    bex.preprocessLinks(links, reducedLinks, culledLinks, monitor);
     return;
   }  
     
@@ -833,9 +842,9 @@ public class FileLoadFlows {
   ** Common load operations.
   */ 
     
-  boolean postXMLLoad(FabricFactory ff, String fileName, File holdIt) {  
-    NetworkBuilder nb = new NetworkBuilder(true, holdIt); 
-    nb.setBuildDataForXMLLoad(ff.getFabricNetwork(), BuildData.BuildMode.BUILD_FROM_XML);
+  public boolean postXMLLoad(FabricFactory ff, String fileName, File holdIt) {  
+    NetworkBuilder nb = new NetworkBuilder(true, holdIt, null); 
+    nb.setBuildDataForXMLLoad(ff.getFabricNetwork(), BuildDataImpl.BuildMode.BUILD_FROM_XML);
     nb.doNetworkBuild();
     manageWindowTitle(fileName);
     return (true);
@@ -1022,12 +1031,13 @@ public class FileLoadFlows {
   ** Load the file. Map keys are strings or Links
   */
      
-  public Map<AttributeLoader.AttributeKey, String> loadTheFile(File file, Map<String, Set<NID.WithName>> nameToIDs, boolean forNodes) {
+  public Map<AttributeLoader.AttributeKey, String> loadTheFile(File file, Map<String, Set<NetNode>> nameToIDs, boolean forNodes) {
     HashMap<AttributeLoader.AttributeKey, String> attributes = new HashMap<AttributeLoader.AttributeKey, String>();
     try {    
       AttributeLoader.ReadStats stats = new AttributeLoader.ReadStats();
-      AttributeLoader alod = new AttributeLoader(); 
-      Map<String, NID.WithName> nameToID = (!forNodes) ? BuildExtractor.reduceNameSetToOne(nameToIDs) : null;
+      AttributeLoader alod = new AttributeLoader();
+      BuildExtractor bex = PluginSupportFactory.getBuildExtractor();
+      Map<String, NetNode> nameToID = (!forNodes) ? bex.reduceNameSetToOne(nameToIDs) : null;
       alod.readAttributes(file, forNodes, attributes, nameToID, stats);
       if (!stats.badLines.isEmpty()) {
         ResourceManager rMan = ResourceManager.getManager();
@@ -1309,20 +1319,19 @@ public class FileLoadFlows {
     private boolean forRecovery_;
      
     public boolean doBackgroundSIFRead(File file, UniqueLabeller idGen,
-		    		                           List<FabricLink> links, Set<NID.WithName> loneNodeIDs, 
+		    		                           List<NetLink> links, Set<NetNode> loneNodeIDs, 
 		    		                           Map<String, String> nameMap, FabricImportLoader.FileImportStats sss,
-		    		                           Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relMap,
+		    		                           Integer magBins, SortedMap<AugRelation, Boolean> relMap,
 		    		                           File holdIt) {
 
     	holdIt_ = holdIt;
       finished_ = true;
       forRecovery_ = false;
       try {
-        SIFReaderRunner runner = new SIFReaderRunner(file, idGen, links, loneNodeIDs, nameMap, sss, magBins, relMap, holdIt_);                                                        
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
-                                                                 "fileLoad.waitTitle", "fileLoad.wait", true);
-        runner.setClient(bwc);
-        bwc.launchWorker();         
+        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true, null);
+        SIFReaderRunner runner = new SIFReaderRunner(file, idGen, links, loneNodeIDs, nameMap, sss, magBins, relMap, holdIt_, bfw);                                                        
+        bfw.setCore(runner);
+        bfw.launchWorker();       
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -1330,20 +1339,18 @@ public class FileLoadFlows {
     }
     
     public boolean doBackgroundGWRead(File file, UniqueLabeller idGen,
-                                      List<FabricLink> links, Set<NID.WithName> loneNodeIDs,
+                                      List<NetLink> links, Set<NetNode> loneNodeIDs,
                                       Map<String, String> nameMap, FabricImportLoader.FileImportStats gws,
-                                      Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relMap,
-                                      File holdIt) {
+                                      boolean needsGWProcess, Integer magBins,
+                                      SortedMap<AugRelation, Boolean> relMap, File holdIt) {
       holdIt_ = holdIt;
       finished_ = true;
       forRecovery_ = false;
       try {
-        GWReaderRunner runner = new GWReaderRunner(file, idGen, links, loneNodeIDs, nameMap, gws, magBins, relMap, holdIt_);
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_,
-                "fileLoad.waitTitle", "fileLoad.wait", true);
-        
-        runner.setClient(bwc);
-        bwc.launchWorker();
+        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true, null);
+        GWReaderRunner runner = new GWReaderRunner(file, idGen, links, loneNodeIDs, nameMap, gws, magBins, relMap, needsGWProcess, holdIt_, bfw);
+        bfw.setCore(runner);
+        bfw.launchWorker();       
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -1355,11 +1362,10 @@ public class FileLoadFlows {
       finished_ = true;
       forRecovery_ = (holdIt == null);
       try {
-        ReaderRunner runner = new ReaderRunner(sup, file, compressed, holdIt_);                                                                  
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
-                                                                 "fileLoad.waitTitle", "fileLoad.wait", true);
-        runner.setClient(bwc);
-        bwc.launchWorker();         
+      	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileLoad.waitTitle", "fileLoad.wait", true, null);
+        ReaderRunner runner = new ReaderRunner(sup, file, compressed, holdIt_, bfw);                                                      
+        bfw.setCore(runner);
+        bfw.launchWorker(); 
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -1405,23 +1411,31 @@ public class FileLoadFlows {
   ** Background file load
   */ 
     
-  private class ReaderRunner extends BackgroundWorker {
+  private class ReaderRunner implements BackgroundCore {
    
     private File myFile_;
     private SUParser myParser_;
     private boolean compressed_;
     private File holdIt_;
+    private BFWorker bfwk_;
     
-    public ReaderRunner(SUParser sup, File file, boolean compressed, File holdIt) {
-      super(new Boolean(false));
+    public ReaderRunner(SUParser sup, File file, boolean compressed, File holdIt, BFWorker bfwk) {
+
+    	bfwk_ = bfwk;
       myFile_ = file;
       myParser_ = sup;
       compressed_ = compressed;
       holdIt_ = holdIt;
-    }  
+    }
+    
+     public Object getEarlyResult() {
+    	 return (new Boolean(false));
+     }
+ 
     public Object runCore() throws AsynchExitRequestException {
+    	BTProgressMonitor monitor = bfwk_.getMonitor();
       if ((holdIt_ != null) && (holdIt_.length() == 0)) {
-        buildRestoreCache(holdIt_, this);
+        buildRestoreCache(holdIt_, monitor);
       }
       ProgressFilterInputStream pfis = null;
       try {
@@ -1434,10 +1448,10 @@ public class FileLoadFlows {
           bis = new BufferedInputStream(new FileInputStream(myFile_));
         } 
         pfis = new ProgressFilterInputStream(bis, fileLen);   
-        myParser_.parse(pfis, this, compressed_);
+        myParser_.parse(pfis, monitor, compressed_);
         return (new Boolean(true));
       } catch (IOException ioe) {
-        stashException(ioe);
+        bfwk_.stashException(ioe);
         return (null);
       } finally {
         if (pfis != null) { try { pfis.close(); } catch (IOException ioe) {} }
@@ -1462,17 +1476,16 @@ public class FileLoadFlows {
     private boolean finished_;
     private File holdIt_;
     
-    public boolean doNetworkPreprocess(List<FabricLink> links, 
-                                       SortedMap<FabricLink.AugRelation, Boolean> relaMap,
-                                       Set<FabricLink> reducedLinks, Set<FabricLink> culledLinks, File holdIt) {
+    public boolean doNetworkPreprocess(List<NetLink> links, 
+                                       SortedMap<AugRelation, Boolean> relaMap,
+                                       Set<NetLink> reducedLinks, Set<NetLink> culledLinks, File holdIt) {
       holdIt_ = holdIt;
       finished_ = true;
       try {
-        PreprocessRunner runner = new PreprocessRunner(links, relaMap, reducedLinks, culledLinks, holdIt_);                                                            
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
-                                                                 "netPreprocess.waitTitle", "netPreprocess.wait", true);
-        runner.setClient(bwc);
-        bwc.launchWorker();         
+        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netPreprocess.waitTitle", "netPreprocess.wait", true, null);
+        PreprocessRunner runner = new PreprocessRunner(links, relaMap, reducedLinks, culledLinks, holdIt_, bfw);                                                        
+        bfw.setCore(runner);
+        bfw.launchWorker();  
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -1508,18 +1521,20 @@ public class FileLoadFlows {
   ** followed by (maybe) telling the user what is dropped.
   */ 
     
-  private class PreprocessRunner extends BackgroundWorker {
+  private class PreprocessRunner implements BackgroundCore {
    
-    private List<FabricLink> links_; 
-    private SortedMap<FabricLink.AugRelation, Boolean> relaMap_;
-    private Set<FabricLink> reducedLinks_; 
-    private Set<FabricLink> culledLinks_;
+    private List<NetLink> links_; 
+    private SortedMap<AugRelation, Boolean> relaMap_;
+    private Set<NetLink> reducedLinks_; 
+    private Set<NetLink> culledLinks_;
     private File holdIt_;
+    private BFWorker bfwk_; 
     
-    
-    PreprocessRunner(List<FabricLink> links, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
-                     Set<FabricLink> reducedLinks, Set<FabricLink> culledLinks, File holdIt) {
-      super(new Boolean(false));
+    PreprocessRunner(List<NetLink> links, SortedMap<AugRelation, Boolean> relaMap,
+                     Set<NetLink> reducedLinks, Set<NetLink> culledLinks, File holdIt, BFWorker bfwk) {
+     
+      
+      bfwk_ = bfwk;
       links_ = links;
       relaMap_ = relaMap;
       reducedLinks_ = reducedLinks;
@@ -1527,11 +1542,16 @@ public class FileLoadFlows {
       holdIt_ = holdIt;
     }
     
+    public Object getEarlyResult() {
+    	return (new Boolean(false));
+    }
+    
     public Object runCore() throws AsynchExitRequestException {
+    	BTProgressMonitor monitor = bfwk_.getMonitor();
       if (holdIt_.length() == 0) {
-        buildRestoreCache(holdIt_, this);
+        buildRestoreCache(holdIt_, monitor);
       }
-      preprocess(links_, relaMap_, reducedLinks_, culledLinks_, this);
+      preprocess(links_, relaMap_, reducedLinks_, culledLinks_, monitor);
       return (new Boolean(true));  
     }
     
@@ -1551,25 +1571,25 @@ public class FileLoadFlows {
     private File file_;
 
     public void doBackgroundWrite(File file) {
-    	file_ = file; 
-    	WriterRunner runner = new WriterRunner(file);
-    	doWrite(runner);
+    	file_ = file;
+      try { 
+      	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileWrite.waitTitle", "fileWrite.wait", true, null);
+    	  WriterRunner runner = new WriterRunner(file, bfw);
+        bfw.setCore(runner);
+        bfw.launchWorker();       
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }
     	return;
     }
     
     public void doBackgroundWrite(OutputStream stream) {
     	file_ = null;
-      WriterRunner runner = new WriterRunner(stream);
-      doWrite(runner);
-      return;
-    }
-    
-    private void doWrite(WriterRunner runner) {
+    	BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "fileWrite.waitTitle", "fileWrite.wait", true, null);
+      WriterRunner runner = new WriterRunner(stream, bfw);
       try {                                                                
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
-                                                                 "fileWrite.waitTitle", "fileWrite.wait", true);
-        runner.setClient(bwc);
-        bwc.launchWorker();         
+        bfw.setCore(runner);
+        bfw.launchWorker();       
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -1618,24 +1638,27 @@ public class FileLoadFlows {
    ** occurs in subsequent steps.
    */
   
-  private class GWReaderRunner extends BackgroundWorker {
+  private class GWReaderRunner implements BackgroundCore {
   
     private File myFile_;
-    private List<FabricLink> links_;
-    private Set<NID.WithName> loneNodeIDs_;
+    private List<NetLink> links_;
+    private Set<NetNode> loneNodeIDs_;
     private UniqueLabeller idGen_;
     private Map<String, String> nameMap_;
     private FabricImportLoader.FileImportStats sss_;
     private Integer magBins_;
-    private SortedMap<FabricLink.AugRelation, Boolean> relaMap_;
+    private SortedMap<AugRelation, Boolean> relaMap_;
+    private boolean needsGWProcessing_;
     private File restoreCacheFile_;
+    private BFWorker bfwk_;
     
-    public GWReaderRunner(File file, UniqueLabeller idGen, List<FabricLink> links,
-                          Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap,
+    public GWReaderRunner(File file, UniqueLabeller idGen, List<NetLink> links,
+                          Set<NetNode> loneNodeIDs, Map<String, String> nameMap,
                           FabricImportLoader.FileImportStats gws,
-                          Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
-                          File restoreCacheFile) {
-      super(new Boolean(false));
+                          Integer magBins, SortedMap<AugRelation, Boolean> relaMap,
+                          boolean needsGWProcessing, File restoreCacheFile, BFWorker bfwk) {
+     
+      bfwk_ = bfwk;
       myFile_ = file;
       links_ = links;
       loneNodeIDs_ = loneNodeIDs;
@@ -1644,23 +1667,37 @@ public class FileLoadFlows {
       sss_ = gws;
       magBins_ = magBins;
       relaMap_ = relaMap;
+      needsGWProcessing_ = needsGWProcessing;
       restoreCacheFile_ = restoreCacheFile;
     }
   
+    public Object getEarlyResult() {
+    	return (new Boolean(false));
+    }
+    
+    
     public Object runCore() throws AsynchExitRequestException {
+    	BTProgressMonitor monitor = bfwk_.getMonitor();
       try {
         if (restoreCacheFile_.length() == 0) {
-          buildRestoreCache(restoreCacheFile_, this);
+          buildRestoreCache(restoreCacheFile_, monitor);
         }
         preLoadOperations();
-        FabricImportLoader.FileImportStats sss = (new GWImportLoader()).importFabric(myFile_, idGen_, links_,
-                        loneNodeIDs_, nameMap_, magBins_, this);
+        FabricImportLoader.FileImportStats sss = 
+        		(new GWImportLoader()).importFabric(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, monitor);
         sss_.copyInto(sss);
-        BuildExtractor.extractRelations(links_, relaMap_, this);
         
+        if (needsGWProcessing_) {
+          boolean finshed = (new GWImportLoader.GWRelationManager()).process(links_, topWindow_, monitor);
+          if (!finshed) {
+            // should not happen
+            return (null);
+          }
+        }
+        PluginSupportFactory.getBuildExtractor().extractRelations(links_, relaMap_, monitor);
         return (new Boolean(true));
       } catch (IOException ioe) {
-        stashException(ioe);
+        bfwk_.stashException(ioe);
         return (null);
       }
     }
@@ -1676,24 +1713,26 @@ public class FileLoadFlows {
   ** occurs in subsequent steps.
   */ 
     
-  private class SIFReaderRunner extends BackgroundWorker {
+  private class SIFReaderRunner implements BackgroundCore {
    
     private File myFile_;
-    private List<FabricLink> links_;
-    private Set<NID.WithName> loneNodeIDs_;
+    private List<NetLink> links_;
+    private Set<NetNode> loneNodeIDs_;
     private UniqueLabeller idGen_; 
     private Map<String, String> nameMap_;
     private FabricImportLoader.FileImportStats sss_;
     private Integer magBins_;
-    private SortedMap<FabricLink.AugRelation, Boolean> relaMap_;
+    private SortedMap<AugRelation, Boolean> relaMap_;
     private File restoreCacheFile_;
+    private BFWorker bfwk_;
     
-    public SIFReaderRunner(File file, UniqueLabeller idGen, List<FabricLink> links, 
-    		                   Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap, 
+    public SIFReaderRunner(File file, UniqueLabeller idGen, List<NetLink> links, 
+    		                   Set<NetNode> loneNodeIDs, Map<String, String> nameMap, 
     		                   FabricImportLoader.FileImportStats sss,
-    		                   Integer magBins, SortedMap<FabricLink.AugRelation, Boolean> relaMap,
-    		                   File restoreCacheFile) {
-      super(new Boolean(false));
+    		                   Integer magBins, SortedMap<AugRelation, Boolean> relaMap,
+    		                   File restoreCacheFile, BFWorker bfwk) {
+      
+    	bfwk_ = bfwk;
       myFile_ = file;
       links_ = links;
       loneNodeIDs_ = loneNodeIDs;
@@ -1705,18 +1744,24 @@ public class FileLoadFlows {
       restoreCacheFile_ = restoreCacheFile;
     }
     
+    public Object getEarlyResult() {
+    	return (new Boolean(false));
+    }
+    
     public Object runCore() throws AsynchExitRequestException {
       try {
+      	BTProgressMonitor monitor = bfwk_.getMonitor();
       	if (restoreCacheFile_.length() == 0) {
-          buildRestoreCache(restoreCacheFile_, this);
+          buildRestoreCache(restoreCacheFile_, monitor);
       	}
         preLoadOperations();
-        FabricImportLoader.FileImportStats sss = (new SIFImportLoader()).importFabric(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, this);
+        FabricImportLoader.FileImportStats sss = 
+          (new SIFImportLoader()).importFabric(myFile_, idGen_, links_, loneNodeIDs_, nameMap_, magBins_, monitor);
         sss_.copyInto(sss);
-        BuildExtractor.extractRelations(links_, relaMap_, this);     
+        PluginSupportFactory.getBuildExtractor().extractRelations(links_, relaMap_, monitor);     
         return (new Boolean(true));
       } catch (IOException ioe) {
-        stashException(ioe);
+        bfwk_.stashException(ioe);
         return (null);
       }
     } 
@@ -1730,28 +1775,33 @@ public class FileLoadFlows {
   ** Background file write
   */ 
     
-  private class WriterRunner extends BackgroundWorker {
+  private class WriterRunner implements BackgroundCore {
    
     private File myFile_;
     private OutputStream myStream_;
+    private BFWorker bfwk_;
     
-    public WriterRunner(File file) {
-      super(new Boolean(false));
+    public WriterRunner(File file, BFWorker bfwk) {
       myFile_ = file;
       myStream_ = null;
+      bfwk_ = bfwk;
     }
-    public WriterRunner(OutputStream stream) {
-      super(new Boolean(false));
+    public WriterRunner(OutputStream stream, BFWorker bfwk) {
       myStream_ = stream;
       myFile_ = null;
+      bfwk_ = bfwk;
     }
      
+    public Object getEarlyResult() {
+    	return (new Boolean(false));
+    }
+
     public Object runCore() throws AsynchExitRequestException {
       try {
-        saveToOutputStream((myStream_ == null) ? new FileOutputStream(myFile_) : myStream_, false, this);
+        saveToOutputStream((myStream_ == null) ? new FileOutputStream(myFile_) : myStream_, false, bfwk_.getMonitor());
         return (new Boolean(true));
       } catch (IOException ioe) {
-        stashException(ioe);
+        bfwk_.stashException(ioe);
         return (null);
       }
     } 
@@ -1818,36 +1868,38 @@ public class FileLoadFlows {
     private NewNetworkRunner runner_;
     private boolean finished_;
     private File holdIt_;  // For recovery
+    private BFWorker bfwk_;
     
-    NetworkBuilder(boolean isMain, File holdIt) {
-      runner_ = new NewNetworkRunner(isMain, holdIt);
+    NetworkBuilder(boolean isMain, File holdIt, String forPlugin) {
+    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netBuild.waitTitle", "netBuild.wait", true, forPlugin); 
+      runner_ = new NewNetworkRunner(isMain, holdIt, bfwk_);
       holdIt_ = holdIt;
     }
     
-    void setForSifBuild(UniqueLabeller idGen, Set<FabricLink> links, 
-                        Set<NID.WithName> loneNodeIDs, BuildData.BuildMode bMode) {
-      if (bMode != BuildData.BuildMode.BUILD_FROM_SIF) {
+    void setForSifBuild(UniqueLabeller idGen, Set<NetLink> links, 
+                        Set<NetNode> loneNodeIDs, BuildDataImpl.BuildMode bMode) {
+      if (bMode != BuildDataImpl.BuildMode.BUILD_FROM_SIF) {
         throw new IllegalArgumentException();
       }
       runner_.setBuildDataForSIF(idGen, links, loneNodeIDs, bMode);
       return;
     }
     
-    void setForPlugInBuild(BuildData.RelayoutBuildData bData) {
+    void setForPlugInBuild(BuildData bData) {
       runner_.setBuildDataForPlugin(bData);
       return;
     }
     
-    void setForDisplayOptionChange(BioFabricNetwork bfn, BuildData.BuildMode bMode) {
-      if (bMode != BuildData.BuildMode.SHADOW_LINK_CHANGE) {
+    void setForDisplayOptionChange(BioFabricNetwork bfn, BuildDataImpl.BuildMode bMode) {
+      if (bMode != BuildDataImpl.BuildMode.SHADOW_LINK_CHANGE) {
         throw new IllegalArgumentException();
       }
       runner_.setBuildDataForOptionChange(bfn, bMode);
       return;
     }
 
-    void setBuildDataForXMLLoad(BioFabricNetwork bfn, BuildData.BuildMode bMode) {
-      if (bMode != BuildData.BuildMode.BUILD_FROM_XML) {
+    void setBuildDataForXMLLoad(BioFabricNetwork bfn, BuildDataImpl.BuildMode bMode) {
+      if (bMode != BuildDataImpl.BuildMode.BUILD_FROM_XML) {
         throw new IllegalArgumentException();
       }
       runner_.setBuildDataForXMLLoad(bfn, bMode); 
@@ -1863,11 +1915,9 @@ public class FileLoadFlows {
 
     public boolean doNetworkBuild() {
       finished_ = true;
-      try {
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner_, topWindow_, bfw_, 
-                                                                "netBuild.waitTitle", "netBuild.wait", true);
-        runner_.setClient(bwc);
-        bwc.launchWorker();         
+      try {                                                
+        bfwk_.setCore(runner_);
+        bfwk_.launchWorker();      
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -1907,31 +1957,38 @@ public class FileLoadFlows {
       return;
     }
   }
+  
   /***************************************************************************
   **
   ** Build New Network
   */ 
     
-  private class NewNetworkRunner extends BackgroundWorker {
+  private class NewNetworkRunner implements BackgroundCore {
  
     private boolean forMain_;
     private UniqueLabeller idGen_;
-    private Set<FabricLink> links_; 
-    private Set<NID.WithName> loneNodeIDs_;
-    private BuildData.BuildMode bMode_;
+    private Set<NetLink> links_; 
+    private Set<NetNode> loneNodeIDs_;
+    private BuildDataImpl.BuildMode bMode_;
     private BioFabricNetwork bfn_;
     private File holdIt_;
     private long linkCount_;
-    private BuildData.RelayoutBuildData plugInBuildData_;
+    private BuildDataImpl plugInBuildData_;
+    private BFWorker bfwk_;
+    
 
-    public NewNetworkRunner(boolean forMain, File holdIt) {
-      super(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB));      
+    public NewNetworkRunner(boolean forMain, File holdIt, BFWorker bfwk) { 
       forMain_ = forMain;
       holdIt_ = holdIt;
+      bfwk_ = bfwk;
+    }
+     
+    public Object getEarlyResult(){
+    	return (new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB));      
     }
     
-    void setBuildDataForSIF(UniqueLabeller idGen, Set<FabricLink> links, Set<NID.WithName> loneNodeIDs,
-                            BuildData.BuildMode bMode) {    
+    void setBuildDataForSIF(UniqueLabeller idGen, Set<NetLink> links, Set<NetNode> loneNodeIDs,
+                            BuildDataImpl.BuildMode bMode) {    
       idGen_ = idGen;
       links_ = links; 
       loneNodeIDs_ = loneNodeIDs;
@@ -1940,20 +1997,20 @@ public class FileLoadFlows {
       return;
     }
     
-    void setBuildDataForPlugin(BuildData.RelayoutBuildData bd) {
-      bMode_ = bd.getMode();
-      plugInBuildData_ = bd;
+    void setBuildDataForPlugin(BuildData bd) {
+      plugInBuildData_ = (BuildDataImpl)bd;
+      bMode_ = plugInBuildData_.getMode();
       return;
     }
     
-    void setBuildDataForOptionChange(BioFabricNetwork bfn, BuildData.BuildMode bMode) {
+    void setBuildDataForOptionChange(BioFabricNetwork bfn, BuildDataImpl.BuildMode bMode) {
       bfn_ = bfn;
       linkCount_ = bfn.getLinkCount(true);
       bMode_ = bMode;
       return;
     }
     
-    void setBuildDataForXMLLoad(BioFabricNetwork bfn, BuildData.BuildMode bMode) {
+    void setBuildDataForXMLLoad(BioFabricNetwork bfn, BuildDataImpl.BuildMode bMode) {
       bfn_ = bfn;
       linkCount_ = bfn.getLinkCount(true);
       bMode_ = bMode;
@@ -1963,14 +2020,14 @@ public class FileLoadFlows {
     private BuildData generateBuildData() { 
       switch (bMode_) {
         case BUILD_FROM_SIF:
-          HashMap<NID.WithName, String> emptyMap = new HashMap<NID.WithName, String>();
-          return (new BuildData.RelayoutBuildData(idGen_, links_, loneNodeIDs_, emptyMap, colGen_, bMode_));
+          HashMap<NetNode, String> emptyMap = new HashMap<NetNode, String>();
+          return (new BuildDataImpl(idGen_, links_, loneNodeIDs_, emptyMap, colGen_, bMode_));
         case BUILD_FROM_PLUGIN:
           plugInBuildData_.setColorGen(colGen_);
           return (plugInBuildData_);
         case SHADOW_LINK_CHANGE:
         case BUILD_FROM_XML:
-          return (new BuildData.PreBuiltBuildData(bfn_, bMode_));   
+          return (new BuildDataImpl(bfn_, bMode_));   
         default:
           throw new IllegalStateException();    
       }
@@ -1978,21 +2035,24 @@ public class FileLoadFlows {
 
     public Object runCore() throws AsynchExitRequestException {
       try {
+      	BTProgressMonitor monitor = bfwk_.getMonitor();
         if ((holdIt_ != null) && (holdIt_.length() == 0)) {
-          buildRestoreCache(holdIt_, this);
+          buildRestoreCache(holdIt_, monitor);
         }   
         BuildData bd = generateBuildData();
         preLoadOperations();
-        // This can be run on foreground thread (for headless operation: shut up progress monitor
+        // This can be run on foreground thread (for headless operation): shut up progress monitor
         // if that is the case:
-        BTProgressMonitor monitor = (headlessOracle_ != null) ? null : this;
+        if (headlessOracle_ != null) {
+        	monitor = null;
+        }
         BufferedImage bi = expensiveModelOperations(bd, forMain_, monitor);
         if (linkCount_ > 10000) {
-          (new GarbageRequester()).askForGC(this);
+          (new GarbageRequester()).askForGC(monitor);
         }
         return (bi);
       } catch (IOException ex) {
-        stashException(ex);
+        bfwk_.stashException(ex);
         return (null);
       }
     }
@@ -2011,9 +2071,12 @@ public class FileLoadFlows {
      
     private File holdIt_;
     NetworkRelayoutRunner runner_;
+    private BFWorker bfwk_;
       
     public NetworkRelayout() {
-      runner_ = new NetworkRelayoutRunner();             
+    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netRelayout.waitTitle", "netRelayout.wait", true, null);
+      runner_ = new NetworkRelayoutRunner(bfwk_); 
+      bfwk_.setCore(runner_);
     }
     
     public void setGroupOrderAndMode(List<String> groupOrder, BioFabricNetwork.LayoutMode mode, 
@@ -2043,23 +2106,20 @@ public class FileLoadFlows {
       return;      
     }
 
-    public void setLinkOrder(SortedMap<Integer, FabricLink> linkOrder) {
+    public void setLinkOrder(SortedMap<Integer, NetLink> linkOrder) {
       runner_.setLinkOrder( linkOrder);
       return;
     }
     
-    public void doNetworkRelayout(BioFabricNetwork bfn, BuildData.BuildMode bMode) {
+    public void doNetworkRelayout(BioFabricNetwork bfn, BuildDataImpl.BuildMode bMode) {
       try {
         holdIt_ = File.createTempFile("BioFabricHold", ".zip");
         holdIt_.deleteOnExit();
-        runner_.setNetworkAndMode(holdIt_, bfn, bMode);                                                                  
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner_, topWindow_, bfw_, 
-                                                                "netRelayout.waitTitle", "netRelayout.wait", true);
-        if (bMode == BuildData.BuildMode.REORDER_LAYOUT) {
-          bwc.makeSuperChart();
+        runner_.setNetworkAndMode(holdIt_, bfn, bMode); 
+        if (bMode == BuildDataImpl.BuildMode.REORDER_LAYOUT) {
+          bfwk_.makeSuperChart();
         }
-        runner_.setClient(bwc);
-        bwc.launchWorker();         
+        bfwk_.launchWorker();         
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -2117,10 +2177,10 @@ public class FileLoadFlows {
   ** Background network layout
   */ 
     
-  private class NetworkRelayoutRunner extends BackgroundWorker {
+  private class NetworkRelayoutRunner implements BackgroundCore {
  
-    private BuildData.RelayoutBuildData rbd_;
-    private BuildData.BuildMode mode_;
+    private BuildDataImpl rbd_;
+    private BuildDataImpl.BuildMode mode_;
     private NodeLayout.Params params_;
     private BioFabricNetwork bfn_;
     private Map<AttributeLoader.AttributeKey, String> nodeAttrib_;
@@ -2128,17 +2188,22 @@ public class FileLoadFlows {
     private List<String> groupOrder_; 
     private BioFabricNetwork.LayoutMode layMode_;
     private Boolean pointUp_;
-    private SortedMap<Integer, FabricLink> linkOrder_;
+    private SortedMap<Integer, NetLink> linkOrder_;
     private ControlTopLayout.CtrlMode cMode_; 
     private ControlTopLayout.TargMode tMode_; 
     private List<String> fixedList_;
     private boolean showLinkGroupAnnotations_;
+    private BFWorker bfwk_;
   
-    NetworkRelayoutRunner() {
-      super(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)); 
+    NetworkRelayoutRunner(BFWorker bfwk) {
+      bfwk_ = bfwk;
     }
     
-    void setNetworkAndMode(File holdIt, BioFabricNetwork bfn, BuildData.BuildMode bMode) {
+    public Object getEarlyResult() {
+    	return (new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)); 
+    }
+
+    void setNetworkAndMode(File holdIt, BioFabricNetwork bfn, BuildDataImpl.BuildMode bMode) {
       holdIt_ = holdIt;
       bfn_ = bfn;
       mode_ = bMode;
@@ -2176,16 +2241,17 @@ public class FileLoadFlows {
       return;      
     }
 
-    void setLinkOrder(SortedMap<Integer, FabricLink> linkOrder) {
+    void setLinkOrder(SortedMap<Integer, NetLink> linkOrder) {
       linkOrder_ = linkOrder;
       return;
     }
  
     public Object runCore() throws AsynchExitRequestException {
+    	BTProgressMonitor monitor = bfwk_.getMonitor(); 
       if ((holdIt_ != null) && (holdIt_.length() == 0)) {
-        buildRestoreCache(holdIt_, this);
+        buildRestoreCache(holdIt_, monitor);
       }
-      rbd_ = new BuildData.RelayoutBuildData(bfn_, mode_, this);
+      rbd_ = new BuildDataImpl(bfn_, mode_, monitor);
       if (nodeAttrib_ != null) {
         rbd_.setNodeOrderFromAttrib(nodeAttrib_);   
       } else if ((groupOrder_ != null) && (layMode_ != null)) {
@@ -2202,25 +2268,25 @@ public class FileLoadFlows {
       try {
        if (rbd_.needsLayoutForRelayout()) {
           NodeLayout nl = rbd_.getNodeLayout();
-          boolean nlok = nl.criteriaMet(rbd_, this);
+          boolean nlok = nl.criteriaMet(rbd_, monitor);
           if (!nlok) {
             throw new IllegalStateException(); // Should not happen, failure throws exception
           }
-          nl.doNodeLayout(rbd_, params_, this);
+          nl.doNodeLayout(rbd_, params_, monitor);
           // Some "Node" layouts do the whole ball of wax, don't need this step:
           EdgeLayout el = rbd_.getEdgeLayout();
           if (el != null) {
-            el.layoutEdges(rbd_, this);
+            el.layoutEdges(rbd_, monitor);
           }
         }
-        BufferedImage bi = expensiveModelOperations(rbd_, true, this);
-        (new GarbageRequester()).askForGC(this);
+        BufferedImage bi = expensiveModelOperations(rbd_, true, monitor);
+        (new GarbageRequester()).askForGC(monitor);
         return (bi);
       } catch (IOException ex) {
-        stashException(ex);
+        bfwk_.stashException(ex);
         return (null);
       } catch (LayoutCriterionFailureException ex) {
-        stashException(ex);
+        bfwk_.stashException(ex);
         return (null);
       }
     }
@@ -2243,11 +2309,10 @@ public class FileLoadFlows {
       try {
         holdIt_ = holdIt;
         bfp_.shutdown();
-        RecolorNetworkRunner runner = new RecolorNetworkRunner(isMain, holdIt_);                                                                  
-        BackgroundWorkerClient bwc = new BackgroundWorkerClient(this, runner, topWindow_, bfw_, 
-                                                                 "netRecolor.waitTitle", "netRecolor.wait", true);
-        runner.setClient(bwc);
-        bwc.launchWorker();         
+        BFWorker bfw = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netRecolor.waitTitle", "netRecolor.wait", true, null);
+        RecolorNetworkRunner runner = new RecolorNetworkRunner(isMain, holdIt_, bfw);                                                              
+        bfw.setCore(runner);
+        bfw.launchWorker();      
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
       }
@@ -2287,25 +2352,31 @@ public class FileLoadFlows {
   ** Background network recolor
   */ 
     
-  private class RecolorNetworkRunner extends BackgroundWorker {
+  private class RecolorNetworkRunner implements BackgroundCore {
  
     private boolean forMain_;
     private File holdIt_;
+    private BFWorker bfwk_;
     
-    public RecolorNetworkRunner(boolean forMain, File holdIt) {
-      super(new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)); 
+    public RecolorNetworkRunner(boolean forMain, File holdIt, BFWorker bfwk) {
+      bfwk_ = bfwk;
       holdIt_ = holdIt;
       forMain_ = forMain;
     }
     
+    public Object getEarlyResult() {
+    	return (new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)); 
+    }
+    
     public Object runCore() throws AsynchExitRequestException {
-      try {       
-        buildRestoreCache(holdIt_, this); 
-        BufferedImage bi = expensiveRecolorOperations(forMain_, this);
-        (new GarbageRequester()).askForGC(this);
+      try { 
+      	BTProgressMonitor monitor = bfwk_.getMonitor();
+        buildRestoreCache(holdIt_, monitor); 
+        BufferedImage bi = expensiveRecolorOperations(forMain_, monitor);
+        (new GarbageRequester()).askForGC(monitor);
         return (bi);
       } catch (IOException ex) {
-        stashException(ex);
+        bfwk_.stashException(ex);
         return (null);
       }
     }
@@ -2321,12 +2392,12 @@ public class FileLoadFlows {
   */
   
   public void buildEmptyNetwork() {
-    BuildData.RelayoutBuildData obd = new BuildData.RelayoutBuildData(new UniqueLabeller(),
-                                                                      new HashSet<FabricLink>(), 
-                                                                      new HashSet<NID.WithName>(), 
-                                                                      new HashMap<NID.WithName, String>(),
-                                                                      colGen_, 
-                                                                      BuildData.BuildMode.BUILD_FROM_SIF);
+    BuildData obd = new BuildDataImpl(new UniqueLabeller(),
+                                      new HashSet<NetLink>(), 
+                                      new HashSet<NetNode>(), 
+                                      new HashMap<NetNode, String>(),
+                                      colGen_, 
+                                      BuildDataImpl.BuildMode.BUILD_FROM_SIF);
     try {
       newModelOperations(obd, true);
     } catch (IOException ioex) {
@@ -2369,7 +2440,7 @@ public class FileLoadFlows {
         bfp_.setBufBuilder(bb);      
       } else {
         BufferBuilder bb = new BufferBuilder(bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
-        topImage = bb.buildOneBuf(preZooms);      
+        topImage = bb.buildOneBuf();      
         bfp_.setBufBuilder(null);
       }
     }
@@ -2387,15 +2458,15 @@ public class FileLoadFlows {
     screenSize.setSize((int)(screenSize.getWidth() * 0.8), (int)(screenSize.getHeight() * 0.4));
     colGen_.newColorModel();
     bfp_.changePaint(monitor);
-    int[] preZooms = bfp_.getZoomController().getZoomIndices();
+    int[] zoomLevels = bfp_.getZoomController().getZoomLevels();
     BufferedImage topImage = null;
     if (forMain) {
       BufferBuilder bb = new BufferBuilder(null, 100, bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
-      topImage = bb.buildBufs(preZooms, bfp_, 24, monitor);
+      topImage = bb.buildBufs(zoomLevels, bfp_, 24, monitor);
       bfp_.setBufBuilder(bb);      
     } else {
       BufferBuilder bb = new BufferBuilder(bfp_, bfp_.getBucketRend(), bfp_.getBufImgStack());
-      topImage = bb.buildOneBuf(preZooms);      
+      topImage = bb.buildOneBuf();      
       bfp_.setBufBuilder(null);
     }
     return (topImage);
@@ -2439,7 +2510,7 @@ public class FileLoadFlows {
     private FileLoadFlows flf_;
     private BioFabricWindow bfw_;
     
-    PlugInInfo(FileLoadFlows flf, BioFabricNetwork bfn, BioFabricWindow bfw) {
+    PlugInInfo(FileLoadFlowsImpl flf, BioFabricNetwork bfn, BioFabricWindow bfw) {
       flf_ = flf;
       bfn_ = bfn;
       bfw_ = bfw;

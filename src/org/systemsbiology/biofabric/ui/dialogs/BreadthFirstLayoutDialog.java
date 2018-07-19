@@ -34,10 +34,10 @@ import javax.swing.JTextField;
 
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 
 /****************************************************************************
@@ -80,7 +80,7 @@ public class BreadthFirstLayoutDialog extends BTStashResultsDialog {
   ** Constructor 
   */ 
   
-  public BreadthFirstLayoutDialog(JFrame parent, NID.WithName currSel, BioFabricNetwork bfn) {     
+  public BreadthFirstLayoutDialog(JFrame parent, NetNode currSel, BioFabricNetwork bfn) {     
     super(parent, "breadthFirstLayout.title", new Dimension(600, 350), 2);
     params_ = null;
     bfn_ = bfn;
@@ -159,7 +159,7 @@ public class BreadthFirstLayoutDialog extends BTStashResultsDialog {
     
     if (useSelected) {
       String search = DataUtil.normKey(userName_.getText().trim());
-      Set<NID.WithName> result = bfn_.nodeMatches(true, search);
+      Set<NetNode> result = bfn_.nodeMatches(true, search);
       if (result.size() != 1) {
         ResourceManager rMan = ResourceManager.getManager();
         JOptionPane.showMessageDialog(parent_, 
@@ -168,7 +168,7 @@ public class BreadthFirstLayoutDialog extends BTStashResultsDialog {
                                       JOptionPane.ERROR_MESSAGE);
         return (false);
       }
-      ArrayList<NID.WithName> starts = new ArrayList<NID.WithName>();
+      ArrayList<NetNode> starts = new ArrayList<NetNode>();
       starts.add(result.iterator().next());
       params_ = new DefaultLayout.DefaultParams(starts);
     } else {

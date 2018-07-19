@@ -21,8 +21,8 @@ package org.systemsbiology.biofabric.plugin;
 
 import javax.swing.JFrame;
 
-import org.systemsbiology.biofabric.io.FileLoadFlows;
-import org.systemsbiology.biofabric.util.BackgroundWorkerControlManager;
+import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
+import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
 
 /****************************************************************************
 **
@@ -60,14 +60,14 @@ public interface PlugInNetworkModelAPI {
  
   /***************************************************************************
   ** 
-  ** Get file loading utilities
+  ** Get top window
   */
 
   public JFrame getTopWindow();
   
   /***************************************************************************
   ** 
-  ** Get file loading utilities
+  ** Get the BackgroundWorkerControlManager
   */
 
   public BackgroundWorkerControlManager getBWCtrlMgr();

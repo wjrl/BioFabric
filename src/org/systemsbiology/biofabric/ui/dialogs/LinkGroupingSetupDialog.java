@@ -28,7 +28,7 @@ import javax.swing.JPanel;
 
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.modelAPI.AugRelation;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.utils.EditableTable;
 import org.systemsbiology.biofabric.util.DataUtil;
@@ -65,7 +65,7 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
   private List<String> linkGroupResult_;
   private EditableTable<LinkGroupingTableModel.TableRow> est_;
   private JFrame parent_;
-  private Set<FabricLink.AugRelation> allRelations_;
+  private Set<AugRelation> allRelations_;
   private JComboBox comboBox;
   private JCheckBox showAnnotationsBox_;
   private boolean showAnnotations_;
@@ -86,7 +86,7 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
 
   public LinkGroupingSetupDialog(JFrame parent, List<String> currentTags, boolean showGroupAnnot, 
                                  BioFabricNetwork.LayoutMode mode,
-                                 Set<FabricLink.AugRelation> allRelations) {
+                                 Set<AugRelation> allRelations) {
     super(parent, ResourceManager.getManager().getString("linkGroupEdit.title"), new Dimension(650, 450), 2);
     parent_ = parent;
     allRelations_ = allRelations;
@@ -350,9 +350,9 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
       
       boolean fail = false;
       int numST = seenTags.size();
-      Iterator<FabricLink.AugRelation> arit = allRelations_.iterator();
+      Iterator<AugRelation> arit = allRelations_.iterator();
       while (arit.hasNext()) {
-        FabricLink.AugRelation relation =arit.next();
+        AugRelation relation =arit.next();
         boolean gotIt = false;
         for (int i = 0; i < numST; i++) {
           if (relation.relation.indexOf(seenTags.get(i)) != - 1) {

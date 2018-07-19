@@ -1,7 +1,7 @@
 /*
 **    File created by Rishi Desai
 **
-**    Copyright (C) 2003-2017 Institute for Systems Biology
+**    Copyright (C) 2003-2018 Institute for Systems Biology
 **                            Seattle, Washington, USA.
 **
 **    This library is free software; you can redistribute it and/or
@@ -26,16 +26,21 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
-import org.systemsbiology.biofabric.util.NID;
-import org.systemsbiology.biofabric.util.UiUtil;
-import org.systemsbiology.biofabric.util.UniqueLabeller;
-
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.swing.JFrame;
+import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
+import org.systemsbiology.biofabric.ui.dialogs.LinkRelationDialog;
+import org.systemsbiology.biofabric.util.ExceptionHandler;
+import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
+import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
+import org.systemsbiology.biofabric.workerAPI.LoopReporter;
 
 /****************************************************************************
  **
@@ -50,7 +55,7 @@ public class GWImportLoader extends FabricImportLoader {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  private final String DEFAULT_RELATION = "default";
+  private static final String DEFAULT_RELATION = "default";
   private final int HEADER_LINES = 4; // # of header/parameter/version-info lines at the beginning of file
   
   ////////////////////////////////////////////////////////////////////////////
@@ -132,9 +137,9 @@ public class GWImportLoader extends FabricImportLoader {
    ** Consume tokens, process nodes, make links
    */
   
-  protected void consumeTokens(String[] tokens, UniqueLabeller idGen, List<FabricLink> links,
-                               Set<NID.WithName> loneNodeIDs, Map<String, String> nameMap,
-                               Integer magBins, HashMap<String, NID.WithName> nameToID,
+  protected void consumeTokens(String[] tokens, UniqueLabeller idGen, List<NetLink> links,
+                               Set<NetNode> loneNodeIDs, Map<String, String> nameMap,
+                               Integer magBins, Map<String, NetNode> nameToID,
                                FileImportStats stats) throws IOException {
     
     if (tokens.length == 1) {
@@ -173,8 +178,8 @@ public class GWImportLoader extends FabricImportLoader {
       sourceName = stripBrackets(sourceName);
       targetName = stripBrackets(targetName);
       
-      NID.WithName srcID = nameToNode(sourceName, idGen, nameToID);
-      NID.WithName trgID = nameToNode(targetName, idGen, nameToID);
+      NetNode srcID = nameToNode(sourceName, idGen, nameToID);
+      NetNode trgID = nameToNode(targetName, idGen, nameToID);
   
       edgeRelation = stripBrackets(edgeRelation);
       
@@ -201,14 +206,14 @@ public class GWImportLoader extends FabricImportLoader {
     return;
   }
   
-  private void addLoneNodes(UniqueLabeller idGen, Set<NID.WithName> loneNodeIDs,
-                            HashMap<String, NID.WithName> nameToID) {
+  private void addLoneNodes(UniqueLabeller idGen, Set<NetNode> loneNodeIDs,
+                            Map<String, NetNode> nameToID) {
     
     for (Map.Entry<Integer, Boolean> entry : indexUsed_.entrySet()) {
       
       if (! entry.getValue()) {
         String loner = indexToName_.get(entry.getKey());
-        NID.WithName lonerID = nameToNode(loner, idGen, nameToID);
+        NetNode lonerID = nameToNode(loner, idGen, nameToID);
         loneNodeIDs.add(lonerID);
       }
     }
@@ -217,9 +222,87 @@ public class GWImportLoader extends FabricImportLoader {
   
   ////////////////////////////////////////////////////////////////////////////
   //
-  // STATIC METHODS
+  // STATIC METHODS AND CLASSES
   //
   ////////////////////////////////////////////////////////////////////////////
+  
+  /***************************************************************************
+   **
+   ** Manages links if GW file did not provide link relations
+   */
+  
+  public static class GWRelationManager {
+    
+    public GWRelationManager() {}
+    
+    public boolean process(final List<NetLink> links, JFrame parent, BTProgressMonitor monitor)
+            throws AsynchExitRequestException {
+  
+      LoopReporter lr;
+      lr = new LoopReporter(links.size(), 20, monitor, 0.0, .3, "progress.processingLinkRelations");
+      List<NetLink> linksToChange = new ArrayList<NetLink>(),
+              returnLinks = new ArrayList<NetLink>();
+      
+      for (NetLink link : links) {  // only add links that weren't given relation (usually all of them)
+        lr.report();
+        if (link.getRelation().equals(DEFAULT_RELATION)) {
+          linksToChange.add(link);
+        } else {
+          returnLinks.add(link);
+        }
+      }
+      lr.finish();
+      
+      if (linksToChange.isEmpty()) { // leave if all links have a normal relation
+        return (true);
+      }
+      
+      LinkRelationDialog dialog = new LinkRelationDialog(parent, DEFAULT_RELATION);
+      dialog.setVisible(true);
+      if (!dialog.haveResult()) {
+        // should not happen, should always have relation returned
+        return (false);
+      }
+      
+      final String newRel = dialog.getRelation();
+      
+      if (newRel.equals(DEFAULT_RELATION)) { // if user chooses default no point continuing
+        return (true);
+      }
+      
+      //
+      // Create new links to replace old ones with default relation
+      //
+      
+      lr = new LoopReporter(linksToChange.size(), 20, monitor, 0.3, .6, "progress.changingLinkRelations");
+      
+      for (NetLink link : linksToChange) {
+        lr.report();
+        NetLink newLink = new FabricLink(link.getSrcNode(), link.getTrgNode(), newRel, link.isShadow());
+        returnLinks.add(newLink);
+      }
+      lr.finish();
+      
+      if (links.size() != returnLinks.size()) {
+        throw (new IllegalStateException("Return links different size in GWRelationManager"));
+      }
+      
+      //
+      // Re-add return set of links to original parameter set
+      //
+      
+      lr = new LoopReporter(returnLinks.size(), 20, monitor, .6, 1.00, "progress.addingNewLinks");
+      links.clear();
+      
+      for (NetLink link : returnLinks) {
+        lr.report();
+        links.add(link);
+      }
+      lr.finish();
+      return (true);
+    }
+    
+  }
   
   /***************************************************************************
    **

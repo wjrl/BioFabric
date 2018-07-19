@@ -19,6 +19,10 @@
 
 package org.systemsbiology.biofabric.util;
 
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
+import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
+import org.systemsbiology.biofabric.workerAPI.LoopReporter;
+
 /****************************************************************************
 **
 ** This builds and manages image chunks

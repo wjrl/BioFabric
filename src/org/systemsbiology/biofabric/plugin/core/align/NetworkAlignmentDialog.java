@@ -1,5 +1,5 @@
 /*
-**    File created by Rishi Desai
+**    Copyright (C) 2018 Rishi Desai
 **
 **    Copyright (C) 2003-2018 Institute for Systems Biology
 **                            Seattle, Washington, USA.
@@ -36,13 +36,15 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+
 import org.systemsbiology.biofabric.cmd.CommandSet;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.utils.DialogSupport;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.MatchingJLabel;
-import org.systemsbiology.biofabric.util.ResourceManager;
+import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 import javax.swing.border.EmptyBorder;
@@ -71,16 +73,20 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   private JCheckBox undirectedConfirm_;
   private static final long serialVersionUID = 1L;
   private JComboBox perfectNGsCombo_;
+  private String pluginClassName_;
   
   private final int NO_PERFECT_IDX = 0, WITH_PERFECT_IDX = 1, NC_IDX = 2, JS_IDX = 3; // indices on combo box
 
   
-  public NetworkAlignmentDialog(JFrame parent, NetworkAlignmentBuildData.ViewType analysisType) {
-    super(parent, ResourceManager.getManager().getString("networkAlignment.title"), new Dimension(700, 450), 3);
+  public NetworkAlignmentDialog(JFrame parent, NetworkAlignmentBuildData.ViewType analysisType, String pluginClassName) {
+    super(parent, PluginSupportFactory.getResourceManager(pluginClassName).getPluginString("networkAlignment.title"), new Dimension(700, 450), 3);
+    
+    PluginResourceManager rMan = PluginSupportFactory.getResourceManager(pluginClassName);
+     
     this.parent_ = parent;
     this.analysisType_ = analysisType;
+    pluginClassName_ = pluginClassName;
     
-    final ResourceManager rMan = ResourceManager.getManager();
     JPanel cp = (JPanel) getContentPane();
     cp.setBorder(new EmptyBorder(20, 20, 20, 20));
     cp.setLayout(new GridBagLayout());
@@ -89,10 +95,10 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     // File Buttons and File Labels
     //
     
-    JButton graph1Browse = new JButton(rMan.getString("networkAlignment.browse"));
-    JButton graph2Browse = new JButton(rMan.getString("networkAlignment.browse"));
-    JButton alignmentBrowse = new JButton(rMan.getString("networkAlignment.browse"));
-    perfectBrowse = new JButton(rMan.getString("networkAlignment.browse"));
+    JButton graph1Browse = new JButton(rMan.getPluginString("networkAlignment.browse"));
+    JButton graph2Browse = new JButton(rMan.getPluginString("networkAlignment.browse"));
+    JButton alignmentBrowse = new JButton(rMan.getPluginString("networkAlignment.browse"));
+    perfectBrowse = new JButton(rMan.getPluginString("networkAlignment.browse"));
     
     initBrowseButtons(graph1Browse, graph2Browse, alignmentBrowse, perfectBrowse);
   
@@ -100,16 +106,16 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     graph2Field_= new JTextField(30);
     alignField_ = new JTextField(30);
     perfectField_ = new JTextField(30);
-    undirectedConfirm_ = new JCheckBox(rMan.getString("networkAlignment.confirmUndirected"));
+    undirectedConfirm_ = new JCheckBox(rMan.getPluginString("networkAlignment.confirmUndirected"));
     
     initTextFields();
 
     MatchingJLabel graph1FileMatch, graph2FileMatch, alignFileMatch, perfectFileMatch;
-    JLabel perfectFileName = new JLabel(rMan.getString("networkAlignment.perfect")); // only to use as a reference, not in dialog
-    perfectFileMatch = new MatchingJLabel(rMan.getString("networkAlignment.perfect"), perfectFileName);
-    graph1FileMatch = new MatchingJLabel(rMan.getString("networkAlignment.graph1"), perfectFileName);
-    graph2FileMatch = new MatchingJLabel(rMan.getString("networkAlignment.graph2"), perfectFileName);
-    alignFileMatch = new MatchingJLabel(rMan.getString("networkAlignment.alignment"), perfectFileName);
+    JLabel perfectFileName = new JLabel(rMan.getPluginString("networkAlignment.perfect")); // only to use as a reference, not in dialog
+    perfectFileMatch = new MatchingJLabel(rMan.getPluginString("networkAlignment.perfect"), perfectFileName);
+    graph1FileMatch = new MatchingJLabel(rMan.getPluginString("networkAlignment.graph1"), perfectFileName);
+    graph2FileMatch = new MatchingJLabel(rMan.getPluginString("networkAlignment.graph2"), perfectFileName);
+    alignFileMatch = new MatchingJLabel(rMan.getPluginString("networkAlignment.alignment"), perfectFileName);
     
     graph1FileMatch.setHorizontalAlignment(SwingConstants.CENTER);
     graph2FileMatch.setHorizontalAlignment(SwingConstants.CENTER);
@@ -130,15 +136,15 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     JPanel panGraphInfoTwo = null;
     switch (analysisType_) {
       case ORPHAN:
-        panGraphInfo.add(new JLabel(rMan.getString("networkAlignment.messageNonGroup")));
+        panGraphInfo.add(new JLabel(rMan.getPluginString("networkAlignment.messageNonGroup")));
         break;
       case CYCLE:
-        panGraphInfo.add(new JLabel(rMan.getString("networkAlignment.messageNonGroup")));
+        panGraphInfo.add(new JLabel(rMan.getPluginString("networkAlignment.messageNonGroup")));
         panGraphInfoTwo = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        panGraphInfoTwo.add(new JLabel(rMan.getString("networkAlignment.messageCycleTwo")));
+        panGraphInfoTwo.add(new JLabel(rMan.getPluginString("networkAlignment.messageCycleTwo")));
         break;
       case GROUP:
-        panGraphInfo.add(new JLabel(rMan.getString("networkAlignment.message")));
+        panGraphInfo.add(new JLabel(rMan.getPluginString("networkAlignment.message")));
         break;
       default:
         throw new IllegalStateException();
@@ -176,12 +182,12 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     addWidgetFullRow(panG2, true);
     addWidgetFullRow(panAlign, true);
   
-    JLabel perfectNGLabel = new JLabel(rMan.getString("networkAlignment.perfectNodeGroups"));
+    JLabel perfectNGLabel = new JLabel(rMan.getPluginString("networkAlignment.perfectNodeGroups"));
     String[] choices = new String[4];
-    choices[NO_PERFECT_IDX] = rMan.getString("networkAlignment.nonePerfect");
-    choices[WITH_PERFECT_IDX] = rMan.getString("networkAlignment.noneWithPerfect");
-    choices[NC_IDX] = rMan.getString("networkAlignment.nodeCorrectness");
-    choices[JS_IDX] = rMan.getString("networkAlignment.jaccardSimilarity");
+    choices[NO_PERFECT_IDX] = rMan.getPluginString("networkAlignment.nonePerfect");
+    choices[WITH_PERFECT_IDX] = rMan.getPluginString("networkAlignment.noneWithPerfect");
+    choices[NC_IDX] = rMan.getPluginString("networkAlignment.nodeCorrectness");
+    choices[JS_IDX] = rMan.getPluginString("networkAlignment.jaccardSimilarity");
     
     perfectNGsCombo_ = new JComboBox(choices); // have to use unchecked for v1.6
     

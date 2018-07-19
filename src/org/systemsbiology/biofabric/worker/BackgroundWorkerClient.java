@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2012 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,7 +17,7 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.util;
+package org.systemsbiology.biofabric.worker;
 
 
 import java.awt.Container;
@@ -28,11 +28,21 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.SortedMap;
+
 import javax.swing.JDialog;
 import javax.swing.JProgressBar;
 import javax.swing.JLabel;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+
+import org.systemsbiology.biofabric.util.ExceptionHandler;
+import org.systemsbiology.biofabric.util.FixedJButton;
+import org.systemsbiology.biofabric.util.GoodnessChart;
+import org.systemsbiology.biofabric.util.ResourceManager;
+import org.systemsbiology.biofabric.util.UiUtil;
+import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
+import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
+import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerOwner;
 
 
 /****************************************************************************
@@ -59,6 +69,8 @@ public class BackgroundWorkerClient {
   private JLabel progressMessage_;
   private FixedJButton cancelButton_;
   private boolean isHeadless_;
+  private PluginResourceManager pluginRMan_;
+ 
 
   //
   // The usual version
@@ -66,7 +78,7 @@ public class BackgroundWorkerClient {
   
   public BackgroundWorkerClient(BackgroundWorkerOwner owner, BackgroundWorker worker, 
                                 JFrame topWindow, BackgroundWorkerControlManager suw, String waitTitle, 
-                                String waitMsg, boolean allowCancels) {
+                                String waitMsg, boolean allowCancels, String pluginClient) {
       
     done_ = false;
     worker_ = worker;
@@ -79,6 +91,7 @@ public class BackgroundWorkerClient {
     cancelRequested_ = false;
     isHeadless_ = false;
     chart_ = null;
+    pluginRMan_ = (pluginClient == null) ? null : new ResourceManager.ForPlugins(pluginClient);
   }
   
   public void makeSuperChart() {
@@ -135,7 +148,7 @@ public class BackgroundWorkerClient {
     if (done_) {
       return;
     }
-    ResourceManager rMan = ResourceManager.getManager();      
+    ResourceManager rMan = ResourceManager.getManager();   
     progressDialog_ = new JDialog(topWindow_, rMan.getString(waitTitle_), true);
     if (chart_ == null) {
       progressDialog_.setSize(350, 200);
@@ -247,7 +260,13 @@ public class BackgroundWorkerClient {
       progressBar_.setIndeterminate(false);
     }
     if (progressMessage_ != null) {
-      progressMessage_.setText(ResourceManager.getManager().getString(message));
+    	ResourceManager rMan = ResourceManager.getManager();
+    	String locMsg = (pluginRMan_ == null) ? rMan.getString(message) :  pluginRMan_.getPluginString(message);
+    	// Passthrough. If plugin does not provide or override, we check the core resources:
+    	if (locMsg.equals(message)) {
+    		locMsg = rMan.getString(message);
+    	}
+      progressMessage_.setText(locMsg);
       progressMessage_.invalidate();
       progressDialog_.validate();
     }

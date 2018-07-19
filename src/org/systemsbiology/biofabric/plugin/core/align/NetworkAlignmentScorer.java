@@ -1,6 +1,6 @@
 /*
 **
-**    File created by Rishi Desai
+**    Copyright (C) 2018 Rishi Desai
 **
 **    Copyright (C) 2003-2018 Institute for Systems Biology
 **                            Seattle, Washington, USA.
@@ -30,13 +30,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
-import org.systemsbiology.biofabric.util.NID;
-import org.systemsbiology.biofabric.util.ResourceManager;
-import org.systemsbiology.biofabric.util.UiUtil;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
+import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
+import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
+import org.systemsbiology.biofabric.workerAPI.LoopReporter;
 
 
 /****************************************************************************
@@ -64,23 +64,24 @@ public class NetworkAlignmentScorer {
   // Keep track of both the main alignment and perfect alignment's info
   //
   
-  private Set<FabricLink> linksMain_, linksPerfect_;
-  private Set<NID.WithName> loneNodeIDsMain_, loneNodeIDsPerfect_;
-  private Map<NID.WithName, Boolean> isAlignedNodeMain_, isAlignedNodePerfect_;
-  private Map<NID.WithName, Boolean> mergedToCorrectNC_;
+  private Set<NetLink> linksMain_, linksPerfect_;
+  private Set<NetNode> loneNodeIDsMain_, loneNodeIDsPerfect_;
+  private Map<NetNode, Boolean> isAlignedNodeMain_, isAlignedNodePerfect_;
+  private Map<NetNode, Boolean> mergedToCorrectNC_;
   
   //
   // This are from original untouched graphs and alignments
   //
   
-  private ArrayList<FabricLink> linksSmall_, linksLarge_;
-  private HashSet<NID.WithName> lonersSmall_, lonersLarge_;
-  private Map<NID.WithName, NID.WithName> mapG1toG2_, perfectG1toG2_;
+  private ArrayList<NetLink> linksSmall_, linksLarge_;
+  private HashSet<NetNode> lonersSmall_, lonersLarge_;
+  private Map<NetNode, NetNode> mapG1toG2_, perfectG1toG2_;
   
   private BTProgressMonitor monitor_;
+  private String pluginClassName_;
   
-  private Map<NID.WithName, Set<FabricLink>> nodeToLinksMain_, nodeToLinksPerfect_;
-  private Map<NID.WithName, Set<NID.WithName>> nodeToNeighborsMain_, nodeToNeighborsPerfect_;
+  private Map<NetNode, Set<NetLink>> nodeToLinksMain_, nodeToLinksPerfect_;
+  private Map<NetNode, Set<NetNode>> nodeToNeighborsMain_, nodeToNeighborsPerfect_;
   private NodeGroupMap groupMapMain_, groupMapPerfect_;
   
   //
@@ -96,26 +97,27 @@ public class NetworkAlignmentScorer {
   //
   ////////////////////////////////////////////////////////////////////////////
   
-  public NetworkAlignmentScorer(Set<FabricLink> reducedLinks, Set<NID.WithName> loneNodeIDs,
-                                Map<NID.WithName, Boolean> mergedToCorrectNC, Map<NID.WithName, Boolean> isAlignedNode,
-                                Map<NID.WithName, Boolean> isAlignedNodePerfect,
-                                Set<FabricLink> linksPerfect, Set<NID.WithName> loneNodeIDsPerfect,
-                                ArrayList<FabricLink> linksSmall, HashSet<NID.WithName> lonersSmall,
-                                ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
-                                Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2,
-                                BTProgressMonitor monitor) throws AsynchExitRequestException {
-    this.linksMain_ = new HashSet<FabricLink>(reducedLinks);
-    this.loneNodeIDsMain_ = new HashSet<NID.WithName>(loneNodeIDs);
+  public NetworkAlignmentScorer(Set<NetLink> reducedLinks, Set<NetNode> loneNodeIDs,
+                                Map<NetNode, Boolean> mergedToCorrectNC, Map<NetNode, Boolean> isAlignedNode,
+                                Map<NetNode, Boolean> isAlignedNodePerfect,
+                                Set<NetLink> linksPerfect, Set<NetNode> loneNodeIDsPerfect,
+                                ArrayList<NetLink> linksSmall, HashSet<NetNode> lonersSmall,
+                                ArrayList<NetLink> linksLarge, HashSet<NetNode> lonersLarge,
+                                Map<NetNode, NetNode> mapG1toG2, Map<NetNode, NetNode> perfectG1toG2,
+                                BTProgressMonitor monitor, String pluginClassName) throws AsynchExitRequestException {
+  	pluginClassName_ = pluginClassName;
+    this.linksMain_ = new HashSet<NetLink>(reducedLinks);
+    this.loneNodeIDsMain_ = new HashSet<NetNode>(loneNodeIDs);
     this.mergedToCorrectNC_ = mergedToCorrectNC;
     this.linksPerfect_ = linksPerfect;
     this.loneNodeIDsPerfect_ = loneNodeIDsPerfect;
     this.isAlignedNodeMain_ = isAlignedNode;
     this.isAlignedNodePerfect_ = isAlignedNodePerfect;
     this.monitor_ = monitor;
-    this.nodeToLinksMain_ = new HashMap<NID.WithName, Set<FabricLink>>();
-    this.nodeToNeighborsMain_ = new HashMap<NID.WithName, Set<NID.WithName>>();
-    this.nodeToLinksPerfect_ = new HashMap<NID.WithName, Set<FabricLink>>();
-    this.nodeToNeighborsPerfect_ = new HashMap<NID.WithName, Set<NID.WithName>>();
+    this.nodeToLinksMain_ = new HashMap<NetNode, Set<NetLink>>();
+    this.nodeToNeighborsMain_ = new HashMap<NetNode, Set<NetNode>>();
+    this.nodeToLinksPerfect_ = new HashMap<NetNode, Set<NetLink>>();
+    this.nodeToNeighborsPerfect_ = new HashMap<NetNode, Set<NetNode>>();
     this.linksSmall_ = linksSmall;
     this.lonersSmall_ = lonersSmall;
     this.linksLarge_ = linksLarge;
@@ -148,8 +150,8 @@ public class NetworkAlignmentScorer {
   
   private void removeDuplicateAndShadow() throws AsynchExitRequestException {
     LoopReporter lr = new LoopReporter(linksMain_.size(), 20, monitor_, 0.0, 1.0, "progress.filteringLinksA");
-    Set<FabricLink> nonShdwLinks = new HashSet<FabricLink>();
-    for (FabricLink link : linksMain_) {
+    Set<NetLink> nonShdwLinks = new HashSet<NetLink>();
+    for (NetLink link : linksMain_) {
       lr.report();
       if (! link.isShadow()) { // remove shadow links
         nonShdwLinks.add(link);
@@ -164,10 +166,10 @@ public class NetworkAlignmentScorer {
     //
   
     lr = new LoopReporter(nonShdwLinks.size(), 20, monitor_, 0.0, 1.0, "progress.filteringLinksB");
-    Map<String, FabricLink> map = new HashMap<String, FabricLink>();
-    for (FabricLink link : nonShdwLinks) {
+    Map<String, NetLink> map = new HashMap<String, NetLink>();
+    for (NetLink link : nonShdwLinks) {
       lr.report();
-      String[] arr1 = {link.getSrcID().getName(), link.getTrgID().getName()};
+      String[] arr1 = {link.getSrcNode().getName(), link.getTrgNode().getName()};
       Arrays.sort(arr1);
       String concat = String.format("%s___%s", arr1[0], arr1[1]);
       
@@ -177,7 +179,7 @@ public class NetworkAlignmentScorer {
     }
     
     linksMain_.clear();
-    for (Map.Entry<String, FabricLink> entry : map.entrySet()) {
+    for (Map.Entry<String, NetLink> entry : map.entrySet()) {
       linksMain_.add(entry.getValue());
     }
     return;
@@ -188,25 +190,25 @@ public class NetworkAlignmentScorer {
    ** Create structures (node-to-neighbors and node-to-inks
    */
   
-  private void generateStructs(Set<FabricLink> allLinks, Set<NID.WithName> loneNodeIDs, Map<NID.WithName,
-          Set<FabricLink>> nodeToLinks_, Map<NID.WithName, Set<NID.WithName>> nodeToNeighbors_) throws AsynchExitRequestException {
+  private void generateStructs(Set<NetLink> allLinks, Set<NetNode> loneNodeIDs, Map<NetNode,
+          Set<NetLink>> nodeToLinks_, Map<NetNode, Set<NetNode>> nodeToNeighbors_) throws AsynchExitRequestException {
     
     LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor_, 0.0, 1.0, "progress.generatingStructures");
-    for (FabricLink link : allLinks) {
+    for (NetLink link : allLinks) {
       lr.report();
-      NID.WithName src = link.getSrcID(), trg = link.getTrgID();
+      NetNode src = link.getSrcNode(), trg = link.getTrgNode();
       
       if (nodeToLinks_.get(src) == null) {
-        nodeToLinks_.put(src, new HashSet<FabricLink>());
+        nodeToLinks_.put(src, new HashSet<NetLink>());
       }
       if (nodeToLinks_.get(trg) == null) {
-        nodeToLinks_.put(trg, new HashSet<FabricLink>());
+        nodeToLinks_.put(trg, new HashSet<NetLink>());
       }
       if (nodeToNeighbors_.get(src) == null) {
-        nodeToNeighbors_.put(src, new HashSet<NID.WithName>());
+        nodeToNeighbors_.put(src, new HashSet<NetNode>());
       }
       if (nodeToNeighbors_.get(trg) == null) {
-        nodeToNeighbors_.put(trg, new HashSet<NID.WithName>());
+        nodeToNeighbors_.put(trg, new HashSet<NetNode>());
       }
       
       nodeToLinks_.get(src).add(link);
@@ -215,9 +217,9 @@ public class NetworkAlignmentScorer {
       nodeToNeighbors_.get(trg).add(src);
     }
     
-    for (NID.WithName node : loneNodeIDs) {
-      nodeToLinks_.put(node, new HashSet<FabricLink>());
-      nodeToNeighbors_.put(node, new HashSet<NID.WithName>());
+    for (NetNode node : loneNodeIDs) {
+      nodeToLinks_.put(node, new HashSet<NetLink>());
+      nodeToNeighbors_.put(node, new HashSet<NetNode>());
     }
     return;
   }
@@ -243,15 +245,15 @@ public class NetworkAlignmentScorer {
    */
   
   private void finalizeMeasures() {
-    ResourceManager rMan = ResourceManager.getManager();
+    PluginResourceManager rMan = PluginSupportFactory.getResourceManager(pluginClassName_);
     String
-            ECn = rMan.getString("networkAlignment.edgeCoverage"),
-            S3n = rMan.getString("networkAlignment.symmetricSubstructureScore"),
-            ICSn = rMan.getString("networkAlignment.inducedConservedStructure"),
-            NCn = rMan.getString("networkAlignment.nodeCorrectness"),
-            NGSn = rMan.getString("networkAlignment.nodeGroupSimilarity"),
-            LGSn = rMan.getString("networkAlignment.linkGroupSimilarity"),
-            JSn = rMan.getString("networkAlignment.jaccardSimilarity");
+            ECn = rMan.getPluginString("networkAlignment.edgeCoverage"),
+            S3n = rMan.getPluginString("networkAlignment.symmetricSubstructureScore"),
+            ICSn = rMan.getPluginString("networkAlignment.inducedConservedStructure"),
+            NCn = rMan.getPluginString("networkAlignment.nodeCorrectness"),
+            NGSn = rMan.getPluginString("networkAlignment.nodeGroupSimilarity"),
+            LGSn = rMan.getPluginString("networkAlignment.linkGroupSimilarity"),
+            JSn = rMan.getPluginString("networkAlignment.jaccardSimilarity");
     
     NetworkAlignmentPlugIn.NetAlignMeasure[] possibleMeasures = {
             new NetworkAlignmentPlugIn.NetAlignMeasure(ECn, EC),
@@ -277,7 +279,7 @@ public class NetworkAlignmentScorer {
     LoopReporter lr = new LoopReporter(linksMain_.size(), 20, monitor_, 0.0, 1.0, "progress.topologicalMeasures");
     int numCoveredEdge = 0, numGraph1 = 0, numInducedGraph2 = 0;
     
-    for (FabricLink link : linksMain_) {
+    for (NetLink link : linksMain_) {
       lr.report();
       if (link.getRelation().equals(NetworkAlignment.COVERED_EDGE)) {
         numCoveredEdge++;
@@ -307,7 +309,7 @@ public class NetworkAlignmentScorer {
     }
     
     int numCorrect = 0;
-    for (Map.Entry<NID.WithName, Boolean> node : mergedToCorrectNC_.entrySet()) {
+    for (Map.Entry<NetNode, Boolean> node : mergedToCorrectNC_.entrySet()) {
       if (node.getValue()) {
         numCorrect++;
       }
@@ -554,27 +556,27 @@ public class NetworkAlignmentScorer {
      ** Calculated the score
      */
   
-    double calcScore(Map<NID.WithName, NID.WithName> mapG1toG2, Map<NID.WithName, NID.WithName> perfectG1toG2,
-                     ArrayList<FabricLink> linksLarge, HashSet<NID.WithName> lonersLarge,
+    double calcScore(Map<NetNode, NetNode> mapG1toG2, Map<NetNode, NetNode> perfectG1toG2,
+                     ArrayList<NetLink> linksLarge, HashSet<NetNode> lonersLarge,
                      BTProgressMonitor monitor) throws AsynchExitRequestException {
   
       NodeGroupMap.JaccardSimilarityFunc funcJS =
               new NodeGroupMap.JaccardSimilarityFunc(mapG1toG2, perfectG1toG2, linksLarge, lonersLarge, monitor);
-      Map<NID.WithName, NID.WithName> entrezAlign = funcJS.entrezAlign;
-      Map<NID.WithName, Set<NID.WithName>> nodeToNeigh = funcJS.nodeToNeighL;
+      Map<NetNode, NetNode> entrezAlign = funcJS.entrezAlign;
+      Map<NetNode, Set<NetNode>> nodeToNeigh = funcJS.nodeToNeighL;
   
-      HashSet<NID.WithName> union = new HashSet<NID.WithName>();
-      HashSet<NID.WithName> intersect = new HashSet<NID.WithName>();
-      HashSet<NID.WithName> scratchNode = new HashSet<NID.WithName>();
-      HashSet<NID.WithName> scratchMatch = new HashSet<NID.WithName>();
+      HashSet<NetNode> union = new HashSet<NetNode>();
+      HashSet<NetNode> intersect = new HashSet<NetNode>();
+      HashSet<NetNode> scratchNode = new HashSet<NetNode>();
+      HashSet<NetNode> scratchMatch = new HashSet<NetNode>();
       double totJ = 0.0;
       int numEnt = 0;
     
-      for (NID.WithName node : entrezAlign.keySet()) {
+      for (NetNode node : entrezAlign.keySet()) {
         int lenAdjust = 0;
-        NID.WithName match = entrezAlign.get(node);
-        Set<NID.WithName> neighOfNode = nodeToNeigh.get(node);
-        Set<NID.WithName> neighOfMatch = nodeToNeigh.get(match);
+        NetNode match = entrezAlign.get(node);
+        Set<NetNode> neighOfNode = nodeToNeigh.get(node);
+        Set<NetNode> neighOfMatch = nodeToNeigh.get(match);
         scratchNode.clear();
         scratchNode.addAll(neighOfNode);
         scratchMatch.clear();

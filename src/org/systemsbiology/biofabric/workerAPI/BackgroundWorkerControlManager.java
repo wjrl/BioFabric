@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2007 Institute for Systems Biology 
+**    Copyright (C) 2003-2008 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,47 +17,36 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.util;
+package org.systemsbiology.biofabric.workerAPI;
 
 
 /****************************************************************************
 **
-** Class implemented by owners of Background workers
+** Class implemented by classes that disable and enable UI controls
+** during asynch operations
 */
 
-public interface BackgroundWorkerOwner { 
+public interface BackgroundWorkerControlManager { 
 
   /****************************************************************************
   **
-  ** We get a change to process a background thread exception before it
-  ** gets popped up in a window.  If we return true, the exception will
-  ** not get displayed.
+  ** disable
   */  
   
-  public boolean handleRemoteException(Exception remoteEx);
-  
+  public void disableControls();
+
   /****************************************************************************
   **
-  ** Things to do if we get cancelled
+  ** enable
   */  
   
-  public void handleCancellation();  
+  public void reenableControls();  
   
   /****************************************************************************
   **
-  ** These are the routines to be executed, on the UI thread, after the 
-  ** background is done, but before the UI controls are enabled and
-  ** the new model is painted (e.g. zoom to worksheet center).
-  */
+  ** also redraw....
+  */  
   
-  public void cleanUpPreEnable(Object result);
-  
-  /****************************************************************************
-  **
-  ** These are the routines to be executed, on the UI thread, after the 
-  ** background is done, and after the UI has been repainted (e.g. warning
-  ** dialogs).
-  */
-  
-  public void cleanUpPostRepaint(Object result);   
+  public void redraw();  
+
 } 

@@ -29,8 +29,8 @@ import javax.swing.Action;
 import javax.swing.JPanel;
 
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.util.ExceptionHandler;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 
 /***************************************************************************
@@ -54,7 +54,7 @@ public class PopupMenuControl {
    
   private NodePopup popupGuts_;
   private LinkPopup popupGutsLink_;
-  private NID.WithName currNode_;
+  private NetNode currNode_;
   private FabricLink currLink_;
   private JPanel parent_;
   
@@ -101,7 +101,7 @@ public class PopupMenuControl {
   ** Launch popup menu
   */
   
-  public void showNodePopup(NID.WithName nodeName, Point pt) {
+  public void showNodePopup(NetNode nodeName, Point pt) {
     currNode_ = nodeName;
     popupGuts_.showPopup(pt);       
     return;
@@ -340,8 +340,8 @@ public class PopupMenuControl {
             (browserURL.indexOf(FabricDisplayOptions.LINK_REL_PLACEHOLDER) == -1)) {
           return;
         } else {          
-          NID.WithName src = currLink_.getSrcID();
-          NID.WithName trg = currLink_.getTrgID();
+          NetNode src = currLink_.getSrcNode();
+          NetNode trg = currLink_.getTrgNode();
           String rel = currLink_.getAugRelation().relation;
           browserURL = browserURL.replaceFirst(FabricDisplayOptions.LINK_SRC_PLACEHOLDER, src.getName());
           browserURL = browserURL.replaceFirst(FabricDisplayOptions.LINK_TRG_PLACEHOLDER, trg.getName());

@@ -30,17 +30,18 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.systemsbiology.biofabric.ioAPI.BuildData;
+import org.systemsbiology.biofabric.layoutAPI.EdgeLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.model.BuildData;
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.model.FabricLink.AugRelation;
+import org.systemsbiology.biofabric.modelAPI.AugRelation;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
-import org.systemsbiology.biofabric.util.AsynchExitRequestException;
-import org.systemsbiology.biofabric.util.BTProgressMonitor;
-import org.systemsbiology.biofabric.util.LoopReporter;
-import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
+import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
+import org.systemsbiology.biofabric.workerAPI.LoopReporter;
 
 /****************************************************************************
 **
@@ -81,7 +82,7 @@ public class DefaultEdgeLayout implements EdgeLayout {
   ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
   */
   
-  public void preProcessEdges(BuildData.RelayoutBuildData rbd, 
+  public void preProcessEdges(BuildData rbd, 
   		                        BTProgressMonitor monitor) throws AsynchExitRequestException {
   	return;
   }
@@ -91,8 +92,8 @@ public class DefaultEdgeLayout implements EdgeLayout {
   ** Relayout the network, but can accept a subset of network links and nodes.
   */
   
-  public SortedMap<Integer, FabricLink> layoutEdges(Map<NID.WithName, Integer> nodeOrder,
-  		                                              Set<FabricLink> allLinks,
+  public SortedMap<Integer, NetLink> layoutEdges(Map<NetNode, Integer> nodeOrder,
+  		                                              Set<NetLink> allLinks,
   		                                              List<String> linkGroups,
   		                                              BioFabricNetwork.LayoutMode layoutMode,
   		                                              BTProgressMonitor monitor) throws AsynchExitRequestException {
@@ -100,10 +101,10 @@ public class DefaultEdgeLayout implements EdgeLayout {
     // Build target->row map:
     //
     
-    HashMap<NID.WithName, Integer> targToRow = new HashMap<NID.WithName, Integer>();
-    Iterator<NID.WithName> trit = nodeOrder.keySet().iterator();
+    HashMap<NetNode, Integer> targToRow = new HashMap<NetNode, Integer>();
+    Iterator<NetNode> trit = nodeOrder.keySet().iterator();
     while (trit.hasNext()) {
-      NID.WithName target = trit.next();
+      NetNode target = trit.next();
       Integer rowObj = nodeOrder.get(target);
       targToRow.put(target, rowObj);
     }
@@ -114,8 +115,8 @@ public class DefaultEdgeLayout implements EdgeLayout {
     //
     
     Map<String, String> augToRel = new HashMap<String, String>();  
-    for (FabricLink link : allLinks) {	
-    	FabricLink.AugRelation augRel = link.getAugRelation();
+    for (NetLink link : allLinks) {	
+    	AugRelation augRel = link.getAugRelation();
     	String match = augToRel.get(augRel.relation);
     	if (match == null) {
     		for (String rel : linkGroups) {
@@ -132,21 +133,21 @@ public class DefaultEdgeLayout implements EdgeLayout {
     //
     
     DefaultFabricLinkLocater dfll = new DefaultFabricLinkLocater(targToRow, linkGroups, augToRel, layoutMode);
-    TreeSet<FabricLink> order = new TreeSet<FabricLink>(dfll);
+    TreeSet<NetLink> order = new TreeSet<NetLink>(dfll);
    
     //
     // Do this discretely to allow progress bar:
     //
     
     LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor, 0.0, 1.0, "progress.linkLayout");
-    for (FabricLink link : allLinks) {
+    for (NetLink link : allLinks) {
     	lr.report();
       order.add(link);
     }
     
-    SortedMap<Integer, FabricLink> retval = new TreeMap<Integer, FabricLink>();
+    SortedMap<Integer, NetLink> retval = new TreeMap<Integer, NetLink>();
     int count = 0;
-    for (FabricLink link : order) {
+    for (NetLink link : order) {
     	retval.put(Integer.valueOf(count++), link);
     	lr.report();
     }    
@@ -160,12 +161,13 @@ public class DefaultEdgeLayout implements EdgeLayout {
   ** Relayout the whole network!
   */
   
-  public void layoutEdges(BuildData.RelayoutBuildData rbd, 
+  public void layoutEdges(BuildData rbd, 
   		                    BTProgressMonitor monitor) throws AsynchExitRequestException {
    
-    SortedMap<Integer, FabricLink> retval = layoutEdges(rbd.nodeOrder, rbd.allLinks, rbd.linkGroups, rbd.layoutMode, monitor);
+    SortedMap<Integer, NetLink> retval = layoutEdges(rbd.getNodeOrder(), rbd.getLinks(), 
+    		                                             rbd.getGroupOrder(), rbd.getGroupOrderMode(), monitor);
     rbd.setLinkOrder(retval);
-    if (rbd.showLinkGroupAnnotations) {
+    if (rbd.getShowLinkGroupAnnotations()) {
       installLinkAnnotations(rbd, monitor);
     } else {
       rbd.setLinkAnnotations(null);
@@ -178,19 +180,19 @@ public class DefaultEdgeLayout implements EdgeLayout {
   ** Install link annotations for 
   */
   
-  protected void installLinkAnnotations(BuildData.RelayoutBuildData rbd, BTProgressMonitor monitor)
+  protected void installLinkAnnotations(BuildData rbd, BTProgressMonitor monitor)
     throws AsynchExitRequestException {
   
-    LoopReporter lr = new LoopReporter(rbd.linkOrder.size(), 20, monitor, 0, 1.0, "progress.linkAnnotationPrep");  
-    List<FabricLink> linkList = new ArrayList<FabricLink>();  
-    for (FabricLink link : rbd.linkOrder.values()) {   
+    LoopReporter lr = new LoopReporter(rbd.getLinkOrder().size(), 20, monitor, 0, 1.0, "progress.linkAnnotationPrep");  
+    List<NetLink> linkList = new ArrayList<NetLink>();  
+    for (NetLink link : rbd.getLinkOrder().values()) {   
       linkList.add(link);
       lr.report();
     }
     lr.finish();
     
-    AnnotationSet nonShdwAnnots = calcGroupLinkAnnots(rbd, linkList, monitor, false, rbd.linkGroups);
-    AnnotationSet withShdwAnnots = calcGroupLinkAnnots(rbd, linkList, monitor, true, rbd.linkGroups);
+    AnnotationSet nonShdwAnnots = calcGroupLinkAnnots(rbd, linkList, monitor, false, rbd.getGroupOrder());
+    AnnotationSet withShdwAnnots = calcGroupLinkAnnots(rbd, linkList, monitor, true, rbd.getGroupOrder());
     
     Map<Boolean, AnnotationSet> linkAnnots = new HashMap<Boolean, AnnotationSet>();
     linkAnnots.put(true, withShdwAnnots);
@@ -205,8 +207,8 @@ public class DefaultEdgeLayout implements EdgeLayout {
   ** Calculate link group link annotations 
   */
     
-  protected AnnotationSet calcGroupLinkAnnots(BuildData.RelayoutBuildData rbd, 
-                                              List<FabricLink> links, BTProgressMonitor monitor, 
+  protected AnnotationSet calcGroupLinkAnnots(BuildData rbd, 
+                                              List<NetLink> links, BTProgressMonitor monitor, 
                                               boolean shadow, List<String> linkGroups) throws AsynchExitRequestException {   
     
     String which = (shadow) ? "progress.linkAnnotationShad" : "progress.linkAnnotationNoShad";
@@ -229,7 +231,7 @@ public class DefaultEdgeLayout implements EdgeLayout {
     int numLink = links.size();
     int count = 0;
     for (int i = 0; i < numLink; i++) {
-      FabricLink link = links.get(i);
+      NetLink link = links.get(i);
       lr.report();
       if (link.isShadow() && !shadow) {
         continue;
@@ -283,10 +285,6 @@ public class DefaultEdgeLayout implements EdgeLayout {
       }	 
   	}
   	if (topRel == null) {
-  	  System.err.println(augR + " " + relToMatch);
-  	  for (String aRel : allRels) {
-  	    System.err.println(aRel);
-  	  }
   		throw new IllegalStateException();
   	}
     return (topRel.equals(relToMatch));
@@ -297,14 +295,14 @@ public class DefaultEdgeLayout implements EdgeLayout {
   ** Used to order links for default link layout
   */
    
-  public static class DefaultFabricLinkLocater implements Comparator<FabricLink> {
+  public static class DefaultFabricLinkLocater implements Comparator<NetLink> {
   	
-  	private Map<NID.WithName, Integer> nodeToRow_;
+  	private Map<NetNode, Integer> nodeToRow_;
   	private List<String> relOrder_;
   	private Map<String, String> augToRel_;
   	BioFabricNetwork.LayoutMode layMode_;
   	
-  	public DefaultFabricLinkLocater(Map<NID.WithName, Integer> nodeToRow, List<String> relOrder,
+  	public DefaultFabricLinkLocater(Map<NetNode, Integer> nodeToRow, List<String> relOrder,
   			                            Map<String, String> augToRel, BioFabricNetwork.LayoutMode layMode) {
   		nodeToRow_ = nodeToRow;
   		augToRel_ = augToRel;
@@ -317,16 +315,16 @@ public class DefaultEdgeLayout implements EdgeLayout {
 	  ** For ANY two different links in the network, this says which comes first:
 	  */
   	  	
-  	public int compare(FabricLink link1, FabricLink link2) {
+  	public int compare(NetLink link1, NetLink link2) {
   	  
   	  if (link1.equals(link2)) {
   	    return (0);
   	  }
   	  
-  		NID.WithName l1s = link1.getSrcID();
-  		NID.WithName l1t = link1.getTrgID();
-  		NID.WithName l2s = link2.getSrcID();
-  		NID.WithName l2t = link2.getTrgID();
+  		NetNode l1s = link1.getSrcNode();
+  		NetNode l1t = link1.getTrgNode();
+  		NetNode l2s = link2.getSrcNode();
+  		NetNode l2t = link2.getTrgNode();
   		
   		Integer l1sR = nodeToRow_.get(l1s);
   	  Integer l1tR = nodeToRow_.get(l1t);  			
@@ -429,7 +427,7 @@ public class DefaultEdgeLayout implements EdgeLayout {
 	  ** or if the links are in the same group. I.e., keep on plugging!
 	  */
   	
-  	public Integer orderUsingGroups(FabricLink link1, FabricLink link2) { 	
+  	public Integer orderUsingGroups(NetLink link1, NetLink link2) { 	
    		AugRelation link1Rel = link1.getAugRelation();
   	  AugRelation link2Rel = link2.getAugRelation();	
   	  //
@@ -453,7 +451,7 @@ public class DefaultEdgeLayout implements EdgeLayout {
 	  ** the link relation tag.
 	  */
   	
-   	public int orderForNode(FabricLink link1, FabricLink link2, Integer l1sR, Integer l1tR, Integer l2sR, Integer l2tR) { 	
+   	public int orderForNode(NetLink link1, NetLink link2, Integer l1sR, Integer l1tR, Integer l2sR, Integer l2tR) { 	
    		AugRelation link1Rel = link1.getAugRelation();
   	  AugRelation link2Rel = link2.getAugRelation();
   			

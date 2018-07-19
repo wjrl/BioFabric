@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -19,10 +19,12 @@
 
 package org.systemsbiology.biofabric.model;
 
-import java.util.Comparator;
 import java.util.Map;
 
 import org.systemsbiology.biofabric.io.AttributeLoader;
+import org.systemsbiology.biofabric.modelAPI.AugRelation;
+import org.systemsbiology.biofabric.modelAPI.NetLink;
+import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.NID;
 
@@ -31,14 +33,14 @@ import org.systemsbiology.biofabric.util.NID;
 ** A Class
 */
 
-public class FabricLink implements Cloneable, AttributeLoader.AttributeKey {
-  private NID.WithName srcID_;
-  private NID.WithName trgID_;
+public class FabricLink implements NetLink, Cloneable, AttributeLoader.AttributeKey {
+  private NetNode srcID_;
+  private NetNode trgID_;
   private String relation_;
   private Boolean directed_;
   private boolean isShadow_;
 
-  public FabricLink(NID.WithName srcID, NID.WithName trgID, String relation, boolean isShadow, Boolean directed) {
+  public FabricLink(NetNode srcID, NetNode trgID, String relation, boolean isShadow, Boolean directed) {
     if ((srcID == null) || (trgID == null) || (relation == null)) {
       throw new IllegalArgumentException();
     }
@@ -49,7 +51,7 @@ public class FabricLink implements Cloneable, AttributeLoader.AttributeKey {
     directed_ = directed;
   }
   
-  public FabricLink(NID.WithName srcID, NID.WithName trgID, String relation, boolean isShadow) {
+  public FabricLink(NetNode srcID, NetNode trgID, String relation, boolean isShadow) {
     this(srcID, trgID, relation, isShadow, null);
   }
     
@@ -90,11 +92,11 @@ public class FabricLink implements Cloneable, AttributeLoader.AttributeKey {
     return;
   }
   
-  public NID.WithName getTrgID() {
+  public NetNode getTrgNode() {
     return (trgID_);
   }
 
-  public NID.WithName getSrcID() {
+  public NetNode getSrcNode() {
     return (srcID_);
   } 
   
@@ -143,7 +145,7 @@ public class FabricLink implements Cloneable, AttributeLoader.AttributeKey {
     return (buf.toString());
   }
   
-  public String toEOAString(Map<NID.WithName, BioFabricNetwork.NodeInfo> nodeInfo) {
+  public String toEOAString(Map<NetNode, BioFabricNetwork.NodeInfo> nodeInfo) {
     StringBuffer buf = new StringBuffer();
     buf.append(nodeInfo.get(srcID_).getNodeName());
     if (isShadow_) {
@@ -193,23 +195,23 @@ public class FabricLink implements Cloneable, AttributeLoader.AttributeKey {
     return (this.directed_.equals(otherLink.directed_));
   }  
  
-  public boolean synonymous(FabricLink other) {
+  public boolean synonymous(NetLink other) {
     if (this.equals(other)) {
       return (true);
     }
     if (this.isDirected() || other.isDirected()) {
       return (false);
     }
-    if (!DataUtil.normKey(this.relation_).equals(DataUtil.normKey(other.relation_))) {
+    if (!DataUtil.normKey(this.relation_).equals(DataUtil.normKey(other.getRelation()))) {
       return (false);
     }
-    if (this.isShadow_ != other.isShadow_) {
+    if (this.isShadow_ != other.isShadow()) {
       return (false);
     }    
-    if (!this.srcID_.equals(other.trgID_)) {
+    if (!this.srcID_.equals(other.getTrgNode())) {
       return (false);
     }
-    return (this.trgID_.equals(other.srcID_));
+    return (this.trgID_.equals(other.getSrcNode()));
   }
    
    public boolean shadowPair(FabricLink other) {
@@ -237,122 +239,5 @@ public class FabricLink implements Cloneable, AttributeLoader.AttributeKey {
       return (false);
     }
     return (true);   
-  }
-
-  /***************************************************************************
-  **
-  ** Comparator for Fabric Links
-  ** This is kinda bogus and old, and is just used to cleanse input. Replace
-  ** with something newer?
-  */  
-  
-  public static class FabLinkComparator implements Comparator<FabricLink> {
-    
-    public int compare(FabricLink one, FabricLink otherLink) {
-	    if (one.equals(otherLink)) {
-	      return (0);
-	    }
-	    
-	    String srcOne = DataUtil.normKey(one.srcID_.getName());
-	    String trgOne = DataUtil.normKey(one.trgID_.getName());
-	    String srcTwo = DataUtil.normKey(otherLink.srcID_.getName());
-	    String trgTwo = DataUtil.normKey(otherLink.trgID_.getName());
-	    
-	    if (!srcOne.equals(srcTwo)) {
-	      return (srcOne.compareTo(srcTwo));
-	    }    
-	    if (!trgOne.equals(trgTwo)) {
-	      return (trgOne.compareTo(trgTwo));
-	    } 
-	    if (one.isShadow_ != otherLink.isShadow_) {
-	      return ((one.isShadow_) ? -1 : 1);
-	    }  
-	    if (!DataUtil.normKey(one.relation_).equals(DataUtil.normKey(otherLink.relation_))) {
-	      return (one.relation_.compareToIgnoreCase(otherLink.relation_));
-	    }
-	   
-	    //
-	    // Gatta catch the far-out case where two links with same source and target node names but different
-	    // internal IDs get to here. Can't let it fall through
-	    //
-	    
-	    if (!one.srcID_.equals(otherLink.srcID_)) {
-         return (one.srcID_.compareTo(otherLink.srcID_));
-      }
-      if (!one.trgID_.equals(otherLink.trgID_)) {
-        return (one.trgID_.compareTo(otherLink.trgID_));
-      }
-
-	    throw new IllegalStateException();
-	  }
-    	
-  }
-  
-  /***************************************************************************
-  **
-  ** Augmented relation
-  */  
-  
-  public static class AugRelation implements Cloneable, Comparable<AugRelation> {
-    public String relation;
-    public boolean isShadow;
-    
-    public AugRelation(String relation, boolean isShadow) {
-      this.relation = relation;
-      this.isShadow = isShadow;
-    }
-    
-    @Override
-    public AugRelation clone() {
-      try {
-        return ((AugRelation)super.clone());
-      } catch (CloneNotSupportedException cnse) {
-        throw new IllegalStateException();
-      }
-    }   
-   
-    public int compareTo(AugRelation otherAug) {
-      if (this.equals(otherAug)) {
-        return (0);
-      }
-
-      if (this.isShadow != otherAug.isShadow) {
-        return ((this.isShadow) ? -1 : 1);
-      }    
-      if (!this.relation.toUpperCase().equals(otherAug.relation.toUpperCase())) {
-        return (this.relation.compareToIgnoreCase(otherAug.relation));
-      }
-      throw new IllegalStateException();
-    }
-      
-    @Override  
-    public boolean equals(Object other) {    
-      if (other == null) {
-        return (false);
-      }
-      if (other == this) {
-        return (true);
-      }
-      if (!(other instanceof AugRelation)) {
-        return (false);
-      }
-      AugRelation otherAug = (AugRelation)other;
-
-      if (this.isShadow != otherAug.isShadow) {
-        return (false);
-      }
-    
-      return (this.relation.toUpperCase().equals(otherAug.relation.toUpperCase()));
-    }
-     
-    @Override
-    public int hashCode() {
-      return (relation.toUpperCase().hashCode() + ((isShadow) ? 17 : 31));
-    }
-
-    @Override
-    public String toString() {
-      return ("rel = " + relation + " isShadow = " + isShadow);
-    }    
   }
 }

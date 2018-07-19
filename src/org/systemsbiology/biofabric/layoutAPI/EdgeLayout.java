@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,71 +17,39 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.util;
+package org.systemsbiology.biofabric.layoutAPI;
 
-import java.util.SortedMap;
+import org.systemsbiology.biofabric.ioAPI.BuildData;
+import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
+import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 
 /****************************************************************************
 **
-** An interface for monitoring progress
+** This is the interface for edge layout algorithms
 */
 
-public interface BTProgressMonitor {
- 
-  ////////////////////////////////////////////////////////////////////////////
+public interface EdgeLayout {
+
+	////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC METHODS
   //
   ////////////////////////////////////////////////////////////////////////////
-
+   
   /***************************************************************************
   **
-  ** set total
+  ** Relayout the whole network!
   */
   
-  public void setTotal(int total);  
+  public void layoutEdges(BuildData rbd, BTProgressMonitor monitor) throws AsynchExitRequestException;
+  
   
   /***************************************************************************
   **
-  ** Get total
+  ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
   */
   
-  public int getTotal();
-  
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean updateProgress(int done);
-  
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean updateProgressAndPhase(int done, String message);
-  
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean updateRankings(SortedMap<Integer, Double> chartVals);
-    
-  /***************************************************************************
-  **
-  ** Callback
-  */
-  
-  public boolean keepGoing();  
-  
-
-  /***************************************************************************
-  **
-  ** Get progress
-  */  
-  
-  public int getProgress();  
+  public void preProcessEdges(BuildData rbd, BTProgressMonitor monitor) throws AsynchExitRequestException;
+   
 
 }

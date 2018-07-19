@@ -142,7 +142,6 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
    
     public Annot(String tag, int startPos, int endPos, int layer, String colorName) {
       if ((startPos > endPos) || (layer < 0)) {
-        System.err.println(tag + " start after end "  + startPos + " " + endPos);
         throw new IllegalArgumentException();
       }
       tag_ = tag;
