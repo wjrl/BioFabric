@@ -351,11 +351,14 @@ public class NetworkAlignment {
    */
   
   private void addMergedLink(NetNode src, NetNode trg, String tag) {
-    NetLink newMergedLink = new FabricLink(src, trg, tag, false, null);
-    NetLink newMergedLinkShadow = new FabricLink(src, trg, tag, true, null);
-    
+    NetLink newMergedLink = new FabricLink(src, trg, tag, false);
     mergedLinks_.add(newMergedLink);
-    mergedLinks_.add(newMergedLinkShadow);
+    
+    // We never create shadow feedback links!
+    if (!src.equals(trg)) {
+      NetLink newMergedLinkShadow = new FabricLink(src, trg, tag, true);
+      mergedLinks_.add(newMergedLinkShadow);
+    }
     return;
   }
   
@@ -444,6 +447,7 @@ public class NetworkAlignment {
               "progress.orphanEdgesContext");
       
       List<NetLink> blueEdgesPlusContext = new ArrayList<NetLink>();
+      blueEdgesPlusContext.get(0);
       for (NetLink link : mergedLinks) { // add the edges connecting to the nodes of interest (one hop away)
         
         NetNode src = link.getSrcNode(), trg = link.getTrgNode();

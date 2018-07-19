@@ -2047,29 +2047,6 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     return (retval);
  }
   
-  /**
-   * Iterates through each Rectangle2D in recList to see if it contains Point p
-   */
-  private Rectangle2D findPoint(List<Rectangle2D> recList, Point2D p) {
-   
-    for (int i = 0; i < recList.size(); i++) {
-      if (recList.get(i).contains(p)) return recList.get(i);
-    }
-    
-//    ExceptionHandler.getHandler().displayException(
-//            new IllegalArgumentException("findPoint(), BioFabricPanel; Point not in recList"));
-    return null;
-  }
-  
-  /**
-   * THIS METHOD IS CURRENTLY WRONG. NEED MORE INFO THAT JUST THE NAME TO FIND
-   * THE CORRECT RECTANGLE2D
-   */
-  private Rectangle2D findPoint(List<Rectangle2D> recList, String nodeName) {
-    UiUtil.fixMePrintout("This method is currently wrong");
-  	return recList.get(0);
-  }
-  
   /***************************************************************************
   **
   ** Run the selection logic for point click. Point rcbp is for row-column, Point sloc
@@ -2428,6 +2405,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     bumpGuts();
     handleFloaterChange();
     System.out.println("This has gotta change");
+    UiUtil.fixMePrintout("This has gotta change");
     HashSet<Integer> targRows = new HashSet<Integer>();
     HashSet<Integer> targCols = new HashSet<Integer>(currColSelections_);
     HashSet<NID> targIDs = new HashSet<NID>();
