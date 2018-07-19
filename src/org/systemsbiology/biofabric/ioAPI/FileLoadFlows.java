@@ -105,7 +105,8 @@ public interface FileLoadFlows {
     
   public boolean handleDirectionsDupsAndShadows(List<NetLink> links, Set<NetNode> loneNodeIDs, 
   		                                           boolean binMag, SortedMap<AugRelation, Boolean> relaMap,
-  		                                           Set<NetLink> reducedLinks, File holdIt, boolean doForceUndirected);
+  		                                           Set<NetLink> reducedLinks, File holdIt, 
+  		                                           boolean doForceUndirected, boolean skipShadowQuestion);
    
   /***************************************************************************
    **
@@ -114,7 +115,8 @@ public interface FileLoadFlows {
   
   public boolean loadFromASource(File file, List<NetLink> links,
                                  Set<NetNode> loneNodes, Integer magBins,
-                                 UniqueLabeller idGen, boolean loadOnly, FileLoadType type);
+                                 UniqueLabeller idGen, boolean loadOnly, 
+                                 FileLoadType type, boolean skipShadowQuestion);
   
   /***************************************************************************
    **
@@ -122,7 +124,8 @@ public interface FileLoadFlows {
    */
   
   public boolean loadFromASource(File file, Map<AttributeLoader.AttributeKey, String> nameMap,
-                                 Integer magBins, UniqueLabeller idGen, FileLoadType type);
+                                 Integer magBins, UniqueLabeller idGen, 
+                                 FileLoadType type, boolean skipShadowQuestion);
   
   /***************************************************************************
   **
