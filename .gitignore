@@ -2,3 +2,7 @@
 .idea/
 BioFabric.iml
 out/
+.DS_Store
+.project
+.classpath
+

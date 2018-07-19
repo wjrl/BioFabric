@@ -466,7 +466,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     
   public boolean handleDirectionsDupsAndShadows(List<NetLink> links, Set<NetNode> loneNodeIDs, 
   		                                           boolean binMag, SortedMap<AugRelation, Boolean> relaMap,
-  		                                           Set<NetLink> reducedLinks, File holdIt, boolean doForceUndirected) {
+  		                                           Set<NetLink> reducedLinks, File holdIt, 
+  		                                           boolean doForceUndirected, boolean skipShadowQuestion) {
     
     
     ResourceManager rMan = ResourceManager.getManager(); 
@@ -557,19 +558,20 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       // For big files, user may want to specify layout options before the default layout with no
       // shadows. Let them set this here:
       //
-      
-      if (reducedLinks.size() > SIZE_TO_ASK_ABOUT_SHADOWS) {
-	      String shadowMessage = rMan.getString("fabricRead.askAboutShadows");
-	      int doShadow =
-	        JOptionPane.showConfirmDialog(topWindow_, shadowMessage,
-	                                      rMan.getString("fabricRead.askAboutShadowsTitle"),
-	                                      JOptionPane.YES_NO_CANCEL_OPTION);        
-	      if (doShadow == JOptionPane.CANCEL_OPTION) {
-	        return (false);
-	      }
-	      FabricDisplayOptions dops = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
-	      dops.setDisplayShadows((doShadow == JOptionPane.YES_OPTION));
-	    }
+      if (!skipShadowQuestion) {
+	      if (reducedLinks.size() > SIZE_TO_ASK_ABOUT_SHADOWS) {
+		      String shadowMessage = rMan.getString("fabricRead.askAboutShadows");
+		      int doShadow =
+		        JOptionPane.showConfirmDialog(topWindow_, shadowMessage,
+		                                      rMan.getString("fabricRead.askAboutShadowsTitle"),
+		                                      JOptionPane.YES_NO_CANCEL_OPTION);        
+		      if (doShadow == JOptionPane.CANCEL_OPTION) {
+		        return (false);
+		      }
+		      FabricDisplayOptions dops = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
+		      dops.setDisplayShadows((doShadow == JOptionPane.YES_OPTION));
+		    }
+      }
       
       //
       // Handle magnitude bins:
@@ -626,7 +628,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
    */
   
   public boolean loadFromASource(File file, Map<AttributeLoader.AttributeKey, String> nameMap,
-                                 Integer magBins, UniqueLabeller idGen, FileLoadFlows.FileLoadType type) {
+                                 Integer magBins, UniqueLabeller idGen, 
+                                 FileLoadFlows.FileLoadType type, boolean skipShadowQuestion) {
     
     HashMap<String, String> nodeNames = null;
     if (nameMap != null) {
@@ -700,7 +703,9 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     //
     
     announceBadLines(sss);
-    boolean finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);
+    boolean finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), 
+    		                                              relMap, reducedLinks, holdIt, false,
+    		                                              skipShadowQuestion);
     if (finished) {
       buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
     }
@@ -714,7 +719,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   
   public boolean loadFromASource(File file, List<NetLink> links,
                                  Set<NetNode> loneNodes, Integer magBins,
-                                 UniqueLabeller idGen, boolean loadOnly, FileLoadFlows.FileLoadType type) {
+                                 UniqueLabeller idGen, boolean loadOnly, 
+                                 FileLoadFlows.FileLoadType type, boolean skipShadowQuestion) {
     
     File holdIt;
     try {
@@ -763,7 +769,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     // This looks for dups to toss and prep work:
     //
   
-    finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);
+    finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, 
+    		                                      reducedLinks, holdIt, false, skipShadowQuestion);
   
     if (finished) {
       buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
