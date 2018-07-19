@@ -77,7 +77,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
   private ArrayList<BioFabricToolPlugInCmd> myCmds_;
   private String myTag_;
-  private NetAlignStats netAlignStats_;
+  private NetAlignStats publishedNetAlignStats_;
+  private NetAlignStats pendingNetAlignStats_;
   private FileLoadFlows flf_;
   private JFrame topWindow_;
   private BackgroundWorkerControlManager bwcm_;
@@ -101,7 +102,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     myCmds_.add(new LoadNetAlignOrphanCmd());
     myCmds_.add(new LoadNetAlignCaseIICmd());
     myCmds_.add(new NetAlignScoresCmd()); 
-    netAlignStats_ = new NetAlignStats();
+    publishedNetAlignStats_ = new NetAlignStats();
+    pendingNetAlignStats_ = new NetAlignStats();
     
     className_ = getClass().getName();
     PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
@@ -139,7 +141,13 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   */
   
   public void newNetworkInstalled(Network bfn) {
-    UiUtil.fixMePrintout("Drop stats if new network is not an alignment");
+    // If we are working on an alignment, we will retain the pending stats we are generating. Else, they get dropped.
+  	if (pendingNetAlignStats_.hasStats()) {
+  		publishedNetAlignStats_ = pendingNetAlignStats_;
+  		pendingNetAlignStats_ = new NetAlignStats();
+  	} else {
+  		publishedNetAlignStats_ = new NetAlignStats();
+  	}
     for (BioFabricToolPlugInCmd cmd : myCmds_) {
       ((Enabler)cmd).setEnabled(true);
     }
@@ -195,7 +203,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   */
   
   public void writeXML(PrintWriter out, Indenter ind) {
-    if (!netAlignStats_.hasStats()) {
+    if (!publishedNetAlignStats_.hasStats()) {
       return;
     }
     ind.up();
@@ -207,7 +215,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     out.println(">");
 
     ind.up();
-    netAlignStats_.writeXML(out, ind);
+    publishedNetAlignStats_.writeXML(out, ind);
     ind.down();
     ind.indent();
     out.print("</");
@@ -232,7 +240,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   */
  
   public void attachXMLData(BioFabricToolPlugInData data) {
-    netAlignStats_ = (NetAlignStats)data;
+    publishedNetAlignStats_ = (NetAlignStats)data;
     return;   
   }
  
@@ -440,7 +448,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
     if (finished) { // Score Report
       finished = networkAlignmentStepFour(reducedLinks, mergedLoneNodeIDs, isAlignedNode, mergedToCorrectNC,
-              reducedLinksPerfect, mergedLoneNodeIDsPerfect, isAlignedNodePerfect, netAlignStats_,
+              reducedLinksPerfect, mergedLoneNodeIDsPerfect, isAlignedNodePerfect, pendingNetAlignStats_,
               linksSmall, lonersSmall, linksLarge, lonersLarge, mapG1toG2, perfectG1toG2);
     }
    
@@ -465,10 +473,11 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
       networkAlignmentStepFive(allLargerNodes, allSmallerNodes, reducedLinks, mergedLoneNodeIDs, 
                                mergedToCorrectNC, isAlignedNode,
-                               mapG1toG2, perfectG1toG2, linksLarge, lonersLarge, netAlignStats_, outType,
+                               mapG1toG2, perfectG1toG2, linksLarge, lonersLarge, pendingNetAlignStats_, outType,
                                nadi.mode, idGen, nadi.align, holdIt);
  
     }
+    pendingNetAlignStats_ = new NetAlignStats();
     return (true);
   }
   
@@ -530,6 +539,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     bd.setPluginBuildData(nabd);
   
     try {
+    	// Let us know that the network we are about to hear about is an alignment:
       flf_.buildNetworkForPlugIn(bd, holdIt, className_); 
     } catch (OutOfMemoryError oom) {
       ExceptionHandler.getHandler().displayOutOfMemory(oom);
@@ -671,13 +681,11 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
   private class NetAlignScoresCmd implements BioFabricToolPlugInCmd, Enabler {
    
+  	private boolean enabled_;
+  	
     public void setEnabled(boolean isEnabled) {
-      // Depends on if we have non-null scores.
-      if (!isEnabled) {
-        System.out.println("Turn off " + isEnabled);
-      } else {
-        System.out.println("Set Enabled? " + netAlignStats_.hasStats());
-      } 
+    	enabled_ = isEnabled;
+      return;
     }
       
     public String getCommandName() {
@@ -686,18 +694,17 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }   
     
     public boolean performOperation(JFrame topFrame) {
-      if (!netAlignStats_.hasStats()) {
+      if (!publishedNetAlignStats_.hasStats() || !enabled_) {
         return (false);
       }    
     
-      NetAlignMeasureDialog scoreDialog = new NetAlignMeasureDialog(topFrame, netAlignStats_, className_);
+      NetAlignMeasureDialog scoreDialog = new NetAlignMeasureDialog(topFrame, publishedNetAlignStats_, className_);
       scoreDialog.setVisible(true);
       return (true);
     }
   
     public boolean isEnabled() {
-      System.out.println("Enabled? " + netAlignStats_.hasStats());
-      return (netAlignStats_.hasStats());    
+      return (enabled_ && publishedNetAlignStats_.hasStats());    
     } 
   }
  
@@ -708,10 +715,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
   private class LoadNetAlignGroupsCmd implements BioFabricToolPlugInCmd, Enabler {
   
-    private boolean enabled_;
-
     public void setEnabled(boolean isEnabled) {
-      enabled_ = isEnabled;
+      return; // Always enabled  
     }
     
     public String getCommandName() {
@@ -720,10 +725,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
     
     public boolean performOperation(JFrame topFrame) {
-      if (!enabled_) {
-        return (false);
-      }    
-    
+      
       NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame,  
                                                               NetworkAlignmentBuildData.ViewType.GROUP, className_);
       nad.setVisible(true);
@@ -757,7 +759,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
     
     public boolean isEnabled() {
-      return (enabled_);    
+      return (true);  // Always enabled  
     }
   
   }
@@ -769,10 +771,9 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
   
   private class LoadNetAlignCaseIICmd implements BioFabricToolPlugInCmd, Enabler {
   
-    private boolean enabled_;
 
     public void setEnabled(boolean isEnabled) {
-      enabled_ = isEnabled;
+      return; // Always enabled  
     }
     
     public String getCommandName() {
@@ -781,9 +782,6 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
     
     public boolean performOperation(JFrame topFrame) {
-      if (!enabled_) {
-        return (false);
-      }    
     
       NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame, NetworkAlignmentBuildData.ViewType.CYCLE, className_);
       nad.setVisible(true);
@@ -812,7 +810,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
     
     public boolean isEnabled() {
-      return (enabled_);    
+      return (true);  // Always enabled     
     }
   
   }
@@ -824,11 +822,9 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
    */
   
   private class LoadNetAlignOrphanCmd implements BioFabricToolPlugInCmd, Enabler {
- 
-    private boolean enabled_;
     
     public void setEnabled(boolean isEnabled) {
-      enabled_ = isEnabled;
+      return; // Always enabled  
     }
     
     public String getCommandName() {
@@ -837,9 +833,6 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
     
     public boolean performOperation(JFrame topFrame) {
-      if (!enabled_) {
-        return (false);
-      }
       
       NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame, NetworkAlignmentBuildData.ViewType.ORPHAN, className_);
       nad.setVisible(true);
@@ -868,7 +861,7 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
     
     public boolean isEnabled() {
-      return (enabled_);    
+      return (true); // Always enabled      
     }
   }
   
@@ -1283,7 +1276,6 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       try {
         Double value = Double.valueOf(valStr);
         retval = new NetAlignMeasure(name, value);
-        System.out.println("NAM " + retval);
       } catch (NumberFormatException nfex) {
         throw new IOException();
       }

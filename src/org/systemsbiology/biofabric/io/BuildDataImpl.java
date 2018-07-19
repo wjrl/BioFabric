@@ -265,10 +265,6 @@ public class BuildDataImpl implements BuildData {
     return (true);
   } 
   
-  public void processSpecialtyBuildData() {
-    return;
-  }
-  
   //
   // Allow for late binding of color generator:
   //

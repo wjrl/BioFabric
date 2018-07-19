@@ -21,13 +21,6 @@ package org.systemsbiology.biofabric.plugin;
 
 import org.systemsbiology.biofabric.layoutAPI.EdgeLayout;
 import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
-import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
-import org.systemsbiology.biofabric.layouts.DefaultLayout;
-import org.systemsbiology.biofabric.plugin.core.align.AlignCycleEdgeLayout;
-import org.systemsbiology.biofabric.plugin.core.align.AlignCycleLayout;
-import org.systemsbiology.biofabric.plugin.core.align.NetworkAlignmentEdgeLayout;
-import org.systemsbiology.biofabric.plugin.core.align.NetworkAlignmentLayout;
-import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -51,11 +44,5 @@ public interface PluginBuildData {
 	public NodeLayout getNodeLayout();
   public EdgeLayout getEdgeLayout();
   
-	/****************************************************************************
-  **
-  ** Called during network build to process any specialty build data: 
-  */  
-  
-  public void processSpecialtyBuildData();
 
 }
