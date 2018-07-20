@@ -107,8 +107,4 @@ public class NetworkAlignmentBuildData implements PluginBuildData {
         throw new IllegalStateException();
     } 
   }
-
-  public void processSpecialtyBuildData() {
-    UiUtil.fixMePrintout("Stick data into plugin");
-  }
 }

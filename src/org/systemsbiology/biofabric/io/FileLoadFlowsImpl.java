@@ -2498,11 +2498,11 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     bfw_.getOverview().installImage(topImage, bfp_.getWorldScreen());
     bfp_.installModelPost();
     bfp_.initZoom();
+    // Doing this before checkForChanges lets the plugins know how to answer: 
+    pMan_.newNetworkInstalled(bfp_.getNetwork());
     cSet_.checkForChanges();
     cSet_.handleZoomButtons();
     bfp_.repaint();
-    System.out.println("new network installed!!");
-    pMan_.newNetworkInstalled(bfp_.getNetwork());
     return;
   }
   

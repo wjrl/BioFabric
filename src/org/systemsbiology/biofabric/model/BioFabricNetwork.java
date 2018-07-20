@@ -180,7 +180,6 @@ public class BioFabricNetwork implements Network {
       case BUILD_FROM_PLUGIN:
         standardBuildDataInit(bd);
         transferRelayoutBuildData(bd);
-        bd.processSpecialtyBuildData();
         processLinks(bd, monitor);
         break;
       case BUILD_FOR_SUBMODEL:
@@ -1888,6 +1887,7 @@ public class BioFabricNetwork implements Network {
       rowToTargID_.put(rowObj, targetID);
       String colorKey = colGen.getGeneColor(currRow % numColors);
       if (targetID == null) {
+      	UiUtil.fixMePrintout("SAW THIS FOR ROW OBJ 5245");
         System.out.println("targetID is Null " + rowObj);
       }
 
