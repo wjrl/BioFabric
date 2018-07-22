@@ -532,6 +532,9 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     NodeGroupMap.PerfectNGMode mode;
     switch (perfectNGsCombo_.getSelectedIndex()) {
       case NO_PERFECT_IDX:
+        perfectAlignFile_ = null; // RishiDesai issue #36 fix; user adds perfect file but changes combo box to no file
+        mode = NodeGroupMap.PerfectNGMode.NONE;
+        break;
       case WITH_PERFECT_IDX:
         mode = NodeGroupMap.PerfectNGMode.NONE;
         break;

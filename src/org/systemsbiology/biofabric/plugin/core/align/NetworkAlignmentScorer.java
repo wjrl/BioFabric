@@ -440,7 +440,10 @@ public class NetworkAlignmentScorer {
      */
     
     public double angSim(VectorND vector) {
-      double sim = 1 - (2 * Math.acos(cosSim(vector)) / Math.PI);
+      Double sim = 1 - (2 * Math.acos(cosSim(vector)) / Math.PI);
+      if (sim.isNaN()) {
+        // need to figure this out...RishiDesai issue # 36
+      }
       return (sim);
     }
     
