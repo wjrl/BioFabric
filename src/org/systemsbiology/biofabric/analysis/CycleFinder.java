@@ -25,11 +25,11 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.Iterator;
 
-import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.modelAPI.NetNode;
-import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
-import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
-import org.systemsbiology.biofabric.workerAPI.LoopReporter;
+import org.systemsbiology.biofabric.api.model.NetLink;
+import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.api.worker.LoopReporter;
 
 /****************************************************************************
 **

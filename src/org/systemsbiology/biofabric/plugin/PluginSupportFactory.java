@@ -24,22 +24,22 @@ import java.util.Set;
 
 import javax.swing.JFrame;
 
+import org.systemsbiology.biofabric.api.io.BuildData;
+import org.systemsbiology.biofabric.api.io.BuildExtractor;
+import org.systemsbiology.biofabric.api.model.NetLink;
+import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.PluginResourceManager;
+import org.systemsbiology.biofabric.api.util.UniqueLabeller;
+import org.systemsbiology.biofabric.api.worker.BFWorker;
+import org.systemsbiology.biofabric.api.worker.BackgroundWorkerControlManager;
+import org.systemsbiology.biofabric.api.worker.BackgroundWorkerOwner;
 import org.systemsbiology.biofabric.io.BuildDataImpl;
 import org.systemsbiology.biofabric.io.BuildExtractorImpl;
-import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
-import org.systemsbiology.biofabric.ioAPI.BuildData;
-import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.util.ResourceManager;
-import org.systemsbiology.biofabric.util.UniqueLabeller;
-import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
 import org.systemsbiology.biofabric.worker.BackgroundWorker;
 import org.systemsbiology.biofabric.worker.BackgroundWorkerClient;
 import org.systemsbiology.biofabric.worker.WorkerClientBundle;
-import org.systemsbiology.biofabric.workerAPI.BFWorker;
-import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
-import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerOwner;
 
 /****************************************************************************
 **

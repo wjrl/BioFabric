@@ -27,9 +27,9 @@ import java.util.TreeMap;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
-import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
-import org.systemsbiology.biofabric.workerAPI.BackgroundCore;
+import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.api.worker.BackgroundCore;
 
 /****************************************************************************
 **

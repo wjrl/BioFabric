@@ -26,7 +26,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.net.MalformedURLException;
 
-import org.systemsbiology.biofabric.util.AttributeExtractor;
+import org.systemsbiology.biofabric.api.io.AttributeExtractor;
 import org.xml.sax.Attributes;
 
 /***************************************************************************

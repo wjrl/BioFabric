@@ -26,13 +26,13 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
+import org.systemsbiology.biofabric.api.dialog.BTStashResultsDialog;
+import org.systemsbiology.biofabric.api.model.AugRelation;
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.modelAPI.AugRelation;
-import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.utils.EditableTable;
 import org.systemsbiology.biofabric.util.DataUtil;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;

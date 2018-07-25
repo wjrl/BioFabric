@@ -28,14 +28,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 
-import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
-import org.systemsbiology.biofabric.modelAPI.AugRelation;
-import org.systemsbiology.biofabric.modelAPI.LinkComparator;
-import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.modelAPI.NetNode;
-import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
-import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
-import org.systemsbiology.biofabric.workerAPI.LoopReporter;
+import org.systemsbiology.biofabric.api.io.BuildExtractor;
+import org.systemsbiology.biofabric.api.model.AugRelation;
+import org.systemsbiology.biofabric.api.model.LinkComparator;
+import org.systemsbiology.biofabric.api.model.NetLink;
+import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.api.worker.LoopReporter;
 
 /****************************************************************************
 **

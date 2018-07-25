@@ -36,7 +36,7 @@ import javax.swing.border.EmptyBorder;
 import java.io.StringWriter;
 import java.io.PrintWriter;
 
-import org.systemsbiology.biofabric.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;

@@ -23,12 +23,11 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 import org.xml.sax.Attributes;
-
+import org.systemsbiology.biofabric.api.io.AttributeExtractor;
+import org.systemsbiology.biofabric.api.io.CharacterEntityMapper;
+import org.systemsbiology.biofabric.api.io.Indenter;
+import org.systemsbiology.biofabric.api.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.io.FabricFactory;
-import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
-import org.systemsbiology.biofabric.util.AttributeExtractor;
-import org.systemsbiology.biofabric.util.CharacterEntityMapper;
-import org.systemsbiology.biofabric.util.Indenter;
 
 
 /****************************************************************************

@@ -29,6 +29,8 @@ import javax.swing.JTable;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.text.JTextComponent;
 
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+
 /****************************************************************************
 **
 ** Used for table combo entries

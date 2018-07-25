@@ -29,13 +29,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.systemsbiology.biofabric.ioAPI.BuildData;
-import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
-import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.modelAPI.Network;
-import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
-import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
-import org.systemsbiology.biofabric.workerAPI.LoopReporter;
+import org.systemsbiology.biofabric.api.io.BuildData;
+import org.systemsbiology.biofabric.api.layout.DefaultEdgeLayout;
+import org.systemsbiology.biofabric.api.model.NetLink;
+import org.systemsbiology.biofabric.api.model.Network;
+import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.api.worker.LoopReporter;
 
 public class NetworkAlignmentEdgeLayout extends DefaultEdgeLayout {
   

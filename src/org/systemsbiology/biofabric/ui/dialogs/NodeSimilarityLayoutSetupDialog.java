@@ -29,10 +29,10 @@ import javax.swing.JLabel;
 import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
 
+import org.systemsbiology.biofabric.api.dialog.BTStashResultsDialog;
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
-import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.util.ChoiceContent;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.ResourceManager;
 

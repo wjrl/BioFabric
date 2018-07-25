@@ -26,16 +26,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.systemsbiology.biofabric.ioAPI.BuildData;
-import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
+import org.systemsbiology.biofabric.api.io.BuildData;
+import org.systemsbiology.biofabric.api.layout.DefaultEdgeLayout;
+import org.systemsbiology.biofabric.api.model.NetLink;
+import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.model.Network;
+import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.api.worker.LoopReporter;
 import org.systemsbiology.biofabric.model.AnnotationSet;
-import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.modelAPI.NetNode;
-import org.systemsbiology.biofabric.modelAPI.Network;
-import org.systemsbiology.biofabric.util.UiUtil;
-import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
-import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
-import org.systemsbiology.biofabric.workerAPI.LoopReporter;
 
 /****************************************************************************
 **
@@ -140,18 +139,15 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
     int numLink = links.size();
     int count = 0;
     boolean first = true;
-    System.out.println("bound bound " + bounds.get(0).boundStart + " " + bounds.get(0).boundEnd);
     for (int i = 0; i < numLink; i++) {
       NetLink link = links.get(i);
       lr.report();
       if (link.isShadow() && !shadow) {
         continue;
       }
-      UiUtil.fixMePrintout("FIRST CYCLE BEING MISSED (check via looper[1] != looper[0] test omitted");
       NetNode zoner = getZoneNode(link, nodeOrder, link.isShadow());
       if (first) {
         first = false;
-        System.out.println("zoner " + zoner);
       }
       if ((currZoner == null) || !currZoner.equals(zoner)) { // New Zone
         if (currZoner != null) { // i.e. currZoner != zoner

@@ -57,7 +57,12 @@ import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JViewport;
 
-
+import org.systemsbiology.biofabric.api.io.BuildData;
+import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.api.worker.LoopReporter;
 import org.systemsbiology.biofabric.app.BioFabricApplication;
 import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.cmd.CommandSet;
@@ -65,12 +70,10 @@ import org.systemsbiology.biofabric.cmd.ZoomCommandSupport;
 import org.systemsbiology.biofabric.cmd.ZoomTarget;
 import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
-import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.io.BuildDataImpl;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.ui.BasicZoomTargetSupport;
 import org.systemsbiology.biofabric.ui.CursorManager;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -84,14 +87,10 @@ import org.systemsbiology.biofabric.ui.render.BufBuildDrawer;
 import org.systemsbiology.biofabric.ui.render.ImgAndBufPool;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
 import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.QuadTree;
 import org.systemsbiology.biofabric.util.UiUtil;
-import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
-import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
-import org.systemsbiology.biofabric.workerAPI.LoopReporter;
 
 /****************************************************************************
 **

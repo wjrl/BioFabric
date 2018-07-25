@@ -21,7 +21,7 @@ package org.systemsbiology.biofabric.util;
 
 import java.util.ResourceBundle;
 
-import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
+import org.systemsbiology.biofabric.api.util.PluginResourceManager;
 
 import java.util.HashMap;
 import java.util.MissingResourceException;

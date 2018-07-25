@@ -53,12 +53,12 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.ComboBoxEditorTracker;
 import org.systemsbiology.biofabric.util.ComboFinishedTracker;
 import org.systemsbiology.biofabric.util.DoubleEditor;
 import org.systemsbiology.biofabric.util.EditableComboBoxEditorTracker;
 import org.systemsbiology.biofabric.util.EnumCell;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.IntegerEditor;
 import org.systemsbiology.biofabric.util.NumberEditorTracker;

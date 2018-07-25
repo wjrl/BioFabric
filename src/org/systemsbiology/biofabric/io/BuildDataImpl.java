@@ -29,11 +29,17 @@ import java.util.Set;
 import java.util.SortedMap;
 
 import org.systemsbiology.biofabric.analysis.Link;
-import org.systemsbiology.biofabric.ioAPI.BuildData;
-import org.systemsbiology.biofabric.layoutAPI.EdgeLayout;
-import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
+import org.systemsbiology.biofabric.api.io.BuildData;
+import org.systemsbiology.biofabric.api.layout.DefaultEdgeLayout;
+import org.systemsbiology.biofabric.api.layout.EdgeLayout;
+import org.systemsbiology.biofabric.api.layout.NodeLayout;
+import org.systemsbiology.biofabric.api.model.NetLink;
+import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.model.Network;
+import org.systemsbiology.biofabric.api.util.UniqueLabeller;
+import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
-import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.HierDAGLayout;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
@@ -42,16 +48,10 @@ import org.systemsbiology.biofabric.layouts.SetLayout;
 import org.systemsbiology.biofabric.layouts.WorldBankLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.modelAPI.NetNode;
-import org.systemsbiology.biofabric.modelAPI.Network;
 import org.systemsbiology.biofabric.plugin.PluginBuildData;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.UiUtil;
-import org.systemsbiology.biofabric.util.UniqueLabeller;
-import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
-import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 
 /****************************************************************************
 **

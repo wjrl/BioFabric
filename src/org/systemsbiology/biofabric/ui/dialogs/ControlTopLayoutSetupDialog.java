@@ -25,8 +25,8 @@ import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 
+import org.systemsbiology.biofabric.api.dialog.BTStashResultsDialog;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
-import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.util.TrueObjChoiceContent;
 
 /****************************************************************************

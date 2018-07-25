@@ -27,16 +27,16 @@ import java.util.ArrayList;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
-import org.systemsbiology.biofabric.ioAPI.PluginWhiteboard;
-import org.systemsbiology.biofabric.modelAPI.Network;
-import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
-import org.systemsbiology.biofabric.parser.GlueStick;
+import org.systemsbiology.biofabric.api.io.AttributeExtractor;
+import org.systemsbiology.biofabric.api.io.Indenter;
+import org.systemsbiology.biofabric.api.io.PluginWhiteboard;
+import org.systemsbiology.biofabric.api.model.Network;
+import org.systemsbiology.biofabric.api.parser.AbstractFactoryClient;
+import org.systemsbiology.biofabric.api.parser.GlueStick;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
 import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
-import org.systemsbiology.biofabric.util.AttributeExtractor;
-import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 

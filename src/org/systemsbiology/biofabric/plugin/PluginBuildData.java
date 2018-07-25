@@ -19,8 +19,8 @@
 
 package org.systemsbiology.biofabric.plugin;
 
-import org.systemsbiology.biofabric.layoutAPI.EdgeLayout;
-import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
+import org.systemsbiology.biofabric.api.layout.EdgeLayout;
+import org.systemsbiology.biofabric.api.layout.NodeLayout;
 
 /****************************************************************************
 **

@@ -25,6 +25,8 @@ import java.util.List;
 import javax.swing.JList;
 import javax.swing.ListCellRenderer;
 
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+
 /***************************************************************************
 **
 ** Used for rendering a list with a color block
