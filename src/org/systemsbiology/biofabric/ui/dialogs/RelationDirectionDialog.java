@@ -34,11 +34,11 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import org.systemsbiology.biofabric.dialogAPI.BTStashResultsDialog;
 import org.systemsbiology.biofabric.modelAPI.AugRelation;
-import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.utils.EditableTable;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
+import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
 
 /****************************************************************************
 **

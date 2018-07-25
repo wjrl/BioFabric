@@ -26,6 +26,8 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import javax.swing.table.AbstractTableModel;
 
+import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
+
 /****************************************************************************
 **
 ** Helper to track combo box editor

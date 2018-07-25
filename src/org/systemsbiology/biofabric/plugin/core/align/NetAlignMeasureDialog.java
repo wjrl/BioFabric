@@ -29,9 +29,9 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 
+import org.systemsbiology.biofabric.dialogAPI.BTStashResultsDialog;
+import org.systemsbiology.biofabric.dialogAPI.DialogSupport;
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
-import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
-import org.systemsbiology.biofabric.ui.dialogs.utils.DialogSupport;
 import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
 
 public class NetAlignMeasureDialog extends BTStashResultsDialog {

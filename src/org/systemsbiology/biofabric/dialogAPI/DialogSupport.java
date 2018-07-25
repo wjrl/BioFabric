@@ -17,7 +17,7 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.ui.dialogs.utils;
+package org.systemsbiology.biofabric.dialogAPI;
 
 import java.awt.GridBagConstraints;
 import java.awt.event.ActionListener;
@@ -32,10 +32,10 @@ import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.border.Border;
 
-import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
+import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
 
 /****************************************************************************
 **

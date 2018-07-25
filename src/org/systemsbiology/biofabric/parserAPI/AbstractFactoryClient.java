@@ -17,7 +17,7 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.parser;
+package org.systemsbiology.biofabric.parserAPI;
 
 import java.util.Set;
 import java.util.HashSet;
@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 
+import org.systemsbiology.biofabric.parser.ParserClient;
 import org.xml.sax.Attributes;
 
 /****************************************************************************

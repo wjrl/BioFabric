@@ -17,12 +17,13 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.util;
+package org.systemsbiology.biofabric.utilAPI;
 
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
 import org.systemsbiology.biofabric.ui.dialogs.ExceptionDialog;
+import org.systemsbiology.biofabric.util.ResourceManager;
 
 /****************************************************************************
 **

@@ -31,9 +31,9 @@ import javax.swing.WindowConstants;
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.plugin.PlugInManager;
 import org.systemsbiology.biofabric.ui.dialogs.UpdateJavaDialog;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
+import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
 
 /****************************************************************************
 **

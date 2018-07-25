@@ -40,7 +40,7 @@ import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.NamedColor;
 import org.systemsbiology.biofabric.ioAPI.PluginWhiteboard;
 import org.systemsbiology.biofabric.util.NID;
-import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.systemsbiology.biofabric.utilAPI.UniqueLabeller;
 
 /****************************************************************************
 **

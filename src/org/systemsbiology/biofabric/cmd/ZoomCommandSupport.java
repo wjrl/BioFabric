@@ -35,7 +35,7 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
+import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
 
 /****************************************************************************
 **

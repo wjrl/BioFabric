@@ -22,7 +22,7 @@ package org.systemsbiology.biofabric.ui;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 
-import org.systemsbiology.biofabric.util.Indenter;
+import org.systemsbiology.biofabric.ioAPI.Indenter;
 
 /****************************************************************************
 **

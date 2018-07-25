@@ -26,7 +26,7 @@ import java.util.Set;
 
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.modelAPI.NetNode;
-import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.systemsbiology.biofabric.utilAPI.UniqueLabeller;
 
 /****************************************************************************
 **

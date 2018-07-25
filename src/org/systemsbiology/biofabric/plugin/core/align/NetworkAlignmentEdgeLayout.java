@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.systemsbiology.biofabric.ioAPI.BuildData;
-import org.systemsbiology.biofabric.layouts.DefaultEdgeLayout;
+import org.systemsbiology.biofabric.layoutAPI.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.modelAPI.Network;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
