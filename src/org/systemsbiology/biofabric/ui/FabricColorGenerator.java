@@ -27,13 +27,12 @@ import java.util.Iterator;
 import java.util.Map;
 
 import org.xml.sax.Attributes;
-
+import org.systemsbiology.biofabric.api.io.AttributeExtractor;
+import org.systemsbiology.biofabric.api.io.Indenter;
+import org.systemsbiology.biofabric.api.parser.AbstractFactoryClient;
+import org.systemsbiology.biofabric.api.parser.GlueStick;
 import org.systemsbiology.biofabric.db.ColorGenerator;
 import org.systemsbiology.biofabric.io.FabricFactory;
-import org.systemsbiology.biofabric.ioAPI.AttributeExtractor;
-import org.systemsbiology.biofabric.ioAPI.Indenter;
-import org.systemsbiology.biofabric.parserAPI.AbstractFactoryClient;
-import org.systemsbiology.biofabric.parserAPI.GlueStick;
 
 /****************************************************************************
 **

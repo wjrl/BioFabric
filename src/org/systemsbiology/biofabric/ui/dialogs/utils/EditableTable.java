@@ -53,6 +53,7 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.ComboBoxEditorTracker;
 import org.systemsbiology.biofabric.util.ComboFinishedTracker;
 import org.systemsbiology.biofabric.util.DoubleEditor;
@@ -69,7 +70,6 @@ import org.systemsbiology.biofabric.util.TextEditorTracker;
 import org.systemsbiology.biofabric.util.TextFinishedTracker;
 import org.systemsbiology.biofabric.util.TrackingUnit;
 import org.systemsbiology.biofabric.util.UiUtil;
-import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
 
 /****************************************************************************
 **

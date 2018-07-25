@@ -55,7 +55,7 @@ import java.util.regex.Matcher;
 import javax.swing.JDialog;
 import javax.swing.table.DefaultTableCellRenderer;
 
-import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 
 /****************************************************************************
 **

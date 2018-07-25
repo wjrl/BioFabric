@@ -28,7 +28,8 @@ import java.util.Iterator;
 import java.util.Map;
 
 import org.xml.sax.Attributes;
-
+import org.systemsbiology.biofabric.api.io.PluginWhiteboard;
+import org.systemsbiology.biofabric.api.util.UniqueLabeller;
 import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.parser.ParserClient;
@@ -38,9 +39,7 @@ import org.systemsbiology.biofabric.plugin.PlugInManager;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.NamedColor;
-import org.systemsbiology.biofabric.ioAPI.PluginWhiteboard;
 import org.systemsbiology.biofabric.util.NID;
-import org.systemsbiology.biofabric.utilAPI.UniqueLabeller;
 
 /****************************************************************************
 **

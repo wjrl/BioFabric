@@ -26,7 +26,7 @@ import javax.swing.table.TableCellEditor;
 import javax.swing.event.CellEditorListener;
 import javax.swing.text.JTextComponent;
 
-import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 
 import java.util.ArrayList;
 import java.util.EventObject;

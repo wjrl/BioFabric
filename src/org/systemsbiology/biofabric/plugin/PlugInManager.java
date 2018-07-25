@@ -37,14 +37,14 @@ import java.io.PrintWriter;
 
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.SUParser;
-import org.systemsbiology.biofabric.parserAPI.AbstractFactoryClient;
-import org.systemsbiology.biofabric.parserAPI.GlueStick;
-import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
-import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 import org.xml.sax.Attributes;
+import org.systemsbiology.biofabric.api.io.Indenter;
+import org.systemsbiology.biofabric.api.parser.AbstractFactoryClient;
+import org.systemsbiology.biofabric.api.parser.GlueStick;
+import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.app.ArgParser;
 import org.systemsbiology.biofabric.io.FabricFactory;
-import org.systemsbiology.biofabric.ioAPI.Indenter;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 
 /****************************************************************************

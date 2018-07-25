@@ -43,6 +43,8 @@ import javax.swing.JSplitPane;
 import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.worker.BackgroundWorkerControlManager;
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.ui.display.BioFabricNavAndControl;
@@ -51,8 +53,6 @@ import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.ui.display.FabricMagnifyingTool;
 import org.systemsbiology.biofabric.ui.render.BucketRenderer;
 import org.systemsbiology.biofabric.util.ResourceManager;
-import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
-import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
 
 /****************************************************************************
 **
