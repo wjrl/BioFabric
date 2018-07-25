@@ -29,7 +29,7 @@ import javax.swing.JTable;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.text.JTextComponent;
 
-import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 
 /****************************************************************************
 **

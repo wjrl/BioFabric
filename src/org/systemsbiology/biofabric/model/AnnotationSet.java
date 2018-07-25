@@ -28,12 +28,12 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.systemsbiology.biofabric.api.io.AttributeExtractor;
+import org.systemsbiology.biofabric.api.io.CharacterEntityMapper;
+import org.systemsbiology.biofabric.api.io.Indenter;
+import org.systemsbiology.biofabric.api.parser.AbstractFactoryClient;
+import org.systemsbiology.biofabric.api.parser.GlueStick;
 import org.systemsbiology.biofabric.io.FabricFactory;
-import org.systemsbiology.biofabric.ioAPI.AttributeExtractor;
-import org.systemsbiology.biofabric.ioAPI.CharacterEntityMapper;
-import org.systemsbiology.biofabric.ioAPI.Indenter;
-import org.systemsbiology.biofabric.parserAPI.AbstractFactoryClient;
-import org.systemsbiology.biofabric.parserAPI.GlueStick;
 import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
 import org.systemsbiology.biofabric.util.MinMax;
 

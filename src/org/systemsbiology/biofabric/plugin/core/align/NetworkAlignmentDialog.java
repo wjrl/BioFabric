@@ -37,14 +37,14 @@ import javax.swing.SwingConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import org.systemsbiology.biofabric.api.dialog.BTStashResultsDialog;
+import org.systemsbiology.biofabric.api.dialog.DialogSupport;
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.PluginResourceManager;
 import org.systemsbiology.biofabric.cmd.CommandSet;
-import org.systemsbiology.biofabric.dialogAPI.BTStashResultsDialog;
-import org.systemsbiology.biofabric.dialogAPI.DialogSupport;
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.MatchingJLabel;
-import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
-import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 import javax.swing.border.EmptyBorder;

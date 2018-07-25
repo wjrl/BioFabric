@@ -24,7 +24,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.systemsbiology.biofabric.modelAPI.NetNode;
+import org.systemsbiology.biofabric.api.model.NetNode;
 
 public class NID implements Cloneable, Comparable<NID> {
   

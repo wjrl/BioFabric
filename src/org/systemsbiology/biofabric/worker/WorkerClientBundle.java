@@ -19,10 +19,10 @@
 
 package org.systemsbiology.biofabric.worker;
 
+import org.systemsbiology.biofabric.api.worker.BFWorker;
+import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.api.worker.BackgroundCore;
 import org.systemsbiology.biofabric.util.GoodnessChart;
-import org.systemsbiology.biofabric.workerAPI.BFWorker;
-import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
-import org.systemsbiology.biofabric.workerAPI.BackgroundCore;
 
 
 /****************************************************************************
