@@ -17,13 +17,16 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.util;
+package org.systemsbiology.biofabric.utilAPI;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.TreeSet;
+
+import org.systemsbiology.biofabric.util.NID;
+
 import java.util.Iterator;
 
 /****************************************************************************

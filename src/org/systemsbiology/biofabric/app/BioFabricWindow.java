@@ -50,8 +50,8 @@ import org.systemsbiology.biofabric.ui.display.BioFabricOverview;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.ui.display.FabricMagnifyingTool;
 import org.systemsbiology.biofabric.ui.render.BucketRenderer;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.ResourceManager;
+import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
 import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
 
 /****************************************************************************

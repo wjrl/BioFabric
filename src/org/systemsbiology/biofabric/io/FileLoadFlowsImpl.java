@@ -57,6 +57,8 @@ import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.cmd.HeadlessOracle;
 import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
+import org.systemsbiology.biofabric.ioAPI.Indenter;
+import org.systemsbiology.biofabric.ioAPI.FileLoadFlows.FileLoadType;
 import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
 import org.systemsbiology.biofabric.layoutAPI.EdgeLayout;
 import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
@@ -83,14 +85,13 @@ import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.dialogs.RelationDirectionDialog;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FileExtensionFilters;
 import org.systemsbiology.biofabric.util.GarbageRequester;
-import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.InvalidInputException;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
-import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
+import org.systemsbiology.biofabric.utilAPI.UniqueLabeller;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BFWorker;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
@@ -2588,5 +2589,14 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     }
     topWindow_.setTitle(title);
     return;
-  }   
+  }
+  
+  /***************************************************************************
+  **
+  ** Get the file load type.
+  */ 
+
+  public FileLoadFlows.FileLoadType getFileLoadType(File toCheck) {
+    return ((GWImportLoader.isGWFile(toCheck)) ? FileLoadFlows.FileLoadType.GW : FileLoadFlows.FileLoadType.SIF);
+  }
 }

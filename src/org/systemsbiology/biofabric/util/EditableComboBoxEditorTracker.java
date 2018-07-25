@@ -27,6 +27,8 @@ import javax.swing.event.CaretListener;
 import javax.swing.event.CaretEvent;
 import javax.swing.text.JTextComponent;
 
+import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
+
 /****************************************************************************
 **
 ** Helper to track combo box editor

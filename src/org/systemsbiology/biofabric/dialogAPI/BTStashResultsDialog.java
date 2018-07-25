@@ -17,7 +17,7 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.ui.dialogs.utils;
+package org.systemsbiology.biofabric.dialogAPI;
 
 import java.awt.Dimension;
 import java.awt.GridBagLayout;
@@ -31,6 +31,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
+import org.systemsbiology.biofabric.dialogAPI.DialogSupport.Buttons;
+import org.systemsbiology.biofabric.dialogAPI.DialogSupport.DialogSupportClient;
 import org.systemsbiology.biofabric.util.ResourceManager;
 
 /****************************************************************************

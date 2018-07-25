@@ -23,6 +23,9 @@ package org.systemsbiology.biofabric.util;
 import javax.swing.event.CaretListener;
 import javax.swing.event.CaretEvent;
 import javax.swing.table.AbstractTableModel;
+
+import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
+
 import javax.swing.event.CellEditorListener;
 import javax.swing.event.ChangeEvent;
 

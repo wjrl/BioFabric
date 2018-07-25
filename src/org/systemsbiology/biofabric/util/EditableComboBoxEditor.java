@@ -25,6 +25,9 @@ import javax.swing.JComboBox;
 import javax.swing.table.TableCellEditor;
 import javax.swing.event.CellEditorListener;
 import javax.swing.text.JTextComponent;
+
+import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
+
 import java.util.ArrayList;
 import java.util.EventObject;
 import java.util.Iterator;

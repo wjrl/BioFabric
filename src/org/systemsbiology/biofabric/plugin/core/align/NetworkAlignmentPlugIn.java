@@ -37,27 +37,25 @@ import javax.swing.JOptionPane;
 
 import org.systemsbiology.biofabric.ioAPI.PluginWhiteboard;
 import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
+import org.systemsbiology.biofabric.ioAPI.CharacterEntityMapper;
 import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
+import org.systemsbiology.biofabric.ioAPI.Indenter;
+import org.systemsbiology.biofabric.ioAPI.AttributeExtractor;
 import org.systemsbiology.biofabric.ioAPI.BuildData;
-import org.systemsbiology.biofabric.io.GWImportLoader;
 import org.systemsbiology.biofabric.modelAPI.Network;
 import org.systemsbiology.biofabric.modelAPI.AugRelation;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.modelAPI.NetNode;
-import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
-import org.systemsbiology.biofabric.parser.GlueStick;
+import org.systemsbiology.biofabric.parserAPI.AbstractFactoryClient;
+import org.systemsbiology.biofabric.parserAPI.GlueStick;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
-import org.systemsbiology.biofabric.util.AttributeExtractor;
-import org.systemsbiology.biofabric.util.CharacterEntityMapper;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
-import org.systemsbiology.biofabric.util.Indenter;
-import org.systemsbiology.biofabric.util.UiUtil;
-import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.systemsbiology.biofabric.utilAPI.ExceptionHandler;
 import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
+import org.systemsbiology.biofabric.utilAPI.UniqueLabeller;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BFWorker;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
@@ -261,22 +259,15 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     ArrayList<NetLink> linksGraphA = new ArrayList<NetLink>();
     HashSet<NetNode> lonersGraphA = new HashSet<NetNode>();
     
-    if (GWImportLoader.isGWFile(nadi.graphA)) {
-      flf_.loadFromASource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true, FileLoadFlows.FileLoadType.GW, false);
-    } else {
-      flf_.loadFromASource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true, FileLoadFlows.FileLoadType.SIF, false);
-    } // assume it's sif if it's not gw
-    
+    FileLoadFlows.FileLoadType typeA = flf_.getFileLoadType(nadi.graphA);
+    flf_.loadFromASource(nadi.graphA, linksGraphA, lonersGraphA, null, idGen, true, typeA, false);
     
     ArrayList<NetLink> linksGraphB = new ArrayList<NetLink>();
     HashSet<NetNode> lonersGraphB = new HashSet<NetNode>();
     
-    if (GWImportLoader.isGWFile(nadi.graphB)) {
-      flf_.loadFromASource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true, FileLoadFlows.FileLoadType.GW, false);
-    } else {
-      flf_.loadFromASource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true, FileLoadFlows.FileLoadType.SIF, false);
-    }
-    
+    FileLoadFlows.FileLoadType typeB = flf_.getFileLoadType(nadi.graphB);
+    flf_.loadFromASource(nadi.graphB, linksGraphB, lonersGraphB, null, idGen, true, typeB, false);
+  
     return (networkAlignmentStepTwo(nadi, linksGraphA, lonersGraphA, linksGraphB, lonersGraphB, idGen, outType));
   }
   

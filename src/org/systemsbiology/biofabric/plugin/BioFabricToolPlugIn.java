@@ -21,10 +21,10 @@ package org.systemsbiology.biofabric.plugin;
 
 import java.io.PrintWriter;
 
+import org.systemsbiology.biofabric.ioAPI.Indenter;
 import org.systemsbiology.biofabric.ioAPI.PluginWhiteboard;
 import org.systemsbiology.biofabric.modelAPI.Network;
-import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
-import org.systemsbiology.biofabric.util.Indenter;
+import org.systemsbiology.biofabric.parserAPI.AbstractFactoryClient;
 
 /****************************************************************************
 **

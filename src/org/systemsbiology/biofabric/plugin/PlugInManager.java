@@ -35,16 +35,16 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 
-import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
-import org.systemsbiology.biofabric.parser.GlueStick;
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.SUParser;
-import org.systemsbiology.biofabric.util.Indenter;
+import org.systemsbiology.biofabric.parserAPI.AbstractFactoryClient;
+import org.systemsbiology.biofabric.parserAPI.GlueStick;
 import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
 import org.xml.sax.Attributes;
 import org.systemsbiology.biofabric.app.ArgParser;
 import org.systemsbiology.biofabric.io.FabricFactory;
+import org.systemsbiology.biofabric.ioAPI.Indenter;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 
 /****************************************************************************

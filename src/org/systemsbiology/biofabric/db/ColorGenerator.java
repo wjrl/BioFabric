@@ -30,9 +30,9 @@ import java.awt.Color;
 import java.io.PrintWriter;
 import java.util.Arrays;
 
+import org.systemsbiology.biofabric.ioAPI.Indenter;
 import org.systemsbiology.biofabric.ui.NamedColor;
-import org.systemsbiology.biofabric.util.Indenter;
-import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.systemsbiology.biofabric.utilAPI.UniqueLabeller;
 
 /****************************************************************************
 **

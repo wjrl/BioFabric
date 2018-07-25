@@ -28,11 +28,12 @@ import java.util.Set;
 import java.util.SortedMap;
 
 import org.systemsbiology.biofabric.io.AttributeLoader;
+import org.systemsbiology.biofabric.io.GWImportLoader;
 import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.modelAPI.AugRelation;
 import org.systemsbiology.biofabric.modelAPI.NetLink;
 import org.systemsbiology.biofabric.modelAPI.NetNode;
-import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.systemsbiology.biofabric.utilAPI.UniqueLabeller;
 
 
 /****************************************************************************
@@ -176,6 +177,13 @@ public interface FileLoadFlows {
   ** Do new model operations all on AWT thread!
   */ 
 
-  public void newModelOperations(BuildData bfnbd, boolean forMain) throws IOException;
-   
+  public void newModelOperations(BuildData bfnbd, boolean forMain) throws IOException;  
+  
+  /***************************************************************************
+  **
+  ** Get the file load type.
+  */ 
+
+  public FileLoadType getFileLoadType(File toCheck);
+  
 }

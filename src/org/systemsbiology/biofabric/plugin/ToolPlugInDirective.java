@@ -24,7 +24,7 @@ import java.io.File;
 import java.util.Set;
 import java.util.HashSet;
 
-import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
+import org.systemsbiology.biofabric.parserAPI.AbstractFactoryClient;
 import org.xml.sax.Attributes;
 
 /***************************************************************************
