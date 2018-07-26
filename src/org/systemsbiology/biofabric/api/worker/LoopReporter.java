@@ -29,9 +29,11 @@ public class LoopReporter {
   private String message_;
   private long count_;
   private long skipProg_;
+  private boolean indeterminate_;
   
   public LoopReporter(long max, int bins, BTProgressMonitor monitor, double startFrac, double endFrac,
   		                String message) {
+  	indeterminate_ = false;
     max_ = (max == 0) ? 1 : max;
     monitor_ = monitor;
     startFrac_ = startFrac;
@@ -41,20 +43,39 @@ public class LoopReporter {
     count_ = 0L;
     skipProg_ = skipLines_;
   }  
+  
+  public LoopReporter(long max, int bins, BTProgressMonitor monitor) {
+  	indeterminate_ = true;
+    monitor_ = monitor;
+    count_ = 0L;
+    max_ = (max == 0) ? 1 : max;
+    skipLines_ = (bins == 0) ? 0 : max_ / bins;
+    count_ = 0L;
+    skipProg_ = skipLines_;
+  } 
+  
 
   public void report(long progress) throws AsynchExitRequestException {
     skipProg_ -= progress;
     count_ += progress;
 	  if (skipProg_ <= 0) {
-	    double currFrac = startFrac_ + ((endFrac_ - startFrac_) * (count_ / (double)max_));
-	    // If you want detailed progress output for debug, here you go:
-	    // System.out.println("CP: " + message_ + ": " + currFrac + " [" + startFrac_ + " - " + endFrac_ + "]");
-	    // System.out.println("CPMEM " + Runtime.getRuntime().freeMemory() + " " + System.currentTimeMillis());
-    	if (monitor_ != null) {
-        if (!monitor_.updateProgressAndPhase((int)(currFrac * 100.0), message_)) {
-          throw new AsynchExitRequestException();
-        }
-      }
+	  	if (indeterminate_) {
+	  	  if (monitor_ != null) {
+	        if (!monitor_.updateUnknownProgress()) {
+	          throw new AsynchExitRequestException();
+	        }
+	      }	  		
+	  	} else {
+		    double currFrac = startFrac_ + ((endFrac_ - startFrac_) * (count_ / (double)max_));
+		    // If you want detailed progress output for debug, here you go:
+		    // System.out.println("CP: " + message_ + ": " + currFrac + " [" + startFrac_ + " - " + endFrac_ + "]");
+		    // System.out.println("CPMEM " + Runtime.getRuntime().freeMemory() + " " + System.currentTimeMillis());
+	    	if (monitor_ != null) {
+	        if (!monitor_.updateProgressAndPhase((int)(currFrac * 100.0), message_)) {
+	          throw new AsynchExitRequestException();
+	        }
+	      }
+	  	}
       skipProg_ = skipLines_;
 	  }
 	  return;
@@ -62,9 +83,15 @@ public class LoopReporter {
   
   public void finish() throws AsynchExitRequestException {
     if (monitor_ != null) {
-      if (!monitor_.updateProgressAndPhase((int)(100.0), message_)) {
-        throw new AsynchExitRequestException();
-      }
+    	if (indeterminate_) {
+    			if (!monitor_.updateUnknownProgress()) {
+    					throw new AsynchExitRequestException();
+    			}
+    	} else {
+    		if (!monitor_.updateProgressAndPhase((int)(100.0), message_)) {
+    			throw new AsynchExitRequestException();
+    	  }    		
+    	}
     }
 	  return;
   }

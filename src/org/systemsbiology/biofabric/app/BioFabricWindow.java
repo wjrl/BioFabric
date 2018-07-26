@@ -358,7 +358,7 @@ public class BioFabricWindow implements BackgroundWorkerControlManager {
       fMenu.add(importMenu);    
       importMenu.add(fc.getAction(CommandSet.LOAD_FROM_SIF, false, null));
       importMenu.add(fc.getAction(CommandSet.LOAD_WITH_NODE_ATTRIBUTES, false, null));       
-      importMenu.add(fc.getAction(CommandSet.LOAD_WITH_EDGE_WEIGHTS, false, null));
+      //importMenu.add(fc.getAction(CommandSet.LOAD_WITH_EDGE_WEIGHTS, false, null)); Not supported in V2
       importMenu.add(fc.getAction(CommandSet.LOAD_FROM_GW, false, null));
   
      // JMenu netAlignMenu = new JMenu(rMan.getString("command.LoadNetAlign"));
@@ -381,8 +381,9 @@ public class BioFabricWindow implements BackgroundWorkerControlManager {
       fMenu.add(new JSeparator());
       fMenu.add(fc.getAction(CommandSet.PRINT, false, null));
       fMenu.add(new JSeparator());
-      fMenu.add(fc.getAction(CommandSet.PRINT_PDF, false, null));
-      fMenu.add(new JSeparator());
+      // Not supporting yet...
+      //fMenu.add(fc.getAction(CommandSet.PRINT_PDF, false, null));
+      //fMenu.add(new JSeparator());
       fMenu.add(fc.getAction(CommandSet.CLOSE, false, null));
     } else {
       JMenu fMenu = new JMenu(rMan.getString("command.File"));

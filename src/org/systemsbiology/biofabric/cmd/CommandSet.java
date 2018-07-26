@@ -20,7 +20,6 @@
 package org.systemsbiology.biofabric.cmd;
 
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Event;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -31,7 +30,6 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
 import java.awt.print.PageFormat;
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
@@ -49,7 +47,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -72,6 +69,7 @@ import javax.swing.event.HyperlinkListener;
 import javax.swing.filechooser.FileFilter;
 
 import org.systemsbiology.biofabric.api.io.FileLoadFlows;
+import org.systemsbiology.biofabric.api.layout.DefaultLayout;
 import org.systemsbiology.biofabric.api.model.AugRelation;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
@@ -87,7 +85,6 @@ import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.BuildDataImpl;
 import org.systemsbiology.biofabric.io.FileLoadFlowsImpl;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
-import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
@@ -416,8 +413,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           retval = new ImportSIFAction(withIcon, false); 
           break;
         case LOAD_WITH_EDGE_WEIGHTS:
-          retval = new ImportSIFAction(withIcon, true); 
-          break;          
+        	throw new IllegalArgumentException(); // Not supported in V2
+          //retval = new ImportSIFAction(withIcon, true); 
+          //break;          
         case LOAD_WITH_NODE_ATTRIBUTES:
           retval = new LoadWithNodeAttributesAction(withIcon); 
           break;
@@ -448,9 +446,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         case PRINT:
           retval = new PrintAction(withIcon); 
           break; 
-        case PRINT_PDF:
-          retval = new PrintPDFAction(withIcon); 
-          break;           
+        case PRINT_PDF: // Not yet supported
+        	throw new IllegalArgumentException();
+          //retval = new PrintPDFAction(withIcon); 
+          //break;           
         case SEARCH:
           retval = new SearchAction(withIcon); 
           break;
@@ -2969,8 +2968,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
   /***************************************************************************
   **
-  ** Command
-  */ 
+  ** Command: HOLDING OUT OF V2 FOR NOW
+  
       
   private class PrintPDFAction extends ChecksForEnabled {
 
@@ -2994,14 +2993,14 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     public void actionPerformed(ActionEvent e) {
       try {
         //PrinterJob pj = PrinterJob.getPrinterJob();
-       //// PageFormat pf = pj.defaultPage();
-      //  pf.setOrientation(PageFormat.LANDSCAPE);
+        //// PageFormat pf = pj.defaultPage();
+        //  pf.setOrientation(PageFormat.LANDSCAPE);
         Properties p = new Properties();
         p.setProperty("PageSize","A5");
        // p.setProperty(PSGraphics2D.ORIENTATION, PageConstants.LANDSCAPE);
-   //     ExportDialog export = new ExportDialog();
-     //   export.showExportDialog(topWindow_, "Export view as ...", bfp_, "export");
-  
+       //     ExportDialog export = new ExportDialog();
+       //   export.showExportDialog(topWindow_, "Export view as ...", bfp_, "export");
+    
         
         Rectangle2D viewInWorld = bfp_.getViewInWorld();
         Dimension viw = new Dimension((int)(viewInWorld.getWidth() / 10.0), (int)(viewInWorld.getHeight() / 10.0));

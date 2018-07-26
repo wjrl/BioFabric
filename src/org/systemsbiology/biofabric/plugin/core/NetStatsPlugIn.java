@@ -33,11 +33,12 @@ import org.systemsbiology.biofabric.api.io.PluginWhiteboard;
 import org.systemsbiology.biofabric.api.model.Network;
 import org.systemsbiology.biofabric.api.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.api.parser.GlueStick;
+import org.systemsbiology.biofabric.api.util.PluginResourceManager;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
 import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
-import org.systemsbiology.biofabric.util.ResourceManager;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.util.UiUtil;
 
 import org.xml.sax.Attributes;
@@ -52,6 +53,7 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
   private ArrayList<BioFabricToolPlugInCmd> myCmds_;
   private String myTag_;
   private StatData myData_;
+  private String className_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -68,6 +70,9 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
     myCmds_ = new ArrayList<BioFabricToolPlugInCmd>();
     myCmds_.add(new NodeAndLinkCounterCmd());
     myData_ = new StatData(0, 0, 0);
+    className_ = getClass().getName();
+    PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
+    rMan.setPluginBundle("org.systemsbiology.biofabric.plugin.core.NetStats");  
   }
   
   ////////////////////////////////////////////////////////////////////////////
@@ -101,10 +106,7 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
   */
   
   public void installAPI(PlugInNetworkModelAPI bfn) {
-    for (BioFabricToolPlugInCmd cmd : myCmds_) {
-      NodeAndLinkCounterCmd nalc = (NodeAndLinkCounterCmd)cmd;
-      // Pass
-    }
+    // Nothing to do...
     return;
   }
   
@@ -128,8 +130,8 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
   */
   
   public String getToolMenu() {
-    ResourceManager rMan = ResourceManager.getManager();  // DOES NOT BELONG HERE
-    return (rMan.getString("command.statsCommands"));
+    PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
+    return (rMan.getPluginString("command.pluginName"));
   }
   
   /***************************************************************************
@@ -237,8 +239,8 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
     */
     
     public String getCommandName() {
-      ResourceManager rMan = ResourceManager.getManager();  // DOES NOT BELONG HERE
-      return (rMan.getString("command.statsCommands"));  
+    	PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
+      return (rMan.getPluginString("command.statsCommands"));
     }
 
     /***************************************************************************
@@ -251,14 +253,14 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
         return (false);
       }
       
-      ResourceManager rMan = ResourceManager.getManager();  // DOES NOT BELONG HERE   
-      String desc = MessageFormat.format(rMan.getString("modelCounts.message"), 
+    	PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
+      String desc = MessageFormat.format(rMan.getPluginString("modelCounts.message"), 
                                          new Object[] {new Integer(myData_.nodeCount), 
                                                        new Integer(myData_.linkCount), 
                                                        new Integer(myData_.fullShadowLinkCount)});  
       desc = UiUtil.convertMessageToHtml(desc);
       JOptionPane.showMessageDialog(topFrame, desc,
-                                    rMan.getString("modelCounts.modelCountTitle"),
+                                    rMan.getPluginString("modelCounts.modelCountTitle"),
                                     JOptionPane.INFORMATION_MESSAGE);        
       return (true);
     }

@@ -29,11 +29,11 @@ import java.util.Map;
 import java.util.Set;
 
 import org.systemsbiology.biofabric.api.layout.DefaultEdgeLayout;
+import org.systemsbiology.biofabric.api.layout.DefaultLayout;
 import org.systemsbiology.biofabric.api.layout.EdgeLayout;
 import org.systemsbiology.biofabric.api.layout.NodeLayout;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
-import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.plugin.PluginBuildData;
 import org.systemsbiology.biofabric.util.UiUtil;
 
