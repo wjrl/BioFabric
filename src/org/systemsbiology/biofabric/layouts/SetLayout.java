@@ -32,6 +32,7 @@ import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
 import org.systemsbiology.biofabric.api.io.BuildData;
+import org.systemsbiology.biofabric.api.layout.DefaultLayout;
 import org.systemsbiology.biofabric.api.layout.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.api.layout.NodeLayout;
 import org.systemsbiology.biofabric.api.model.NetLink;

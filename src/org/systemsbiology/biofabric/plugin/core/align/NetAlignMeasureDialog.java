@@ -42,6 +42,8 @@ public class NetAlignMeasureDialog extends BTStashResultsDialog {
   //
   ////////////////////////////////////////////////////////////////////////////
   
+	private static final long serialVersionUID = 1L;
+	
   private JFrame parent_;
   private NetworkAlignmentPlugIn.NetAlignStats netAlignStats_;
   

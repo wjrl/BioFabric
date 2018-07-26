@@ -153,6 +153,7 @@ public class BuildExtractorImpl implements BuildExtractor {
       Boolean isDir = relMap.get(rel);
       nextLink.installDirection(isDir);
     }
+    lr.finish();
     return;
   }
 

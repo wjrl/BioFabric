@@ -130,7 +130,7 @@ public class SIFImportLoader extends FabricImportLoader {
       rel = stripQuotes(rel);
     
       //
-      // Build the link, pus shadow if not auto feedback:
+      // Build the link, plus shadow if not auto feedback:
       //
       
       buildLinkAndShadow(srcID, trgID, rel, links);

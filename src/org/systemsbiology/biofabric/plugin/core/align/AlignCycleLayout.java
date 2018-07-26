@@ -441,24 +441,32 @@ public class AlignCycleLayout extends NodeLayout {
     // Build sets of names. If the names are not unique, this layout cannot proceed.
     //
     
-    LoopReporter lr = new LoopReporter(align.size(), 20, monitor, 0.0, 1.00, "progress.normalizeAlignMap");
+    LoopReporter lr = new LoopReporter(align.size(), 20, monitor, 0.0, 1.00, "progress.normalizeAlignMapA");
     UiUtil.fixMePrintout("Actually check loop progress");
     
     HashSet<String> keyNames = new HashSet<String>();
     for (NetNode key : align.keySet()) {
       if (keyNames.contains(key.getName())) {
+      	lr.finish();
         return (null); 
       }
       keyNames.add(key.getName());
+      lr.report();
     }
+    lr.finish();
+    
+    LoopReporter lr2 = new LoopReporter(align.size(), 20, monitor, 0.0, 1.00, "progress.normalizeAlignMapB");
     
     HashSet<String> valNames = new HashSet<String>();
     for (NetNode value : align.values()) {
       if (valNames.contains(value.getName())) {
+      	lr2.finish();
         return (null); 
       }
       valNames.add(value.getName());
+      lr2.report();
     }
+    lr2.finish();
     
     //
     // Reminder: a map takes elements in range and spits out values in the domain.
@@ -469,21 +477,31 @@ public class AlignCycleLayout extends NodeLayout {
     // perfect alignment map does the trick. Check first if the identity map can work.
     //
     
+    LoopReporter lr3 = new LoopReporter(allLargerNodes.size(), 20, monitor, 0.0, 1.00, "progress.identityMapCheckA");
+    
     HashSet<String> largeNames = new HashSet<String>();
     for (NetNode large : allLargerNodes) {
       if (largeNames.contains(large.getName())) {
+      	 lr3.finish();
         return (null); 
       }
       largeNames.add(large.getName());
+      lr3.report();
     }
+    lr3.finish();
+    
+    LoopReporter lr4 = new LoopReporter(allSmallerNodes.size(), 20, monitor, 0.0, 1.00, "progress.identityMapCheckB");
     
     HashSet<String> smallNames = new HashSet<String>();
     for (NetNode small : allSmallerNodes) {
       if (smallNames.contains(small.getName())) {
+      	lr4.finish();
         return (null); 
       }
       smallNames.add(small.getName());
+      lr4.report();
     }
+    lr4.finish();
     
     boolean identityOK = largeNames.containsAll(smallNames);
  
@@ -500,12 +518,19 @@ public class AlignCycleLayout extends NodeLayout {
       } 
       backMap = new HashMap<String, String>();
       correctMap = new HashMap<String, String>();
+      
+      LoopReporter lr5 = new LoopReporter(perfectAlign.size(), 20, monitor, 0.0, 1.00, "progress.namespaceMapBuilding");
+         
       for (NetNode key : perfectAlign.keySet()) {
         NetNode val = perfectAlign.get(key);
         backMap.put(val.getName(), key.getName());
         correctMap.put(key.getName(), val.getName());
+        lr5.report();
       }
+      lr5.finish();
     }
+    
+    LoopReporter lr6 = new LoopReporter(align.size(), 20, monitor, 0.0, 1.00, "progress.buildTheMap");
     
     Map<String, String> nameToName = new HashMap<String, String>();
      
@@ -516,9 +541,10 @@ public class AlignCycleLayout extends NodeLayout {
          throw new IllegalStateException();
        }
        nameToName.put(key.getName(), matchNode.getName());
-     }
-    
-     lr.finish();
+       lr6.report();
+     }   
+     lr6.finish();
+     
      return (new NodeMaps(nameToName, backMap, correctMap));
   } 
   
