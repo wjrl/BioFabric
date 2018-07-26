@@ -42,8 +42,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -56,7 +54,7 @@ import org.systemsbiology.biofabric.api.io.BuildData;
 import org.systemsbiology.biofabric.api.io.BuildExtractor;
 import org.systemsbiology.biofabric.api.io.FileLoadFlows;
 import org.systemsbiology.biofabric.api.io.Indenter;
-import org.systemsbiology.biofabric.api.io.FileLoadFlows.FileLoadType;
+import org.systemsbiology.biofabric.api.layout.DefaultLayout;
 import org.systemsbiology.biofabric.api.layout.EdgeLayout;
 import org.systemsbiology.biofabric.api.layout.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.api.layout.NodeLayout;
@@ -75,7 +73,6 @@ import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.cmd.HeadlessOracle;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
-import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.model.AnnotationSet;
@@ -575,10 +572,11 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       }
       
       //
-      // Handle magnitude bins:
+      // Handle magnitude bins. Not supported in yet in V2.
       //
-      
+          
       if (binMag) {
+      	/*
       	HashSet<NetLink> binnedLinks = new HashSet<NetLink>();
         Pattern p = Pattern.compile("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?");
         
@@ -592,17 +590,16 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
             double d = Double.parseDouble(m.group(0));
             magCount = (int)Math.floor((Math.abs(d) * 10.0) - 5.0);
           }
-          /*
-          for (int k = 0; k < magCount; k++) {
-        	  String suf = ":" + Integer.toString(k);
-	          FabricLink nextLink = new FabricLink(source, target, rel + suf, false);
-	        links.add(nextLink);
+         // for (int k = 0; k < magCount; k++) {
+        	//  String suf = ":" + Integer.toString(k);
+	      //    FabricLink nextLink = new FabricLink(source, target, rel + suf, false);
+	      //  links.add(nextLink);
 	        // We never create shadow feedback links!
-	        if (!source.equals(target)) {
-	          FabricLink nextShadowLink = new FabricLink(source, target, rel + suf, true);
-	          links.add(nextShadowLink);
-	        }*/       
-        }
+	      //  if (!source.equals(target)) {
+	       //   FabricLink nextShadowLink = new FabricLink(source, target, rel + suf, true);
+	       //   links.add(nextShadowLink);
+	      //  }       
+        }*/
       }
     } catch (OutOfMemoryError oom) {
       ExceptionHandler.getHandler().displayOutOfMemory(oom);
@@ -664,7 +661,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       if (type == FileLoadFlows.FileLoadType.SIF) {
         finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
       } else if (type == FileLoadFlows.FileLoadType.GW) {
-        // need to process gw liks if no relations provided
+        // need to process gw links if no relations provided
         finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, nodeNames, sss, true, magBins, relMap, holdIt);
       } else {
         throw (new IllegalArgumentException("File type not identified"));

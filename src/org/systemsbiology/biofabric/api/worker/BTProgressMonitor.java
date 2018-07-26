@@ -53,6 +53,13 @@ public interface BTProgressMonitor {
   ** Callback
   */
   
+  public boolean updateUnknownProgress();
+   
+  /***************************************************************************
+  **
+  ** Callback
+  */
+  
   public boolean updateProgress(int done);
   
   /***************************************************************************
