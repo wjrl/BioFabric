@@ -463,7 +463,7 @@ public class NodeSimilarityLayout extends NodeLayout {
     int stayCount = 0;
 
     LoopReporter lr = new LoopReporter(rowCount, 20, monitor, 0.0, 1.0, "progress.orderByDistanceChained");
-    System.out.println("row count " + rowCount);
+
     //
     // Keep adding until all nodes are accounted for:
     //

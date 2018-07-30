@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,16 +17,14 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.util;
+package org.systemsbiology.biofabric.api.util;
 
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.systemsbiology.biofabric.api.model.NetNode;
-
-public class NID implements Cloneable, Comparable<NID> {
+public final class NID implements Cloneable, Comparable<NID> {
   
   private final String id_;
   
@@ -83,9 +81,9 @@ public class NID implements Cloneable, Comparable<NID> {
   
   //
   // A class that can be used to order nodes using their names, with the NID only as a tie-breaker if names match.
+  //
   
-  
-  public static class WithName implements Cloneable, Comparable<WithName> {
+  public final static class WithName implements Cloneable, Comparable<WithName> {
   
 	  private final NID nid_;
 	  private final String name_;

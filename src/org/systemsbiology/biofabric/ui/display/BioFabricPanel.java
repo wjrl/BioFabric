@@ -62,6 +62,7 @@ import org.systemsbiology.biofabric.api.model.AnnotationSet;
 import org.systemsbiology.biofabric.api.model.AnnotsForPos;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.NID;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.api.worker.LoopReporter;
@@ -90,7 +91,6 @@ import org.systemsbiology.biofabric.ui.render.ImgAndBufPool;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
 import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
 import org.systemsbiology.biofabric.util.MinMax;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.QuadTree;
 import org.systemsbiology.biofabric.util.UiUtil;
 

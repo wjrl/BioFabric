@@ -19,7 +19,7 @@
 
 package org.systemsbiology.biofabric.api.model;
 
-import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.api.util.NID;
 
 /****************************************************************************
 **

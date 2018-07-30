@@ -24,9 +24,6 @@ import java.io.FileReader;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.TreeSet;
-
-import org.systemsbiology.biofabric.util.NID;
-
 import java.util.Iterator;
 
 /****************************************************************************

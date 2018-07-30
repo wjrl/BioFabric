@@ -51,6 +51,7 @@ import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.model.Network;
 import org.systemsbiology.biofabric.api.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.api.parser.GlueStick;
+import org.systemsbiology.biofabric.api.util.NID;
 import org.systemsbiology.biofabric.api.util.UniqueLabeller;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
@@ -66,7 +67,6 @@ import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.MinMax;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
@@ -2788,7 +2788,6 @@ public class BioFabricNetwork implements Network {
     private NodeInfo buildFromXML(String elemName, Attributes attrs, FabricFactory.FactoryWhiteboard board) throws IOException {
       String name = AttributeExtractor.extractAttribute(elemName, attrs, "node", "name", true);
       name = CharacterEntityMapper.unmapEntities(name, false);
-      System.out.println(name);
       String nidStr = AttributeExtractor.extractAttribute(elemName, attrs, "node", "nid", false);
 
       NID nid;
