@@ -765,7 +765,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     public boolean performOperation(JFrame topFrame) {
       
       NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame,  
-                                                              NetworkAlignmentBuildData.ViewType.GROUP, className_);
+                                                              NetworkAlignmentBuildData.ViewType.GROUP, 
+                                                              className_, flf_);
       nad.setVisible(true);
       
       if(!nad.haveResult()) {
@@ -821,7 +822,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     
     public boolean performOperation(JFrame topFrame) {
     
-      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame, NetworkAlignmentBuildData.ViewType.CYCLE, className_);
+      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame, NetworkAlignmentBuildData.ViewType.CYCLE, 
+      		                                                    className_, flf_);
       nad.setVisible(true);
       
       if(!nad.haveResult()) {
@@ -872,7 +874,8 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     
     public boolean performOperation(JFrame topFrame) {
       
-      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame, NetworkAlignmentBuildData.ViewType.ORPHAN, className_);
+      NetworkAlignmentDialog nad = new NetworkAlignmentDialog(topFrame, NetworkAlignmentBuildData.ViewType.ORPHAN, 
+      		                                                    className_, flf_);
       nad.setVisible(true);
       
       if(!nad.haveResult()) {

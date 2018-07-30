@@ -31,9 +31,9 @@ import javax.swing.JOptionPane;
 
 import org.systemsbiology.biofabric.api.dialog.BTStashResultsDialog;
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.FixedJButton;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.util.ChoiceContent;
-import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.ResourceManager;
 
 /****************************************************************************

@@ -588,6 +588,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     currLinkSelections_.clear();
     currNodeSelections_.clear();
     currColSelections_.clear();
+    fmt_.setSelections(null);
     targetList_.clear();
     linkList_.clear();
     floaterSet_.currSelRect = null;
@@ -657,6 +658,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
       currLinkSelections_.clear();
       currNodeSelections_.clear();
       currColSelections_.clear();
+      fmt_.setSelections(null);
       currSel_ = -1;
       floaterSet_.currSelRect = null;
     }       
@@ -2405,7 +2407,6 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     }
     bumpGuts();
     handleFloaterChange();
-    System.out.println("This has gotta change");
     UiUtil.fixMePrintout("This has gotta change");
     HashSet<Integer> targRows = new HashSet<Integer>();
     HashSet<Integer> targCols = new HashSet<Integer>(currColSelections_);
@@ -2744,6 +2745,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
         currLinkSelections_.clear();
         currNodeSelections_.clear();
         currColSelections_.clear();
+        fmt_.setSelections(null);
         currSel_ = -1;
         floaterSet_.currSelRect = null;
       }
