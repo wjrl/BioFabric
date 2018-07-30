@@ -242,10 +242,8 @@ public class NetworkAlignmentLayout extends NodeLayout {
     if (targets.size() != allNodes.size()) {
       throw new IllegalStateException("target numGroups not equal to all-nodes numGroups");
     }
-
-    installAnnotations(bd, targetsGroup, grouper);
     
-    UiUtil.fixMePrintout("Loop Reporter all messed up in NetworkAlignmentLayout.FlushQueue");
+    installAnnotations(bd, targetsGroup, grouper);
     return (targets);
   }
   
