@@ -28,13 +28,17 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
+import org.systemsbiology.biofabric.api.model.AnnotsForPos;
+import org.systemsbiology.biofabric.api.model.Annot;
 import org.systemsbiology.biofabric.api.io.AttributeExtractor;
 import org.systemsbiology.biofabric.api.io.CharacterEntityMapper;
 import org.systemsbiology.biofabric.api.io.Indenter;
+import org.systemsbiology.biofabric.api.layout.AnnotColorSource;
 import org.systemsbiology.biofabric.api.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.api.parser.GlueStick;
 import org.systemsbiology.biofabric.io.FabricFactory;
-import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
 import org.systemsbiology.biofabric.util.MinMax;
 
 import org.xml.sax.Attributes;
@@ -44,20 +48,20 @@ import org.xml.sax.Attributes;
 ** Used for annotating contiguous sets of nodes
 */
 
-public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
+public class AnnotationSetImpl implements AnnotationSet, Cloneable, Iterable<Annot> {
   private TreeSet<Annot> annots_;
  
-  public AnnotationSet() {
+  public AnnotationSetImpl() {
     annots_ = new TreeSet<Annot>();
   }
   
   @Override
-  public AnnotationSet clone() {
+  public AnnotationSetImpl clone() {
     try {
-      AnnotationSet retval = (AnnotationSet)super.clone();
+      AnnotationSetImpl retval = (AnnotationSetImpl)super.clone();
       retval.annots_ = new TreeSet<Annot>();
       for (Annot annot : this.annots_) {
-        retval.annots_.add(annot.clone());
+        retval.annots_.add(((AnnotImpl)annot).clone());
       }
       return (retval);
     } catch (CloneNotSupportedException cnse) {
@@ -80,7 +84,7 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
   
   public void fillAnnots(AnnotsForPos fillIt, Integer whereObj) {
     for (Annot an : annots_) {
-      if (an.range_.contained(whereObj)) {
+      if (an.getRange().contained(whereObj)) {
         fillIt.addAnnot(an);
       }
     }
@@ -92,10 +96,10 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
   ** Class to hold all the annotations relevant for a given position (row or column)
   */  
   
-  public static class AnnotsForPos {
+  public static class AnnotsForPosImpl implements AnnotsForPos {
     private TreeMap<Integer, SortedSet<Annot>> perLayers_;
  
-    public AnnotsForPos() {
+    public AnnotsForPosImpl() {
       perLayers_ = new TreeMap<Integer, SortedSet<Annot>>(Collections.reverseOrder());
       perLayers_.put(Integer.valueOf(0), new TreeSet<Annot>());
     }
@@ -134,26 +138,26 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
   ** Class to hold a single annotation
   */  
   
-  public static class Annot implements Cloneable, Comparable<Annot> {
+  public static class AnnotImpl implements Annot, Cloneable {
     private String tag_;
     private MinMax range_;
     private int layer_;
-    private PaintCacheSmall.AnnotColor color_;
+    private AnnotColorSource.AnnotColor color_;
    
-    public Annot(String tag, int startPos, int endPos, int layer, String colorName) {
+    public AnnotImpl(String tag, int startPos, int endPos, int layer, String colorName) {
       if ((startPos > endPos) || (layer < 0)) {
         throw new IllegalArgumentException();
       }
       tag_ = tag;
       range_ = new MinMax(startPos, endPos);
       layer_ = layer;
-      color_ = (colorName == null) ? null : PaintCacheSmall.AnnotColor.getColor(colorName);
+      color_ = (colorName == null) ? null : AnnotColorSource.AnnotColor.getColor(colorName);
     }
     
     @Override
-    public Annot clone() {
+    public AnnotImpl clone() {
       try {
-        Annot retval = (Annot)super.clone();
+        AnnotImpl retval = (AnnotImpl)super.clone();
         retval.range_ = this.range_.clone();
         return (retval);
       } catch (CloneNotSupportedException cnse) {
@@ -174,7 +178,7 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
     } 
     
     // May be null if user wants automatic cycling:
-    public PaintCacheSmall.AnnotColor getColor() {
+    public AnnotColorSource.AnnotColor getColor() {
       return (color_);
     } 
 
@@ -202,27 +206,27 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
       }
       Annot otherAnnot = (Annot)other;
     
-      if (!this.tag_.equalsIgnoreCase(otherAnnot.tag_)) {
+      if (!this.tag_.equalsIgnoreCase(otherAnnot.getName())) {
         return (false);
       }
-      if (!this.range_.equals(otherAnnot.range_)) {
+      if (!this.range_.equals(otherAnnot.getRange())) {
         return (false);
       }
       
       if (this.color_ == null) {
-        if (otherAnnot.color_ != null) {
+        if (otherAnnot.getColor() != null) {
           return (false);
         }
       } else {
-        if (otherAnnot.color_ == null) {
+        if (otherAnnot.getColor() == null) {
           return (false);
         } else {
-          if (!this.color_.equals(otherAnnot.color_)) {
+          if (!this.color_.equals(otherAnnot.getColor())) {
             return (false);
           }
         }
       }
-      return (this.layer_ == otherAnnot.layer_);
+      return (this.layer_ == otherAnnot.getLayer());
     }  
 
     public int compareTo(Annot otherAnnot) {
@@ -230,37 +234,37 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
         return (0);
       }
       
-      int startDiff = this.range_.min - otherAnnot.range_.min;
+      int startDiff = this.range_.min - otherAnnot.getRange().min;
       if (startDiff != 0) {
         return (startDiff);
       }
       
-      int endDiff = this.range_.max - otherAnnot.range_.min;
+      int endDiff = this.range_.max - otherAnnot.getRange().min;
       if (endDiff != 0) {
         return (endDiff);
       }
       
-      int layerDiff = this.layer_ - otherAnnot.layer_;
+      int layerDiff = this.layer_ - otherAnnot.getLayer();
       if (layerDiff != 0) {
         return (layerDiff);
       }
       
       if (this.color_ == null) {
-        if (otherAnnot.color_ != null) {
+        if (otherAnnot.getColor() != null) {
           return (-1);
         }
       } else {
-        if (otherAnnot.color_ == null) {
+        if (otherAnnot.getColor() == null) {
           return (1);
         } else {
-          int compval = this.color_.compareTo(otherAnnot.color_);
+          int compval = this.color_.compareTo(otherAnnot.getColor());
           if (compval != 0) {
             return (compval);
           }
         }
       }
        
-      return (this.tag_.compareToIgnoreCase(otherAnnot.tag_));
+      return (this.tag_.compareToIgnoreCase(otherAnnot.getName()));
     }
     
     /***************************************************************************
@@ -301,7 +305,7 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
       Object retval = null;
       if (elemName.equals(tag_)) {
         FabricFactory.FactoryWhiteboard board = (FabricFactory.FactoryWhiteboard)this.sharedWhiteboard_;
-        board.currAnnots = new AnnotationSet();
+        board.currAnnots = new AnnotationSetImpl();
         retval = board.currAnnots;
       }
       return (retval);     
@@ -345,7 +349,7 @@ public class AnnotationSet implements Cloneable, Iterable<AnnotationSet.Annot> {
         int min = Integer.valueOf(minStr).intValue();
         int max = Integer.valueOf(maxStr).intValue();
         int layer = Integer.valueOf(layerStr).intValue();
-        Annot retval = new Annot(name, min, max, layer, colorStr);
+        Annot retval = new AnnotImpl(name, min, max, layer, colorStr);
         return (retval);
       } catch (NumberFormatException nfex) {
         throw new IOException();

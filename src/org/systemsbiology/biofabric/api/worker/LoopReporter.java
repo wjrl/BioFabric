@@ -19,7 +19,7 @@
 
 package org.systemsbiology.biofabric.api.worker;
 
-public class LoopReporter {
+public final class LoopReporter {
   
   private long max_;
   private long skipLines_;

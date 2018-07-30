@@ -24,7 +24,7 @@ package org.systemsbiology.biofabric.api.worker;
 ** A Class
 */
 
-public class AsynchExitRequestException extends Exception {
+public final class AsynchExitRequestException extends Exception {
   
   ////////////////////////////////////////////////////////////////////////////
   //

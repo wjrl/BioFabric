@@ -34,7 +34,7 @@ import java.util.Iterator;
 ** Utility for getting unique labelling
 */
 
-public class UniqueLabeller implements Cloneable {
+public final class UniqueLabeller implements Cloneable {
 
   ////////////////////////////////////////////////////////////////////////////
   //

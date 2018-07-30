@@ -26,10 +26,11 @@ import java.util.SortedMap;
 
 import org.systemsbiology.biofabric.api.layout.EdgeLayout;
 import org.systemsbiology.biofabric.api.layout.NodeLayout;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.model.Network;
-import org.systemsbiology.biofabric.model.AnnotationSet;
+
 import org.systemsbiology.biofabric.plugin.PluginBuildData;
 
 
@@ -85,6 +86,10 @@ public interface BuildData {
   
   public void setLinkAnnotations(Map<Boolean, AnnotationSet> annots);
   
+  public AnnotationSet getNodeAnnotations();
+  
+  public Map<Boolean, AnnotationSet> getLinkAnnotations();
+
   public boolean needsLayoutForRelayout();
 
   public NodeLayout getNodeLayout();

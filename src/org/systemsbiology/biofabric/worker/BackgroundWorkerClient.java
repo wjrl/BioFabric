@@ -307,6 +307,7 @@ public class BackgroundWorkerClient {
         if (!owner_.handleRemoteException(remoteEx)) {
           ExceptionHandler.getHandler().displayException(remoteEx);
         }
+        owner_.handleCancellation();
       }
       owner_.cleanUpPreEnable(result);      
       if (suw_ != null) {

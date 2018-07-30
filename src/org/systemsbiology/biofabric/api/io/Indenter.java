@@ -26,7 +26,7 @@ import java.io.PrintWriter;
 ** Handles details of indenting
 */
 
-public class Indenter {
+public final class Indenter {
 
   ////////////////////////////////////////////////////////////////////////////
   //

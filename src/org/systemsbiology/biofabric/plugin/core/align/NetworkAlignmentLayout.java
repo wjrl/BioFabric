@@ -37,13 +37,15 @@ import java.util.TreeSet;
 import org.systemsbiology.biofabric.api.io.BuildData;
 import org.systemsbiology.biofabric.api.layout.DefaultLayout;
 import org.systemsbiology.biofabric.api.layout.NodeLayout;
+import org.systemsbiology.biofabric.api.model.Annot;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.api.worker.LoopReporter;
-import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
+
 import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
@@ -357,7 +359,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
   private void installAnnotations(BuildData bd,
                                   SortedMap<Integer, List<NetNode>> targetsGroup, NodeGroupMap grouper) {
     
-    AnnotationSet layerZeroAnnots = new AnnotationSet();
+    AnnotationSet layerZeroAnnots = PluginSupportFactory.buildAnnotationSet();
     int min = 0;
     
     for (int i = 0; i < grouper.numGroups(); i++) {
@@ -367,7 +369,7 @@ public class NetworkAlignmentLayout extends NodeLayout {
       }
       int max = min + group.size() - 1;
   
-      AnnotationSet.Annot annot = new AnnotationSet.Annot(grouper.getKey(i), min, max, 0, grouper.getColor(i));
+      Annot annot = PluginSupportFactory.buildAnnotation(grouper.getKey(i), min, max, 0, grouper.getColor(i));
       layerZeroAnnots.addAnnot(annot);
   
       min += group.size(); // update current minimum
