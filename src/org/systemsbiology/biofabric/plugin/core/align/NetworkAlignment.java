@@ -54,11 +54,11 @@ import org.systemsbiology.biofabric.util.NID;
 public class NetworkAlignment {
    
   public static final String                // Ordered as in the default link group order
-          COVERED_EDGE = "G12",             // Covered Edges
-          GRAPH1 = "G1A",                   // G1 Edges w/ two aligned nodes (all non-covered G1 Edges)
-          INDUCED_GRAPH2 = "G2A",           // G2 Edges w/ two aligned nodes (induced)
-          HALF_UNALIGNED_GRAPH2 = "G2B",    // G2 Edges w/ one aligned node and one unaligned node
-          FULL_UNALIGNED_GRAPH2 = "G2C";    // G2 Edges w/ two unaligned nodes
+          COVERED_EDGE = "P",               // Covered Edges
+          GRAPH1 = "B",                     // G1 Edges w/ two aligned nodes (all non-covered G1 Edges)
+          INDUCED_GRAPH2 = "pRp",           // G2 Edges w/ two aligned nodes (induced)
+          HALF_UNALIGNED_GRAPH2 = "pRr",    // G2 Edges w/ one aligned node and one unaligned node
+          FULL_UNALIGNED_GRAPH2 = "rRr";    // G2 Edges w/ two unaligned nodes
   
   private final String TEMPORARY = "TEMP";
   
@@ -447,7 +447,6 @@ public class NetworkAlignment {
               "progress.orphanEdgesContext");
       
       List<NetLink> blueEdgesPlusContext = new ArrayList<NetLink>();
-      blueEdgesPlusContext.get(0);
       for (NetLink link : mergedLinks) { // add the edges connecting to the nodes of interest (one hop away)
         
         NetNode src = link.getSrcNode(), trg = link.getTrgNode();

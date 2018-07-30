@@ -57,7 +57,7 @@ public class GWImportLoader extends FabricImportLoader {
   ////////////////////////////////////////////////////////////////////////////
   
   private static final String DEFAULT_RELATION = "default";
-  private final int HEADER_LINES = 4; // # of header/parameter/version-info lines at the beginning of file
+  private static final int HEADER_LINES = 4; // # of header/parameter/version-info lines at the beginning of file
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -318,7 +318,7 @@ public class GWImportLoader extends FabricImportLoader {
       if (line.equals("LEDA.GRAPH")) {
         return (true);
       }
-      for (int i = 1;i <= 3; i++) { // skip next three lines; We assume four header lines
+      for (int i = 1; i < HEADER_LINES; i++) { // skip next three lines; We assume four header lines
         in.readLine();
       }
       String[] tok = in.readLine().split(" ");
@@ -338,7 +338,7 @@ public class GWImportLoader extends FabricImportLoader {
       }
   
     } catch (IOException ioe) {
-      ExceptionHandler.getHandler().displayException(ioe);
+      return (false);
     } catch (NumberFormatException nfe) {
       return (false);
     }

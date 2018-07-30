@@ -356,6 +356,21 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
     }
     
     //
+    // Make sure G1's nodes are subset of G2's if perfect align not provided in CaseII cycle
+    //
+    
+    if (outType == NetworkAlignmentBuildData.ViewType.CYCLE && perfectG1toG2 == null) {
+      boolean isSubset = isG1subsetG2(linksSmall, lonersSmall, linksLarge, lonersLarge);
+      if (!isSubset) {
+        PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
+        JOptionPane.showMessageDialog(topWindow_, rMan.getPluginString("networkAlignment.cycleSubsetErrorMessage"),
+                rMan.getPluginString("networkAlignment.cycleSubsetErrorMessageTitle"),
+                JOptionPane.ERROR_MESSAGE);
+        return (true);
+      }
+    }
+    
+    //
     // The CaseII cycle alignment can use the perfect alignment file, so we need to be more
     // specific about when the perfect/Group analysis is being done:
     //
@@ -652,6 +667,38 @@ public class NetworkAlignmentPlugIn implements BioFabricToolPlugIn {
       struct.lonersSmall = loneNodeIDsGraphA;
       return (true);
     }
+  }
+  
+  /***************************************************************************
+   **
+   ** Check if G1's nodes are subset of G2's
+   */
+  
+  private Boolean isG1subsetG2(ArrayList<NetLink> linksSmall, HashSet<NetNode> lonersSmall,
+                               ArrayList<NetLink> linksLarge, HashSet<NetNode> lonersLarge) {
+  
+    Set<NetNode> nodesG1 = null, nodesG2 = null;
+    try {
+      BuildExtractor bex = PluginSupportFactory.getBuildExtractor();
+      nodesG1 = bex.extractNodes(linksSmall, lonersSmall, null);
+      nodesG2 = bex.extractNodes(linksLarge, lonersLarge, null);
+    } catch (AsynchExitRequestException aere) {
+      // should never happen
+    }
+    
+    if (nodesG1 == null || nodesG2 == null) {
+      throw (new IllegalStateException("Node Set null in subset test"));
+    }
+    
+    Set<String> namesG1 = new HashSet<String>(), namesG2 = new HashSet<String>();
+    for (NetNode node : nodesG1) {
+      namesG1.add(node.getName());
+    }
+    for (NetNode node : nodesG2) {
+      namesG2.add(node.getName());
+    }
+    
+    return (namesG2.containsAll(namesG1));
   }
   
   ////////////////////////////////////////////////////////////////////////////

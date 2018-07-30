@@ -440,7 +440,17 @@ public class NetworkAlignmentScorer {
      */
     
     public double angSim(VectorND vector) {
-      double sim = 1 - (2 * Math.acos(cosSim(vector)) / Math.PI);
+      Double cosT = cosSim(vector);
+      
+      if (Double.compare(cosT, 1.0) > 0) { // fix for RishiDesai issue #36 (NaN was appearing)
+        cosT = 1.0;
+      } else if (Double.compare(cosT, 0.0) < 0) {
+        cosT = 0.0;
+      }
+      Double sim = 1 - (2 * Math.acos(cosT) / Math.PI);
+      if (sim.isNaN()) {
+        // should not happen
+      }
       return (sim);
     }
     
