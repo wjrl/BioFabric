@@ -39,19 +39,22 @@ import org.systemsbiology.biofabric.api.io.BuildData;
 import org.systemsbiology.biofabric.api.layout.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.api.layout.DefaultLayout;
 import org.systemsbiology.biofabric.api.layout.NodeLayout;
+import org.systemsbiology.biofabric.api.model.Annot;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.NID;
 import org.systemsbiology.biofabric.api.util.UniqueLabeller;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.BuildDataImpl;
-import org.systemsbiology.biofabric.model.AnnotationSet;
+
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.model.FabricNode;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.MinMax;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.TrueObjChoiceContent;
 import org.systemsbiology.biofabric.util.UiUtil;
@@ -332,7 +335,7 @@ public class NodeClusterLayout extends NodeLayout {
     
   private AnnotationSet generateNodeAnnotations(BuildData rbd, ClusterParams params) {
     
-    AnnotationSet retval = new AnnotationSet();  
+    AnnotationSet retval = PluginSupportFactory.buildAnnotationSet();
     
     TreeMap<Integer, NetNode> invert = new TreeMap<Integer, NetNode>();
     
@@ -352,7 +355,7 @@ public class NodeClusterLayout extends NodeLayout {
         currClust = clust;
         startRow = row;
         if (row.equals(lastKey)) {
-          AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0, null);
+          Annot annot = PluginSupportFactory.buildAnnotation(currClust, startRow.intValue(), row.intValue(), 0, null);
           retval.addAnnot(annot);
           break;
         }
@@ -360,20 +363,20 @@ public class NodeClusterLayout extends NodeLayout {
       }
       if (currClust.equals(clust)) {
         if (row.equals(lastKey)) {
-          AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0, null);
+          Annot annot = PluginSupportFactory.buildAnnotation(currClust, startRow.intValue(), row.intValue(), 0, null);
           retval.addAnnot(annot);
           break;
         }
         continue;
       } else { 
         // We have just entered a new cluster
-        AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue() - 1, 0, null);
+        Annot annot = PluginSupportFactory.buildAnnotation(currClust, startRow.intValue(), row.intValue() - 1, 0, null);
 
         retval.addAnnot(annot);
         startRow = row;
         currClust = clust;
         if (row.equals(lastKey)) {
-          annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0, null);
+          annot = PluginSupportFactory.buildAnnotation(currClust, startRow.intValue(), row.intValue(), 0, null);
 
           retval.addAnnot(annot);
           break;
@@ -442,7 +445,7 @@ public class NodeClusterLayout extends NodeLayout {
   		}
   	}
   	
-  	AnnotationSet afns = new AnnotationSet();
+  	AnnotationSet afns = PluginSupportFactory.buildAnnotationSet();
   	TreeMap<Integer, String> ord = new TreeMap<Integer, String>();
   	for (String aName : clustRanges.keySet()) {
   		MinMax mm = clustRanges.get(aName);
@@ -451,7 +454,7 @@ public class NodeClusterLayout extends NodeLayout {
   	
     for (String aName : ord.values()) {
   		MinMax mm = clustRanges.get(aName);
-  		AnnotationSet.Annot annot = new AnnotationSet.Annot(aName, mm.min, mm.max, 0, null);
+  		Annot annot = PluginSupportFactory.buildAnnotation(aName, mm.min, mm.max, 0, null);
   		afns.addAnnot(annot);
   	}
   

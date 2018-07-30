@@ -36,11 +36,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.systemsbiology.biofabric.api.layout.AnnotColorSource;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
+import org.systemsbiology.biofabric.api.model.Annot;
 import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.NID;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.api.worker.LoopReporter;
-import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
@@ -48,7 +51,6 @@ import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.util.DoubMinMax;
 import org.systemsbiology.biofabric.util.MinMax;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.QuadTree;
 import org.systemsbiology.biofabric.util.UiUtil;
 
@@ -81,75 +83,6 @@ public class PaintCacheSmall {
   //////////////////////////////////////////////////////////////////////////// 
   
   public final static int STROKE_SIZE = 3;
-  
-  public enum AnnotColor {
-    GRAY_BLUE("GrayBlue", 0, new Color(228, 236, 248, 255)),
-    ORANGE("Orange", 1, new Color(253, 222, 195, 255)),
-    YELLOW("Yellow", 2, new Color(255, 252, 203, 255)),
-    GREEN("Green", 3, new Color(227, 253, 230, 255)),
-    PURPLE("Purple", 4, new Color(227, 224, 253, 255)),
-    PINK("Pink", 5, new Color(253, 224, 235, 255)),
-    POWDER_BLUE("PowderBlue", 6, new Color(224, 243, 253, 255)),
-    PEACH("Peach", 7, new Color(254, 246, 225, 255)),
-    
-    // 90 %
-    DARK_GRAY_BLUE("DarkGrayBlue", 8, new Color(205, 212, 223, 255)),
-    DARK_ORANGE("DarkOrange", 9, new Color(228, 200, 176, 255)),
-    DARK_YELLOW("DarkYellow", 10, new Color(230, 227, 183, 255)),
-    DARK_GREEN("DarkGreen", 11, new Color(205, 228, 207, 255)),
-    DARK_PURPLE("DarkPurple", 12, new Color(205, 202, 228, 255)),
-    DARK_PINK("DarkPink", 13, new Color(228, 202, 212, 255)),
-    DARK_POWDER_BLUE("DarkPowderBlue", 14, new Color(202, 219, 228, 255)),
-    DARK_PEACH("DarkPeach", 15, new Color(229, 221, 203, 255));
-    
-    /* 80 %
-    DARK_GRAY_BLUE("DarkGrayBlue", 8, new Color(182, 189, 198, 255)),
-    DARK_ORANGE("DarkOrange", 9, new Color(202, 178, 156, 255)),
-    DARK_YELLOW("DarkYellow", 10, new Color(204, 202, 162, 255)),
-    DARK_GREEN("DarkGreen", 11, new Color(182, 202, 184, 255)),
-    DARK_PURPLE("DarkPurple", 12, new Color(182, 179, 202, 255)),
-    DARK_PINK("DarkPink", 13, new Color(202, 179, 188, 255)),
-    DARK_POWDER_BLUE("DarkPowderBlue", 14, new Color(179, 194, 202, 255)),
-    DARK_PEACH("DarkPeach", 15, new Color(203, 197, 180, 255));
-    */
-    
-    
-    
-    
-    
-    
-    private final String name_;
-    private final int cycle_;
-    private final Color col_;
-   
-    private AnnotColor(String name, int cycle, Color col) {
-      this.name_ = name; 
-      this.cycle_ = cycle;
-      this.col_ = col;
-    }
-    
-    public Color getColor() {
-      return (col_);
-    }
-    
-    public String getName() {
-      return (name_);
-    }
-    
-    public int getCycle() {
-      return (cycle_);
-    }
-        
-    public static AnnotColor getColor(String name) {
-      String collapseName = name.replaceAll(" ", "");
-      for (AnnotColor ac : AnnotColor.values()) {
-        if (ac.name_.equalsIgnoreCase(collapseName)) {
-          return (ac);
-        }
-      }
-      throw new IllegalArgumentException(); 
-    }  
-  }
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -180,7 +113,7 @@ public class PaintCacheSmall {
   private FabricColorGenerator colGen_;
   private Color superLightPink_;
   private Color superLightBlue_;
-  private AnnotColor[] annotColors_;
+  private AnnotColorSource.AnnotColor[] annotColors_;
   private Color[] annotGrays_;
   
   ////////////////////////////////////////////////////////////////////////////
@@ -223,16 +156,9 @@ public class PaintCacheSmall {
     superLightPink_ = new Color(255, 244, 244);
     superLightBlue_ = new Color(244, 244, 255);
      
+    annotColors_ = AnnotColorSource.getColorCycle();
+    annotGrays_ = AnnotColorSource.getGrayCycle();
 
-    AnnotColor[] ancs = AnnotColor.values();
-    annotColors_ = new AnnotColor[ancs.length];
-    for (AnnotColor ac : ancs) {
-      annotColors_[ac.getCycle()] = ac;
-    }
-
-    annotGrays_ = new Color[2];
-    annotGrays_[0] = new Color(220, 220, 220, 127);
-    annotGrays_[1] = new Color(245, 245, 245, 127);
   }
   
   ////////////////////////////////////////////////////////////////////////////
@@ -241,44 +167,6 @@ public class PaintCacheSmall {
   //
   ////////////////////////////////////////////////////////////////////////////
 
-  /***************************************************************************
-  **
-  ** Get number of annotation colors
-  */
-  
-  public int getAnnotColorCount() {
-    return (annotColors_.length);
-  }
-  
-  /***************************************************************************
-  **
-  ** Get number of link annotation colors
-  */
-  
-  public int getLinkAnnotGrayCount() {
-    return (annotGrays_.length);
-  }  
-  
-  /***************************************************************************
-  **
-  ** Get annotation color
-  */
-  
-  public AnnotColor getAnnotColor(int i) {
-    return (annotColors_[i]);
-  }
-  
-  /***************************************************************************
-  **
-  ** Get link annotation color
-  */
-  
-  public Color getLinkAnnotGray(int i) {
-    return (annotGrays_[i]);
-  }
-  
-  
-   
   /***************************************************************************
   **
   **  Dump used memory
@@ -626,9 +514,9 @@ public class PaintCacheSmall {
     int annotCount = 0;
     if (nodeAnnot != null) {
     	LoopReporter lr4 = new LoopReporter(nodeAnnot.size(), 20, monitor, 0.0, 1.0, "progress.buildNodeAnnots");
-      for (AnnotationSet.Annot an : nodeAnnot) {
-        AnnotColor acol = an.getColor();
-        AnnotColor col = (acol == null) ? annotColors_[annotCount++ % annotColors_.length] : acol;
+      for (Annot an : nodeAnnot) {
+        AnnotColorSource.AnnotColor acol = an.getColor();
+        AnnotColorSource.AnnotColor col = (acol == null) ? annotColors_[annotCount++ % annotColors_.length] : acol;
         lr4.report();
         buildAnAnnotationRect(an.getRange(), an.getName(), col.getColor(), true, nodeExtents, frc, linkCols, qtpc);
       }
@@ -637,16 +525,15 @@ public class PaintCacheSmall {
     annotCount = 0;
     if (linkAnnot != null) {
     	LoopReporter lr5 = new LoopReporter(linkAnnot.size(), 20, monitor, 0.0, 1.0, "progress.buildLinkAnnots");
-      for (AnnotationSet.Annot an : linkAnnot) {
+      for (Annot an : linkAnnot) {
         Color col;
         if ((nodeAnnot != null) && (nodeAnnot.size() > 0)) {
           col = annotGrays_[annotCount++ % annotGrays_.length];
         } else {
-          AnnotColor acol = an.getColor();
+          AnnotColorSource.AnnotColor acol = an.getColor();
           col = (acol == null) ? annotColors_[annotCount++ % annotColors_.length].getColor() : acol.getColor();
         }  
         lr5.report();
-        System.out.println(an);
         buildAnAnnotationRect(an.getRange(), an.getName(), col, false, linkExtents, frc, nodeRows, qtpc);
       }
     }

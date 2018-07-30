@@ -39,13 +39,12 @@ import javax.swing.event.DocumentListener;
 
 import org.systemsbiology.biofabric.api.dialog.BTStashResultsDialog;
 import org.systemsbiology.biofabric.api.dialog.DialogSupport;
+import org.systemsbiology.biofabric.api.io.FileLoadFlows;
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.FixedJButton;
+import org.systemsbiology.biofabric.api.util.MatchingJLabel;
 import org.systemsbiology.biofabric.api.util.PluginResourceManager;
-import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
-import org.systemsbiology.biofabric.util.FixedJButton;
-import org.systemsbiology.biofabric.util.MatchingJLabel;
-import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 import javax.swing.border.EmptyBorder;
 import java.awt.event.ActionEvent;
@@ -74,19 +73,20 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
   private JCheckBox undirectedConfirm_;
   private static final long serialVersionUID = 1L;
   private JComboBox perfectNGsCombo_;
-  private String pluginClassName_;
+  private FileLoadFlows flf_;
   
   private final int NO_PERFECT_IDX = 0, WITH_PERFECT_IDX = 1, NC_IDX = 2, JS_IDX = 3; // indices on combo box
 
   
-  public NetworkAlignmentDialog(JFrame parent, NetworkAlignmentBuildData.ViewType analysisType, String pluginClassName) {
+  public NetworkAlignmentDialog(JFrame parent, NetworkAlignmentBuildData.ViewType analysisType, 
+  		                          String pluginClassName, FileLoadFlows flf) {
     super(parent, PluginSupportFactory.getResourceManager(pluginClassName).getPluginString("networkAlignment.title"), new Dimension(700, 450), 3);
     
     PluginResourceManager rMan = PluginSupportFactory.getResourceManager(pluginClassName);
      
     this.parent_ = parent;
     this.analysisType_ = analysisType;
-    pluginClassName_ = pluginClassName;
+    flf_ = flf;
     
     JPanel cp = (JPanel) getContentPane();
     cp.setBorder(new EmptyBorder(20, 20, 20, 20));
@@ -153,35 +153,15 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
    
     JPanel panGraphConfirm = new JPanel(new FlowLayout(FlowLayout.LEFT));
     panGraphConfirm.add(undirectedConfirm_);
-    
-    JPanel panG1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    panG1.add(graph1FileMatch);
-    panG1.add(graph1Field_);
-    panG1.add(graph1Browse);
-  
-    JPanel panG2 = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    panG2.add(graph2FileMatch);
-    panG2.add(graph2Field_);
-    panG2.add(graph2Browse);
-  
-    JPanel panAlign = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    panAlign.add(alignFileMatch);
-    panAlign.add(alignField_);
-    panAlign.add(alignmentBrowse);
-  
-    JPanel panPerfect = new JPanel(new FlowLayout(FlowLayout.LEFT));
-    panPerfect.add(perfectFileMatch_);
-    panPerfect.add(perfectField_);
-    panPerfect.add(perfectBrowse);
-   
+     
     addWidgetFullRow(panGraphInfo, true);
     if (panGraphInfoTwo != null) {
       addWidgetFullRow(panGraphInfoTwo, true);
     }
     addWidgetFullRow(panGraphConfirm, true);
-    addWidgetFullRow(panG1, true);
-    addWidgetFullRow(panG2, true);
-    addWidgetFullRow(panAlign, true);
+    addLabeledFileBrowse(graph1FileMatch, graph1Field_, graph1Browse);
+    addLabeledFileBrowse(graph2FileMatch, graph2Field_, graph2Browse);
+    addLabeledFileBrowse(alignFileMatch, alignField_, alignmentBrowse);
   
     JLabel perfectNGLabel = new JLabel(rMan.getPluginString("networkAlignment.perfectNodeGroups"));
     
@@ -223,7 +203,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
     
     if (analysisType_ != NetworkAlignmentBuildData.ViewType.ORPHAN) { // add perfect alignment button
       addLabeledWidget(perfectNGLabel, perfectNGsCombo_, true, true);
-      addWidgetFullRow(panPerfect, true);
+      addLabeledFileBrowse(perfectFileMatch_, perfectField_, perfectBrowse);
     }
     
     //
@@ -444,18 +424,17 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
    */
   
   private void loadFromFile(FileIndex mode) {
-    CommandSet cmd = CommandSet.getCmds("selectionWindow");
     
     File file;
     
     switch (mode) {
       case GRAPH_ONE_FILE:
       case GRAPH_TWO_FILE:
-        file = cmd.getFileLoader().getTheFile(".gw", ".sif", "LoadDirectory", "filterName.graph");
+        file = flf_.getTheFile(".gw", ".sif", "LoadDirectory", "filterName.graph");
         break;
       case ALIGNMENT_FILE:
       case PERFECT_FILE:
-        file = cmd.getFileLoader().getTheFile(".align", null, "LoadDirectory", "filterName.align");
+        file = flf_.getTheFile(".align", null, "LoadDirectory", "filterName.align");
         break;
       default:
         throw new IllegalArgumentException();
@@ -465,7 +444,7 @@ public class NetworkAlignmentDialog extends BTStashResultsDialog {
       return;
     }
     
-    FabricCommands.setPreference("LoadDirectory", file.getAbsoluteFile().getParent());
+    PluginSupportFactory.getPreferenceStorage().setPreference("LoadDirectory", file.getAbsoluteFile().getParent());
     
     switch (mode) {
       case GRAPH_ONE_FILE:

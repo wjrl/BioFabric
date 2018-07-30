@@ -24,10 +24,10 @@ import java.util.Map;
 import org.systemsbiology.biofabric.api.model.AugRelation;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.NID;
+import org.systemsbiology.biofabric.api.util.NID.WithName;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.util.DataUtil;
-import org.systemsbiology.biofabric.util.NID;
-import org.systemsbiology.biofabric.util.NID.WithName;
 
 /****************************************************************************
 **

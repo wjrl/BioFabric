@@ -36,14 +36,12 @@ import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.NID;
 import org.systemsbiology.biofabric.api.util.UniqueLabeller;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.api.worker.LoopReporter;
-import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.model.FabricNode;
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
-import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
  **
@@ -213,7 +211,7 @@ public class NetworkAlignment {
       String mergedName = String.format("%s::%s", smallName, largeName);
       
       NID nid = idGen_.getNextOID();
-      NetNode merged_node = new FabricNode(nid, mergedName);
+      NetNode merged_node = PluginSupportFactory.buildNode(nid, mergedName);
       
       smallToMergedID_.put(smallNode, merged_node);
       largeToMergedID_.put(largeNode, merged_node);
@@ -277,7 +275,7 @@ public class NetworkAlignment {
       NetNode newA = (oldToNewID.containsKey(oldA)) ? oldToNewID.get(oldA) : oldA;
       NetNode newB = (oldToNewID.containsKey(oldB)) ? oldToNewID.get(oldB) : oldB;
       
-      NetLink newLink = new FabricLink(newA, newB, TEMPORARY, false, Boolean.valueOf(false));
+      NetLink newLink = PluginSupportFactory.buildLink(newA, newB, TEMPORARY, false, Boolean.valueOf(false));
       // 'directed' must be false
       newLinkSet.add(newLink);
       lr.report();
@@ -351,12 +349,12 @@ public class NetworkAlignment {
    */
   
   private void addMergedLink(NetNode src, NetNode trg, String tag) {
-    NetLink newMergedLink = new FabricLink(src, trg, tag, false);
+    NetLink newMergedLink = PluginSupportFactory.buildLink(src, trg, tag, false);
     mergedLinks_.add(newMergedLink);
     
     // We never create shadow feedback links!
     if (!src.equals(trg)) {
-      NetLink newMergedLinkShadow = new FabricLink(src, trg, tag, true);
+      NetLink newMergedLinkShadow = PluginSupportFactory.buildLink(src, trg, tag, true);
       mergedLinks_.add(newMergedLinkShadow);
     }
     return;

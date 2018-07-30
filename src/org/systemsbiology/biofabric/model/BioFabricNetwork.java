@@ -33,6 +33,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.xml.sax.Attributes;
+
 import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.api.io.AttributeExtractor;
 import org.systemsbiology.biofabric.api.io.BuildData;
@@ -40,13 +41,17 @@ import org.systemsbiology.biofabric.api.io.CharacterEntityMapper;
 import org.systemsbiology.biofabric.api.io.Indenter;
 import org.systemsbiology.biofabric.api.layout.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.api.layout.EdgeLayout;
+import org.systemsbiology.biofabric.api.layout.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.api.layout.NodeLayout;
+import org.systemsbiology.biofabric.api.model.Annot;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
 import org.systemsbiology.biofabric.api.model.AugRelation;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.model.Network;
 import org.systemsbiology.biofabric.api.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.api.parser.GlueStick;
+import org.systemsbiology.biofabric.api.util.NID;
 import org.systemsbiology.biofabric.api.util.UniqueLabeller;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
@@ -62,7 +67,6 @@ import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.MinMax;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
@@ -149,16 +153,17 @@ public class BioFabricNetwork implements Network {
   ** Constructor
   */
 
-  public BioFabricNetwork(BuildData rbd, PlugInManager pMan, BTProgressMonitor monitor) throws AsynchExitRequestException {
+  public BioFabricNetwork(BuildData rbd, PlugInManager pMan, BTProgressMonitor monitor) 
+  		throws AsynchExitRequestException, LayoutCriterionFailureException {
   	nodeIDGenerator_ = new UniqueLabeller();
   	BuildDataImpl bd = (BuildDataImpl)rbd;
   	pMan_ = pMan;
   	layoutMode_ = Network.LayoutMode.UNINITIALIZED_MODE;
   	BuildDataImpl.BuildMode mode = bd.getMode();
-    nodeAnnot_ = new AnnotationSet();
+    nodeAnnot_ = new AnnotationSetImpl();
     Map<Boolean, AnnotationSet> linkAnnots_ = new HashMap<Boolean, AnnotationSet>();
-    linkAnnots_.put(Boolean.TRUE, new AnnotationSet());
-    linkAnnots_.put(Boolean.FALSE, new AnnotationSet());
+    linkAnnots_.put(Boolean.TRUE, new AnnotationSetImpl());
+    linkAnnots_.put(Boolean.FALSE, new AnnotationSetImpl());
     switch (mode) {
       case DEFAULT_LAYOUT:  
       case REORDER_LAYOUT:
@@ -597,13 +602,19 @@ public class BioFabricNetwork implements Network {
   ** Process a link set
   */
 
-  private void processLinks(BuildData bd, BTProgressMonitor monitor) throws AsynchExitRequestException {
+  private void processLinks(BuildData bd, BTProgressMonitor monitor) 
+  		throws AsynchExitRequestException, LayoutCriterionFailureException  {
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
     //
 
   	BuildDataImpl rbd = (BuildDataImpl)bd;
   	NodeLayout layout = rbd.getNodeLayout();
+    boolean nlok = layout.criteriaMet(rbd, monitor); // No?? throws LayoutCriterionFailureException
+    if (!nlok) {
+      throw new IllegalStateException(); // Should not happen, failure throws exception
+    }
+  	 
     List<NetNode> targetIDs = layout.doNodeLayout(rbd, null, monitor);
     
     //
@@ -1044,9 +1055,9 @@ public class BioFabricNetwork implements Network {
     out.println("<nodeAnnotations>");
     ind.up();
     if (nodeAnnot_ != null) {
-      for (AnnotationSet.Annot an : nodeAnnot_) {
+      for (Annot an : nodeAnnot_) {
         lr.report();
-        an.writeXML(out, ind);
+        ((AnnotationSetImpl.AnnotImpl)an).writeXML(out, ind);
       }
     }
     ind.down().indent();
@@ -1056,9 +1067,9 @@ public class BioFabricNetwork implements Network {
     out.println("<linkAnnotations>");
     ind.up();
     if (linkAnnots_ != null) {
-      for (AnnotationSet.Annot an : linkAnnots_.get(Boolean.FALSE)) {
+      for (Annot an : linkAnnots_.get(Boolean.FALSE)) {
         lr.report();
-        an.writeXML(out, ind);
+         ((AnnotationSetImpl.AnnotImpl)an).writeXML(out, ind);
       }
     }
     ind.down().indent();
@@ -1068,9 +1079,9 @@ public class BioFabricNetwork implements Network {
     out.println("<shadowLinkAnnotations>");
     ind.up();
     if (linkAnnots_ != null) {
-      for (AnnotationSet.Annot an : linkAnnots_.get(Boolean.TRUE)) {
+      for (Annot an : linkAnnots_.get(Boolean.TRUE)) {
         lr.report();
-        an.writeXML(out, ind);
+         ((AnnotationSetImpl.AnnotImpl)an).writeXML(out, ind);
       }
     }
     ind.down().indent();
@@ -2478,9 +2489,9 @@ public class BioFabricNetwork implements Network {
       installWorker(new NodeInfoWorker(whiteboard), new MyNodeGlue());
       installWorker(new LinkInfoWorker(whiteboard), new MyLinkGlue());
       installWorker(new LinkGroupWorker(whiteboard), null);
-      installWorker(new AnnotationSet.AnnotsWorker(whiteboard, "nodeAnnotations"), new MyAnnotsGlue(true, false));
-      installWorker(new AnnotationSet.AnnotsWorker(whiteboard, "linkAnnotations"), new MyAnnotsGlue(false, false));
-      installWorker(new AnnotationSet.AnnotsWorker(whiteboard, "shadowLinkAnnotations"), new MyAnnotsGlue(false, true));     
+      installWorker(new AnnotationSetImpl.AnnotsWorker(whiteboard, "nodeAnnotations"), new MyAnnotsGlue(true, false));
+      installWorker(new AnnotationSetImpl.AnnotsWorker(whiteboard, "linkAnnotations"), new MyAnnotsGlue(false, false));
+      installWorker(new AnnotationSetImpl.AnnotsWorker(whiteboard, "shadowLinkAnnotations"), new MyAnnotsGlue(false, true));     
       installWorker(new PlugInManager.PlugInWorker(whiteboard, pMan), null);
     }
     
@@ -2777,7 +2788,6 @@ public class BioFabricNetwork implements Network {
     private NodeInfo buildFromXML(String elemName, Attributes attrs, FabricFactory.FactoryWhiteboard board) throws IOException {
       String name = AttributeExtractor.extractAttribute(elemName, attrs, "node", "name", true);
       name = CharacterEntityMapper.unmapEntities(name, false);
-      System.out.println(name);
       String nidStr = AttributeExtractor.extractAttribute(elemName, attrs, "node", "nid", false);
 
       NID nid;

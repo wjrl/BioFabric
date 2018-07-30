@@ -37,8 +37,8 @@ import java.util.TreeMap;
 import org.systemsbiology.biofabric.api.dialog.BTStashResultsDialog;
 import org.systemsbiology.biofabric.api.model.AugRelation;
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.FixedJButton;
 import org.systemsbiology.biofabric.ui.dialogs.utils.EditableTable;
-import org.systemsbiology.biofabric.util.FixedJButton;
 
 /****************************************************************************
 **

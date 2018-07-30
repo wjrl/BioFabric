@@ -28,13 +28,15 @@ import java.util.TreeMap;
 
 import org.systemsbiology.biofabric.api.io.BuildData;
 import org.systemsbiology.biofabric.api.layout.DefaultEdgeLayout;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.model.Network;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.api.worker.LoopReporter;
-import org.systemsbiology.biofabric.model.AnnotationSet;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
+
 
 /****************************************************************************
 **
@@ -133,7 +135,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
     HashSet<NetNode> seen = new HashSet<NetNode>();
     int cycle = 0;
 
-    AnnotationSet retval = new AnnotationSet();
+    AnnotationSet retval = PluginSupportFactory.buildAnnotationSet();
     int startPos = 0;
     int endPos = 0;
     int numLink = links.size();
@@ -155,7 +157,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
             if (!currLooper.boundStart.equals(currLooper.boundEnd) || !currLooper.isCorrect) {
               String color = (cycle % 2 == 0) ? "Orange" : "Green";
               String type = currLooper.isCycle ? "cycle " : "path ";
-              retval.addAnnot(new AnnotationSet.Annot(type + cycle++, startPos, endPos, 0, color));
+              retval.addAnnot(PluginSupportFactory.buildAnnotation(type + cycle++, startPos, endPos, 0, color));
             }
           }
         }
@@ -176,7 +178,7 @@ public class AlignCycleEdgeLayout extends DefaultEdgeLayout {
     if (!currLooper.boundStart.equals(currLooper.boundEnd) || !currLooper.isCorrect) {
       String color = (cycle % 2 == 0) ? "Orange" : "Green";
       String type = currLooper.isCycle ? "cycle " : "path ";
-      retval.addAnnot(new AnnotationSet.Annot(type + cycle++, startPos, endPos, 0, color));
+      retval.addAnnot(PluginSupportFactory.buildAnnotation(type + cycle++, startPos, endPos, 0, color));
     }
     return (retval);
   }

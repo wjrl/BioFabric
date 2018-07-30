@@ -27,6 +27,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.analysis.CycleFinder;
@@ -34,11 +35,17 @@ import org.systemsbiology.biofabric.analysis.GraphSearcher;
 import org.systemsbiology.biofabric.api.io.BuildData;
 import org.systemsbiology.biofabric.api.layout.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.api.layout.NodeLayout;
+import org.systemsbiology.biofabric.api.layout.DefaultEdgeLayout;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
+import org.systemsbiology.biofabric.api.model.Annot;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.api.worker.LoopReporter;
+
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
+import org.systemsbiology.biofabric.util.MinMax;
 
 /****************************************************************************
 **
@@ -134,10 +141,150 @@ public class HierDAGLayout extends NodeLayout {
     //
     
     installNodeOrder(targets, rbd, monitor);
+    
+   // AnnotationSet nAnnots = generateNodeAnnotations(rbd, params);
+  //  rbd.setNodeAnnotations(nAnnots);
+      
+  //  Map<Boolean, AnnotationSet> lAnnots = generateLinkAnnotations(rbd, params);
+   // rbd.setLinkAnnotations(lAnnots);
+    
+     
     return (targets);
   }
   
+  /***************************************************************************
+  **
+  ** Generate node annotations to tag each cluster
+ 
+    
+  private AnnotationSet generateNodeAnnotations(BuildData rbd, Params params) {
+    
+    AnnotationSet retval = new AnnotationSet();  
+    
+    TreeMap<Integer, NetNode> invert = new TreeMap<Integer, NetNode>();
+    
+    Map<NetNode, Integer> nod = rbd.getNodeOrder(); 
+    
+    for (NetNode node : nod.keySet()) {
+      invert.put(nod.get(node), node);
+    }
+     
+    String currClust = null;
+    Integer startRow = null;
+    Integer lastKey = invert.lastKey();
+    for (Integer row : invert.keySet()) {
+      NetNode node = invert.get(row);
+      String clust = params.getClusterForNode(node);
+      if (currClust == null) {
+        currClust = clust;
+        startRow = row;
+        if (row.equals(lastKey)) {
+          AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0, null);
+          retval.addAnnot(annot);
+          break;
+        }
+        continue;
+      }
+      if (currClust.equals(clust)) {
+        if (row.equals(lastKey)) {
+          AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0, null);
+          retval.addAnnot(annot);
+          break;
+        }
+        continue;
+      } else { 
+        // We have just entered a new cluster
+        AnnotationSet.Annot annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue() - 1, 0, null);
 
+        retval.addAnnot(annot);
+        startRow = row;
+        currClust = clust;
+        if (row.equals(lastKey)) {
+          annot = new AnnotationSet.Annot(currClust, startRow.intValue(), row.intValue(), 0, null);
+
+          retval.addAnnot(annot);
+          break;
+        }
+      }
+    }
+    
+    return (retval);
+  }
+  
+  /***************************************************************************
+  **
+  ** Generate link annotations to tag each cluster and intercluster links
+ 
+    
+  private Map<Boolean, AnnotationSet> generateLinkAnnotations(BuildData rbd, Params params) { 
+  	HashMap<Boolean, AnnotationSet> retval = new HashMap<Boolean, AnnotationSet>();
+    
+  	SortedMap<Integer,NetLink> lod = rbd.getLinkOrder();
+  	
+  	List<NetLink> noShadows = new ArrayList<NetLink>();
+  	List<NetLink> withShadows = new ArrayList<NetLink>();
+  	for (Integer col : lod.keySet()) {
+  		NetLink fl = lod.get(col);
+  		withShadows.add(fl);
+  		if (!fl.isShadow()) {
+  			noShadows.add(fl);
+  		}
+  	}
+
+  	retval.put(Boolean.FALSE, generateLinkAnnotationsForSet(noShadows, params));
+  	retval.put(Boolean.TRUE, generateLinkAnnotationsForSet(withShadows, params));
+  	
+    return (retval);
+  }
+   
+  /***************************************************************************
+  **
+  ** Generate link annotations to tag each cluster and intercluster links
+  
+    
+  private AnnotationSet generateLinkAnnotationsForSet(List<NetLink> linkList, Params params) { 
+    
+  	HashMap<String, MinMax> clustRanges = new HashMap<String, MinMax>();
+  	 	
+  	for (int i = 0; i < linkList.size() ; i++) {
+  		NetLink fl = linkList.get(i);
+  
+  		String srcClust = params.getClusterForNode(fl.getSrcNode());
+      String trgClust = params.getClusterForNode(fl.getTrgNode());
+  		if (srcClust.equals(trgClust)) {
+  			MinMax mmc = clustRanges.get(srcClust);
+  			if (mmc == null) {
+  				mmc = new MinMax(i);
+  				clustRanges.put(srcClust, mmc);
+  			}
+  			mmc.update(i);
+  		} else {
+  			String combo = (srcClust.compareTo(trgClust) < 0) ? srcClust + "-" + trgClust : trgClust + "-" + srcClust;
+   			MinMax mmc = clustRanges.get(combo);
+  			if (mmc == null) {
+  				mmc = new MinMax(i);
+  				clustRanges.put(combo, mmc);
+  			}
+  			mmc.update(i);
+  		}
+  	}
+  	
+  	AnnotationSet afns = new AnnotationSet();
+  	TreeMap<Integer, String> ord = new TreeMap<Integer, String>();
+  	for (String aName : clustRanges.keySet()) {
+  		MinMax mm = clustRanges.get(aName);
+  		ord.put(Integer.valueOf(mm.min), aName);		
+  	}
+  	
+    for (String aName : ord.values()) {
+  		MinMax mm = clustRanges.get(aName);
+  		AnnotationSet.Annot annot = new AnnotationSet.Annot(aName, mm.min, mm.max, 0, null);
+  		afns.addAnnot(annot);
+  	}
+  
+    return (afns);
+  }
+ 
   /***************************************************************************
   **
   ** Get the ordering of nodes by node degree:
@@ -152,6 +299,11 @@ public class HierDAGLayout extends NodeLayout {
     linksToSources(rbd.getAllNodes(), rbd.getLinks(), monitor);
     
     List<NetNode> placeList = extractRoots(monitor);
+   
+    AnnotationSet nAnnots = PluginSupportFactory.buildAnnotationSet();
+    Annot annot = PluginSupportFactory.buildAnnotation("Level 0", 0, placeList.size() - 1, 0, null);
+    nAnnots.addAnnot(annot);
+    
     addToPlaceList(placeList);
     nodesToGo.removeAll(placeList);
     
@@ -161,13 +313,19 @@ public class HierDAGLayout extends NodeLayout {
   
     LoopReporter lr = new LoopReporter(nodesToGo.size(), 20, monitor, 0.0, 1.0, "progress.findingCandidates");
     
+    int count = 1;
     while (!nodesToGo.isEmpty()) {
       List<NetNode> nextBatch = findNextCandidates();
       lr.report(nextBatch.size());
+      int start = placeList_.size();
       addToPlaceList(nextBatch);
+      annot = PluginSupportFactory.buildAnnotation("Level " + count++, start, placeList_.size() - 1, 0, null);
+      nAnnots.addAnnot(annot);
       nodesToGo.removeAll(nextBatch);
     }
     lr.finish();
+    
+    rbd.setNodeAnnotations(nAnnots);
     
     return (placeList_);
     
@@ -345,5 +503,125 @@ public class HierDAGLayout extends NodeLayout {
       retval.add(sn.getNode());
     }
     return (retval);
+  }
+  
+  public static class EdgeLayout extends DefaultEdgeLayout {
+  
+	  ////////////////////////////////////////////////////////////////////////////
+	  //
+	  // PRIVATE INSTANCE MEMBERS
+	  //
+	  ////////////////////////////////////////////////////////////////////////////
+	
+	  ////////////////////////////////////////////////////////////////////////////
+	  //
+	  // PUBLIC CONSTRUCTORS
+	  //
+	  ////////////////////////////////////////////////////////////////////////////
+	
+	  /***************************************************************************
+	  **
+	  ** Constructor
+	  */
+	
+	  public EdgeLayout() {
+	  }
+	
+	  /***************************************************************************
+	  **
+	  ** Relayout the whole network!
+	  */
+	  
+	  public void layoutEdges(BuildData rbd, 
+	  		                    BTProgressMonitor monitor) throws AsynchExitRequestException {
+	   
+	    SortedMap<Integer, NetLink> retval = layoutEdges(rbd.getNodeOrder(), rbd.getLinks(), 
+	    		                                             rbd.getGroupOrder(), rbd.getGroupOrderMode(), monitor);
+	    rbd.setLinkOrder(retval);
+	    installLinkAnnotations(rbd, monitor);
+	    return;
+	  }
+	
+	  /***************************************************************************
+	  **
+	  ** Install link annotations for levels
+	  */
+	  
+	  protected void installLinkAnnotations(BuildData rbd, BTProgressMonitor monitor)
+	    throws AsynchExitRequestException {
+	  
+	  	
+	  	SortedMap<Integer, NetLink> lo = rbd.getLinkOrder();
+	    LoopReporter lr = new LoopReporter(lo.size(), 20, monitor, 0, 1.0, "progress.linkAnnotationPrep");  
+	    List<NetLink> linkList = new ArrayList<NetLink>();  
+	    for (NetLink link : lo.values()) {   
+	      linkList.add(link);
+	      lr.report();
+	    }
+	    lr.finish();
+	    
+	    Map<NetNode, Integer> no = rbd.getNodeOrder();
+	    LoopReporter lr2 = new LoopReporter(no.size(), 20, monitor, 0, 1.0, "progress.nodeOrderInvert");  
+	    Map<Integer, NetNode> invNo = new HashMap<Integer, NetNode>();  
+	    for (NetNode node : no.keySet()) {
+	    	invNo.put(no.get(node), node);
+	    	lr2.report();
+	    }
+	    lr2.finish();
+	    
+	    AnnotationSet withShdwAnnots = calcLevelLinkAnnots(rbd, linkList, monitor, invNo, rbd.getNodeAnnotations());
+	    
+	    Map<Boolean, AnnotationSet> linkAnnots = new HashMap<Boolean, AnnotationSet>();
+	    linkAnnots.put(true, withShdwAnnots);
+	    linkAnnots.put(false, PluginSupportFactory.buildAnnotationSet()); // No link annots if no shadows...
+	    
+	    rbd.setLinkAnnotations(linkAnnots);
+	    return;
+	  }
+	 
+	  /*********************************************************************************************
+	  **
+	  ** Calculate Level annotations. First link on first node in level starts, last link on last
+	  ** node in level ends each annotation.
+	  */
+	    
+	  protected AnnotationSet calcLevelLinkAnnots(BuildData rbd, 
+	                                              List<NetLink> links, BTProgressMonitor monitor, 
+	                                              Map<Integer, NetNode> nodeOrder, AnnotationSet nodeAnnot) throws AsynchExitRequestException {   
+	    
+	    LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0, 1.0, "progress.linkAnnotationShad"); 
+	    HashMap<String, String> colorMap = new HashMap<String, String>();
+	
+	    //
+	    // Go through the links, look for first shadow link into start of node annotation group. That's the break
+	    // for the link annotation.
+	    //
+	    
+	    AnnotationSet retval = PluginSupportFactory.buildAnnotationSet();
+	    boolean first = true;
+	    int startPos = 0;
+	    int numLink = links.size();
+	    int annotCount = 0;
+	    for (Annot currAnnot : nodeAnnot) {
+	    	if (first) {
+	    		first = false;
+	    		continue;
+	    	}
+	    	MinMax mm = currAnnot.getRange();
+	    	NetNode start = nodeOrder.get(mm.min);
+	    	
+	      for (int i = 0; i < numLink; i++) {
+	        NetLink link = links.get(i);
+	        NetNode src = link.getSrcNode();
+	        if (link.getAugRelation().isShadow && src.equals(start)) {
+	        	retval.addAnnot(PluginSupportFactory.buildAnnotation("Level " + annotCount++, startPos, i - 1, 0, null));
+	        	startPos = i;
+	        	break;
+	        }
+	      }
+	    }
+	    retval.addAnnot(PluginSupportFactory.buildAnnotation("Level " + annotCount, startPos, numLink - 1, 0, null));
+	    return (retval);
+	  }
   }
 }

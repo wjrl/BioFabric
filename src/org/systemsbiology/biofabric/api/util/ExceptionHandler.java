@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2009 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -30,7 +30,7 @@ import org.systemsbiology.biofabric.util.ResourceManager;
 ** Exception Handler.  This is a Singleton.
 */
 
-public class ExceptionHandler {
+public final class ExceptionHandler {
   
   ////////////////////////////////////////////////////////////////////////////
   //

@@ -58,6 +58,7 @@ import org.systemsbiology.biofabric.api.layout.DefaultLayout;
 import org.systemsbiology.biofabric.api.layout.EdgeLayout;
 import org.systemsbiology.biofabric.api.layout.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.api.layout.NodeLayout;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
 import org.systemsbiology.biofabric.api.model.AugRelation;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
@@ -75,7 +76,7 @@ import org.systemsbiology.biofabric.cmd.HeadlessOracle;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
-import org.systemsbiology.biofabric.model.AnnotationSet;
+
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.ProgressFilterInputStream;
@@ -158,7 +159,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
 
   ////////////////////////////////////////////////////////////////////////////
   //
-  // PRIVATE CONSTRUCTORS
+  // CONSTRUCTORS
   //
   ////////////////////////////////////////////////////////////////////////////
   
@@ -168,8 +169,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   */ 
   
   public FileLoadFlowsImpl(BioFabricWindow bfw, PlugInManager pMan,
-                       FabricColorGenerator colGen, CommandSet cSet,
-                       HeadlessOracle headlessOracle, boolean isForMain) {
+                           FabricColorGenerator colGen, CommandSet cSet,
+                           HeadlessOracle headlessOracle, boolean isForMain) {
     bfw_ = bfw;
     pMan_ = pMan;
     topWindow_ = bfw.getWindow();
@@ -1614,7 +1615,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     }
     
     public void handleCancellation() {
-    	UiUtil.fixMePrintout("May want to give user the option to not do this, though the file is messed up.");
+    	// Maybe a future enhancement to allow user to choose if they wish the cancelled file wrote to be deleted?
     	if (file_ != null) {
     	  file_.delete();
     	}
@@ -1934,6 +1935,16 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       if (remoteEx instanceof IOException) {
         finishedImport(null, (IOException)remoteEx);
         return (true);
+      } else if (remoteEx instanceof LayoutCriterionFailureException) {
+        ResourceManager rMan = ResourceManager.getManager();
+        JOptionPane.showMessageDialog(topWindow_, 
+                                      rMan.getString("netLayout.unmetCriteriaMessage"), 
+                                      rMan.getString("netLayout.unmetCriteriaTitle"),
+                                      JOptionPane.ERROR_MESSAGE);
+        
+        
+        cancelAndRestore(holdIt_);     
+        return (true);
       }
       return (false);
     }    
@@ -2057,6 +2068,9 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         }
         return (bi);
       } catch (IOException ex) {
+        bfwk_.stashException(ex);
+        return (null);
+      } catch (LayoutCriterionFailureException ex) {
         bfwk_.stashException(ex);
         return (null);
       }
@@ -2429,7 +2443,9 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
 
   public BufferedImage expensiveModelOperations(BuildData bfnbd, 
                                                 boolean forMain, 
-                                                BTProgressMonitor monitor) throws IOException, AsynchExitRequestException {
+                                                BTProgressMonitor monitor) throws IOException, 
+  																																								AsynchExitRequestException,
+  	                                                                              LayoutCriterionFailureException {
     Dimension screenSize = (forMain && (headlessOracle_ == null)) ? Toolkit.getDefaultToolkit().getScreenSize() : new Dimension(600, 800);
     // Possibly expensive network analysis preparation:
     BioFabricNetwork bfn = new BioFabricNetwork(bfnbd, pMan_, monitor);
@@ -2563,6 +2579,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       postLoadOperations(topImage);
     } catch (AsynchExitRequestException aex) {
       // Not being used in background; will not happen
+    } catch (LayoutCriterionFailureException ex) {
+      // No links to lay out; will not happen
     }
     return;
   }

@@ -32,13 +32,15 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.systemsbiology.biofabric.api.model.Annot;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.api.worker.LoopReporter;
-import org.systemsbiology.biofabric.model.AnnotationSet;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.UiUtil;
 
@@ -130,7 +132,7 @@ public class AnnotationLoader {
 	    // Need to build a map from node name to row so we can build the Annotations. Invert
 	    // what we have:
 	    //
-      AnnotationSet aSet = new AnnotationSet();
+      AnnotationSet aSet = PluginSupportFactory.buildAnnotationSet();
 	    HashMap<NetNode, Integer> idToRow = new HashMap<NetNode, Integer>();
 	    int numNodes = bfn.getRowCount();
 	    for (int i = 0; i < numNodes; i++) {
@@ -157,8 +159,8 @@ public class AnnotationLoader {
     	linksToCols.put(Boolean.TRUE, linkToColWithShadow);
     	linksToCols.put(Boolean.FALSE, linkToColNoShadow);
     	 
-      AnnotationSet aSetShad = new AnnotationSet();
-      AnnotationSet aSet = new AnnotationSet();
+      AnnotationSet aSetShad = PluginSupportFactory.buildAnnotationSet();
+      AnnotationSet aSet = PluginSupportFactory.buildAnnotationSet();
       retval.put(Boolean.TRUE, aSetShad);
       retval.put(Boolean.FALSE, aSet);
     	
@@ -273,7 +275,7 @@ public class AnnotationLoader {
     String colorName = (tokens.length == 5) ? null : tokens[5];
     
     try {
-      AnnotationSet.Annot annot = new AnnotationSet.Annot(name, min, max, layer, colorName);
+      Annot annot = PluginSupportFactory.buildAnnotation(name, min, max, layer, colorName);
       aSets.get(Boolean.valueOf(isShadow)).addAnnot(annot);
     } catch (IllegalArgumentException iaex) {
       stats.badTok = tokens[1] + " " + tokens[2] + " " + tokens[3];
@@ -385,7 +387,7 @@ public class AnnotationLoader {
     String colorName = (tokens.length == 4) ? null : tokens[4];
      
     try {
-      AnnotationSet.Annot annot = new AnnotationSet.Annot(name, min, max, layer, colorName);
+      Annot annot = PluginSupportFactory.buildAnnotation(name, min, max, layer, colorName);
       aSet.addAnnot(annot);
     } catch (IllegalArgumentException iaex) {
       stats.badTok = tokens[1] + " " + tokens[2] + " " + tokens[3];

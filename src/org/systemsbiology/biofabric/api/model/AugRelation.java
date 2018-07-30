@@ -25,7 +25,7 @@ package org.systemsbiology.biofabric.api.model;
 ** Augmented relation
 */  
 
-public class AugRelation implements Cloneable, Comparable<AugRelation> {
+public final class AugRelation implements Cloneable, Comparable<AugRelation> {
   public String relation;
   public boolean isShadow;
   

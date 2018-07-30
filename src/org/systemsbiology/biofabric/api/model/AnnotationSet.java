@@ -19,15 +19,21 @@
 
 package org.systemsbiology.biofabric.api.model;
 
-import org.systemsbiology.biofabric.api.util.NID;
+import java.util.Iterator;
 
 /****************************************************************************
 **
-** This is the interface for network links that plugins can use
+** Used for annotating contiguous sets of nodes
 */
 
-public interface NetNode extends Comparable<NetNode> {
-  public String getName();
-  public int compareTo(NetNode other);
-  public NID.WithName getNID();
+public interface AnnotationSet extends Iterable<Annot> {
+ 
+  public Iterator<Annot> iterator();
+  
+  public int size();
+  
+  public void addAnnot(Annot an);
+  
+  public void fillAnnots(AnnotsForPos fillIt, Integer whereObj);
+
 }

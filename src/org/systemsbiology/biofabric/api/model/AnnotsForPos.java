@@ -19,15 +19,20 @@
 
 package org.systemsbiology.biofabric.api.model;
 
-import org.systemsbiology.biofabric.api.util.NID;
+import java.util.List;
 
-/****************************************************************************
+/***************************************************************************
 **
-** This is the interface for network links that plugins can use
-*/
+** Class to hold all the annotations relevant for a given position (row or column)
+*/  
 
-public interface NetNode extends Comparable<NetNode> {
-  public String getName();
-  public int compareTo(NetNode other);
-  public NID.WithName getNID();
+public interface AnnotsForPos {
+
+  public void addAnnot(Annot toAdd);
+
+  public void clear();
+  
+  public void displayStrings(List<String> fill);
 }
+  
+ 

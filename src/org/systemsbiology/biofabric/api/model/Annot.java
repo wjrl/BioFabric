@@ -19,15 +19,25 @@
 
 package org.systemsbiology.biofabric.api.model;
 
-import org.systemsbiology.biofabric.api.util.NID;
+import org.systemsbiology.biofabric.api.layout.AnnotColorSource;
+import org.systemsbiology.biofabric.util.MinMax;
 
-/****************************************************************************
+/***************************************************************************
 **
-** This is the interface for network links that plugins can use
-*/
-
-public interface NetNode extends Comparable<NetNode> {
+** Class to hold a single annotation
+*/  
+  
+public interface Annot extends Comparable<Annot> {
+ 
   public String getName();
-  public int compareTo(NetNode other);
-  public NID.WithName getNID();
+  
+  public MinMax getRange();
+  
+  public int getLayer();
+  
+  // May be null if user wants automatic cycling:
+  public AnnotColorSource.AnnotColor getColor();
+
+  public int compareTo(Annot otherAnnot);
+  
 }
