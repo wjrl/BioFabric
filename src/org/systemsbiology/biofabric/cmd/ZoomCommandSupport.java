@@ -101,7 +101,6 @@ public class ZoomCommandSupport {
   */
 
   public int[] getZoomLevels() {
-  	System.out.println("Ses " + zooms_.length);
     return (zooms_);
   }
   
@@ -111,7 +110,6 @@ public class ZoomCommandSupport {
   */
 
   public void setZoomPoints(double[] zoomVals) {
-  	System.out.println("Set zoom points " + zoomVals.length);
     zoomVals_ = zoomVals;
     currZoomIndex_ = 0;
     customZoom_ = 0.0;
@@ -125,7 +123,6 @@ public class ZoomCommandSupport {
   */
 
   public int[] getZoomIndices() {
-  	System.out.println("Get zoom indices " + zoomVals_);
   	int len = (zoomVals_ == null) ? 0 : zoomVals_.length;
   	int[] retval = new int[len];  	
   	for (int i = 0; i < len; i++) {
@@ -439,7 +436,6 @@ public class ZoomCommandSupport {
   */ 
     
   private void setCurrentZoom(ZoomResult zres) {
-  	System.out.println("Set current zoom to " + zres);
     if (zres.doCustom) {
       customZoom_ = zres.customZoom;
       currZoomIndex_ = -1;

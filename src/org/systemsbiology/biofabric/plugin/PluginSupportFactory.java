@@ -30,6 +30,7 @@ import org.systemsbiology.biofabric.api.model.Annot;
 import org.systemsbiology.biofabric.api.model.AnnotationSet;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.NID;
 import org.systemsbiology.biofabric.api.util.PluginResourceManager;
 import org.systemsbiology.biofabric.api.util.PreferenceStorage;
 import org.systemsbiology.biofabric.api.util.UniqueLabeller;
@@ -37,6 +38,8 @@ import org.systemsbiology.biofabric.api.worker.BFWorker;
 import org.systemsbiology.biofabric.api.worker.BackgroundWorkerControlManager;
 import org.systemsbiology.biofabric.api.worker.BackgroundWorkerOwner;
 import org.systemsbiology.biofabric.model.AnnotationSetImpl;
+import org.systemsbiology.biofabric.model.FabricLink;
+import org.systemsbiology.biofabric.model.FabricNode;
 import org.systemsbiology.biofabric.io.BuildDataImpl;
 import org.systemsbiology.biofabric.io.BuildExtractorImpl;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -58,6 +61,33 @@ public class PluginSupportFactory {
   //
   ////////////////////////////////////////////////////////////////////////////
 
+  /***************************************************************************
+  **
+  ** Get a Network Node
+  */
+  
+  public static NetNode buildNode(NID id, String name) {
+  	return (new FabricNode(id, name));
+  }
+	
+	/***************************************************************************
+  **
+  ** Get a Network Link
+  */
+  
+  public static NetLink buildLink(NetNode srcID, NetNode trgID, String relation, boolean isShadow, Boolean directed) {
+  	return (new FabricLink(srcID, trgID, relation, isShadow, directed));
+  }
+  
+  /***************************************************************************
+  **
+  ** Get a Network Link
+  */
+  
+  public static NetLink buildLink(NetNode srcID, NetNode trgID, String relation, boolean isShadow) {
+  	return (new FabricLink(srcID, trgID, relation, isShadow));
+  }
+  
 	/***************************************************************************
   **
   ** Build an empty Annotation Set
