@@ -34,6 +34,7 @@ import javax.swing.border.EmptyBorder;
 import org.systemsbiology.biofabric.api.dialog.DialogSupport.Buttons;
 import org.systemsbiology.biofabric.api.dialog.DialogSupport.DialogSupportClient;
 import org.systemsbiology.biofabric.util.ResourceManager;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -194,6 +195,24 @@ public abstract class BTStashResultsDialog extends JDialog implements DialogSupp
     return;
   }
   
+  /***************************************************************************
+  **
+  ** Add a labeled component with a right button
+  */ 
+  
+  public void addLabeledFileBrowse(JLabel label, JComponent comp, JButton button) {
+  	
+  	JPanel pan = new JPanel();
+    pan.setLayout(new GridBagLayout());
+    UiUtil.gbcSet(gbc_, 0, 0, 1, 1, UiUtil.HOR, 0, 0, 5, 5, 5, 5, UiUtil.E, 1.0, 0.0);
+    pan.add(comp, gbc_);
+    UiUtil.gbcSet(gbc_, 1, 0, 1, 1, UiUtil.NONE, 0, 0, 5, 5, 5, 5, UiUtil.CEN, 0.0, 0.0);    
+    pan.add(button, gbc_);
+  	
+  	addLabeledWidget(label, pan, true, false);
+  	return;
+  }
+
   /***************************************************************************
   **
   ** Add a table

@@ -36,10 +36,10 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.FixedJButton;
 import org.systemsbiology.biofabric.api.util.PluginResourceManager;
 import org.systemsbiology.biofabric.api.worker.BackgroundWorkerControlManager;
 import org.systemsbiology.biofabric.api.worker.BackgroundWorkerOwner;
-import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.GoodnessChart;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;

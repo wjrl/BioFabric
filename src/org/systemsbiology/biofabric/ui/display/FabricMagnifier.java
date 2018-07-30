@@ -37,7 +37,6 @@ import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptions;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
-import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **

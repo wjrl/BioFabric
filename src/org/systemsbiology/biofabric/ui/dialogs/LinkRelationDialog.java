@@ -35,7 +35,7 @@ import javax.swing.event.DocumentListener;
 import org.systemsbiology.biofabric.api.dialog.BTStashResultsDialog;
 import org.systemsbiology.biofabric.api.dialog.DialogSupport;
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
-import org.systemsbiology.biofabric.util.FixedJButton;
+import org.systemsbiology.biofabric.api.util.FixedJButton;
 import org.systemsbiology.biofabric.util.ResourceManager;
 
 public class LinkRelationDialog extends BTStashResultsDialog {

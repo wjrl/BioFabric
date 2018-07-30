@@ -33,7 +33,7 @@ import javax.swing.JLabel;
 import javax.swing.border.Border;
 
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
-import org.systemsbiology.biofabric.util.FixedJButton;
+import org.systemsbiology.biofabric.api.util.FixedJButton;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 
@@ -568,6 +568,16 @@ public class DialogSupport {
     cp.add(comp, gbc_);        
     return (rowNum);
   }
+  
+
+  
+  
+  
+
+  
+  
+  
+  
   
   /***************************************************************************
   **
