@@ -35,7 +35,7 @@ import org.systemsbiology.biofabric.util.DataUtil;
 ** with something newer?
 */  
 
-public class LinkComparator implements Comparator<NetLink> {
+public final class LinkComparator implements Comparator<NetLink> {
   
   public int compare(NetLink one, NetLink otherLink) {
     if (one.equals(otherLink)) {

@@ -17,54 +17,33 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biofabric.api.worker;
+package org.systemsbiology.biofabric.api.util;
+
+import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 /****************************************************************************
 **
-** An interface for monitoring progress
+** Hides implementation of how we store preferences.
 */
 
-public interface BFWorker {
- 
-  ////////////////////////////////////////////////////////////////////////////
-  //
-  // PUBLIC METHODS
-  //
-  ////////////////////////////////////////////////////////////////////////////
+public final class PreferenceStorage {
 
   /***************************************************************************
   **
-  ** Get the progress monitor
-  */
-
-  public BTProgressMonitor getMonitor();  
+  ** Store preference
+  */ 
+    
+  public void setPreference(String key, String val) {
+    FabricCommands.setPreference(key, val);
+    return;
+  }    
   
   /***************************************************************************
   **
-  ** Set the run core
-  */
-  
-  public void setCore(BackgroundCore core);
-  
-  /***************************************************************************
-  **
-  ** Launch the run core
-  */
-  
-  public void launchWorker();
-  
-  /***************************************************************************
-  **
-  ** Stash exception for later display
-  */
-  
-  public void stashException(Exception ex);
-  
-  /***************************************************************************
-  **
-  ** Add goodness chart
-  */  
-  
-  public void makeSuperChart();
- 
+  ** Preferences are stored by package.
+  */ 
+    
+  public String getPreference(String key) {
+  	return (FabricCommands.getPreference(key));
+  } 
 }

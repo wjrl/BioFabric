@@ -24,7 +24,7 @@ package org.systemsbiology.biofabric.api.layout;
 ** A Class
 */
 
-public class LayoutCriterionFailureException extends Exception {
+public final class LayoutCriterionFailureException extends Exception {
   
   ////////////////////////////////////////////////////////////////////////////
   //

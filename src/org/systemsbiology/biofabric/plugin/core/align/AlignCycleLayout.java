@@ -39,7 +39,6 @@ import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.api.worker.LoopReporter;
-import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -442,12 +441,12 @@ public class AlignCycleLayout extends NodeLayout {
     //
     
     LoopReporter lr = new LoopReporter(align.size(), 20, monitor, 0.0, 1.00, "progress.normalizeAlignMapA");
-    UiUtil.fixMePrintout("Actually check loop progress");
     
     HashSet<String> keyNames = new HashSet<String>();
     for (NetNode key : align.keySet()) {
       if (keyNames.contains(key.getName())) {
       	lr.finish();
+      	System.err.println("Duplicated key " + key.getName());
         return (null); 
       }
       keyNames.add(key.getName());
@@ -461,6 +460,7 @@ public class AlignCycleLayout extends NodeLayout {
     for (NetNode value : align.values()) {
       if (valNames.contains(value.getName())) {
       	lr2.finish();
+      	System.err.println("Duplicated value " + value.getName());
         return (null); 
       }
       valNames.add(value.getName());

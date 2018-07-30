@@ -34,6 +34,7 @@ import org.systemsbiology.biofabric.api.layout.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.api.layout.DefaultLayout;
 import org.systemsbiology.biofabric.api.layout.EdgeLayout;
 import org.systemsbiology.biofabric.api.layout.NodeLayout;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.model.Network;
@@ -46,7 +47,7 @@ import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 import org.systemsbiology.biofabric.layouts.SetLayout;
 import org.systemsbiology.biofabric.layouts.WorldBankLayout;
-import org.systemsbiology.biofabric.model.AnnotationSet;
+
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.plugin.PluginBuildData;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -482,7 +483,9 @@ public class BuildDataImpl implements BuildData {
       case CLUSTERED_LAYOUT:  
       case NODE_CLUSTER_LAYOUT:
          // The above layouts do edge layout as part of node layout:
-        return (null);	
+        return (null);
+      case HIER_DAG_LAYOUT: 
+      	return (new HierDAGLayout.EdgeLayout());	
   	  default:
   	  	return (new DefaultEdgeLayout());	
   	}

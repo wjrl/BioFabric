@@ -31,16 +31,15 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.api.io.BuildData;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
 import org.systemsbiology.biofabric.api.model.AugRelation;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.model.Network;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.api.worker.LoopReporter;
-import org.systemsbiology.biofabric.model.AnnotationSet;
-import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.ui.FabricColorGenerator;
-import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 
 /****************************************************************************
 **
@@ -92,10 +91,10 @@ public class DefaultEdgeLayout implements EdgeLayout {
   */
   
   public SortedMap<Integer, NetLink> layoutEdges(Map<NetNode, Integer> nodeOrder,
-  		                                              Set<NetLink> allLinks,
-  		                                              List<String> linkGroups,
-  		                                              BioFabricNetwork.LayoutMode layoutMode,
-  		                                              BTProgressMonitor monitor) throws AsynchExitRequestException {
+  		                                           Set<NetLink> allLinks,
+  		                                           List<String> linkGroups,
+  		                                           Network.LayoutMode layoutMode,
+  		                                           BTProgressMonitor monitor) throws AsynchExitRequestException {
     //
     // Build target->row map:
     //
@@ -176,7 +175,7 @@ public class DefaultEdgeLayout implements EdgeLayout {
 
   /***************************************************************************
   **
-  ** Install link annotations for 
+  ** Install link annotations for link groups
   */
   
   protected void installLinkAnnotations(BuildData rbd, BTProgressMonitor monitor)
@@ -212,18 +211,9 @@ public class DefaultEdgeLayout implements EdgeLayout {
     
     String which = (shadow) ? "progress.linkAnnotationShad" : "progress.linkAnnotationNoShad";
     LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0, 1.0, which); 
-    HashMap<String, String> colorMap = new HashMap<String, String>();
-    int numLg = linkGroups.size();
-    PaintCacheSmall pcs = new PaintCacheSmall(new FabricColorGenerator());
-    int numColor = pcs.getAnnotColorCount();
-
-    for (int i = 0; i < numLg; i++) {
-      String linkGroup = linkGroups.get(i);
-      PaintCacheSmall.AnnotColor ac = pcs.getAnnotColor(i % numColor);
-      colorMap.put(linkGroup, ac.getName());
-    }
-
-    AnnotationSet retval = new AnnotationSet();
+    Map<String, String> colorMap = AnnotColorSource.getColorMap(linkGroups);
+  
+    AnnotationSet retval = PluginSupportFactory.buildAnnotationSet();
     String lastType = null;
     int startPos = 0;
     int endPos = 0;
@@ -242,14 +232,14 @@ public class DefaultEdgeLayout implements EdgeLayout {
       } else if (lastType.equals(thisType)) {
         // do nothing              
       } else {
-        retval.addAnnot(new AnnotationSet.Annot(lastType, startPos, endPos, 0, getColor(lastType, colorMap)));
+        retval.addAnnot(PluginSupportFactory.buildAnnotation(lastType, startPos, endPos, 0, getColor(lastType, colorMap)));
         lastType = thisType;
         startPos = count;
       }
       endPos = count++;
     }
     if (lastType != null) {
-      retval.addAnnot(new AnnotationSet.Annot(lastType, startPos, endPos, 0, getColor(lastType, colorMap)));
+      retval.addAnnot(PluginSupportFactory.buildAnnotation(lastType, startPos, endPos, 0, getColor(lastType, colorMap)));
     }
     lr.finish();
     return (retval);
@@ -299,10 +289,10 @@ public class DefaultEdgeLayout implements EdgeLayout {
   	private Map<NetNode, Integer> nodeToRow_;
   	private List<String> relOrder_;
   	private Map<String, String> augToRel_;
-  	BioFabricNetwork.LayoutMode layMode_;
+  	Network.LayoutMode layMode_;
   	
   	public DefaultFabricLinkLocater(Map<NetNode, Integer> nodeToRow, List<String> relOrder,
-  			                            Map<String, String> augToRel, BioFabricNetwork.LayoutMode layMode) {
+  			                            Map<String, String> augToRel, Network.LayoutMode layMode) {
   		nodeToRow_ = nodeToRow;
   		augToRel_ = augToRel;
   		relOrder_ = relOrder;
@@ -342,7 +332,7 @@ public class DefaultEdgeLayout implements EdgeLayout {
   		// If layout mode is global, then the augmented relation order is what counts the most!
   		//
   		
-  		if (layMode_ == BioFabricNetwork.LayoutMode.PER_NETWORK_MODE) {
+  		if (layMode_ == Network.LayoutMode.PER_NETWORK_MODE) {
   			AugRelation link1Rel = link1.getAugRelation();
   			AugRelation link2Rel = link2.getAugRelation();
   			int ord1 = relOrder_.indexOf(augToRel_.get(link1Rel.relation));
@@ -432,7 +422,7 @@ public class DefaultEdgeLayout implements EdgeLayout {
   	  //
   	  // If we are in per node mode, the link group order has first precedence:
   	  //
-  		if (layMode_ == BioFabricNetwork.LayoutMode.PER_NODE_MODE) {
+  		if (layMode_ == Network.LayoutMode.PER_NODE_MODE) {
   			int ord1 = relOrder_.indexOf(augToRel_.get(link1Rel.relation));
   			int ord2 = relOrder_.indexOf(augToRel_.get(link2Rel.relation));
   			int ordDiff = ord1 - ord2;

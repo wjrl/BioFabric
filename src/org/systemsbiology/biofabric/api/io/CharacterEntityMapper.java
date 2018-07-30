@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -24,10 +24,10 @@ import java.util.regex.Matcher;
 
 /****************************************************************************
 **
-** Utility for rewriting cahrater entities
+** Utility for rewriting character entities
 */
 
-public class CharacterEntityMapper {
+public final class CharacterEntityMapper {
 
   ////////////////////////////////////////////////////////////////////////////
   //

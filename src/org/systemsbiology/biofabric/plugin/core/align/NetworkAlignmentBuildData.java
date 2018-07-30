@@ -35,7 +35,6 @@ import org.systemsbiology.biofabric.api.layout.NodeLayout;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.plugin.PluginBuildData;
-import org.systemsbiology.biofabric.util.UiUtil;
 
 /***************************************************************************
  **

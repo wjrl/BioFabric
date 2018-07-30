@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2004 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -27,7 +27,7 @@ import org.xml.sax.Attributes;
 ** Utility for extracting attributes
 */
 
-public class AttributeExtractor {
+public final class AttributeExtractor {
 
   ////////////////////////////////////////////////////////////////////////////
   //

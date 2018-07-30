@@ -30,7 +30,10 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.systemsbiology.biofabric.model.AnnotationSet;
+import org.systemsbiology.biofabric.api.layout.AnnotColorSource;
+import org.systemsbiology.biofabric.api.model.Annot;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
+import org.systemsbiology.biofabric.model.AnnotationSetImpl;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.BioFabricNetwork.LinkInfo;
 import org.systemsbiology.biofabric.model.BioFabricNetwork.NodeInfo;
@@ -63,7 +66,7 @@ public class BucketRenderer implements BufBuildDrawer {
   private boolean showShadows_;
   private Rectangle2D worldRect_;
   private ImgAndBufPool bis_;
-  private Color[] annotColors_;
+  private AnnotColorSource.AnnotColor[] annotColors_;
   private Color[] linkAnnotGrays_;
   private final Color[] nodeCycle_;
   private final Color[] linkCycle_;
@@ -89,8 +92,8 @@ public class BucketRenderer implements BufBuildDrawer {
     linkList_ = new ArrayList<LinkInfo>();
     ext_ = new BioFabricNetwork.Extents();
     worldRect_ = new Rectangle2D.Double(0.0, 0.0, 100.0, 100.0);
-    nodeAnnot_ = new AnnotationSet();
-    linkAnnot_ = new AnnotationSet();
+    nodeAnnot_ = new AnnotationSetImpl();
+    linkAnnot_ = new AnnotationSetImpl();
     bis_ = null;
     
     //
@@ -169,17 +172,8 @@ public class BucketRenderer implements BufBuildDrawer {
       new Color(99,90,102)
     };
     
-    PaintCacheSmall pcs = new PaintCacheSmall(null);
-    int numCol = pcs.getAnnotColorCount();
-    annotColors_ = new Color[numCol];
-    for (int i = 0; i < numCol; i++) {
-    	annotColors_[i] = pcs.getAnnotColor(i).getColor();
-    }
-    int numGray = pcs.getLinkAnnotGrayCount();
-    linkAnnotGrays_ = new Color[numGray];
-    for (int i = 0; i < numGray; i++) {
-    	linkAnnotGrays_[i] = pcs.getLinkAnnotGray(i);
-    }
+    annotColors_ = AnnotColorSource.getColorCycle();
+    linkAnnotGrays_ = AnnotColorSource.getGrayCycle();
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -412,7 +406,7 @@ public class BucketRenderer implements BufBuildDrawer {
 	  int pad = PaintCacheSmall.calcAnnotationPad(linkCols);
 	  
 	  int colNum = 0;
-    for (AnnotationSet.Annot annot : this.nodeAnnot_) {
+    for (Annot annot : this.nodeAnnot_) {
 	    MinMax rowRange = annot.getRange();
       for (int i = rowRange.min; i <= rowRange.max; i++) {
 		    bam.xStrt = linkCols.min * BioFabricPanel.GRID_SIZE;
@@ -424,7 +418,7 @@ public class BucketRenderer implements BufBuildDrawer {
 		    int bufStart = (bam.startPtInV.y * bam.scrnWidth) + bam.startPtInV.x - bufOffset;
 		    int bufEnd = (bam.endPtInV.y * bam.scrnWidth) + bam.endPtInV.x - bufOffset;
 		      
-		    PaintCacheSmall.AnnotColor acol = annot.getColor();
+		    AnnotColorSource.AnnotColor acol = annot.getColor();
 		    int useColorNum = (acol == null) ? colNum : acol.getCycle();
 		    
 		    bam.transColorToBuf(bufStart, bufEnd, useColorNum);
@@ -437,9 +431,10 @@ public class BucketRenderer implements BufBuildDrawer {
     	if ((val == -1) || (val == 0)) {
     		continue;
     	}
-    	int red = annotColors_[val - 1].getRed();
-    	int green = annotColors_[val - 1].getGreen();
-    	int blue = annotColors_[val - 1].getBlue();
+    	Color col = annotColors_[val - 1].getColor();
+    	int red = col.getRed();
+    	int green = col.getGreen();
+    	int blue = col.getBlue();
  
       int rgb = 255 << 24 | red << 16 | green << 8 | blue;
     //  mybuf[i] = rgb;
@@ -478,10 +473,19 @@ public class BucketRenderer implements BufBuildDrawer {
 	  MinMax nodeRows = ext_.allNodeFullRange.get(Boolean.valueOf(showShadows_));
 	  int pad = PaintCacheSmall.calcAnnotationPad(nodeRows);
 	  
-	  Color[] useColors = ((nodeAnnot_ != null) && (nodeAnnot_.size() > 0)) ? linkAnnotGrays_ : annotColors_;
+	  Color[] useColors;
+	  if ((nodeAnnot_ != null) && (nodeAnnot_.size() > 0)) {
+	  	useColors = linkAnnotGrays_;
+	  	
+	  } else {
+	  	useColors = new Color[annotColors_.length];
+	  	for (int i = 0; i < annotColors_.length; i++) {
+	  		useColors[i] = annotColors_[i].getColor();
+	  	}
+	  }
 	  
 	  int colNum = 0;
-    for (AnnotationSet.Annot annot : linkAnnot_) {
+    for (Annot annot : linkAnnot_) {
 	    MinMax colRange = annot.getRange();
       for (int i = nodeRows.min; i <= nodeRows.max; i++) {
 		    bam.xStrt = colRange.min * BioFabricPanel.GRID_SIZE;
@@ -493,7 +497,7 @@ public class BucketRenderer implements BufBuildDrawer {
 		    int bufStart = (bam.startPtInV.y * bam.scrnWidth) + bam.startPtInV.x - bufOffset;
 		    int bufEnd = (bam.endPtInV.y * bam.scrnWidth) + bam.endPtInV.x - bufOffset;
 		      
-        PaintCacheSmall.AnnotColor acol = annot.getColor();
+        AnnotColorSource.AnnotColor acol = annot.getColor();
         int useColorNum = (acol == null) ? colNum : acol.getCycle();
 
 		    bam.transColorToBuf(bufStart, bufEnd, useColorNum);

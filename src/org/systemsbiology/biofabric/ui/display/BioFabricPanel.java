@@ -58,6 +58,8 @@ import javax.swing.JScrollPane;
 import javax.swing.JViewport;
 
 import org.systemsbiology.biofabric.api.io.BuildData;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
+import org.systemsbiology.biofabric.api.model.AnnotsForPos;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
@@ -71,7 +73,7 @@ import org.systemsbiology.biofabric.cmd.ZoomTarget;
 import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.io.BuildDataImpl;
-import org.systemsbiology.biofabric.model.AnnotationSet;
+import org.systemsbiology.biofabric.model.AnnotationSetImpl;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.ui.BasicZoomTargetSupport;
@@ -1994,7 +1996,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     retval.nodeAnnotations.clear();
     AnnotationSet ansn = bfn_.getNodeAnnotations();
     if (ansn != null) {
-      AnnotationSet.AnnotsForPos a4pn = new AnnotationSet.AnnotsForPos(); // FIXME make an instance variable?
+      AnnotsForPos a4pn = new AnnotationSetImpl.AnnotsForPosImpl(); // FIXME make an instance variable?
       ansn.fillAnnots(a4pn, rowObj);
       a4pn.displayStrings(retval.nodeAnnotations);
     }
@@ -2002,7 +2004,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     retval.linkAnnotations.clear();
     AnnotationSet ansl = bfn_.getLinkAnnotations(showShadows);
     if (ansl != null) {
-      AnnotationSet.AnnotsForPos a4pl = new AnnotationSet.AnnotsForPos(); // FIXME make an instance variable?
+      AnnotsForPos a4pl = new AnnotationSetImpl.AnnotsForPosImpl(); // FIXME make an instance variable?
       ansl.fillAnnots(a4pl, colObj);
       a4pl.displayStrings(retval.linkAnnotations);
     }
