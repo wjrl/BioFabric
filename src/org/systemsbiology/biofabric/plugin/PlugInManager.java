@@ -37,6 +37,7 @@ import java.io.PrintWriter;
 
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.SUParser;
+import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 import org.xml.sax.Attributes;
 import org.systemsbiology.biofabric.api.io.Indenter;
 import org.systemsbiology.biofabric.api.parser.AbstractFactoryClient;
@@ -63,6 +64,7 @@ public class PlugInManager {
   private ArrayList<BioFabricToolPlugIn> toolPlugIns_;
   private int maxCount_;
   private TreeSet<AbstractPlugInDirective> directives_;
+  private File userSetDirectory_;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -87,6 +89,17 @@ public class PlugInManager {
   //
   ////////////////////////////////////////////////////////////////////////////
 
+  /***************************************************************************
+  **
+  ** Install a new user-specified plugin directory
+  */
+  
+  public void setDirectory(File directory) {
+    userSetDirectory_ = directory;
+    FabricCommands.setPreference("PlugInDirectory", userSetDirectory_.getAbsolutePath());
+    return;
+  }
+  
   /***************************************************************************
   **
   ** Install a new network
@@ -182,6 +195,21 @@ public class PlugInManager {
       }
     }
     
+    //
+    // Now load from jar files, if located in directory specified in favorites:
+    //
+    
+    String plugDirPref = FabricCommands.getPreference("PlugInDirectory");
+    if (plugDirPref != null) {
+      File plugDirectory = new File(plugDirPref);
+      if (!plugDirectory.exists() || !plugDirectory.isDirectory() || !plugDirectory.canRead()) {
+        return (false);
+      }
+      if (!readJarFiles(plugDirectory, maxCount_ + 1)) {
+         return (false);
+      }
+    }
+
     Iterator<AbstractPlugInDirective> drit = directives_.iterator();
     while (drit.hasNext()) {
       // May be either legacy type or modern type:
@@ -242,7 +270,7 @@ public class PlugInManager {
           List<String> sl = getServiceList(jar, "org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn");
           int numSvc = sl.size();
           for (int j = 0; j < numSvc; j++) {
-            String plugin = (String)sl.get(j);
+            String plugin = sl.get(j);
             ToolPlugInDirective pid = new ToolPlugInDirective(plugin, Integer.toString(currMax++), files[i]);
             addDirective(pid);
           }

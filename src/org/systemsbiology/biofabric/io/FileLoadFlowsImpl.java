@@ -1002,6 +1002,44 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     }
     return (file);
   }
+  
+  /***************************************************************************
+  **
+  ** Get a directory
+  */
+  
+  public File getTheDirectory(String prefTag) { 
+    File file = null;      
+    String filename = FabricCommands.getPreference(prefTag);
+    while (file == null) {
+      JFileChooser chooser = new JFileChooser();           
+      chooser.setAcceptAllFileFilterUsed(true);
+      chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+      if (filename != null) {
+        File startDir = new File(filename);
+        if (startDir.exists()) {
+          chooser.setCurrentDirectory(startDir);  
+        }
+      }
+
+      int option = chooser.showOpenDialog(topWindow_);
+      if (option != JFileChooser.APPROVE_OPTION) {
+        return (null);
+      }
+      file = chooser.getSelectedFile();
+      if (file == null) {
+        return (null);
+      }     
+      
+      if (!standardFileChecks(file, FILE_MUST_EXIST, FILE_CAN_CREATE_DONT_CARE, 
+                                    FILE_DONT_CHECK_OVERWRITE, FILE_MUST_BE_DIRECTORY, 
+                                    FILE_CAN_WRITE_DONT_CARE, FILE_CAN_READ)) {
+        file = null;
+        continue; 
+      }
+    }
+    return (file);
+  }
 
   /***************************************************************************
   **
