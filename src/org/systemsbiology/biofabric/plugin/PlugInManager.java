@@ -64,7 +64,6 @@ public class PlugInManager {
   private ArrayList<BioFabricToolPlugIn> toolPlugIns_;
   private int maxCount_;
   private TreeSet<AbstractPlugInDirective> directives_;
-  private File userSetDirectory_;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -95,9 +94,17 @@ public class PlugInManager {
   */
   
   public void setDirectory(File directory) {
-    userSetDirectory_ = directory;
-    FabricCommands.setPreference("PlugInDirectory", userSetDirectory_.getAbsolutePath());
+    FabricCommands.setPreference("PlugInDirectory", directory.getAbsolutePath());
     return;
+  }
+  
+  /***************************************************************************
+  **
+  ** Install a new user-specified plugin directory
+  */
+  
+  public String getDirectory() {
+    return (FabricCommands.getPreference("PlugInDirectory"));
   }
   
   /***************************************************************************
@@ -196,17 +203,15 @@ public class PlugInManager {
     }
     
     //
-    // Now load from jar files, if located in directory specified in favorites:
+    // Now load from jar files, if located in directory specified in preferences. We silently fail if nothing
+    // is found:
     //
     
     String plugDirPref = FabricCommands.getPreference("PlugInDirectory");
     if (plugDirPref != null) {
       File plugDirectory = new File(plugDirPref);
-      if (!plugDirectory.exists() || !plugDirectory.isDirectory() || !plugDirectory.canRead()) {
-        return (false);
-      }
-      if (!readJarFiles(plugDirectory, maxCount_ + 1)) {
-         return (false);
+      if (plugDirectory.exists() && plugDirectory.isDirectory() && plugDirectory.canRead()) {
+      	readJarFiles(plugDirectory, maxCount_ + 1);
       }
     }
 

@@ -25,7 +25,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 
-import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -53,8 +52,8 @@ public class DirectoryChooserDialog extends BTStashResultsDialog {
   private FileLoadFlows flf_;
   
 
-  public DirectoryChooserDialog(JFrame parent, FileLoadFlows flf) {
-    super(parent, ResourceManager.getManager().getString("directoryChooser.title"), new Dimension(700, 200), 3);
+  public DirectoryChooserDialog(JFrame parent, FileLoadFlows flf, String currChoice) {
+    super(parent, ResourceManager.getManager().getString("directoryChooser.title"), new Dimension(800, 150), 3);
     
     ResourceManager rMan = ResourceManager.getManager();
      
@@ -74,8 +73,9 @@ public class DirectoryChooserDialog extends BTStashResultsDialog {
       public void actionPerformed(ActionEvent e) {
         try {
         	File directory = flf_.getTheDirectory("PlugInDirectory");
-        	nameField_.setText(directory.getAbsolutePath());
-        	
+        	if (directory != null) {
+        	  nameField_.setText(directory.getAbsolutePath());
+        	}
         } catch (Exception ex) {
           ExceptionHandler.getHandler().displayException(ex);
         }
@@ -84,6 +84,7 @@ public class DirectoryChooserDialog extends BTStashResultsDialog {
     
   
     nameField_ = new JTextField(30);
+    nameField_.setText((currChoice == null) ? "" : currChoice);
     JLabel directoryLabel = new JLabel(rMan.getString("directoryChooser.directory"));
     addLabeledFileBrowse(directoryLabel, nameField_, directoryBrowse);
     

@@ -1760,9 +1760,14 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
 
     protected boolean performOperation() {
       // prompt the user to enter their name
-    	DirectoryChooserDialog dcd = new DirectoryChooserDialog(topWindow_, flf_);
+    	String currentChoice = pMan_.getDirectory();
+    	DirectoryChooserDialog dcd = new DirectoryChooserDialog(topWindow_, flf_, currentChoice);
     	dcd.setVisible(true);
     	if (dcd.haveResult()) {
+    		ResourceManager rMan = ResourceManager.getManager();
+        JOptionPane.showMessageDialog(topWindow_, rMan.getString("setPlugin.RestartMessage"),
+                                      rMan.getString("setPlugin.RestartMessageTitle"),
+                                      JOptionPane.INFORMATION_MESSAGE);	
         File directory = dcd.getDirectory();
         pMan_.setDirectory(directory);
       }
