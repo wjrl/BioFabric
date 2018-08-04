@@ -381,6 +381,8 @@ public class BioFabricWindow implements BackgroundWorkerControlManager {
       fMenu.add(new JSeparator());
       fMenu.add(fc.getAction(CommandSet.PRINT, false, null));
       fMenu.add(new JSeparator());
+      fMenu.add(fc.getAction(CommandSet.SET_PLUGIN_DIR, false, null));
+      fMenu.add(new JSeparator());
       // Not supporting yet...
       //fMenu.add(fc.getAction(CommandSet.PRINT_PDF, false, null));
       //fMenu.add(new JSeparator());

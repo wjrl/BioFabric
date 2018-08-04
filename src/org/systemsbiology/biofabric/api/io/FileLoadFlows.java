@@ -141,6 +141,14 @@ public interface FileLoadFlows {
   
   public File getTheFile(String ext1, String ext2, String prefTag, String desc);
   
+  
+  /***************************************************************************
+  **
+  ** Get a directory
+  */
+  
+  public File getTheDirectory(String prefTag);
+  
   /***************************************************************************
   **
   ** Displays file reading error message
