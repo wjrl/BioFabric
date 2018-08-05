@@ -1,6 +1,8 @@
 BioFabric
 =========
 
+Current tip of master branch is now V2 beta
+
 BioFabric is an open-source network visualization tool that uses a new approach: nodes are represented as horizontal lines instead of as points:
 
 ![Les Miserables Network](http://www.biofabric.org/gallery/images/LesMiz1024.png)

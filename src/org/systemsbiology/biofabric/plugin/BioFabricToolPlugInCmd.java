@@ -17,48 +17,42 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biotapestry.biofabric;
+package org.systemsbiology.biofabric.plugin;
 
-import java.util.prefs.Preferences;
+import javax.swing.JFrame;
 
 /****************************************************************************
 **
-** This legacy class must be retained because it was used to store user 
-** preferences in Version 1.0.0
-  */ 
+** Interface for tool command to display
+*/
+
+public interface BioFabricToolPlugInCmd {
   
-public class FabricCommands {
-  
-  /***************************************************************************
-  **
-  ** Preferences are stored by package. 
-  */ 
-    
-  public static void setPreference(String key, String val) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);
-    prefs.put(key, val);
-    return;
-  }    
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC METHODS
+  //
+  ////////////////////////////////////////////////////////////////////////////
   
   /***************************************************************************
   **
-  ** Preferences are stored by package.
-  */ 
-    
-  public static String getPreference(String key) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);    
-    String retval = prefs.get(key, null);
-    return (retval);
-  } 
+  ** Get the name
+  */
   
-  
-   /***************************************************************************
+  public String getCommandName();
+
+  /***************************************************************************
   **
-  ** Never instantiate
-  */ 
-    
-  private FabricCommands() {
-    // Never instantiate
-      throw new UnsupportedOperationException();
-    }     
+  ** Perform the operation
+  */
+  
+  public boolean performOperation(JFrame topFrame);
+  
+  /***************************************************************************
+  **
+  ** Answer if command is enabled
+  */
+  
+  public boolean isEnabled();
+  
 }

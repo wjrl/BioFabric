@@ -1,5 +1,6 @@
+
 /*
-**    Copyright (C) 2003-2018 Institute for Systems Biology 
+**    Copyright (C) 2003-2017 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -17,48 +18,33 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biotapestry.biofabric;
+package org.systemsbiology.biofabric.ui.render;
 
-import java.util.prefs.Preferences;
+import java.awt.Dimension;
+import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
 
 /****************************************************************************
 **
-** This legacy class must be retained because it was used to store user 
-** preferences in Version 1.0.0
-  */ 
-  
-public class FabricCommands {
-  
-  /***************************************************************************
-  **
-  ** Preferences are stored by package. 
-  */ 
-    
-  public static void setPreference(String key, String val) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);
-    prefs.put(key, val);
-    return;
-  }    
+** Defines interface for a drawer for buffers
+*/
+
+public interface BufBuildDrawer {
   
   /***************************************************************************
   **
-  ** Preferences are stored by package.
-  */ 
-    
-  public static String getPreference(String key) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);    
-    String retval = prefs.get(key, null);
-    return (retval);
-  } 
-  
-  
-   /***************************************************************************
+  **  Draw for a buffer
+  */
+
+  public boolean drawForBuffer(BufferedImage bi, Rectangle2D clip, Dimension screenDim, 
+  		                         Rectangle2D worldRec, int heightPad, double linksPerPixel);
+
+  /***************************************************************************
   **
-  ** Never instantiate
-  */ 
-    
-  private FabricCommands() {
-    // Never instantiate
-      throw new UnsupportedOperationException();
-    }     
+  **  Set dims for buffer
+  */
+  
+  public void dimsForBuf(Dimension screenDim, Rectangle2D worldRect);
+  
+  
 }

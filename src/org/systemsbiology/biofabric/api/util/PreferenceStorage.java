@@ -17,26 +17,24 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biotapestry.biofabric;
+package org.systemsbiology.biofabric.api.util;
 
-import java.util.prefs.Preferences;
+import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 /****************************************************************************
 **
-** This legacy class must be retained because it was used to store user 
-** preferences in Version 1.0.0
-  */ 
-  
-public class FabricCommands {
-  
+** Hides implementation of how we store preferences.
+*/
+
+public final class PreferenceStorage {
+
   /***************************************************************************
   **
-  ** Preferences are stored by package. 
+  ** Store preference
   */ 
     
-  public static void setPreference(String key, String val) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);
-    prefs.put(key, val);
+  public void setPreference(String key, String val) {
+    FabricCommands.setPreference(key, val);
     return;
   }    
   
@@ -45,20 +43,7 @@ public class FabricCommands {
   ** Preferences are stored by package.
   */ 
     
-  public static String getPreference(String key) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);    
-    String retval = prefs.get(key, null);
-    return (retval);
+  public String getPreference(String key) {
+  	return (FabricCommands.getPreference(key));
   } 
-  
-  
-   /***************************************************************************
-  **
-  ** Never instantiate
-  */ 
-    
-  private FabricCommands() {
-    // Never instantiate
-      throw new UnsupportedOperationException();
-    }     
 }

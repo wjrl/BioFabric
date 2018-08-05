@@ -17,48 +17,40 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biotapestry.biofabric;
-
-import java.util.prefs.Preferences;
+package org.systemsbiology.biofabric.api.util;
 
 /****************************************************************************
 **
-** This legacy class must be retained because it was used to store user 
-** preferences in Version 1.0.0
-  */ 
+** Resource Manager.
+*/
+
+public interface PluginResourceManager {
   
-public class FabricCommands {
-  
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC METHODS
+  //
+  ////////////////////////////////////////////////////////////////////////////
+ 
   /***************************************************************************
-  **
-  ** Preferences are stored by package. 
-  */ 
-    
-  public static void setPreference(String key, String val) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);
-    prefs.put(key, val);
-    return;
-  }    
-  
+  ** 
+  **  Set a bundle for a plugin
+  */
+
+  public void setPluginBundle(String bundleName);
+	
   /***************************************************************************
-  **
-  ** Preferences are stored by package.
-  */ 
-    
-  public static String getPreference(String key) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);    
-    String retval = prefs.get(key, null);
-    return (retval);
-  } 
-  
-  
-   /***************************************************************************
-  **
-  ** Never instantiate
-  */ 
-    
-  private FabricCommands() {
-    // Never instantiate
-      throw new UnsupportedOperationException();
-    }     
+  ** 
+  ** Get a resource String for a plugin
+  */
+
+  public String getPluginString(String key);
+ 
+  /***************************************************************************
+  ** 
+  ** Get a resource Character for plugin
+  */
+
+  public char getPluginChar(String key);
+ 
 }

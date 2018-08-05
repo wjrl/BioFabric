@@ -17,48 +17,39 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biotapestry.biofabric;
+package org.systemsbiology.biofabric.api.layout;
 
-import java.util.prefs.Preferences;
+import org.systemsbiology.biofabric.api.io.BuildData;
+import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 
 /****************************************************************************
 **
-** This legacy class must be retained because it was used to store user 
-** preferences in Version 1.0.0
-  */ 
+** This is the interface for edge layout algorithms
+*/
+
+public interface EdgeLayout {
+
+	////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC METHODS
+  //
+  ////////////////////////////////////////////////////////////////////////////
+   
+  /***************************************************************************
+  **
+  ** Relayout the whole network!
+  */
   
-public class FabricCommands {
+  public void layoutEdges(BuildData rbd, BTProgressMonitor monitor) throws AsynchExitRequestException;
+  
   
   /***************************************************************************
   **
-  ** Preferences are stored by package. 
-  */ 
-    
-  public static void setPreference(String key, String val) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);
-    prefs.put(key, val);
-    return;
-  }    
+  ** Do necessary pre-processing steps (e.g. automatic assignment to link groups)
+  */
   
-  /***************************************************************************
-  **
-  ** Preferences are stored by package.
-  */ 
-    
-  public static String getPreference(String key) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);    
-    String retval = prefs.get(key, null);
-    return (retval);
-  } 
-  
-  
-   /***************************************************************************
-  **
-  ** Never instantiate
-  */ 
-    
-  private FabricCommands() {
-    // Never instantiate
-      throw new UnsupportedOperationException();
-    }     
+  public void preProcessEdges(BuildData rbd, BTProgressMonitor monitor) throws AsynchExitRequestException;
+   
+
 }

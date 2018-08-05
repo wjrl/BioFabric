@@ -17,48 +17,54 @@
 **    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-package org.systemsbiology.biotapestry.biofabric;
-
-import java.util.prefs.Preferences;
+package org.systemsbiology.biofabric.api.worker;
 
 /****************************************************************************
 **
-** This legacy class must be retained because it was used to store user 
-** preferences in Version 1.0.0
-  */ 
-  
-public class FabricCommands {
+** An interface for monitoring progress
+*/
+
+public interface BFWorker {
+ 
+  ////////////////////////////////////////////////////////////////////////////
+  //
+  // PUBLIC METHODS
+  //
+  ////////////////////////////////////////////////////////////////////////////
+
+  /***************************************************************************
+  **
+  ** Get the progress monitor
+  */
+
+  public BTProgressMonitor getMonitor();  
   
   /***************************************************************************
   **
-  ** Preferences are stored by package. 
-  */ 
-    
-  public static void setPreference(String key, String val) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);
-    prefs.put(key, val);
-    return;
-  }    
+  ** Set the run core
+  */
+  
+  public void setCore(BackgroundCore core);
   
   /***************************************************************************
   **
-  ** Preferences are stored by package.
-  */ 
-    
-  public static String getPreference(String key) {
-    Preferences prefs = Preferences.userNodeForPackage(FabricCommands.class);    
-    String retval = prefs.get(key, null);
-    return (retval);
-  } 
+  ** Launch the run core
+  */
   
+  public void launchWorker();
   
-   /***************************************************************************
+  /***************************************************************************
   **
-  ** Never instantiate
-  */ 
-    
-  private FabricCommands() {
-    // Never instantiate
-      throw new UnsupportedOperationException();
-    }     
+  ** Stash exception for later display
+  */
+  
+  public void stashException(Exception ex);
+  
+  /***************************************************************************
+  **
+  ** Add goodness chart
+  */  
+  
+  public void makeSuperChart();
+ 
 }
