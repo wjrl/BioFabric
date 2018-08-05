@@ -4,3 +4,6 @@
 /manifest.mf
 /nbbuild.xml
 /bin/
+.idea/
+BioFabric.iml
+out/
