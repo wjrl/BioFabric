@@ -37,6 +37,7 @@ import org.systemsbiology.biofabric.api.util.PluginResourceManager;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
+import org.systemsbiology.biofabric.plugin.PlugInManager;
 import org.systemsbiology.biofabric.plugin.PlugInNetworkModelAPI;
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.util.UiUtil;
@@ -54,6 +55,7 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
   private String myTag_;
   private StatData myData_;
   private String className_;
+  private PluginResourceManager rMan_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -71,8 +73,7 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
     myCmds_.add(new NodeAndLinkCounterCmd());
     myData_ = new StatData(0, 0, 0);
     className_ = getClass().getName();
-    PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
-    rMan.setPluginBundle("org.systemsbiology.biofabric.plugin.core.NetStats");  
+ 
   }
   
   ////////////////////////////////////////////////////////////////////////////
@@ -102,6 +103,18 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
 
   /***************************************************************************
   **
+  ** Install PluginManager
+  */
+  
+  public void installManager(PlugInManager pMan) {
+  	rMan_ = PluginSupportFactory.getResourceManager(className_, pMan);
+    rMan_.setPluginBundle("org.systemsbiology.biofabric.plugin.core.NetStats"); 
+    return;
+  }
+  
+  
+  /***************************************************************************
+  **
   ** InstallAPI
   */
   
@@ -109,7 +122,6 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
     // Nothing to do...
     return;
   }
-  
   
   /***************************************************************************
   **
@@ -130,8 +142,7 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
   */
   
   public String getToolMenu() {
-    PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
-    return (rMan.getPluginString("command.pluginName"));
+    return (rMan_.getPluginString("command.pluginName"));
   }
   
   /***************************************************************************
@@ -239,8 +250,7 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
     */
     
     public String getCommandName() {
-    	PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
-      return (rMan.getPluginString("command.statsCommands"));
+      return (rMan_.getPluginString("command.statsCommands"));
     }
 
     /***************************************************************************
@@ -253,14 +263,13 @@ public class NetStatsPlugIn implements BioFabricToolPlugIn {
         return (false);
       }
       
-    	PluginResourceManager rMan = PluginSupportFactory.getResourceManager(className_);
-      String desc = MessageFormat.format(rMan.getPluginString("modelCounts.message"), 
+      String desc = MessageFormat.format(rMan_.getPluginString("modelCounts.message"), 
                                          new Object[] {new Integer(myData_.nodeCount), 
                                                        new Integer(myData_.linkCount), 
                                                        new Integer(myData_.fullShadowLinkCount)});  
       desc = UiUtil.convertMessageToHtml(desc);
       JOptionPane.showMessageDialog(topFrame, desc,
-                                    rMan.getPluginString("modelCounts.modelCountTitle"),
+                                    rMan_.getPluginString("modelCounts.modelCountTitle"),
                                     JOptionPane.INFORMATION_MESSAGE);        
       return (true);
     }

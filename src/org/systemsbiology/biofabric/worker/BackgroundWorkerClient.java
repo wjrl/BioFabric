@@ -78,7 +78,7 @@ public class BackgroundWorkerClient {
   
   public BackgroundWorkerClient(BackgroundWorkerOwner owner, BackgroundWorker worker, 
                                 JFrame topWindow, BackgroundWorkerControlManager suw, String waitTitle, 
-                                String waitMsg, boolean allowCancels, String pluginClient) {
+                                String waitMsg, boolean allowCancels, PluginResourceManager rMan) {
       
     done_ = false;
     worker_ = worker;
@@ -91,7 +91,7 @@ public class BackgroundWorkerClient {
     cancelRequested_ = false;
     isHeadless_ = false;
     chart_ = null;
-    pluginRMan_ = (pluginClient == null) ? null : new ResourceManager.ForPlugins(pluginClient);
+    pluginRMan_ = rMan;
   }
   
   public void makeSuperChart() {
