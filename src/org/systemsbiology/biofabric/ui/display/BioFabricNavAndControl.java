@@ -37,7 +37,6 @@ import javax.swing.border.LineBorder;
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.util.ResourceManager;
 
-
 /****************************************************************************
 **
 ** This is the BioFabric Control dashboard wrapper
