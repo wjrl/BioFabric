@@ -22,12 +22,12 @@ package org.systemsbiology.biofabric.model;
 
 import java.util.Map;
 
+import org.systemsbiology.biofabric.api.model.AugRelation;
+import org.systemsbiology.biofabric.api.model.NetLink;
+import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.NID;
 import org.systemsbiology.biofabric.io.AttributeLoader;
-import org.systemsbiology.biofabric.modelAPI.AugRelation;
-import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.util.DataUtil;
-import org.systemsbiology.biofabric.util.NID;
 
 /****************************************************************************
 **

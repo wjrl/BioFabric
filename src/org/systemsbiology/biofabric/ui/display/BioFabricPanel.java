@@ -58,7 +58,15 @@ import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JViewport;
 
-
+import org.systemsbiology.biofabric.api.io.BuildData;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
+import org.systemsbiology.biofabric.api.model.AnnotsForPos;
+import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.NID;
+import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.api.worker.LoopReporter;
 import org.systemsbiology.biofabric.app.BioFabricApplication;
 import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.cmd.CommandSet;
@@ -66,12 +74,10 @@ import org.systemsbiology.biofabric.cmd.ZoomCommandSupport;
 import org.systemsbiology.biofabric.cmd.ZoomTarget;
 import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
-import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.io.BuildDataImpl;
-import org.systemsbiology.biofabric.model.AnnotationSet;
+import org.systemsbiology.biofabric.model.AnnotationSetImpl;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.FabricLink;
-import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.ui.BasicZoomTargetSupport;
 import org.systemsbiology.biofabric.ui.CursorManager;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
@@ -85,14 +91,9 @@ import org.systemsbiology.biofabric.ui.render.BufBuildDrawer;
 import org.systemsbiology.biofabric.ui.render.ImgAndBufPool;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
 import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.MinMax;
-import org.systemsbiology.biofabric.util.NID;
 import org.systemsbiology.biofabric.util.QuadTree;
 import org.systemsbiology.biofabric.util.UiUtil;
-import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
-import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
-import org.systemsbiology.biofabric.workerAPI.LoopReporter;
 
 /****************************************************************************
 **
@@ -588,6 +589,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     currLinkSelections_.clear();
     currNodeSelections_.clear();
     currColSelections_.clear();
+    fmt_.setSelections(null);
     targetList_.clear();
     linkList_.clear();
     floaterSet_.currSelRect = null;
@@ -657,6 +659,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
       currLinkSelections_.clear();
       currNodeSelections_.clear();
       currColSelections_.clear();
+      fmt_.setSelections(null);
       currSel_ = -1;
       floaterSet_.currSelRect = null;
     }       
@@ -1996,7 +1999,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     retval.nodeAnnotations.clear();
     AnnotationSet ansn = bfn_.getNodeAnnotations();
     if (ansn != null) {
-      AnnotationSet.AnnotsForPos a4pn = new AnnotationSet.AnnotsForPos(); // FIXME make an instance variable?
+      AnnotsForPos a4pn = new AnnotationSetImpl.AnnotsForPosImpl(); // FIXME make an instance variable?
       ansn.fillAnnots(a4pn, rowObj);
       a4pn.displayStrings(retval.nodeAnnotations);
     }
@@ -2004,7 +2007,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     retval.linkAnnotations.clear();
     AnnotationSet ansl = bfn_.getLinkAnnotations(showShadows);
     if (ansl != null) {
-      AnnotationSet.AnnotsForPos a4pl = new AnnotationSet.AnnotsForPos(); // FIXME make an instance variable?
+      AnnotsForPos a4pl = new AnnotationSetImpl.AnnotsForPosImpl(); // FIXME make an instance variable?
       ansl.fillAnnots(a4pl, colObj);
       a4pl.displayStrings(retval.linkAnnotations);
     }
@@ -2405,7 +2408,6 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     }
     bumpGuts();
     handleFloaterChange();
-    System.out.println("This has gotta change");
     UiUtil.fixMePrintout("This has gotta change");
     HashSet<Integer> targRows = new HashSet<Integer>();
     HashSet<Integer> targCols = new HashSet<Integer>(currColSelections_);
@@ -2744,6 +2746,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
         currLinkSelections_.clear();
         currNodeSelections_.clear();
         currColSelections_.clear();
+        fmt_.setSelections(null);
         currSel_ = -1;
         floaterSet_.currSelRect = null;
       }

@@ -21,8 +21,8 @@ package org.systemsbiology.biofabric.plugin;
 
 import javax.swing.JFrame;
 
-import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
-import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
+import org.systemsbiology.biofabric.api.io.FileLoadFlows;
+import org.systemsbiology.biofabric.api.worker.BackgroundWorkerControlManager;
 
 /****************************************************************************
 **
@@ -85,5 +85,5 @@ public interface PlugInNetworkModelAPI {
   */
   
   public BioFabricToolPlugInData providePluginData(String keyword);
-
+ 
 }

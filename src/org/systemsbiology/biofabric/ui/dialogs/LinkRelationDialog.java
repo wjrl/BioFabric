@@ -31,10 +31,11 @@ import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import org.systemsbiology.biofabric.ui.dialogs.utils.BTStashResultsDialog;
-import org.systemsbiology.biofabric.ui.dialogs.utils.DialogSupport;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
-import org.systemsbiology.biofabric.util.FixedJButton;
+
+import org.systemsbiology.biofabric.api.dialog.BTStashResultsDialog;
+import org.systemsbiology.biofabric.api.dialog.DialogSupport;
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.FixedJButton;
 import org.systemsbiology.biofabric.util.ResourceManager;
 
 public class LinkRelationDialog extends BTStashResultsDialog {

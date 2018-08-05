@@ -27,9 +27,9 @@ import java.util.TreeMap;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
-import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
-import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
-import org.systemsbiology.biofabric.workerAPI.BackgroundCore;
+import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.api.worker.BackgroundCore;
 
 /****************************************************************************
 **
@@ -192,6 +192,12 @@ public class BackgroundWorker implements Runnable, BTProgressMonitor {
     return (!cancelRequested_);
   }  
   
+  public boolean updateUnknownProgress() {
+    Progresso prog = new Progresso();
+    SwingUtilities.invokeLater(prog);
+    return (!cancelRequested_);
+  }
+
   public boolean updateProgressAndPhase(int done, String message) {
     done_ = done;
     int percent = (int)(((double)done / (double)total_) * 100.0);
@@ -204,6 +210,12 @@ public class BackgroundWorker implements Runnable, BTProgressMonitor {
   private class Progresso implements Runnable {
     int percent_;
     String message_;
+    
+    Progresso() {
+      percent_ = Integer.MIN_VALUE;
+      message_ = null;
+    }
+ 
     Progresso(int percent) {
       percent_ = percent;
       message_ = null;
@@ -217,7 +229,7 @@ public class BackgroundWorker implements Runnable, BTProgressMonitor {
     public void run() {
     	if (message_ == null) {
     	  cancelRequested_ = !client_.updateProgress(percent_);
-    	} else if (message_.equals("INDET")) {
+    	} else if (percent_ == Integer.MIN_VALUE) {
     	  cancelRequested_ = !client_.setToIndeterminate();
     	} else {
     		cancelRequested_ = !client_.updateProgressAndPhase(percent_, message_);

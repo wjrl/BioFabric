@@ -24,9 +24,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.modelAPI.NetNode;
-import org.systemsbiology.biofabric.util.UniqueLabeller;
+import org.systemsbiology.biofabric.api.model.NetLink;
+import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.UniqueLabeller;
 
 /****************************************************************************
 **
@@ -130,7 +130,7 @@ public class SIFImportLoader extends FabricImportLoader {
       rel = stripQuotes(rel);
     
       //
-      // Build the link, pus shadow if not auto feedback:
+      // Build the link, plus shadow if not auto feedback:
       //
       
       buildLinkAndShadow(srcID, trgID, rel, links);

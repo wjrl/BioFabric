@@ -21,10 +21,10 @@ package org.systemsbiology.biofabric.plugin;
 
 import java.io.PrintWriter;
 
-import org.systemsbiology.biofabric.ioAPI.PluginWhiteboard;
-import org.systemsbiology.biofabric.modelAPI.Network;
-import org.systemsbiology.biofabric.parser.AbstractFactoryClient;
-import org.systemsbiology.biofabric.util.Indenter;
+import org.systemsbiology.biofabric.api.io.Indenter;
+import org.systemsbiology.biofabric.api.io.PluginWhiteboard;
+import org.systemsbiology.biofabric.api.model.Network;
+import org.systemsbiology.biofabric.api.parser.AbstractFactoryClient;
 
 /****************************************************************************
 **
@@ -108,5 +108,13 @@ public interface BioFabricToolPlugIn {
   */
   
   public void installAPI(PlugInNetworkModelAPI bfn);
+  
+  /***************************************************************************
+  **
+  ** Install PluginManager
+  */
+  
+  public void installManager(PlugInManager pMan);  
+  
     
 }

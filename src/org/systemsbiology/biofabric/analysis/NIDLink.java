@@ -23,7 +23,7 @@ package org.systemsbiology.biofabric.analysis;
 import java.util.Comparator;
 import java.util.Map;
 
-import org.systemsbiology.biofabric.util.NID;
+import org.systemsbiology.biofabric.api.util.NID;
 
 /****************************************************************************
 **

@@ -42,8 +42,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -52,24 +50,35 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
 
+import org.systemsbiology.biofabric.api.io.BuildData;
+import org.systemsbiology.biofabric.api.io.BuildExtractor;
+import org.systemsbiology.biofabric.api.io.FileLoadFlows;
+import org.systemsbiology.biofabric.api.io.Indenter;
+import org.systemsbiology.biofabric.api.layout.DefaultLayout;
+import org.systemsbiology.biofabric.api.layout.EdgeLayout;
+import org.systemsbiology.biofabric.api.layout.LayoutCriterionFailureException;
+import org.systemsbiology.biofabric.api.layout.NodeLayout;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
+import org.systemsbiology.biofabric.api.model.AugRelation;
+import org.systemsbiology.biofabric.api.model.NetLink;
+import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.PluginResourceManager;
+import org.systemsbiology.biofabric.api.util.UniqueLabeller;
+import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.api.worker.BFWorker;
+import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.api.worker.BackgroundCore;
+import org.systemsbiology.biofabric.api.worker.BackgroundWorkerControlManager;
+import org.systemsbiology.biofabric.api.worker.BackgroundWorkerOwner;
 import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.cmd.HeadlessOracle;
-import org.systemsbiology.biofabric.ioAPI.BuildData;
-import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
-import org.systemsbiology.biofabric.ioAPI.BuildExtractor;
-import org.systemsbiology.biofabric.layoutAPI.EdgeLayout;
-import org.systemsbiology.biofabric.layoutAPI.LayoutCriterionFailureException;
-import org.systemsbiology.biofabric.layoutAPI.NodeLayout;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
-import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
-import org.systemsbiology.biofabric.model.AnnotationSet;
+
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.modelAPI.AugRelation;
-import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.ProgressFilterInputStream;
 import org.systemsbiology.biofabric.parser.SUParser;
@@ -83,20 +92,11 @@ import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.dialogs.RelationDirectionDialog;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.ui.render.BufferBuilder;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FileExtensionFilters;
 import org.systemsbiology.biofabric.util.GarbageRequester;
-import org.systemsbiology.biofabric.util.Indenter;
 import org.systemsbiology.biofabric.util.InvalidInputException;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
-import org.systemsbiology.biofabric.util.UniqueLabeller;
-import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
-import org.systemsbiology.biofabric.workerAPI.BFWorker;
-import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
-import org.systemsbiology.biofabric.workerAPI.BackgroundCore;
-import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
-import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerOwner;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 /****************************************************************************
@@ -160,7 +160,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
 
   ////////////////////////////////////////////////////////////////////////////
   //
-  // PRIVATE CONSTRUCTORS
+  // CONSTRUCTORS
   //
   ////////////////////////////////////////////////////////////////////////////
   
@@ -170,8 +170,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   */ 
   
   public FileLoadFlowsImpl(BioFabricWindow bfw, PlugInManager pMan,
-                       FabricColorGenerator colGen, CommandSet cSet,
-                       HeadlessOracle headlessOracle, boolean isForMain) {
+                           FabricColorGenerator colGen, CommandSet cSet,
+                           HeadlessOracle headlessOracle, boolean isForMain) {
     bfw_ = bfw;
     pMan_ = pMan;
     topWindow_ = bfw.getWindow();
@@ -205,8 +205,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Do network build for a plug-in that provides the needed custom BuildData
   */ 
      
-  public void buildNetworkForPlugIn(BuildData pluginData, File holdIt, String pluginName) { 
-    NetworkBuilder nb = new FileLoadFlowsImpl.NetworkBuilder(true, holdIt, pluginName);
+  public void buildNetworkForPlugIn(BuildData pluginData, File holdIt, PluginResourceManager rMan) { 
+    NetworkBuilder nb = new FileLoadFlowsImpl.NetworkBuilder(true, holdIt, rMan);
     nb.setForPlugInBuild(pluginData);
     nb.doNetworkBuild();
     return;
@@ -466,7 +466,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     
   public boolean handleDirectionsDupsAndShadows(List<NetLink> links, Set<NetNode> loneNodeIDs, 
   		                                           boolean binMag, SortedMap<AugRelation, Boolean> relaMap,
-  		                                           Set<NetLink> reducedLinks, File holdIt, boolean doForceUndirected) {
+  		                                           Set<NetLink> reducedLinks, File holdIt, 
+  		                                           boolean doForceUndirected, boolean skipShadowQuestion) {
     
     
     ResourceManager rMan = ResourceManager.getManager(); 
@@ -557,25 +558,27 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       // For big files, user may want to specify layout options before the default layout with no
       // shadows. Let them set this here:
       //
-      
-      if (reducedLinks.size() > SIZE_TO_ASK_ABOUT_SHADOWS) {
-	      String shadowMessage = rMan.getString("fabricRead.askAboutShadows");
-	      int doShadow =
-	        JOptionPane.showConfirmDialog(topWindow_, shadowMessage,
-	                                      rMan.getString("fabricRead.askAboutShadowsTitle"),
-	                                      JOptionPane.YES_NO_CANCEL_OPTION);        
-	      if (doShadow == JOptionPane.CANCEL_OPTION) {
-	        return (false);
-	      }
-	      FabricDisplayOptions dops = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
-	      dops.setDisplayShadows((doShadow == JOptionPane.YES_OPTION));
-	    }
+      if (!skipShadowQuestion) {
+	      if (reducedLinks.size() > SIZE_TO_ASK_ABOUT_SHADOWS) {
+		      String shadowMessage = rMan.getString("fabricRead.askAboutShadows");
+		      int doShadow =
+		        JOptionPane.showConfirmDialog(topWindow_, shadowMessage,
+		                                      rMan.getString("fabricRead.askAboutShadowsTitle"),
+		                                      JOptionPane.YES_NO_CANCEL_OPTION);        
+		      if (doShadow == JOptionPane.CANCEL_OPTION) {
+		        return (false);
+		      }
+		      FabricDisplayOptions dops = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
+		      dops.setDisplayShadows((doShadow == JOptionPane.YES_OPTION));
+		    }
+      }
       
       //
-      // Handle magnitude bins:
+      // Handle magnitude bins. Not supported in yet in V2.
       //
-      
+          
       if (binMag) {
+      	/*
       	HashSet<NetLink> binnedLinks = new HashSet<NetLink>();
         Pattern p = Pattern.compile("[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?");
         
@@ -589,17 +592,16 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
             double d = Double.parseDouble(m.group(0));
             magCount = (int)Math.floor((Math.abs(d) * 10.0) - 5.0);
           }
-          /*
-          for (int k = 0; k < magCount; k++) {
-        	  String suf = ":" + Integer.toString(k);
-	          FabricLink nextLink = new FabricLink(source, target, rel + suf, false);
-	        links.add(nextLink);
+         // for (int k = 0; k < magCount; k++) {
+        	//  String suf = ":" + Integer.toString(k);
+	      //    FabricLink nextLink = new FabricLink(source, target, rel + suf, false);
+	      //  links.add(nextLink);
 	        // We never create shadow feedback links!
-	        if (!source.equals(target)) {
-	          FabricLink nextShadowLink = new FabricLink(source, target, rel + suf, true);
-	          links.add(nextShadowLink);
-	        }*/       
-        }
+	      //  if (!source.equals(target)) {
+	       //   FabricLink nextShadowLink = new FabricLink(source, target, rel + suf, true);
+	       //   links.add(nextShadowLink);
+	      //  }       
+        }*/
       }
     } catch (OutOfMemoryError oom) {
       ExceptionHandler.getHandler().displayOutOfMemory(oom);
@@ -626,7 +628,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
    */
   
   public boolean loadFromASource(File file, Map<AttributeLoader.AttributeKey, String> nameMap,
-                                 Integer magBins, UniqueLabeller idGen, FileLoadFlows.FileLoadType type) {
+                                 Integer magBins, UniqueLabeller idGen, 
+                                 FileLoadFlows.FileLoadType type, boolean skipShadowQuestion) {
     
     HashMap<String, String> nodeNames = null;
     if (nameMap != null) {
@@ -660,7 +663,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       if (type == FileLoadFlows.FileLoadType.SIF) {
         finished = br.doBackgroundSIFRead(file, idGen, links, loneNodes, nodeNames, sss, magBins, relMap, holdIt);
       } else if (type == FileLoadFlows.FileLoadType.GW) {
-        // need to process gw liks if no relations provided
+        // need to process gw links if no relations provided
         finished = br.doBackgroundGWRead(file, idGen, links, loneNodes, nodeNames, sss, true, magBins, relMap, holdIt);
       } else {
         throw (new IllegalArgumentException("File type not identified"));
@@ -700,7 +703,9 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     //
     
     announceBadLines(sss);
-    boolean finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);
+    boolean finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), 
+    		                                              relMap, reducedLinks, holdIt, false,
+    		                                              skipShadowQuestion);
     if (finished) {
       buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
     }
@@ -714,7 +719,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   
   public boolean loadFromASource(File file, List<NetLink> links,
                                  Set<NetNode> loneNodes, Integer magBins,
-                                 UniqueLabeller idGen, boolean loadOnly, FileLoadFlows.FileLoadType type) {
+                                 UniqueLabeller idGen, boolean loadOnly, 
+                                 FileLoadFlows.FileLoadType type, boolean skipShadowQuestion) {
     
     File holdIt;
     try {
@@ -763,7 +769,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     // This looks for dups to toss and prep work:
     //
   
-    finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, reducedLinks, holdIt, false);
+    finished = handleDirectionsDupsAndShadows(links, loneNodes, (magBins != null), relMap, 
+    		                                      reducedLinks, holdIt, false, skipShadowQuestion);
   
     if (finished) {
       buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
@@ -989,6 +996,44 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       }
       if (!standardFileChecks(file, FILE_MUST_EXIST, FILE_CAN_CREATE_DONT_CARE, 
                                     FILE_DONT_CHECK_OVERWRITE, FILE_MUST_BE_FILE, 
+                                    FILE_CAN_WRITE_DONT_CARE, FILE_CAN_READ)) {
+        file = null;
+        continue; 
+      }
+    }
+    return (file);
+  }
+  
+  /***************************************************************************
+  **
+  ** Get a directory
+  */
+  
+  public File getTheDirectory(String prefTag) { 
+    File file = null;      
+    String filename = FabricCommands.getPreference(prefTag);
+    while (file == null) {
+      JFileChooser chooser = new JFileChooser();           
+      chooser.setAcceptAllFileFilterUsed(true);
+      chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+      if (filename != null) {
+        File startDir = new File(filename);
+        if (startDir.exists()) {
+          chooser.setCurrentDirectory(startDir);  
+        }
+      }
+
+      int option = chooser.showOpenDialog(topWindow_);
+      if (option != JFileChooser.APPROVE_OPTION) {
+        return (null);
+      }
+      file = chooser.getSelectedFile();
+      if (file == null) {
+        return (null);
+      }     
+      
+      if (!standardFileChecks(file, FILE_MUST_EXIST, FILE_CAN_CREATE_DONT_CARE, 
+                                    FILE_DONT_CHECK_OVERWRITE, FILE_MUST_BE_DIRECTORY, 
                                     FILE_CAN_WRITE_DONT_CARE, FILE_CAN_READ)) {
         file = null;
         continue; 
@@ -1609,7 +1654,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     }
     
     public void handleCancellation() {
-    	UiUtil.fixMePrintout("May want to give user the option to not do this, though the file is messed up.");
+    	// Maybe a future enhancement to allow user to choose if they wish the cancelled file wrote to be deleted?
     	if (file_ != null) {
     	  file_.delete();
     	}
@@ -1870,8 +1915,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private File holdIt_;  // For recovery
     private BFWorker bfwk_;
     
-    NetworkBuilder(boolean isMain, File holdIt, String forPlugin) {
-    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netBuild.waitTitle", "netBuild.wait", true, forPlugin); 
+    NetworkBuilder(boolean isMain, File holdIt, PluginResourceManager rMan) {
+    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netBuild.waitTitle", "netBuild.wait", true, rMan); 
       runner_ = new NewNetworkRunner(isMain, holdIt, bfwk_);
       holdIt_ = holdIt;
     }
@@ -1928,6 +1973,16 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       finished_ = false;
       if (remoteEx instanceof IOException) {
         finishedImport(null, (IOException)remoteEx);
+        return (true);
+      } else if (remoteEx instanceof LayoutCriterionFailureException) {
+        ResourceManager rMan = ResourceManager.getManager();
+        JOptionPane.showMessageDialog(topWindow_, 
+                                      rMan.getString("netLayout.unmetCriteriaMessage"), 
+                                      rMan.getString("netLayout.unmetCriteriaTitle"),
+                                      JOptionPane.ERROR_MESSAGE);
+        
+        
+        cancelAndRestore(holdIt_);     
         return (true);
       }
       return (false);
@@ -2052,6 +2107,9 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         }
         return (bi);
       } catch (IOException ex) {
+        bfwk_.stashException(ex);
+        return (null);
+      } catch (LayoutCriterionFailureException ex) {
         bfwk_.stashException(ex);
         return (null);
       }
@@ -2424,7 +2482,9 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
 
   public BufferedImage expensiveModelOperations(BuildData bfnbd, 
                                                 boolean forMain, 
-                                                BTProgressMonitor monitor) throws IOException, AsynchExitRequestException {
+                                                BTProgressMonitor monitor) throws IOException, 
+  																																								AsynchExitRequestException,
+  	                                                                              LayoutCriterionFailureException {
     Dimension screenSize = (forMain && (headlessOracle_ == null)) ? Toolkit.getDefaultToolkit().getScreenSize() : new Dimension(600, 800);
     // Possibly expensive network analysis preparation:
     BioFabricNetwork bfn = new BioFabricNetwork(bfnbd, pMan_, monitor);
@@ -2491,11 +2551,11 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     bfw_.getOverview().installImage(topImage, bfp_.getWorldScreen());
     bfp_.installModelPost();
     bfp_.initZoom();
+    // Doing this before checkForChanges lets the plugins know how to answer: 
+    pMan_.newNetworkInstalled(bfp_.getNetwork());
     cSet_.checkForChanges();
     cSet_.handleZoomButtons();
     bfp_.repaint();
-    System.out.println("new network installed!!");
-    pMan_.newNetworkInstalled(bfp_.getNetwork());
     return;
   }
   
@@ -2558,6 +2618,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       postLoadOperations(topImage);
     } catch (AsynchExitRequestException aex) {
       // Not being used in background; will not happen
+    } catch (LayoutCriterionFailureException ex) {
+      // No links to lay out; will not happen
     }
     return;
   }
@@ -2581,5 +2643,14 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     }
     topWindow_.setTitle(title);
     return;
-  }   
+  }
+  
+  /***************************************************************************
+  **
+  ** Get the file load type.
+  */ 
+
+  public FileLoadFlows.FileLoadType getFileLoadType(File toCheck) {
+    return ((GWImportLoader.isGWFile(toCheck)) ? FileLoadFlows.FileLoadType.GW : FileLoadFlows.FileLoadType.SIF);
+  }
 }

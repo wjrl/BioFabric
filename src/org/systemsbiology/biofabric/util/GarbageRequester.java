@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -19,9 +19,9 @@
 
 package org.systemsbiology.biofabric.util;
 
-import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
-import org.systemsbiology.biofabric.workerAPI.BTProgressMonitor;
-import org.systemsbiology.biofabric.workerAPI.LoopReporter;
+import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
+import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
+import org.systemsbiology.biofabric.api.worker.LoopReporter;
 
 /****************************************************************************
 **
@@ -93,8 +93,8 @@ public class GarbageRequester {
     
     LoopReporter lr2 = new LoopReporter(1, 20, monitor, 0.0, 1.0, "progress.garbageRequest");
     lr2.report();
-    UiUtil.fixMePrintout("ditch the INDET hack");
-    LoopReporter lr3 = new LoopReporter(1, 20, monitor, 0.0, 1.0, "INDET");
+    // Indeterminate progress:
+    LoopReporter lr3 = new LoopReporter(1, 20, monitor);
     lr3.report(); 	
 
     try {
@@ -105,6 +105,7 @@ public class GarbageRequester {
     // Experiments show doing this twice has a significant effect
   	Runtime.getRuntime().gc();
   	Runtime.getRuntime().gc();
+  	// Saw a run of 10 checks with free memory decrease. If true, keep waiting 
   	for (int i = 0; i < 10; i++) {
     	try {
         Thread.sleep(1000);
@@ -114,11 +115,11 @@ public class GarbageRequester {
     	if (freeNow > freeMem) {
     		break;
     	}
-    	System.out.println("On yam, seeing 10 loops of **decreasing** free memory " + Runtime.getRuntime().freeMemory());
-  		System.out.println("Tot " + Runtime.getRuntime().totalMemory());
-  	  System.out.println("Free " + Runtime.getRuntime().freeMemory());
-  	  System.out.println("Max " + Runtime.getRuntime().maxMemory());
-  	  System.out.flush(); 	
+    	System.err.println("Unexpected free memory REDUCTION during GC" + Runtime.getRuntime().freeMemory());
+  		System.err.println("Tot " + Runtime.getRuntime().totalMemory());
+  	  System.err.println("Free " + Runtime.getRuntime().freeMemory());
+  	  System.err.println("Max " + Runtime.getRuntime().maxMemory());
+  	  System.err.flush(); 	
   	}
   }
 }

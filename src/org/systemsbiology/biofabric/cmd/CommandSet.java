@@ -21,7 +21,6 @@
 package org.systemsbiology.biofabric.cmd;
 
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Event;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -32,7 +31,6 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
 import java.awt.print.PageFormat;
 import java.awt.print.PrinterException;
 import java.awt.print.PrinterJob;
@@ -50,7 +48,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -72,25 +69,29 @@ import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.filechooser.FileFilter;
 
+import org.systemsbiology.biofabric.api.io.FileLoadFlows;
+import org.systemsbiology.biofabric.api.layout.DefaultLayout;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
+import org.systemsbiology.biofabric.api.model.AugRelation;
+import org.systemsbiology.biofabric.api.model.NetLink;
+import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.FixedJButton;
+import org.systemsbiology.biofabric.api.util.UniqueLabeller;
+import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.app.BioFabricApplication;
 import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.event.SelectionChangeListener;
 import org.systemsbiology.biofabric.io.AttributeLoader;
-import org.systemsbiology.biofabric.ioAPI.BuildData;
 import org.systemsbiology.biofabric.io.BuildDataImpl;
-import org.systemsbiology.biofabric.ioAPI.FileLoadFlows;
 import org.systemsbiology.biofabric.io.FileLoadFlowsImpl;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
-import org.systemsbiology.biofabric.layouts.DefaultLayout;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
-import org.systemsbiology.biofabric.model.AnnotationSet;
+
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.modelAPI.AugRelation;
-import org.systemsbiology.biofabric.modelAPI.NetLink;
-import org.systemsbiology.biofabric.modelAPI.NetNode;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInCmd;
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
@@ -103,6 +104,7 @@ import org.systemsbiology.biofabric.ui.dialogs.BreadthFirstLayoutDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ClusterLayoutSetupDialog;
 import org.systemsbiology.biofabric.ui.dialogs.CompareNodesSetupDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ControlTopLayoutSetupDialog;
+import org.systemsbiology.biofabric.ui.dialogs.DirectoryChooserDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ExportSettingsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ExportSettingsPublishDialog;
 import org.systemsbiology.biofabric.ui.dialogs.FabricDisplayOptionsDialog;
@@ -113,14 +115,10 @@ import org.systemsbiology.biofabric.ui.dialogs.PointUpOrDownDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ReorderLayoutParamsDialog;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.ui.display.FabricMagnifyingTool;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.FileExtensionFilters;
-import org.systemsbiology.biofabric.util.FixedJButton;
 import org.systemsbiology.biofabric.util.InvalidInputException;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
-import org.systemsbiology.biofabric.util.UniqueLabeller;
-import org.systemsbiology.biofabric.workerAPI.AsynchExitRequestException;
 import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 
 /****************************************************************************
@@ -192,6 +190,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
   public static final int ADD_NODE_ANNOTATIONS         = 55;
   public static final int ADD_LINK_ANNOTATIONS         = 56;
+  
+  public static final int SET_PLUGIN_DIR               = 57;
  
   public static final int GENERAL_PUSH   = 0x01;
   public static final int ALLOW_NAV_PUSH = 0x02;
@@ -418,8 +418,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           retval = new ImportSIFAction(withIcon, false); 
           break;
         case LOAD_WITH_EDGE_WEIGHTS:
-          retval = new ImportSIFAction(withIcon, true); 
-          break;          
+        	throw new IllegalArgumentException(); // Not supported in V2
+          //retval = new ImportSIFAction(withIcon, true); 
+          //break;          
         case LOAD_WITH_NODE_ATTRIBUTES:
           retval = new LoadWithNodeAttributesAction(withIcon); 
           break;
@@ -450,9 +451,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         case PRINT:
           retval = new PrintAction(withIcon); 
           break; 
-        case PRINT_PDF:
-          retval = new PrintPDFAction(withIcon); 
-          break;           
+        case PRINT_PDF: // Not yet supported
+        	throw new IllegalArgumentException();
+          //retval = new PrintPDFAction(withIcon); 
+          //break;           
         case SEARCH:
           retval = new SearchAction(withIcon); 
           break;
@@ -555,6 +557,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         case ADD_LINK_ANNOTATIONS:
           retval = new AddLinkAnnotations(withIcon); 
           break;
+        case SET_PLUGIN_DIR:
+          retval = new SetPluginDirectory(withIcon); 
+          break;          
+          
         default:
           throw new IllegalArgumentException();
       }
@@ -765,7 +771,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     public boolean performOperation(Object[] args) {
-      return (flf_.loadFromASource(inputFile_, null, null, new UniqueLabeller(), FileLoadFlows.FileLoadType.SIF));
+      return (flf_.loadFromASource(inputFile_, null, null, new UniqueLabeller(), 
+      		                         FileLoadFlows.FileLoadType.SIF, false));
     }
   }
   
@@ -1719,7 +1726,56 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       return (bfp_.hasAModel() && (bfp_.getNetwork().getLinkCount(true) != 0));
     }
   }
+  
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+   
+  private class SetPluginDirectory extends ChecksForEnabled  {
+    
+    private static final long serialVersionUID = 1L;
+    
+    SetPluginDirectory(boolean doIcon) {
+      
+      ResourceManager rMan = ResourceManager.getManager(); 
+      putValue(Action.NAME, rMan.getString("command.SetPluginDirectory"));
+      if (doIcon) {
+        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.SetPluginDirectory"));
+        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/FIXME24.gif");  
+        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
+      } else {
+        char mnem = rMan.getChar("command.SetPluginDirectoryMnem"); 
+        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
+      }
+    } 
+    
+    public void actionPerformed(ActionEvent e) {
+      try {
+        performOperation();
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }      
+      return;
+    }
 
+    protected boolean performOperation() {
+      // prompt the user to enter their name
+    	String currentChoice = pMan_.getDirectory();
+    	DirectoryChooserDialog dcd = new DirectoryChooserDialog(topWindow_, flf_, currentChoice);
+    	dcd.setVisible(true);
+    	if (dcd.haveResult()) {
+    		ResourceManager rMan = ResourceManager.getManager();
+        JOptionPane.showMessageDialog(topWindow_, rMan.getString("setPlugin.RestartMessage"),
+                                      rMan.getString("setPlugin.RestartMessageTitle"),
+                                      JOptionPane.INFORMATION_MESSAGE);	
+        File directory = dcd.getDirectory();
+        pMan_.setDirectory(directory);
+      }
+      return (true);
+    }
+  }
+  
   /***************************************************************************
   **
   ** Command
@@ -2373,7 +2429,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         }
       }
       Integer magBins = (doWeights_) ? Integer.valueOf(4) : null;
-      return (flf_.loadFromASource(file, null, magBins, new UniqueLabeller(), FileLoadFlows.FileLoadType.SIF));
+      return (flf_.loadFromASource(file, null, magBins, new UniqueLabeller(), 
+      		                         FileLoadFlows.FileLoadType.SIF, false));
     }
   }
   
@@ -2440,7 +2497,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           continue;
         }
       }
-      return (flf_.loadFromASource(file, null, null, new UniqueLabeller(), FileLoadFlows.FileLoadType.GW));
+      return (flf_.loadFromASource(file, null, null, new UniqueLabeller(), 
+      														 FileLoadFlows.FileLoadType.GW, false));
     }
   
   }
@@ -2595,7 +2653,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         return (true);
       }
  
-      return (flf_.loadFromASource(file, attribs, null, new UniqueLabeller(), FileLoadFlows.FileLoadType.SIF));
+      return (flf_.loadFromASource(file, attribs, null, new UniqueLabeller(), 
+      														 FileLoadFlows.FileLoadType.SIF, false));
     }
   }
   
@@ -2967,8 +3026,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
   /***************************************************************************
   **
-  ** Command
-  */ 
+  ** Command: HOLDING OUT OF V2 FOR NOW
+  
       
   private class PrintPDFAction extends ChecksForEnabled {
 
@@ -2992,14 +3051,14 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     public void actionPerformed(ActionEvent e) {
       try {
         //PrinterJob pj = PrinterJob.getPrinterJob();
-       //// PageFormat pf = pj.defaultPage();
-      //  pf.setOrientation(PageFormat.LANDSCAPE);
+        //// PageFormat pf = pj.defaultPage();
+        //  pf.setOrientation(PageFormat.LANDSCAPE);
         Properties p = new Properties();
         p.setProperty("PageSize","A5");
        // p.setProperty(PSGraphics2D.ORIENTATION, PageConstants.LANDSCAPE);
-   //     ExportDialog export = new ExportDialog();
-     //   export.showExportDialog(topWindow_, "Export view as ...", bfp_, "export");
-  
+       //     ExportDialog export = new ExportDialog();
+       //   export.showExportDialog(topWindow_, "Export view as ...", bfp_, "export");
+    
         
         Rectangle2D viewInWorld = bfp_.getViewInWorld();
         Dimension viw = new Dimension((int)(viewInWorld.getWidth() / 10.0), (int)(viewInWorld.getHeight() / 10.0));

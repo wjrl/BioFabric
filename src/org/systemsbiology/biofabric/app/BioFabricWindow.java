@@ -44,6 +44,8 @@ import javax.swing.JSplitPane;
 import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.worker.BackgroundWorkerControlManager;
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
 import org.systemsbiology.biofabric.ui.display.BioFabricNavAndControl;
@@ -51,9 +53,7 @@ import org.systemsbiology.biofabric.ui.display.BioFabricOverview;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.ui.display.FabricMagnifyingTool;
 import org.systemsbiology.biofabric.ui.render.BucketRenderer;
-import org.systemsbiology.biofabric.util.ExceptionHandler;
 import org.systemsbiology.biofabric.util.ResourceManager;
-import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
 
 /****************************************************************************
 **
@@ -359,7 +359,7 @@ public class BioFabricWindow implements BackgroundWorkerControlManager {
       fMenu.add(importMenu);    
       importMenu.add(fc.getAction(CommandSet.LOAD_FROM_SIF, false, null));
       importMenu.add(fc.getAction(CommandSet.LOAD_WITH_NODE_ATTRIBUTES, false, null));       
-      importMenu.add(fc.getAction(CommandSet.LOAD_WITH_EDGE_WEIGHTS, false, null));
+      //importMenu.add(fc.getAction(CommandSet.LOAD_WITH_EDGE_WEIGHTS, false, null)); Not supported in V2
       importMenu.add(fc.getAction(CommandSet.LOAD_FROM_GW, false, null));
   
      // JMenu netAlignMenu = new JMenu(rMan.getString("command.LoadNetAlign"));
@@ -382,8 +382,11 @@ public class BioFabricWindow implements BackgroundWorkerControlManager {
       fMenu.add(new JSeparator());
       fMenu.add(fc.getAction(CommandSet.PRINT, false, null));
       fMenu.add(new JSeparator());
-      fMenu.add(fc.getAction(CommandSet.PRINT_PDF, false, null));
+      fMenu.add(fc.getAction(CommandSet.SET_PLUGIN_DIR, false, null));
       fMenu.add(new JSeparator());
+      // Not supporting yet...
+      //fMenu.add(fc.getAction(CommandSet.PRINT_PDF, false, null));
+      //fMenu.add(new JSeparator());
       fMenu.add(fc.getAction(CommandSet.CLOSE, false, null));
     } else {
       JMenu fMenu = new JMenu(rMan.getString("command.File"));

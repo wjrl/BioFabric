@@ -35,14 +35,14 @@ import javax.swing.JLabel;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
-import org.systemsbiology.biofabric.util.ExceptionHandler;
-import org.systemsbiology.biofabric.util.FixedJButton;
+import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.FixedJButton;
+import org.systemsbiology.biofabric.api.util.PluginResourceManager;
+import org.systemsbiology.biofabric.api.worker.BackgroundWorkerControlManager;
+import org.systemsbiology.biofabric.api.worker.BackgroundWorkerOwner;
 import org.systemsbiology.biofabric.util.GoodnessChart;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
-import org.systemsbiology.biofabric.utilAPI.PluginResourceManager;
-import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerControlManager;
-import org.systemsbiology.biofabric.workerAPI.BackgroundWorkerOwner;
 
 
 /****************************************************************************
@@ -78,7 +78,7 @@ public class BackgroundWorkerClient {
   
   public BackgroundWorkerClient(BackgroundWorkerOwner owner, BackgroundWorker worker, 
                                 JFrame topWindow, BackgroundWorkerControlManager suw, String waitTitle, 
-                                String waitMsg, boolean allowCancels, String pluginClient) {
+                                String waitMsg, boolean allowCancels, PluginResourceManager rMan) {
       
     done_ = false;
     worker_ = worker;
@@ -91,7 +91,7 @@ public class BackgroundWorkerClient {
     cancelRequested_ = false;
     isHeadless_ = false;
     chart_ = null;
-    pluginRMan_ = (pluginClient == null) ? null : new ResourceManager.ForPlugins(pluginClient);
+    pluginRMan_ = rMan;
   }
   
   public void makeSuperChart() {
@@ -307,6 +307,7 @@ public class BackgroundWorkerClient {
         if (!owner_.handleRemoteException(remoteEx)) {
           ExceptionHandler.getHandler().displayException(remoteEx);
         }
+        owner_.handleCancellation();
       }
       owner_.cleanUpPreEnable(result);      
       if (suw_ != null) {

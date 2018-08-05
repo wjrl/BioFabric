@@ -346,14 +346,12 @@ public class RasterCache {
   	BufferedOutputStream out = null;
   	try {
   	  out = new BufferedOutputStream(new FileOutputStream(file));
-  	  System.out.println("writing " + bwm.used);
   	  out.write(bwm.buf, 0, bwm.used);
   	} finally {
   		if (out != null) {
   		  out.close();
   		}
   	}
-    System.out.println("done writeBuffer " + file.getName() + " used " + (prewrite - Runtime.getRuntime().freeMemory()));
     return;
   }
   
@@ -364,7 +362,6 @@ public class RasterCache {
 
   private BytesWithMeta readBufferFromFile(File file, InfoForImage ifi, ImgAndBufPool bis) throws IOException {
   	long preread = Runtime.getRuntime().freeMemory();
-  	System.out.println("in readBuffer " + file.getName() + " mem " + preread);
   	byte[] buf = bis.fetchByteBuf(ifi.compressedNumBytes);
   	BufferedInputStream in = null;
   	int off = 0;
@@ -382,7 +379,6 @@ public class RasterCache {
   		  in.close();
   		}
   	}
-    System.out.println("done readBuffer " + file.getName() + " bytes " + off + " used " + (preread - Runtime.getRuntime().freeMemory()));
     if (ifi.compressedNumBytes != off) {
     	throw new IOException();
     }
