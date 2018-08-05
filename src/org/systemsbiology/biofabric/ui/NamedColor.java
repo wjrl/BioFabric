@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2004 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -28,7 +28,7 @@ import org.systemsbiology.biofabric.util.ColorListRenderer;
 ** Represents a color with a name
 */
 
-public class NamedColor implements Comparable, ColorListRenderer.ColorSource {
+public class NamedColor implements Comparable<NamedColor>, ColorListRenderer.ColorSource {
  
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -86,11 +86,10 @@ public class NamedColor implements Comparable, ColorListRenderer.ColorSource {
    * than, equal to, or greater than the specified object.<p>
   */
   
-  public int compareTo(Object o) { 
-    if (this == o) {
+  public int compareTo(NamedColor other) { 
+    if (this == other) {
       return (0);
     }
-    NamedColor other = (NamedColor)o;
     Color tCol = this.color;
     Color oCol = other.color;
     
