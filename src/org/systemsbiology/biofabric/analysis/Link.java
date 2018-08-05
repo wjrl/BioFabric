@@ -20,21 +20,19 @@
 
 package org.systemsbiology.biofabric.analysis;
 
-import java.util.Comparator;
-import java.util.Map;
-
-import org.systemsbiology.biofabric.api.util.NID;
+import java.util.Collection;
+import java.util.Iterator;
 
 /****************************************************************************
 **
 ** A Class
 */
 
-public class NIDLink implements Cloneable, Comparable<NIDLink> {
-  protected NID.WithName src_;
-  protected NID.WithName trg_;
+public class Link implements Cloneable, Comparable<Link> {
+  protected String src_;
+  protected String trg_;
 
-  public NIDLink(NID.WithName src, NID.WithName trg) {
+  public Link(String src, String trg) {
     if ((src == null) || (trg == null)) {
       throw new IllegalArgumentException();
     }
@@ -42,25 +40,25 @@ public class NIDLink implements Cloneable, Comparable<NIDLink> {
     this.trg_ = trg;
   }
 
-  public NIDLink(NIDLink other) {
+  public Link(Link other) {
     this.src_ = other.src_;
     this.trg_ = other.trg_;
   }
   
   @Override
-  public NIDLink clone() {
+  public Link clone() {
     try {
-      return ((NIDLink)super.clone());
+      return ((Link)super.clone());
     } catch (CloneNotSupportedException cnse) {
       throw new IllegalStateException();
     }
   }    
   
-  public NID.WithName getTrg() {
+  public String getTrg() {
     return (trg_);
   }
 
-  public NID.WithName getSrc() {
+  public String getSrc() {
     return (src_);
   }    
 
@@ -74,6 +72,27 @@ public class NIDLink implements Cloneable, Comparable<NIDLink> {
     return ("src = " + src_ + " trg = " + trg_);
   }
   
+  public String toSymbolicString() {
+    return (src_ + signSymbol() + trg_);
+  }
+  
+  public static String toSymbolicString(Collection<Link> links) {
+    StringBuffer buf = new StringBuffer();
+    Iterator<Link> lit = links.iterator();
+    while (lit.hasNext()) {
+      Link lnk = lit.next();
+      buf.append(lnk.toSymbolicString());
+      if (lit.hasNext()) {
+        buf.append(", ");
+      }
+    }
+    return (buf.toString());
+  }
+  
+  public String signSymbol() {
+    return ("--");
+  }
+  
   @Override
   public boolean equals(Object other) {
     if (other == null) {
@@ -82,54 +101,22 @@ public class NIDLink implements Cloneable, Comparable<NIDLink> {
     if (other == this) {
       return (true);
     }
-    if (!(other instanceof NIDLink)) {
+    if (!(other instanceof Link)) {
       return (false);
     }
-    NIDLink otherLink = (NIDLink)other;
+    Link otherLink = (Link)other;
     return (this.src_.equals(otherLink.src_) && this.trg_.equals(otherLink.trg_));
   }
   
-  public int compareTo(NIDLink otherLink) {
+  public int compareTo(Link otherLink) {
     if (this == otherLink) {
       return (0);
     }
 
     if (!this.src_.equals(otherLink.src_)) {
-      return (this.src_.compareTo(otherLink.src_));
+      return (this.src_.compareToIgnoreCase(otherLink.src_));
     }
     
-    return (this.trg_.compareTo(otherLink.trg_));
-  }
-  
-  public static class NIDLinkLocationOrder implements Comparator<NIDLink> {
-  	
-  	private Map<NID.WithName, Integer> nodeToRow_;
-  	
-  	public NIDLinkLocationOrder(Map<NID.WithName, Integer> nodeToRow) {
-  		nodeToRow_ = nodeToRow;
-  	}
-  	
-  	public int compare(NIDLink link1, NIDLink link2) {
-  		NID.WithName l1s = link1.getSrc();
-  		NID.WithName l1t = link1.getTrg();
-  		NID.WithName l2s = link2.getSrc();
-  		NID.WithName l2t = link2.getTrg();
-  		Integer l1sR = nodeToRow_.get(l1s);
-  	  Integer l1tR = nodeToRow_.get(l1t);  			
-  		Integer l2sR = nodeToRow_.get(l2s);
-  		Integer l2tR = nodeToRow_.get(l2t);
-
-  		if (l1sR.equals(l2sR)) {
-  			return (l1tR.intValue() - l2tR.intValue());  			
-  		} else if (l1sR.equals(l2tR)) {
-  			return (l1tR.intValue() - l2sR.intValue());			
-  	  } else if (l1tR.equals(l2sR)) {
-  			return (l1sR.intValue() - l2tR.intValue());
-  	  } else if (l1tR.equals(l2tR)) {
-  			return (l1sR.intValue() - l2sR.intValue());
-  	  } else {
-  	  	throw new IllegalArgumentException();
-  	  }	
-  	}	
+    return (this.trg_.compareToIgnoreCase(otherLink.trg_));
   } 
 }

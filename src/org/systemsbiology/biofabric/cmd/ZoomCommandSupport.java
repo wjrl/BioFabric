@@ -38,6 +38,7 @@ import javax.swing.event.ChangeListener;
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 
+
 /****************************************************************************
 **
 ** Handles zoom operations
