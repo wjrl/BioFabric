@@ -47,6 +47,7 @@ import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.TrueObjChoiceContent;
 import org.systemsbiology.biofabric.util.UiUtil;
 
+
 /****************************************************************************
 **
 ** Control nodes at top
