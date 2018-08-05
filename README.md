@@ -1,7 +1,9 @@
 BioFabric
 =========
 
-Current tip of master branch is now V2 beta
+Current tip of master branch is now the Version 2 Beta release, which is under active development (August 2018).
+
+The current stable production release (Version 1, released 2012) is available as the V1.0 tag.
 
 BioFabric is an open-source network visualization tool that uses a new approach: nodes are represented as horizontal lines instead of as points:
 
