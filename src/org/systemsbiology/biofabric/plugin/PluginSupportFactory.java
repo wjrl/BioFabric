@@ -131,10 +131,11 @@ public class PluginSupportFactory {
   
   public static BFWorker getBFWorker(BackgroundWorkerOwner owner,
                                      JFrame topWindow, BackgroundWorkerControlManager suw, String waitTitle, 
-                                     String waitMsg, boolean allowCancels, String pluginName) {
+                                     String waitMsg, boolean allowCancels, PluginResourceManager rMan) {
   	
   	BackgroundWorker bw = new BackgroundWorker();
-    BackgroundWorkerClient bwc = new BackgroundWorkerClient(owner, bw, topWindow, suw, waitTitle, waitMsg, allowCancels, pluginName);
+    BackgroundWorkerClient bwc = 
+    		new BackgroundWorkerClient(owner, bw, topWindow, suw, waitTitle, waitMsg, allowCancels, rMan);
   	return (new WorkerClientBundle(bw, bwc));
   }
   
@@ -143,8 +144,8 @@ public class PluginSupportFactory {
   ** Get a Plugin Resource Manager
   */
   
-  public static PluginResourceManager getResourceManager(String pluginName) {
-  	return (new ResourceManager.ForPlugins(pluginName));
+  public static PluginResourceManager getResourceManager(String pluginName, PlugInManager pMan) {
+  	return (new ResourceManager.ForPlugins(pluginName, pMan));
   } 
   
   /***************************************************************************

@@ -63,6 +63,7 @@ import org.systemsbiology.biofabric.api.model.AugRelation;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.PluginResourceManager;
 import org.systemsbiology.biofabric.api.util.UniqueLabeller;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BFWorker;
@@ -204,8 +205,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Do network build for a plug-in that provides the needed custom BuildData
   */ 
      
-  public void buildNetworkForPlugIn(BuildData pluginData, File holdIt, String pluginName) { 
-    NetworkBuilder nb = new FileLoadFlowsImpl.NetworkBuilder(true, holdIt, pluginName);
+  public void buildNetworkForPlugIn(BuildData pluginData, File holdIt, PluginResourceManager rMan) { 
+    NetworkBuilder nb = new FileLoadFlowsImpl.NetworkBuilder(true, holdIt, rMan);
     nb.setForPlugInBuild(pluginData);
     nb.doNetworkBuild();
     return;
@@ -1914,8 +1915,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private File holdIt_;  // For recovery
     private BFWorker bfwk_;
     
-    NetworkBuilder(boolean isMain, File holdIt, String forPlugin) {
-    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netBuild.waitTitle", "netBuild.wait", true, forPlugin); 
+    NetworkBuilder(boolean isMain, File holdIt, PluginResourceManager rMan) {
+    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netBuild.waitTitle", "netBuild.wait", true, rMan); 
       runner_ = new NewNetworkRunner(isMain, holdIt, bfwk_);
       holdIt_ = holdIt;
     }

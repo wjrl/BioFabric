@@ -22,6 +22,7 @@ package org.systemsbiology.biofabric.util;
 import java.util.ResourceBundle;
 
 import org.systemsbiology.biofabric.api.util.PluginResourceManager;
+import org.systemsbiology.biofabric.plugin.PlugInManager;
 
 import java.util.HashMap;
 import java.util.MissingResourceException;
@@ -90,8 +91,8 @@ public class ResourceManager {
   ** Set a bundle for a plugin
   */
 
-  void setPluginBundle(String pluginKey, String bundleName) {
-    pluginBundles_.put(pluginKey, ResourceBundle.getBundle(bundleName));
+  void setPluginBundle(String pluginKey, String bundleName, PlugInManager pMan) {
+    pluginBundles_.put(pluginKey, pMan.getResourceBundle(bundleName));
     return;
   } 
   
@@ -197,10 +198,12 @@ public class ResourceManager {
   public static class ForPlugins implements PluginResourceManager {
   	private String pluginName_;
   	private ResourceManager myMan_;
+  	private PlugInManager pMan_;
   	
-  	public ForPlugins(String pluginName) {
+  	public ForPlugins(String pluginName, PlugInManager pMan) {
   		pluginName_ = pluginName;
   		myMan_ = ResourceManager.getManager();
+  		pMan_ = pMan;
   	}
   	
     /***************************************************************************
@@ -209,7 +212,7 @@ public class ResourceManager {
 	  */
 	
 	  public void setPluginBundle(String bundleName) {
-	  	myMan_.setPluginBundle(pluginName_, bundleName);
+	  	myMan_.setPluginBundle(pluginName_, bundleName, pMan_);
 	    return;
 	  }
  	

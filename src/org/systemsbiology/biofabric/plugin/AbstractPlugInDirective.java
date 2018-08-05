@@ -118,11 +118,11 @@ public abstract class AbstractPlugInDirective implements Comparable<AbstractPlug
   **
   */
   
-  public BioFabricToolPlugIn buildPlugIn() {
+  public BioFabricToolPlugIn buildPlugIn(PlugInManager pMan) {
     if (jar_ == null) {
-      return (manufacture());
+      return (manufacture(pMan));
     } else {
-      return (load());
+      return (load(pMan));
     }
   }
   
@@ -193,7 +193,7 @@ public abstract class AbstractPlugInDirective implements Comparable<AbstractPlug
   **
   */
       
-  private BioFabricToolPlugIn load() {
+  private BioFabricToolPlugIn load(PlugInManager pMan) {
     try {
       URL purl = jar_.toURI().toURL(); // As recommended in docs, to create escape chars
       URLClassLoader loader = new URLClassLoader(new URL[] {purl},BioFabricToolPlugIn.class.getClassLoader());  
@@ -202,6 +202,7 @@ public abstract class AbstractPlugInDirective implements Comparable<AbstractPlug
 
       BioFabricToolPlugIn instance = (BioFabricToolPlugIn)pluggedIn.newInstance();
       instance.setUniquePlugInTag(className_);
+      instance.installManager(pMan);
       return (instance);
     } catch (MalformedURLException muex) {
       System.err.println("PlugIn " + className_ + " not loaded: " + muex);      
@@ -220,11 +221,12 @@ public abstract class AbstractPlugInDirective implements Comparable<AbstractPlug
   ** Create a plug-in from the directive:
   */
 
-  private BioFabricToolPlugIn manufacture() {
+  private BioFabricToolPlugIn manufacture(PlugInManager pMan) {
     try {
       Class<?> plugClass = Class.forName(className_);
       BioFabricToolPlugIn instance = (BioFabricToolPlugIn)plugClass.newInstance();
       instance.setUniquePlugInTag(className_);
+      instance.installManager(pMan);
       return (instance);      
     } catch (ClassNotFoundException cnfex) {
       System.err.println("PlugIn " + className_ + " not loaded: " + cnfex);

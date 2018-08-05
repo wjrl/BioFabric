@@ -108,5 +108,13 @@ public interface BioFabricToolPlugIn {
   */
   
   public void installAPI(PlugInNetworkModelAPI bfn);
+  
+  /***************************************************************************
+  **
+  ** Install PluginManager
+  */
+  
+  public void installManager(PlugInManager pMan);  
+  
     
 }

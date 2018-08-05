@@ -30,6 +30,7 @@ import java.util.SortedMap;
 import org.systemsbiology.biofabric.api.model.AugRelation;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.PluginResourceManager;
 import org.systemsbiology.biofabric.api.util.UniqueLabeller;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 
@@ -87,7 +88,7 @@ public interface FileLoadFlows {
   ** Do network build for a plug-in that provides the needed custom BuildData
   */
   
-  public void buildNetworkForPlugIn(BuildData pluginData, File holdIt, String pluginName);
+  public void buildNetworkForPlugIn(BuildData pluginData, File holdIt, PluginResourceManager rMan);
  
   /***************************************************************************
   **
