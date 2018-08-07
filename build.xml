@@ -41,7 +41,7 @@ Here are the targets that count:
 %AppConfig;
 ]>
 
-<project name="BioTapestry" default="buildExeJar" basedir=".">
+<project name="BioFabric" default="buildExeJar" basedir=".">
 
   <property environment="env"/>
 
@@ -74,7 +74,6 @@ Here are the targets that count:
   <property name="app.baseDir"                  location="${app.srcDir}/org" />
   <property name="app.licenseDir"               location="${app.srcDir}/org/systemsbiology/biofabric/license" />
   <property name="app.classesLicenseDir"        location="${app.classesDir}/org/systemsbiology/biofabric/license" />
-  <property name="app.baseDir"                  location="${app.srcDir}/org" />
   <property name="app.jarFile"                  value="${app.buildDir}/bioFabric-V${app.version}.jar" />
   <property name="app.signJarFile"              value="${app.signDir}/sBioFabric-V${app.version}.jar" />
   <property name="app.srcFile"                  location="${app.buildDir}/&appName;-&appVersion;-src.tar.gz" />

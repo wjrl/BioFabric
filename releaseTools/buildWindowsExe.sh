@@ -17,10 +17,12 @@ java -jar $LAUNCH4J_HOME/launch4j.jar $L4J_WORKING
 # This requires that the Mono project signcode tool has been installed:
 #
 
-signcode -spc authenticode.spc -v authenticode.pvk -a sha1 -$ commercial -n BioFabric \
-          -i http://www.BioFabric.org/ -t http://timestamp.verisign.com/scripts/timstamp.dll -tr 10 \ 
-          $EXEHOME/BioFabric.exe
 
+#signcode -spc authenticode.spc -v authenticode.pvk -a sha1 -$ commercial -n BioFabric \
+#          -i http://www.BioFabric.org/ -t http://timestamp.verisign.com/scripts/timstamp.dll -tr 10 \ 
+#          $EXEHOME/BioFabric.exe
+
+cd $EXEHOME
 rm -rf $EXEHOME/Licenses
 mkdir $EXEHOME/Licenses
 cat $RESHOME/Licenses/LICENSE-README-TEMPLATE.txt | sed "s#__WJRL_CURRYEAR__#$CURRYEAR#" > Licenses/LICENSE-README.txt
@@ -29,7 +31,7 @@ $RESHOME/Licenses/launch4j-head-LICENSE.txt $EXEHOME/Licenses
 cp $RESHOME/README-INSTALL.txt $EXEHOME
 
 zip BioFabric$VERCOMP.zip Licenses Licenses/LICENSE.txt Licenses/LICENSE-README.txt \
-Licenses/LICENSE-SUN.txt Licenses/launch4j-head-LICENSE.txt BioFabric.exe README-INSTALL.txt
+  Licenses/LICENSE-SUN.txt Licenses/launch4j-head-LICENSE.txt BioFabric.exe README-INSTALL.txt
 
 
 
