@@ -285,7 +285,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
   public static boolean askForFileInfo(NodeClusterLayout.ClusterParams params, CommandSet cset, 
                                        FileLoadFlows flf, BioFabricNetwork bfn)  {   
       
-    File file = flf.getTheFile(".noa", ".na", "AttribDirectory", "filterName.noa");
+    File file = flf.getTheFile(".noa", ".na", "AttribDirectory", "filterName.noa", null);
     if (file == null) {
       return (false);
     }
