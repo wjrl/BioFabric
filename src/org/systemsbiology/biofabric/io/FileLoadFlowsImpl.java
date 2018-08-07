@@ -19,6 +19,7 @@
 
 package org.systemsbiology.biofabric.io;
 
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
@@ -482,7 +483,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
             return (false);
           }
           if (rdd.getFromFile()) {
-            File fileEda = getTheFile(".rda", ".txt", "AttribDirectory", "filterName.rda");
+            File fileEda = getTheFile(".rda", ".txt", "AttribDirectory", "filterName.rda", null);
             if (fileEda == null) {
               return (true);
             }
@@ -965,7 +966,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Get readable attribute file
   */
   
-  public File getTheFile(String ext1, String ext2, String prefTag, String desc) { 
+  public File getTheFile(String ext1, String ext2, String prefTag, String desc, Component useUI) { 
     File file = null;      
     String filename = FabricCommands.getPreference(prefTag);
     while (file == null) {
@@ -986,7 +987,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         }
       }
 
-      int option = chooser.showOpenDialog(topWindow_);
+      int option = chooser.showOpenDialog(useUI == (null) ? topWindow_ : useUI);
       if (option != JFileChooser.APPROVE_OPTION) {
         return (null);
       }

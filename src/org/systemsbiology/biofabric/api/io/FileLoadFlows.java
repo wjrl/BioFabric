@@ -20,12 +20,15 @@
 package org.systemsbiology.biofabric.api.io;
 
 
+import java.awt.Component;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
+
+import javax.swing.JFrame;
 
 import org.systemsbiology.biofabric.api.model.AugRelation;
 import org.systemsbiology.biofabric.api.model.NetLink;
@@ -140,7 +143,7 @@ public interface FileLoadFlows {
   ** Get readable attribute file
   */
   
-  public File getTheFile(String ext1, String ext2, String prefTag, String desc);
+  public File getTheFile(String ext1, String ext2, String prefTag, String desc, Component currUI);
   
   
   /***************************************************************************

@@ -1595,7 +1595,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     protected boolean performOperation() {
-      File file = flf_.getTheFile(".noa", ".na", "AttribDirectory", "filterName.noa");
+      File file = flf_.getTheFile(".noa", ".na", "AttribDirectory", "filterName.noa", null);
       if (file == null) {
         return (true);
       }
@@ -1653,7 +1653,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
 
     protected boolean performOperation() {
-      File file = flf_.getTheFile(".tsv", null, "AnnotDirectory", "filterName.tsv");
+      File file = flf_.getTheFile(".tsv", null, "AnnotDirectory", "filterName.tsv", null);
       if (file == null) {
         return (true);
       }
@@ -1706,7 +1706,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
 
     protected boolean performOperation() {
-      File file = flf_.getTheFile(".tsv", null, "AnnotDirectory", "filterName.tsv");
+      File file = flf_.getTheFile(".tsv", null, "AnnotDirectory", "filterName.tsv", null);
       if (file == null) {
         return (true);
       }
@@ -1790,7 +1790,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     protected boolean performOperation() {   
-      File file = flf_.getTheFile(".eda", ".ed", "AttribDirectory", "filterName.eda");
+      File file = flf_.getTheFile(".eda", ".ed", "AttribDirectory", "filterName.eda", null);
       if (file == null) {
         return (true);
       }
@@ -1952,7 +1952,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           ControlTopLayout.CtrlMode cMode = ctlsud.getCMode();
           ControlTopLayout.TargMode tMode = ctlsud.getTMode();
           if (cMode == ControlTopLayout.CtrlMode.FIXED_LIST) {
-            File fileEda = flf_.getTheFile(".txt", null, "AttribDirectory", "filterName.txt");
+            File fileEda = flf_.getTheFile(".txt", null, "AttribDirectory", "filterName.txt", null);
             if (fileEda == null) {
               return;
             }
@@ -2643,7 +2643,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         }
       }
       
-      File attribFile = flf_.getTheFile(".noa", ".na", "AttribDirectory", "filterName.noa");
+      File attribFile = flf_.getTheFile(".noa", ".na", "AttribDirectory", "filterName.noa", null);
       if (attribFile == null) {
         return (true);
       }
