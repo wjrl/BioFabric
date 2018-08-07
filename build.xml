@@ -81,7 +81,7 @@ Here are the targets that count:
   <property name="app.signedJarDir"             location="CodeSigning" />
   <property name="app.buildWin"                 value="${basedir}/releaseTools/buildWindowsExe.sh" />
   <property name="app.buildLin"                 value="${basedir}/releaseTools/buildLinuxReleaseTar.sh" />
-  <property name="app.buildMac"                 value="${basedir}/releaseTools/buildMacReleaseDmg.sh" />
+  <property name="app.buildMac"                 value="${basedir}/releaseTools/buildMacReleaseDir.sh" />
   <property name="app.signJar"                  value="${basedir}/releaseTools/signIt.sh" />
   <property name="app.releaseDists"             location="releaseDistArchive" />
 
@@ -202,13 +202,7 @@ Here are the targets that count:
    <copy file="${app.linExeDir}/BioTapestryEditorForLinux${app.NDversion}.tgz" tofile="${app.releaseDists}/BioTapestryEditorForLinux${app.NDversion}.tgz" />
   </target>
 
-  <target name="stageForMacDmg">
-  	<delete dir="${app.macExeDir}" quiet="true" />
-    <mkdir dir="${app.macExeDir}" />
-    <exec executable="${app.buildMac}" failonerror="true">
-      <arg line="${app.macExeDir} ${app.signDir} ${app.macExeSrcDir} ${app.version} ${app.NDversion} ${app.year}"/>
-    </exec>
-  </target>
+
 
   <target name="releaseDistribs" depends="buildWindowsExe, buildLinuxTar, stageForMacDmg" >
 	<copy file="${app.signJarFile}" todir="${app.releaseDists}" />
@@ -252,60 +246,68 @@ Here are the targets that count:
            classpath="${app.releaseDir}/lib/appbundler-1.01wl.jar" />
 
   <target name="buildMac">
-    <bundleapp outputdirectory="${app.buildDir}"
+  	<delete dir="${app.macExeDir}" quiet="true" />
+    <mkdir dir="${app.macExeDir}" />
+    <bundleapp outputdirectory="${app.macExeDir}"
                name="BioFabric2.0Beta1"
                displayname="BioFabric V2 Beta1"
                identifier="org.systemsbiology.biofabric"
-	       icon="${app.buildDir}/BioFabIcon.icns"
+	       icon="${app.macExeSrcDir}/BioFabIcon.icns"
 	       shortversion="V 2.0.B1"	
 	       signature="BFAB"
            mainclassname="org.systemsbiology.biofabric.app.BioFabricApplication"
 	       version="2.0.B1"
 	       copyright="BioFabric Version 2.0 Beta1 Copyright (c) 2003-2018 Institute for Systems Biology"
 	       supportsAutomaticGraphicsSwitching="false">
-       <classpath file="${app.releaseDir}/EditorSigning/sBioFabric-V2.0.B.1.jar" />
+       <classpath file="${app.releaseDir}/signing/sBioFabric-V2.0.B.1.jar" />
        <runtime dir="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home" />
        <option value="-Dapple.laf.useScreenMenuBar=true" />
-       <option value="-Xmx1200m" />
+       <option value="-Xmx4800m" />
     </bundleapp>
   </target>
-	 
-  <target name="signMac">
+	
+  <target name="stageForMacDmg" depends="buildMac">
+	<exec executable="${app.buildMac}" failonerror="true">
+	   <arg line="${app.macExeDir} ${app.macExeSrcDir} ${app.year}"/>
+	</exec>
+  </target>	
+		
+  <target name="signMac" depends="stageForMacDmg">
   	<exec executable="/usr/bin/codesign" failonerror="true">
-  	  <arg line="-s &quot;Developer ID Application: William Longabaugh (DKRXRD3Z9U)&quot; -v &quot;${app.buildDir}/BioFabricV2-Beta1.app/Contents/PlugIns/JavaAppletPlugin.plugin&quot;"/>
+  	  <arg line="-s &quot;Developer ID Application: William Longabaugh (DKRXRD3Z9U)&quot; -v &quot;${app.macExeDir}/BioFabric2.0Beta1.app/Contents/PlugIns/JavaAppletPlugin.plugin&quot;"/>
   	</exec>
     <exec executable="/usr/bin/codesign" failonerror="true">
-      <arg line="-s &quot;Developer ID Application: William Longabaugh (DKRXRD3Z9U)&quot; -v &quot;${app.buildDir}/BioFabricV2-Beta1.app&quot;"/>
+      <arg line="-s &quot;Developer ID Application: William Longabaugh (DKRXRD3Z9U)&quot; -v &quot;${app.macExeDir}/BioFabric2.0Beta1.app&quot;"/>
     </exec>
   </target>
 	
   <!-- OK, would like to copy the executable using ant copy, but we lose the execute permissions bit! -->
-  <target name="macDisk">
-	<delete dir="${app.buildDir}/disk" quiet="true" />
-        <delete file="${app.buildDir}/BioFabricInstallImageV2Beta1.dmg" quiet="true" />
-   <!--     <mkdir dir="${app.buildDir}/disk" />
+  <target name="macDisk" depends="signMac">
+	<delete dir="${app.macExeDir}/disk" quiet="true" />
+        <delete file="${app.macExeDir}/BioFabricInstallImageV2Beta1.dmg" quiet="true" />
+        <mkdir dir="${app.macExeDir}/disk" />
         <exec executable="/bin/cp" failonerror="true">
-           <arg line="-r &quot;${app.buildDir}/BioFabricV2-Beta1.app&quot; &quot;${app.buildDir}/disk/BioFabricV2-Beta1.app&quot;"/>
-        </exec> -->
-        <move file="${app.buildDir}/BioFabricV2-Beta1.app" todir="${app.buildDir}/disk" />
-	<copy todir="${app.buildDir}/disk/Licenses">
-          <fileset dir="${app.buildDir}/Licenses" />
-        </copy>
-	<copy file="${app.buildDir}/INSTALL-README.rtf" tofile="${app.buildDir}/disk/INSTALL-README.rtf"/>
+           <arg line="-r &quot;${app.macExeDir}/BioFabric2.0Beta1.app&quot; &quot;${app.macExeDir}/disk/BioFabricV2-Beta1.app&quot;"/>
+        </exec>
+        <!-- <move file="${app.buildDir}/BioFabric2.0Beta1.app" todir="${app.buildDir}/disk" /> -->
+	<copy todir="${app.macExeDir}/disk/Licenses">
+      <fileset dir="${app.macExeDir}/Licenses" />
+    </copy>
+	<copy file="${app.macExeDir}/INSTALL-README.rtf" tofile="${app.macExeDir}/disk/INSTALL-README.rtf"/>
 	<exec executable="/usr/bin/hdiutil" failonerror="true">
-	  <arg line="create ${app.buildDir}/BioFabricInstallImageV2Beta1.dmg -volname &quot;BioFabric V2.0 Beta1&quot; -fs HFS+ -srcfolder ${app.buildDir}/disk -size 200m"/>
+	  <arg line="create ${app.macExeDir}/BioFabricInstallImageV2Beta1.dmg -volname &quot;BioFabric V2.0 Beta1&quot; -fs HFS+ -srcfolder ${app.macExeDir}/disk -size 250m"/>
 	</exec>
   </target>	
 
-  <target name="signMacDiskOnSierraOnly">
+  <target name="signMacDiskOnSierraOnly" depends="macDisk">
   	<exec executable="/usr/bin/codesign" failonerror="true">
-  	  <arg line="-s &quot;Developer ID Application: William Longabaugh (DKRXRD3Z9U)&quot; -v ${app.buildDir}/BioFabricInstallImageV2Beta1.dmg"/>
+  	  <arg line="-s &quot;Developer ID Application: William Longabaugh (DKRXRD3Z9U)&quot; -v ${app.macExeDir}/BioFabricInstallImageV2Beta1.dmg"/>
   	</exec>
   </target>	
   			
   <target name="verifyMacDiskOnSierraOnly">
   	<exec executable="/usr/sbin/spctl" failonerror="true">
-  	  <arg line="-a -t open --context context:primary-signature ${app.buildDir}/BioFabricInstallImageV2Beta1.dmg"/>
+  	  <arg line="-a -t open --context context:primary-signature ${app.macExeDir}/BioFabricInstallImageV2Beta1.dmg"/>
   	</exec>
   </target>				
 	
