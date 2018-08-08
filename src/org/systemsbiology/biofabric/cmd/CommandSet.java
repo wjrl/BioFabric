@@ -1,3 +1,4 @@
+
 /*
 **    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
@@ -103,6 +104,7 @@ import org.systemsbiology.biofabric.ui.dialogs.BreadthFirstLayoutDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ClusterLayoutSetupDialog;
 import org.systemsbiology.biofabric.ui.dialogs.CompareNodesSetupDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ControlTopLayoutSetupDialog;
+import org.systemsbiology.biofabric.ui.dialogs.DirectoryChooserDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ExportSettingsDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ExportSettingsPublishDialog;
 import org.systemsbiology.biofabric.ui.dialogs.FabricDisplayOptionsDialog;
@@ -188,6 +190,8 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   
   public static final int ADD_NODE_ANNOTATIONS         = 55;
   public static final int ADD_LINK_ANNOTATIONS         = 56;
+  
+  public static final int SET_PLUGIN_DIR               = 57;
  
   public static final int GENERAL_PUSH   = 0x01;
   public static final int ALLOW_NAV_PUSH = 0x02;
@@ -553,6 +557,10 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         case ADD_LINK_ANNOTATIONS:
           retval = new AddLinkAnnotations(withIcon); 
           break;
+        case SET_PLUGIN_DIR:
+          retval = new SetPluginDirectory(withIcon); 
+          break;          
+          
         default:
           throw new IllegalArgumentException();
       }
@@ -1587,7 +1595,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     protected boolean performOperation() {
-      File file = flf_.getTheFile(".noa", ".na", "AttribDirectory", "filterName.noa");
+      File file = flf_.getTheFile(".noa", ".na", "AttribDirectory", "filterName.noa", null);
       if (file == null) {
         return (true);
       }
@@ -1645,7 +1653,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
 
     protected boolean performOperation() {
-      File file = flf_.getTheFile(".tsv", null, "AnnotDirectory", "filterName.tsv");
+      File file = flf_.getTheFile(".tsv", null, "AnnotDirectory", "filterName.tsv", null);
       if (file == null) {
         return (true);
       }
@@ -1698,7 +1706,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
 
     protected boolean performOperation() {
-      File file = flf_.getTheFile(".tsv", null, "AnnotDirectory", "filterName.tsv");
+      File file = flf_.getTheFile(".tsv", null, "AnnotDirectory", "filterName.tsv", null);
       if (file == null) {
         return (true);
       }
@@ -1718,7 +1726,56 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       return (bfp_.hasAModel() && (bfp_.getNetwork().getLinkCount(true) != 0));
     }
   }
+  
+  /***************************************************************************
+  **
+  ** Command
+  */ 
+   
+  private class SetPluginDirectory extends ChecksForEnabled  {
+    
+    private static final long serialVersionUID = 1L;
+    
+    SetPluginDirectory(boolean doIcon) {
+      
+      ResourceManager rMan = ResourceManager.getManager(); 
+      putValue(Action.NAME, rMan.getString("command.SetPluginDirectory"));
+      if (doIcon) {
+        putValue(Action.SHORT_DESCRIPTION, rMan.getString("command.SetPluginDirectory"));
+        URL ugif = getClass().getResource("/org/systemsbiology/biofabric/images/FIXME24.gif");  
+        putValue(Action.SMALL_ICON, new ImageIcon(ugif));
+      } else {
+        char mnem = rMan.getChar("command.SetPluginDirectoryMnem"); 
+        putValue(Action.MNEMONIC_KEY, Integer.valueOf(mnem));
+      }
+    } 
+    
+    public void actionPerformed(ActionEvent e) {
+      try {
+        performOperation();
+      } catch (Exception ex) {
+        ExceptionHandler.getHandler().displayException(ex);
+      }      
+      return;
+    }
 
+    protected boolean performOperation() {
+      // prompt the user to enter their name
+    	String currentChoice = pMan_.getDirectory();
+    	DirectoryChooserDialog dcd = new DirectoryChooserDialog(topWindow_, flf_, currentChoice);
+    	dcd.setVisible(true);
+    	if (dcd.haveResult()) {
+    		ResourceManager rMan = ResourceManager.getManager();
+        JOptionPane.showMessageDialog(topWindow_, rMan.getString("setPlugin.RestartMessage"),
+                                      rMan.getString("setPlugin.RestartMessageTitle"),
+                                      JOptionPane.INFORMATION_MESSAGE);	
+        File directory = dcd.getDirectory();
+        pMan_.setDirectory(directory);
+      }
+      return (true);
+    }
+  }
+  
   /***************************************************************************
   **
   ** Command
@@ -1733,7 +1790,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     protected boolean performOperation() {   
-      File file = flf_.getTheFile(".eda", ".ed", "AttribDirectory", "filterName.eda");
+      File file = flf_.getTheFile(".eda", ".ed", "AttribDirectory", "filterName.eda", null);
       if (file == null) {
         return (true);
       }
@@ -1895,7 +1952,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           ControlTopLayout.CtrlMode cMode = ctlsud.getCMode();
           ControlTopLayout.TargMode tMode = ctlsud.getTMode();
           if (cMode == ControlTopLayout.CtrlMode.FIXED_LIST) {
-            File fileEda = flf_.getTheFile(".txt", null, "AttribDirectory", "filterName.txt");
+            File fileEda = flf_.getTheFile(".txt", null, "AttribDirectory", "filterName.txt", null);
             if (fileEda == null) {
               return;
             }
@@ -2586,7 +2643,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         }
       }
       
-      File attribFile = flf_.getTheFile(".noa", ".na", "AttribDirectory", "filterName.noa");
+      File attribFile = flf_.getTheFile(".noa", ".na", "AttribDirectory", "filterName.noa", null);
       if (attribFile == null) {
         return (true);
       }

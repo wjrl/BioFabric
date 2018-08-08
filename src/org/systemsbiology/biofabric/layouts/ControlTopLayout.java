@@ -1,3 +1,4 @@
+
 /*
 **    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
@@ -45,6 +46,7 @@ import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.TrueObjChoiceContent;
 import org.systemsbiology.biofabric.util.UiUtil;
+
 
 /****************************************************************************
 **
@@ -598,5 +600,4 @@ public class ControlTopLayout extends NodeLayout {
     }
     return (retval);
   } 
-
 }

@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -25,10 +25,10 @@ import java.util.prefs.Preferences;
 **
 ** This legacy class must be retained because it was used to store user 
 ** preferences in Version 1.0.0
-*/
-
+  */ 
+  
 public class FabricCommands {
-
+  
   /***************************************************************************
   **
   ** Preferences are stored by package. 
@@ -52,13 +52,13 @@ public class FabricCommands {
   } 
   
   
-  /***************************************************************************
+   /***************************************************************************
   **
   ** Never instantiate
   */ 
     
   private FabricCommands() {
     // Never instantiate
-    throw new UnsupportedOperationException();
-  }
+      throw new UnsupportedOperationException();
+    }     
 }

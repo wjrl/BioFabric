@@ -1,3 +1,4 @@
+
 /*
 **    Copyright (C) 2003-2016 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
@@ -273,7 +274,7 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
   
   void loadFromFile() {
     CommandSet cmd = CommandSet.getCmds("mainWindow");
-    File fileEda = cmd.getFileLoader().getTheFile(".txt", null, "AttribDirectory", "filterName.txt");
+    File fileEda = cmd.getFileLoader().getTheFile(".txt", null, "AttribDirectory", "filterName.txt", this);
     if (fileEda == null) {
       return;
     }

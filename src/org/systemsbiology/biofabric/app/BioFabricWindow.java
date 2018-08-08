@@ -1,3 +1,4 @@
+
 /*
 **    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
@@ -380,6 +381,8 @@ public class BioFabricWindow implements BackgroundWorkerControlManager {
       fMenu.add(fc.getAction(CommandSet.EMPTY_NETWORK, false, null));
       fMenu.add(new JSeparator());
       fMenu.add(fc.getAction(CommandSet.PRINT, false, null));
+      fMenu.add(new JSeparator());
+      fMenu.add(fc.getAction(CommandSet.SET_PLUGIN_DIR, false, null));
       fMenu.add(new JSeparator());
       // Not supporting yet...
       //fMenu.add(fc.getAction(CommandSet.PRINT_PDF, false, null));

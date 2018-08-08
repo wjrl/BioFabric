@@ -19,6 +19,7 @@
 
 package org.systemsbiology.biofabric.io;
 
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
@@ -63,6 +64,7 @@ import org.systemsbiology.biofabric.api.model.AugRelation;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.PluginResourceManager;
 import org.systemsbiology.biofabric.api.util.UniqueLabeller;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BFWorker;
@@ -204,8 +206,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Do network build for a plug-in that provides the needed custom BuildData
   */ 
      
-  public void buildNetworkForPlugIn(BuildData pluginData, File holdIt, String pluginName) { 
-    NetworkBuilder nb = new FileLoadFlowsImpl.NetworkBuilder(true, holdIt, pluginName);
+  public void buildNetworkForPlugIn(BuildData pluginData, File holdIt, PluginResourceManager rMan) { 
+    NetworkBuilder nb = new FileLoadFlowsImpl.NetworkBuilder(true, holdIt, rMan);
     nb.setForPlugInBuild(pluginData);
     nb.doNetworkBuild();
     return;
@@ -481,7 +483,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
             return (false);
           }
           if (rdd.getFromFile()) {
-            File fileEda = getTheFile(".rda", ".txt", "AttribDirectory", "filterName.rda");
+            File fileEda = getTheFile(".rda", ".txt", "AttribDirectory", "filterName.rda", null);
             if (fileEda == null) {
               return (true);
             }
@@ -964,7 +966,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Get readable attribute file
   */
   
-  public File getTheFile(String ext1, String ext2, String prefTag, String desc) { 
+  public File getTheFile(String ext1, String ext2, String prefTag, String desc, Component useUI) { 
     File file = null;      
     String filename = FabricCommands.getPreference(prefTag);
     while (file == null) {
@@ -985,7 +987,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         }
       }
 
-      int option = chooser.showOpenDialog(topWindow_);
+      int option = chooser.showOpenDialog(useUI == (null) ? topWindow_ : useUI);
       if (option != JFileChooser.APPROVE_OPTION) {
         return (null);
       }
@@ -995,6 +997,44 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       }
       if (!standardFileChecks(file, FILE_MUST_EXIST, FILE_CAN_CREATE_DONT_CARE, 
                                     FILE_DONT_CHECK_OVERWRITE, FILE_MUST_BE_FILE, 
+                                    FILE_CAN_WRITE_DONT_CARE, FILE_CAN_READ)) {
+        file = null;
+        continue; 
+      }
+    }
+    return (file);
+  }
+  
+  /***************************************************************************
+  **
+  ** Get a directory
+  */
+  
+  public File getTheDirectory(String prefTag) { 
+    File file = null;      
+    String filename = FabricCommands.getPreference(prefTag);
+    while (file == null) {
+      JFileChooser chooser = new JFileChooser();           
+      chooser.setAcceptAllFileFilterUsed(true);
+      chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+      if (filename != null) {
+        File startDir = new File(filename);
+        if (startDir.exists()) {
+          chooser.setCurrentDirectory(startDir);  
+        }
+      }
+
+      int option = chooser.showOpenDialog(topWindow_);
+      if (option != JFileChooser.APPROVE_OPTION) {
+        return (null);
+      }
+      file = chooser.getSelectedFile();
+      if (file == null) {
+        return (null);
+      }     
+      
+      if (!standardFileChecks(file, FILE_MUST_EXIST, FILE_CAN_CREATE_DONT_CARE, 
+                                    FILE_DONT_CHECK_OVERWRITE, FILE_MUST_BE_DIRECTORY, 
                                     FILE_CAN_WRITE_DONT_CARE, FILE_CAN_READ)) {
         file = null;
         continue; 
@@ -1876,8 +1916,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private File holdIt_;  // For recovery
     private BFWorker bfwk_;
     
-    NetworkBuilder(boolean isMain, File holdIt, String forPlugin) {
-    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netBuild.waitTitle", "netBuild.wait", true, forPlugin); 
+    NetworkBuilder(boolean isMain, File holdIt, PluginResourceManager rMan) {
+    	bfwk_ = PluginSupportFactory.getBFWorker(this, topWindow_, bfw_, "netBuild.waitTitle", "netBuild.wait", true, rMan); 
       runner_ = new NewNetworkRunner(isMain, holdIt, bfwk_);
       holdIt_ = holdIt;
     }

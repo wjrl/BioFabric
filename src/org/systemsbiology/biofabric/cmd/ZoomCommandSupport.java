@@ -1,3 +1,4 @@
+
 /*
 **    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
@@ -36,6 +37,7 @@ import javax.swing.event.ChangeListener;
 
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
+
 
 /****************************************************************************
 **

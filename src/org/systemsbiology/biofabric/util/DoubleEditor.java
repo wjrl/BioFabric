@@ -1,3 +1,4 @@
+
 /*
 **    Copyright (C) 2003-2010 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
@@ -207,4 +208,3 @@ public class DoubleEditor extends JTextField implements TableCellEditor, NumberE
     return;
   }
 }  
-  

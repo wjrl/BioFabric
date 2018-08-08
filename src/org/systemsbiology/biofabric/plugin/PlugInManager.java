@@ -25,7 +25,10 @@ import java.util.ArrayList;
 import java.util.TreeSet;
 import java.util.Iterator;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.PropertyResourceBundle;
+import java.util.ResourceBundle;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
@@ -37,7 +40,7 @@ import java.io.PrintWriter;
 
 import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.SUParser;
-import org.xml.sax.Attributes;
+import org.systemsbiology.biotapestry.biofabric.FabricCommands;
 import org.systemsbiology.biofabric.api.io.Indenter;
 import org.systemsbiology.biofabric.api.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.api.parser.GlueStick;
@@ -46,6 +49,8 @@ import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.app.ArgParser;
 import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+
+import org.xml.sax.Attributes;
 
 /****************************************************************************
 **
@@ -63,6 +68,7 @@ public class PlugInManager {
   private ArrayList<BioFabricToolPlugIn> toolPlugIns_;
   private int maxCount_;
   private TreeSet<AbstractPlugInDirective> directives_;
+  private HashMap<String, ResourceBundle> rBunds_;
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -79,6 +85,7 @@ public class PlugInManager {
     toolPlugIns_ = new ArrayList<BioFabricToolPlugIn>();
     directives_ = new TreeSet<AbstractPlugInDirective>();
     maxCount_ = Integer.MIN_VALUE;
+    rBunds_ = new HashMap<String, ResourceBundle>();
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -87,6 +94,40 @@ public class PlugInManager {
   //
   ////////////////////////////////////////////////////////////////////////////
 
+  /***************************************************************************
+  **
+  ** Get a resource bundle for a plugin
+  */
+  
+  public ResourceBundle getResourceBundle(String name) {
+  	//Loaded from a jar file:
+    ResourceBundle rBund = rBunds_.get(name);
+    if (rBund == null) {
+    	// Part of classpath:
+    	rBund = ResourceBundle.getBundle(name);
+    }
+    return (rBund);
+  }
+
+  /***************************************************************************
+  **
+  ** Install a new user-specified plugin directory
+  */
+  
+  public void setDirectory(File directory) {
+    FabricCommands.setPreference("PlugInDirectory", directory.getAbsolutePath());
+    return;
+  }
+  
+  /***************************************************************************
+  **
+  ** Install a new user-specified plugin directory
+  */
+  
+  public String getDirectory() {
+    return (FabricCommands.getPreference("PlugInDirectory"));
+  }
+  
   /***************************************************************************
   **
   ** Install a new network
@@ -182,11 +223,23 @@ public class PlugInManager {
       }
     }
     
+    //
+    // Now load from jar files, if located in directory specified in preferences. We silently fail if nothing
+    // is found:
+    //
+    
+    String plugDirPref = FabricCommands.getPreference("PlugInDirectory");
+    if (plugDirPref != null) {
+      File plugDirectory = new File(plugDirPref);
+      if (plugDirectory.exists() && plugDirectory.isDirectory() && plugDirectory.canRead()) {
+      	readJarFiles(plugDirectory, maxCount_ + 1);
+      }
+    }
+
     Iterator<AbstractPlugInDirective> drit = directives_.iterator();
     while (drit.hasNext()) {
-      // May be either legacy type or modern type:
       AbstractPlugInDirective pid = drit.next();
-      BioFabricToolPlugIn pi = pid.buildPlugIn();
+      BioFabricToolPlugIn pi = pid.buildPlugIn(this);
       if (pi != null) {
         toolPlugIns_.add(pi);
       }
@@ -229,6 +282,7 @@ public class PlugInManager {
 
   private boolean readJarFiles(File plugInDir, int currMax) {
     try {
+    	int propLen = ".properties".length();
       ExtensionFilter filter = new ExtensionFilter(".jar");
       if (plugInDir.isDirectory()) {
         File[] files = plugInDir.listFiles(filter);
@@ -242,9 +296,29 @@ public class PlugInManager {
           List<String> sl = getServiceList(jar, "org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn");
           int numSvc = sl.size();
           for (int j = 0; j < numSvc; j++) {
-            String plugin = (String)sl.get(j);
+            String plugin = sl.get(j);
             ToolPlugInDirective pid = new ToolPlugInDirective(plugin, Integer.toString(currMax++), files[i]);
             addDirective(pid);
+          }
+          
+          //
+          // Need to suck in any properties files for the PluginResourceManager to manage:
+          //
+          
+          Enumeration<JarEntry> entries = jar.entries();
+          while (entries.hasMoreElements()) {
+          	JarEntry jarEntry = entries.nextElement();
+          	String jarName = jarEntry.getName();
+          	int jnlen = jarName.length();
+          	if (jnlen <= propLen) {
+          		continue;
+          	}
+          	String suffix = jarEntry.getName().substring(jnlen - propLen, jnlen);   	
+          	if (suffix.equals(".properties")) {
+          		String prefix = jarEntry.getName().substring(0, jnlen - propLen).replaceAll("/", ".");
+          	  BufferedReader in = new BufferedReader(new InputStreamReader(jar.getInputStream(jarEntry)));
+              rBunds_.put(prefix, new PropertyResourceBundle(in));
+          	}
           }
         }
       }

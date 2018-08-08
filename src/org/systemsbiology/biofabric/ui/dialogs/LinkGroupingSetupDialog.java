@@ -1,3 +1,4 @@
+
 /*
 **    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
@@ -224,7 +225,7 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
   
   private void loadFromFile() {
   	CommandSet cmd = CommandSet.getCmds("mainWindow");
-    File fileEda = cmd.getFileLoader().getTheFile(".txt", null, "AttribDirectory", "filterName.txt");
+    File fileEda = cmd.getFileLoader().getTheFile(".txt", null, "AttribDirectory", "filterName.txt", this);
     if (fileEda == null) {
       return;
     }

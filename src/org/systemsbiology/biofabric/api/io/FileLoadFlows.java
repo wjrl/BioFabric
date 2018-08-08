@@ -20,6 +20,7 @@
 package org.systemsbiology.biofabric.api.io;
 
 
+import java.awt.Component;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -27,9 +28,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 
+import javax.swing.JFrame;
+
 import org.systemsbiology.biofabric.api.model.AugRelation;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.PluginResourceManager;
 import org.systemsbiology.biofabric.api.util.UniqueLabeller;
 import org.systemsbiology.biofabric.io.AttributeLoader;
 
@@ -87,7 +91,7 @@ public interface FileLoadFlows {
   ** Do network build for a plug-in that provides the needed custom BuildData
   */
   
-  public void buildNetworkForPlugIn(BuildData pluginData, File holdIt, String pluginName);
+  public void buildNetworkForPlugIn(BuildData pluginData, File holdIt, PluginResourceManager rMan);
  
   /***************************************************************************
   **
@@ -139,7 +143,15 @@ public interface FileLoadFlows {
   ** Get readable attribute file
   */
   
-  public File getTheFile(String ext1, String ext2, String prefTag, String desc);
+  public File getTheFile(String ext1, String ext2, String prefTag, String desc, Component currUI);
+  
+  
+  /***************************************************************************
+  **
+  ** Get a directory
+  */
+  
+  public File getTheDirectory(String prefTag);
   
   /***************************************************************************
   **

@@ -1,3 +1,4 @@
+
 /*
 **    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
@@ -35,6 +36,7 @@ import javax.swing.border.LineBorder;
 
 import org.systemsbiology.biofabric.cmd.CommandSet;
 import org.systemsbiology.biofabric.util.ResourceManager;
+
 
 
 /****************************************************************************
@@ -100,7 +102,7 @@ public class BioFabricNavAndControl {
 
     bfo_ = new BioFabricOverview(isHeadless);
     fmt_.setFabricOverview(bfo_);
-    
+
     // This is a new feature that has no place to live, and no UI to install the needed data.
     // It was used for showing brain region images corresponding to nodes in a demo. When the
     // user runs the mouse over a node, it would show an image corresponding to a node. Over a link,
@@ -111,7 +113,6 @@ public class BioFabricNavAndControl {
     mvo_ = new MouseOverView();
     mvo_.setIsAlive(false); 
     mvo_.setFileLocations("path", "filePrefix", "fileSuffix");
-   
     JPanel fopan = new JPanel();
     fopan.setLayout(new BorderLayout());
     fopan.setBorder(new LineBorder(Color.black, 2));

@@ -1,3 +1,4 @@
+
 /*
 **    Copyright (C) 2003-2006 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
@@ -197,4 +198,3 @@ public class IntegerEditor extends JTextField implements TableCellEditor, Number
     return;
   }
 }  
-  
