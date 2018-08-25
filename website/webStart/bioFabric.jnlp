@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JNLP File for BioFabric -->
+<jnlp spec="1.0+" 
+      codebase="http://www.BioFabric.org/"
+      href="webStart/bioFabric.jnlp">
+  <information>
+    <title>BioFabric</title>
+    <vendor>Institute for Systems Biology</vendor>
+    <homepage href="index.html"/>
+    <icon href="webStart/BioFabIconWhite.gif" height="64" width="64"/>
+    <description>BioFabric</description>
+    <description kind="short">BioFabric: a program for investigating large networks</description>
+  <offline-allowed />
+  </information>
+  <security>
+    <all-permissions/>
+  </security>
+  <resources>
+    <j2se version="1.5+" java-vm-args="-Xmx1024m"/>
+    <jar href="sBioFabric-J15-V1.0.0-P.jar"/>
+  </resources>
+  <application-desc main-class="org.systemsbiology.biotapestry.biofabric.BioFabricApplication">
+  </application-desc>
+</jnlp> 

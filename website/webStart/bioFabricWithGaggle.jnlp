@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- JNLP File for BioFabric with Gaggle -->
+<jnlp spec="1.0+" 
+      codebase="http://www.BioFabric.org/"
+      href="webStart/bioFabricWithGaggle.jnlp">
+  <information>
+    <title>BioFabric</title>
+    <vendor>Institute for Systems Biology</vendor>
+    <homepage href="index.html"/>
+    <icon href="webStart/BioFabIconWhite.gif" height="64" width="64"/>
+    <description>BioFabric with Gaggle</description>
+    <description kind="short">BioFabric: a program for investigating large networks (Gaggle aware)</description>
+  <offline-allowed />
+  </information>
+  <security>
+    <all-permissions/>
+  </security>
+  <resources>
+    <j2se version="1.5+" java-vm-args="-Xmx1024m"/>
+    <jar href="sBioFabricForGaggle-V1.0.0.jar"/>
+    <extension name="gaggle-ext" href="webStart/gaggle.jnlp">
+      <ext-download ext-part="d"/>
+    </extension>
+  </resources>
+  <application-desc main-class="org.systemsbiology.biotapestry.biofabric.BioFabricApplication">
+    <argument>-gaggle</argument>
+  </application-desc>
+</jnlp> 
