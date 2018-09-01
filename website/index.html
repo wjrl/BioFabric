@@ -1,0 +1,425 @@
+<html>
+<head>
+<title>Comb the Hairball with BioFabric</title>
+<link rel="shortcut icon" href="http://www.BioFabric.org/favicon.ico" />
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta name="description" content="BioFabric is an interactive tool for visualizing and exploring large networks.">
+<meta name="keywords" content="networks, network visualization, systems biology software, graph layout, open-source, combing the hairball">
+<style>
+body{
+font-family: Arial, Helvetica, sans-serif;
+}
+</style>
+</head>
+<body>
+<center>
+<table>
+<tr>
+<td>
+<a href="http://www.systemsbiology.org">
+<img src="images/logo-isb.png" border="0" alt="ISB Logo"/>
+</a>
+</td>
+<td>
+<a href="http://www.BioFabric.org/">
+
+<img src="images/BioFabric20.png" width="576" height="214" border="0" alt="BioFabric" hspace="30"/>
+</a>
+</td>
+</tr>
+</table>
+</center>
+
+<hr noshade="true"/>
+<table>
+<tr>
+<td width="150" valign="top">
+<table cols="1">
+<tr><td bgcolor="#E0E0E0"><font size="2"><b>Contents</b></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#demo">Super-Quick Demo</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#description">Description</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#launch">Try BioFabric Online</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#download">Download</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#gallery"><b>NEW!</b> Gallery</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#docs">Documentation</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#group">BioFabric-users Google Group</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#blog">BioFabric Blog</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#gaggle">BioFabric for Gaggle</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#sif">SIF files</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#data">Data Files</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#pub">Publications</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#sourcecode">Source Code</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#feedback">Send Feedback</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#credits">Credits</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#support">Support</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#licenseagreement">License and Disclaimer</a></font></td></tr>
+</table>
+</td>
+<td valign="top">
+<center>
+<table width="70%" cols="1">
+<tr><th bgcolor="#E0E0E0"><center>News</center></th></tr>
+<tr><td bgcolor="#E0E0E0"><center><b>February 15, 2013:</b> The BioFabric paper is now available in final published form!</br>See <a href="#pub">Publications</a></center></td></tr>
+<tr><td bgcolor="#E0E0E0"><center><b>February 19, 2013:</b> Our new gallery of networks has started. Lots more to come! </br>See <a href="gallery/index.html">Gallery</a></center></td></tr>
+<tr><td bgcolor="#E0E0E0"><center><b>February 20, 2013:</b> Come visit the new BioFabric blog at <a href="http://biofabric.blogspot.com/">biofabric.blogspot.com</a></center></td></tr>
+<tr><td bgcolor="#E0E0E0"><center><b>May 6, 2013:</b> BioFabric is now also hosted on <a href="https://github.com/wjrl/BioFabric">GitHub</a></center></td></tr>
+</table>
+</center>
+
+<hr noshade="true" width="67%"/>
+<a name="demo"/>
+<h3>Super-Quick Demo</h3>
+<p>
+What does BioFabric do? It displays a network where nodes are depicted as <i><b>horizontal lines</b></i>, not as points! Take a look at the 
+<a href="gallery/pages/SuperQuickBioFabric.html">Super-Quick Demo</a> to see how it works in under 60 seconds:
+</p>
+<center>
+<a href="gallery/pages/SuperQuickBioFabric.html"><img src="images/SuperQuickAll.png" width="890" height="213" border="1" alt="BioFabric Super-Quick Demo preview"/></a>
+</center>
+
+<a name="description"/>
+<h3>Description</h3>
+<p>
+BioFabric uses a novel network presentation method that represents nodes as <i>horizontal line segments</i>, one per row.  For example,
+this is the <code>yeastHighQuality.sif</code> sample network of protein-protein interactions distributed with 
+the <a href="http://www.cytoscape.org/download.html">Cytoscape download</a>;
+it is based upon <a href="http://www.ncbi.nlm.nih.gov/pubmed/12000970">[vonMering2002]</a> and 
+<a href="http://www.ncbi.nlm.nih.gov/pubmed/12399584">[Lee2002]</a>.  It contains over 3,000 nodes and 6,800 edges:
+</p>
+<center>
+<img border="0" src="images/YeastHighQual1024.png" width="1024" height="452" border="0" alt="BioFabric Network"/></a>
+</center>
+
+Significant features:
+
+<ul>
+
+<li>
+Nodes are represented as one-dimensional horizontal line segments, one per row.
+</li>
+
+<li>
+Edges are represented as one-dimensional vertical line segments, one per column, terminating at the two rows associated with the endpoint nodes.
+</li>
+
+<li>
+Edges are drawn darker than nodes; this has the effect of emphasizing the links and making them appear to float in front of the nodes.
+</li>
+
+<li>
+Both ends of a link are represented as a tiny square.  This provides sufficient contrast to make the ends of the link stand out even at large scales.
+In the case of directed edges, the appropriate end is tagged with an arrowhead.
+</li>
+
+<li>
+Edges are unambiguously represented and never overlap.
+</li>
+
+<li>
+In networks that have multiple edges between the same nodes, i.e. representing different types of relationships, all edges show up clearly. 
+</li>
+
+<li>
+As nodes are represented as horizontal lines, there is no requirement that all edges converge upon a single point, 
+allowing for complete flexibility in where a link is drawn.   
+</li>
+
+<li>
+Links can originate, and terminate, anywhere along the length of the node segment.  This flexibility introduces the powerful 
+ability to create sets of links that share some semantic property and depict them as discrete groups in the visualization.
+</li>
+
+<li>
+The addition of a new edge just increases the width of the visualization, and does not degrade the existing presentation 
+in any fashion.
+</li>
+
+<li>
+The visualization technique produces a distinct <i>edge wedge</i> for each node, created by the close-set juxtaposition 
+of the parallel links, that provides clear visual cues about how the node is connected, and how it compares to other similar nodes.
+</li>
+
+<li>
+A set of 32 colors is used, not randomly, but in a repeating cycle to render node and edge segments.  
+Colors are not used to apply semantic meaning to network elements, but are crucial for providing a 
+framework that allows the user to visually trace features over long distances.  Also, the use of 
+cycling insures that antialiased rendering will produce larger-scale color patterns that provide
+useful visual cues even when individual links cannot be discerned.
+</li>
+
+<li>
+Note that the traditional technique overloads the two-dimensional plane, using the same space to represent 
+both nodes and edges.  BioFabric effectively segregates the plane into two separate one-dimensional spaces, 
+and assigns each space to either nodes or edges; the imposition of orthogonality and the use of judicious 
+rendering allow the user to visually distinguish the two.   Thus, BioFabric can provide additional clarity 
+of the network structure while using the same underlying two-dimensional resource.
+</li>
+
+</ul>
+</p>
+
+
+<hr noshade="true" width="67%"/>
+<a name="launch"/>
+<h3>Try BioFabric Online</h3>
+<p>
+BioFabric can be downloaded as a standalone executable and run on your Windows or Mac computer; see <a href="#download">below</a>.
+However, if you just want to have a look, it can be run from the following link using Java WebStart.  Once it is running, you can import
+a <b>tab-delimited</b> <code>.sif</code> file using <b>File-&gt;Import-&gt;Import SIF File...</b>.
+</p>
+<p>
+Click <a href="webStart/bioFabric.jnlp"><b>HERE</b></a> to run BioFabric (version 1.0.0, released 07/27/12, 
+<b>REQUIRES Java 5</b> or above; <b>Java 6 highly recommended for Macs</b>) using Java Web Start. 
+</p>
+<p>
+If you are working with very large networks, you will need the huge memory version (4 GB allocated for the Java heap) along with the hardware
+to make this feasable. Click <a href="webStart/bioFabricBigMem.jnlp"><b>HERE</b></a> 
+to run this version (version 1.0.0, released 07/27/12, <b>REQUIRES Java 5</b> or above; <b>Java 6 highly recommended for Macs</b>). 
+</p>
+
+
+<hr noshade="true" width="67%"/>
+<a name="download"/>
+<h3>Download</h3>
+<p>
+BioFabric is written in Java, and can be run on your Windows, Mac, or Linux computer.  Note that all these downloadable executables 
+require that you first download and install the Java Runtime Environment (JRE), which can be downloaded from 
+<a href="http://www.java.com/">here</a> (click the "Free Java Download" button).  On MacOS X, Java should already be
+factory-installed on all new Macs, but <b>Java 6 is highly recommended for Macs</b> so that large-scale views do not render so lightly as to 
+be almost invisible.  Note that all of the following versions are configured for 2 GB Java heap space.
+</p>
+<p> 
+Choose from the following download options:
+</p>
+<p>
+<ul>
+<li><b>Windows:</b> You need to download this <a href="executables/BioFabric100.zip">BioFabric100.zip</a> archive file.  Depending
+on your configuration of Windows, your computer will either automatically unzip the archive and display its contents, or
+you will need to unzip it manually using a program like PKZIP.  Drag the <b>BioFabric.exe</b> file out of the archive and drop it on your desktop.  
+Double-clicking  on the desktop icon will start the program running.</li><br/>
+
+
+<li><b>Mac:</b> Disk images are a standard way to distribute software on Macs.  The BioFabric application is contained 
+in this <a href="executables/BioFabricInstallImage100.dmg">BioFabricInstallImage100.dmg</a> disk image.  Download this disk image file.
+Depending on your configuration, the file may be stored in your Downloads folder, then automatically mounted and opened in
+a Finder window, or it may end up on your desktop, where you might have to double-click the file to mount the disk image, and then open the 
+Finder manually by double-clicking on the hard disk icon (called <b>BioFabricInstallImage100</b>).   From the Finder window,
+drag the <b>BioFabric</b> icon inside onto your desktop (or, if you prefer, into your Applications folder).  You can then eject the disk 
+image by dragging the hard disk icon to the Trash.  Double-clicking on the <b>BioFabric</b> icon will start the program running.  Once
+it is in the dock, you can Ctrl-click the mouse and select for it to stay in your dock.  <b>
+Important! Currently, the best results for rendering on a Mac use the Java 6 Runtime! With Java 5, large-scale views are not visible, and small-scale views render too lightly.
+</b></li><br/>
+
+<center>
+<table width="80%" cols="1">
+<tr><th bgcolor="#FFE0E0"><center><b>Important Information for Mac Users with OS X newer than v10.7.5!</b></center></th></tr>
+<tr><td bgcolor="#EOE0E0">
+<br/>Trying to run BioFabric will cause a message to appear
+telling you that it is <i>damaged</i>.  On Mavericks, it will even recommend that you move it to the trash. <b><i>There is nothing wrong
+with BioFabric.</i></b> This is due to new restrictions imposed by the Gatekeeper
+system; BioFabric not signed with an Apple Developer Certificate.  Based on recent user reports, you may need to
+to <b><i>completely disable</i></b> Gatekeeper to get BioFabric to run the first time, and then <b><i>immediately restore</i></b> 
+Gatekeeper back to its previous secure setting. On some systems, you <i>may</i> be able to tell Gatekeeper to <i>specifically</i> allow BioFabric.  The complete discussion 
+of this issue on Apple's support website is <a href="http://support.apple.com/kb/HT5290">here</a>. Scroll down to 
+"<i>How to open an app from a unidentified developer and exempt it from Gatekeeper</i>" and follow the instructions there.  
+In summary, you will need to:
+<br/><br/>
+<ol>
+<li>In Finder, Control-click or right click the BioFabric icon.</li>
+<li>Select Open from the top of contextual menu that appears.</li>
+<li>Click Open in the dialog box. If prompted, enter an administrator name and password.</li>
+</ol>
+</li>
+<br/>
+But if that route does not work, use the information provided in "<i>Gatekeeper options</i>" as follows:
+<br/><br/>
+<ol>
+<li>From Systems Preferences, select <b>Security &amp; Privacy</b>.</li>
+<li>Go to the <b>General</b> tab.</li>
+<li>Under "Allow applications downloaded from:", select "Anywhere".</li>
+<li>Start BioFabric.</li>
+<li>Go back again to Systems Preferences, and under "Allow applications downloaded from:", select the previous secure setting 
+(e.g. "Mac App Store and identified developers").</li>
+</ol>
+<br/>
+</td></tr>
+</table>
+</center>
+<br/>
+<li><b>Linux:</b> Sorry this is taking so long to get this done. In the meantime, use the <a href="#launch">webstart link</a> on this page to run on Linux.</li><br/>
+
+<!-- <li><b>Linux:</b> Download the compressed tar file <a href="executables/BioFabricForLinux-1.0.0.tgz">BioFabricForLinux-1.0.0.tgz</a>
+and place it where you want to install the program.  Untar the file: <code>tar xvzf BioFabricForLinux-1.0.0.tgz</code>, then
+<code>cd BioFabric</code>, and run the wrapper script <code>BioFabric.sh</code>.  You MUST have defined the environment
+variable <code>JAVA_HOME</code> or have the correct <code>java/bin</code> directory in your <code>PATH</code>.</li><br/> -->
+
+</ul>
+</p>
+
+<hr noshade="true" width="67%"/>
+<a name="gallery"/>
+<h3>Gallery</h3>
+<p>
+We are continuing to add to the <a href="gallery/index.html">gallery</a> of BioFabric networks. Go and check them out!
+</p>
+
+<hr noshade="true" width="67%"/>
+<a name="docs"/>
+<h3>Documentation</h3>
+<p>
+Version 1.0.0 of BioFabric has just been released, and the user documentation is... lagging (sorry!). Since the program is just a viewer and 
+not an editor, all you really need to do to get started is to import a <b>tab-delimited</b> <code>.sif</code> file (just like Cytoscape uses) 
+using <b>File-&gt;Import-&gt;Import SIF File...</b> and start playing around. The <a href="http://dx.doi.org/10.1186/1471-2105-13-275">BioFabric paper</a> 
+in BMC Bioinformatics gives a good overview of essential features to know about.  Finally, the <a href="http://groups.google.com/group/biofabric-users">BioFabric-users Google 
+group</a> is the place to ask any questions that you may have.  It is also the place where I am adding HOWTO posts for using BioFabric; these posts will
+probably form the basis for future official documentation.
+</p>
+
+<hr noshade="true" width="67%"/>
+<a name="group"/>
+<h3>BioFabric-users Google Group</h3>
+This group is intended to answer questions, and to provide a forum for feedback 
+and discussions about BioFabric.  The group home page is:
+<center>
+<blockquote>
+<a href="http://groups.google.com/group/biofabric-users"><code>http://groups.google.com/group/biofabric-users</code></a> 
+</blockquote>
+</center>
+
+<hr noshade="true" width="67%"/>
+<a name="blog"/>
+<h3>BioFabric Blog</h3>
+The blog <i>Combing the Hairball</i> is active, with new posts about various BioFabric topics:
+<center>
+<blockquote>
+<a href="http://biofabric.blogspot.com/"><code>biofabric.blogspot.com</code></a> 
+</blockquote>
+</center>
+
+<hr noshade="true" width="67%"/>
+<a name="gaggle"/>
+<h3>BioFabric for Gaggle</h3>
+<p>
+The <a href="http://gaggle.systemsbiology.net/docs/">Gaggle</a> is a framework, developed at the Institute for Systems Biology, 
+"...for exchanging data between independently developed software tools and databases to enable interactive exploration of 
+systems biology data."  BioFabric supports Gaggle, and the link below will launch the
+program with the Gaggle feature enabled. Launch the Gaggle Boss and other Gaggle-aware applications using the links on the  
+<a href="http://gaggle.systemsbiology.net/2007-04/blankslate.php">Gaggle Blank Slate</a> page.
+</p>
+<p>
+Click <a href="webStart/bioFabricWithGaggle.jnlp"><b>HERE</b></a> to run the Gaggle-enabled BioFabric
+(version 1.0.0, released 07/27/12, <b>REQUIRES Java 5</b> or above; <b>Java 6 highly recommended for Macs</b>) using Java Web Start. 
+</p>
+
+<hr noshade="true" width="67%"/>
+<a name="sif"/>
+<h3>SIF Files</h3>
+<p>
+A variety of <code>.sif</code> files are available <a href="sifFiles.html">here</a> to use for exploring BioFabric.
+</p>
+
+<hr noshade="true" width="67%"/>
+<a name="data"/>
+<h3>Data File</h3>
+<p>
+The network described in Case Study III of the BioFabric paper is available <a href="data/CaseStudyIII-CorrGE5.zip">here</a> (32 MB).
+<b>WARNING!</b> This is a compressed zip file of a network with a huge number (over 1,000,000) of links, and is a <b>poor example</b> for 
+learning how to use BioFabric.  It requires the Java WebStart "huge memory version" of BioFabric to run (link provided above), and a computer 
+with enough physical memory to handle it.  It is only included here because the BMC Bioinformatics supplementary materials site does not support files
+this large.  Instead, use the <code>.sif</code> example network files provided above, or some of the other <code>.bif</code> files available 
+as supplementary materials to the BMC paper.
+</p>
+
+<hr noshade="true" width="67%"/>
+<a name="pub"/>
+<h3>Publications</h3>
+<p>
+Please cite BioFabric using [Longabaugh 2012] if you use it in your research:
+</p>
+<p>
+<ul>
+<li>
+Longabaugh, W.J.R.
+<a href="http://dx.doi.org/10.1186/1471-2105-13-275">Combing the hairball with BioFabric: a new approach for visualization of large networks.</a>
+BMC Bioinformatics, 13:275, 2012.
+</li>
+</ul>
+</p>
+
+<hr noshade="true" width="67%"/>
+<a name="sourcecode"/>
+<h3>Source Code</h3>
+<p>
+A tar file of the current version of the source code is available <a href="src/BioFabric-1.0.0-src.tar.gz">here</a>, but it lacks the toolbar 
+image files that are needed to get the program running. The entire project is now also hosted on <a href="https://github.com/wjrl/BioFabric">GitHub</a>.
+</p>
+<hr noshade="true" width="67%"/>
+<a name="feedback"/>
+<h3>Send Feedback</h3>
+If you have any feedback you wish to send along, such as questions, bug reports, feature requests, and 
+usability issues, you can send email to:
+<center>
+<blockquote>
+<code>wlongabaugh -a~t- systemsbiology -d~o~t- org</code>
+</blockquote>
+</center>
+
+<hr noshade="true" width="67%"/>
+<a name="credits"/>
+<h3>Credits</h3>
+<p>
+Web browser launch code adapted from Bare Bones Browser Launch by Dem Pilafian 
+(<a href="http://www.centerkey.com/java/browser/">http://www.centerkey.com/java/browser/</a>).
+</p>
+<p>
+Windows executable created using the Launch4j Executable Wrapper by Grzegorz Kowal 
+(<a href="http://sourceforge.net/projects/launch4j/">http://sourceforge.net/projects/launch4j/</a>).
+</p>
+
+<hr noshade="true" width="67%"/>
+<a name="support"/>
+<h3>Support</h3>
+<p>
+BioFabric was made possible through the development of BioTapestry,
+supported by National Institute of General Medical Sciences Award Number GM061005.
+BioFabric development was also supported in part by Award Number U24CA143835 from the
+National Cancer Institute. This content is solely the responsibility of the
+author and does not necessarily represent the official views of the
+National Institute of General Medical Sciences, National Cancer Institute,
+ or the National Institutes of Health.
+</p>
+
+<hr noshade="true" width="67%"/>
+<a name="licenseagreement"/>
+<h3>License and Disclaimer</h3>
+<p>
+This software is licensed under the GNU Lesser General Public 
+License (LGPL), which is a standard "free software"
+and "open source" license.  A copy of the license agreement 
+is available online <a href="licenses/License.html">here</a>.  Note that
+some of the toolbar icons are distributed under <a href="licenses/LICENSE-SUN.txt">this</a> license.
+</p>
+<p>
+The downloadable Windows executable is wrapped in code that
+is made available by Grzegorz Kowal under <a href="licenses/launch4j-head-LICENSE.html">this</a>
+MIT License.
+</p>
+<p>
+BioFabric is under continual development, and despite our best efforts 
+there are bugs in the software.  Please be advised that, as stated in the 
+license agreement, the Institute for Systems Biology and the authors disclaim any 
+liability stemming from the use of this software.
+</p>
+</td>
+</tr>
+</table>
+<hr noshade="true"/>
+
+<p>
+<b>Last updated: April 21, 2014</b>
+</p>
+<p>
+<b><code>wlongabaugh -a~t- systemsbiology -d~o~t- org</code></b>
+</p>
+</body>
+</html>

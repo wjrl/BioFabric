@@ -1,0 +1,46 @@
+<launch4jConfig>
+  <dontWrapJar>false</dontWrapJar>
+  <headerType>gui</headerType>
+  <jar>__WJRL_JARLOC__/sBioFabric-V__WJRL_VERNUM__.jar</jar>
+  <outfile>BioFabric.exe</outfile>
+  <errTitle>BioFabric</errTitle>
+  <cmdLine></cmdLine>
+  <chdir></chdir>
+  <priority>normal</priority>
+  <downloadUrl>http://java.com/download</downloadUrl>
+  <supportUrl></supportUrl>
+  <customProcName>false</customProcName>
+  <stayAlive>false</stayAlive>
+  <manifest></manifest>
+  <icon>__WJRL_RESLOC__/BioFabIcon128.ico</icon>
+  <classPath>
+    <mainClass>org.systemsbiology.biofabric.app.BioFabricApplication</mainClass>
+    <cp>sBioFabric-V__WJRL_VERNUM__.jar</cp>
+  </classPath>
+  <jre>
+    <path></path>
+    <minVersion>1.5.0</minVersion>
+    <maxVersion></maxVersion>
+    <jdkPreference>preferJre</jdkPreference>
+    <maxHeapSize>4000</maxHeapSize>
+  </jre>
+  <versionInfo>
+    <fileVersion>__WJRL_FILE_VERNUM__</fileVersion>
+    <txtFileVersion>__WJRL_FULL_VERSTRING__</txtFileVersion>
+    <fileDescription>BioFabric</fileDescription>
+    <copyright>Copyright (C) 2003-__WJRL_CURRYEAR__, Institute for Systems Biology</copyright>
+    <productVersion>__WJRL_FILE_VERNUM__</productVersion>
+    <txtProductVersion>__WJRL_FULL_VERSTRING__</txtProductVersion>
+    <productName>BioFabric</productName>
+    <companyName>Institute for Systems Biology</companyName>
+    <internalName>BioFabric</internalName>
+    <originalFilename>BioFabric.exe</originalFilename>
+  </versionInfo>
+  <messages>
+    <startupErr>There was an error starting up BioFabric.</startupErr>
+    <bundledJreErr>This application was configured to use a bundled Java Runtime Environment but the runtime is missing or corrupted.</bundledJreErr>
+    <jreVersionErr>BioFabric needs a different version of Java on your computer to run.</jreVersionErr>
+    <launcherErr>There was an error launching BioFabric using Java.</launcherErr>
+    <instanceAlreadyExistsMsg>An application instance is already running.</instanceAlreadyExistsMsg>
+  </messages>
+</launch4jConfig>
