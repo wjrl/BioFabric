@@ -37,6 +37,7 @@ import org.xml.sax.Attributes;
 
 import org.systemsbiology.biofabric.analysis.Link;
 import org.systemsbiology.biofabric.api.io.AttributeExtractor;
+import org.systemsbiology.biofabric.api.io.AttributeKey;
 import org.systemsbiology.biofabric.api.io.BuildData;
 import org.systemsbiology.biofabric.api.io.CharacterEntityMapper;
 import org.systemsbiology.biofabric.api.io.Indenter;
@@ -57,7 +58,6 @@ import org.systemsbiology.biofabric.api.util.UniqueLabeller;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.api.worker.LoopReporter;
-import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.BuildDataImpl;
 import org.systemsbiology.biofabric.io.FabricFactory;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugIn;
@@ -401,7 +401,7 @@ public class BioFabricNetwork implements Network {
   ** Given an attribute list giving node order, confirm it is valid:
   */
 
-  public boolean checkNewNodeOrder(Map<AttributeLoader.AttributeKey, String> nodeAttributes) { 
+  public boolean checkNewNodeOrder(Map<AttributeKey, String> nodeAttributes) { 
     
     //
     // All existing targets must have a row, and all existing
@@ -417,9 +417,9 @@ public class BioFabricNetwork implements Network {
     }
      
     HashSet<String> normedKeys = new HashSet<String>();
-    Iterator<AttributeLoader.AttributeKey> akit = nodeAttributes.keySet().iterator();
+    Iterator<AttributeKey> akit = nodeAttributes.keySet().iterator();
     while (akit.hasNext()) {
-    	AttributeLoader.AttributeKey key = akit.next();
+    	AttributeKey key = akit.next();
       normedKeys.add(DataUtil.normKey(key.toString()));
     }
   
@@ -450,13 +450,13 @@ public class BioFabricNetwork implements Network {
   ** Given an attribute list giving node order, confirm it is valid:
   */
 
-  public boolean checkNodeClusterAssignment(Map<AttributeLoader.AttributeKey, String> nodeClusters) { 
+  public boolean checkNodeClusterAssignment(Map<AttributeKey, String> nodeClusters) { 
     
     //
     // All nodes must be assigned to a cluster
     //
     
-    HashSet<AttributeLoader.AttributeKey> asUpper = new HashSet<AttributeLoader.AttributeKey>();
+    HashSet<AttributeKey> asUpper = new HashSet<AttributeKey>();
     Iterator<NetNode> rttvit = rowToTargID_.values().iterator();
     /*
     while (rttvit.hasNext()) { 	
@@ -500,7 +500,7 @@ public class BioFabricNetwork implements Network {
   ** not care.... 
   */
 
-  public SortedMap<Integer, NetLink> checkNewLinkOrder(Map<AttributeLoader.AttributeKey, String> linkRows) { 
+  public SortedMap<Integer, NetLink> checkNewLinkOrder(Map<AttributeKey, String> linkRows) { 
     
     //
     // Recover the mapping that tells us what link relationships are
@@ -531,7 +531,7 @@ public class BioFabricNetwork implements Network {
     //
     
     TreeMap<Integer, NetLink> dirMap = new TreeMap<Integer, NetLink>();
-    Iterator<AttributeLoader.AttributeKey> lrit = linkRows.keySet().iterator();
+    Iterator<AttributeKey> lrit = linkRows.keySet().iterator();
     while (lrit.hasNext()) {
       FabricLink link = (FabricLink)lrit.next();
       String colNumStr = linkRows.get(link);
@@ -645,6 +645,8 @@ public class BioFabricNetwork implements Network {
     nodeAnnot_ = rbd.getNodeAnnotations();
     linkAnnots_ = rbd.getLinkAnnotations();
     linkGrouping_ = rbd.getGroupOrder();
+    layoutMode_ = rbd.getGroupOrderMode();
+    
 
     //
     // Determine the start & end of each target row needed to handle the incoming
@@ -1899,7 +1901,7 @@ public class BioFabricNetwork implements Network {
       String colorKey = colGen.getGeneColor(currRow % numColors);
       if (targetID == null) {
       	UiUtil.fixMePrintout("SAW THIS FOR ROW OBJ 5245");
-        System.out.println("targetID is Null " + rowObj);
+        UiUtil.fixMePrintout("targetID is Null " + rowObj);
       }
 
       NodeInfo nextNI = new NodeInfo(targetID.getNID().getNID(), targetID.getName(), currRow++, colorKey);

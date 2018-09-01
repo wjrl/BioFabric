@@ -2128,7 +2128,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     HashSet<String> foundKeys = new HashSet<String>();   
     forSelections_.getPayloadKeys(worldPt, foundKeys);
 
-    System.out.println("READ ME FOR NEW POLICY");
+    UiUtil.fixMePrintout("READ ME FOR NEW POLICY");
     // Rectangle selection should pull in links with glyphs within the rectangle, along with nodes they
     // are incident upon. They should also always be additive.
     // Should be able to select a link (which includes endpoints) by clicking on it, if there is no
@@ -2280,7 +2280,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     int startCol =  rect.x;
     int endCol = rect.x + rect.width;
 
-    System.out.println("READ ME FOR NEW POLICY");
+    UiUtil.fixMePrintout("READ ME FOR NEW POLICY");
     // Rectangle selection should pull in links with glyphs within the rectangle, along with nodes they
     // are incident upon. They should also always be additive.
     // Should be able to select a link (which includes endpoints) by clicking on it, if there is no

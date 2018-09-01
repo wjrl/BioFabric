@@ -36,6 +36,7 @@ import java.util.TreeSet;
 import java.util.Vector;
 
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
+import org.systemsbiology.biofabric.api.io.AttributeKey;
 import org.systemsbiology.biofabric.api.io.BuildData;
 import org.systemsbiology.biofabric.api.layout.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.api.layout.DefaultLayout;
@@ -655,12 +656,12 @@ public class NodeClusterLayout extends NodeLayout {
     private Map<NetNode, String> nodeClusters_;
 
     public ClusterParams(Source source, Order order, InterLink iLink, ClustLayout cLay, String startNode, 
-    		                 Map<AttributeLoader.AttributeKey, String> nodeClusterAttributes, 
+    		                 Map<AttributeKey, String> nodeClusterAttributes, 
     		                 Map<String, NetNode> nodes, boolean saveAssign) {
     	
     	if (nodeClusterAttributes != null) {
     	  nodeClusters_ = new HashMap<NetNode, String>();
-        for (AttributeLoader.AttributeKey key : nodeClusterAttributes.keySet()) {
+        for (AttributeKey key : nodeClusterAttributes.keySet()) {
           NetNode nodeID = nodes.get(DataUtil.normKey(((AttributeLoader.StringKey)key).key));
           nodeClusters_.put(nodeID, nodeClusterAttributes.get(key));
         }
@@ -683,10 +684,10 @@ public class NodeClusterLayout extends NodeLayout {
     	return (source.equals(Source.FILE));
     }
 
-    public void install(Map<AttributeLoader.AttributeKey, String> nodeClusterAttributes, Map<String, NetNode> nodes) {   	
+    public void install(Map<AttributeKey, String> nodeClusterAttributes, Map<String, NetNode> nodes) {   	
     	if (nodeClusterAttributes != null) {
     	  nodeClusters_ = new HashMap<NetNode, String>();
-        for (AttributeLoader.AttributeKey key : nodeClusterAttributes.keySet()) {
+        for (AttributeKey key : nodeClusterAttributes.keySet()) {
         	NetNode nodeID = nodes.get(DataUtil.normKey(((AttributeLoader.StringKey)key).key));    	
           nodeClusters_.put(nodeID, nodeClusterAttributes.get(key));
         }

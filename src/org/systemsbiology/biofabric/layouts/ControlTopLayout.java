@@ -172,7 +172,7 @@ public class ControlTopLayout extends NodeLayout {
     }
     lr.finish();
     
-    System.out.println("ACTUALLY CHECK SOMETHING OK???");
+    UiUtil.fixMePrintout("ACTUALLY CHECK SOMETHING OK???");
     return (true);  
   }
  

@@ -106,7 +106,7 @@ public class UiUtil {
   private static NumberFormat tinyNums_;
   private static NumberFormat hugeNums_;
   private static int macHeight_;
-  private static HashSet seenMsg_;
+  private static HashSet<String> seenMsg_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -120,7 +120,7 @@ public class UiUtil {
     tinyNums_ = new DecimalFormat("0.00E0"); 
     hugeNums_ = new DecimalFormat("0.00E0");
     macHeight_ = 0;
-    seenMsg_ = new HashSet();
+    seenMsg_ = new HashSet<String>();
   } 
   
   /***************************************************************************
@@ -891,7 +891,7 @@ public class UiUtil {
     if (seenMsg_.contains(msg)) {
       return;
     }
-    System.out.println("FIXME: " + msg);
+    //System.out.println("FIXME: " + msg);
     seenMsg_.add(msg);
     return;
   } 

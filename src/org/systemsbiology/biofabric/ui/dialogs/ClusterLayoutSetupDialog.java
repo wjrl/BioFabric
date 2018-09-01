@@ -37,6 +37,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 
 import org.systemsbiology.biofabric.api.dialog.BTStashResultsDialog;
+import org.systemsbiology.biofabric.api.io.AttributeKey;
 import org.systemsbiology.biofabric.api.io.FileLoadFlows;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
@@ -289,7 +290,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
     if (file == null) {
       return (false);
     }
-    Map<AttributeLoader.AttributeKey, String> nodeAttributes = flf.loadTheFile(file, null, true);
+    Map<AttributeKey, String> nodeAttributes = flf.loadTheFile(file, null, true);
     if (nodeAttributes == null) {
       return (false);
     }
@@ -298,12 +299,12 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
     // rows need a target assigned!
     //
     
-    HashSet<AttributeLoader.AttributeKey> asUpper = new HashSet<AttributeLoader.AttributeKey>();
+    HashSet<AttributeKey> asUpper = new HashSet<AttributeKey>();
     Iterator<NetNode> rttvit = bfn.getNodeSetIDs().iterator();
     while (rttvit.hasNext()) {
       asUpper.add(new AttributeLoader.StringKey(rttvit.next().getName()));
     }
-    if (!asUpper.equals(new HashSet<AttributeLoader.AttributeKey>(nodeAttributes.keySet()))) {
+    if (!asUpper.equals(new HashSet<AttributeKey>(nodeAttributes.keySet()))) {
       ResourceManager rMan = ResourceManager.getManager();
       JOptionPane.showMessageDialog(cset.getBFW().getWindow(), rMan.getString("attribRead.badRowMessage"),
                                     rMan.getString("attribRead.badRowSemanticsTitle"),

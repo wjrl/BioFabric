@@ -61,9 +61,7 @@ public class CursorManager  {
 
   public synchronized void showModeCursor() {
     currCursor_ = xCur_;
-    System.out.println("Err count " + errCount_);
     if (errCount_ == 0) {
-    	System.out.println("set cursor " + currCursor_);
       pan_.setCursor(currCursor_);
     }
   }    
@@ -85,7 +83,6 @@ public class CursorManager  {
   }      
 
   public synchronized void clearError() {
-  	 System.out.println("Err count " + errCount_);
     if (--errCount_ == 0) { 
       pan_.setCursor(currCursor_);
     }      

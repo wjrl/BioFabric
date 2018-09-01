@@ -542,7 +542,7 @@ public class BufferBuilder {
   
   private void worksForDoubling(int subW, int subH, byte[] bbc, byte[] bbs) { 
   
-      System.out.println("c s " + bbc.length + " " + bbs.length + " -------------------------------------------");
+    //System.out.println("c s " + bbc.length + " " + bbs.length + " -------------------------------------------");
     for (int i = 0; i < subH; i++) {
     	for (int j = 0; j < subW; j++) {
     		int currOffSmall = (i * (subW * 3)) + (j * 3); // This is always correct.....
@@ -551,14 +551,6 @@ public class BufferBuilder {
     		int currOffLargeDup = currOffLarge + 3;
     		int currOffLargeNextRow = (i * (subW * 3 * 4)) + (subW * 3 * 2) + (j * 3 * 2);
     		int currOffLargeNextRowDup = currOffLargeNextRow + 3;
-    //		if ((i < 5) && (j < 10)) {
-    //			System.out.println("h w " + subH + " " + subW + " -------------------------------------------");
-    //		  System.out.println("cos " + currOffSmall);
-    	//	  System.out.println("col " + currOffLarge);
-    	//	  System.out.println("cold " + currOffLargeDup);
-    	//	  System.out.println("coln " + currOffLargeNextRow);
-    	//	  System.out.println("colnd " + currOffLargeNextRowDup);
-    //		}
     		for (int k = 0; k < 3; k++) {
     			try {
     			  byte b = bbc[currOffSmall + k];
@@ -567,14 +559,14 @@ public class BufferBuilder {
     	      bbs[currOffLargeNextRow + k] = b;
      	      bbs[currOffLargeNextRowDup + k] = b;
     			} catch (ArrayIndexOutOfBoundsException aex) {
-    				System.out.println("ijk " + i + " " +  j + " " + k);
-    					  System.out.println("cos " + currOffSmall);
-    		  System.out.println("col " + currOffLarge);
-    		  System.out.println("cold " + currOffLargeDup);
-    		  System.out.println("coln " + currOffLargeNextRow);
-    		  System.out.println("colnd " + currOffLargeNextRowDup);
-    		  i = 100000;
-    		  j = 100000;
+    				System.err.println("ijk " + i + " " +  j + " " + k);
+    			  System.err.println("cos " + currOffSmall);
+    		    System.err.println("col " + currOffLarge);
+    		    System.err.println("cold " + currOffLargeDup);
+    		    System.err.println("coln " + currOffLargeNextRow);
+    		    System.err.println("colnd " + currOffLargeNextRowDup);
+    		    i = 100000;
+    		    j = 100000;
     				break;
     			}
     	  }

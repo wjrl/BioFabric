@@ -69,6 +69,7 @@ import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.filechooser.FileFilter;
 
+import org.systemsbiology.biofabric.api.io.AttributeKey;
 import org.systemsbiology.biofabric.api.io.FileLoadFlows;
 import org.systemsbiology.biofabric.api.layout.DefaultLayout;
 import org.systemsbiology.biofabric.api.model.AnnotationSet;
@@ -84,7 +85,6 @@ import org.systemsbiology.biofabric.app.BioFabricWindow;
 import org.systemsbiology.biofabric.event.EventManager;
 import org.systemsbiology.biofabric.event.SelectionChangeEvent;
 import org.systemsbiology.biofabric.event.SelectionChangeListener;
-import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.io.BuildDataImpl;
 import org.systemsbiology.biofabric.io.FileLoadFlowsImpl;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
@@ -771,8 +771,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     }
     
     public boolean performOperation(Object[] args) {
-      return (flf_.loadFromASource(inputFile_, null, null, new UniqueLabeller(), 
-      		                         FileLoadFlows.FileLoadType.SIF, false));
+    	FileLoadFlows.FileLoadResult flr = flf_.loadFromASource(inputFile_, null, null, new UniqueLabeller(), 
+      		                                                    FileLoadFlows.FileLoadType.SIF, false);
+      return (flr.getSuccess());
     }
   }
   
@@ -1599,7 +1600,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
       if (file == null) {
         return (true);
       }
-      Map<AttributeLoader.AttributeKey, String> nodeAttributes = flf_.loadTheFile(file, null, true);
+      Map<AttributeKey, String> nodeAttributes = flf_.loadTheFile(file, null, true);
       if (nodeAttributes == null) {
         return (true);
       }
@@ -1795,7 +1796,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         return (true);
       }
       Map<String, Set<NetNode>> nameToIDs = bfp_.getNetwork().getNormNameToIDs();
-      Map<AttributeLoader.AttributeKey, String> edgeAttributes = flf_.loadTheFile(file, nameToIDs, false);
+      Map<AttributeKey, String> edgeAttributes = flf_.loadTheFile(file, nameToIDs, false);
       if (edgeAttributes == null) {
         return (true);
       }
@@ -2429,8 +2430,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         }
       }
       Integer magBins = (doWeights_) ? Integer.valueOf(4) : null;
-      return (flf_.loadFromASource(file, null, magBins, new UniqueLabeller(), 
-      		                         FileLoadFlows.FileLoadType.SIF, false));
+      FileLoadFlows.FileLoadResult flr = flf_.loadFromASource(file, null, magBins, new UniqueLabeller(), 
+      		                                                    FileLoadFlows.FileLoadType.SIF, false);
+      return (flr.getSuccess());
     }
   }
   
@@ -2497,8 +2499,9 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
           continue;
         }
       }
-      return (flf_.loadFromASource(file, null, null, new UniqueLabeller(), 
-      														 FileLoadFlows.FileLoadType.GW, false));
+      FileLoadFlows.FileLoadResult flr = flf_.loadFromASource(file, null, null, new UniqueLabeller(), 
+      														                            FileLoadFlows.FileLoadType.GW, false);
+      return (flr.getSuccess());
     }
   
   }
@@ -2648,13 +2651,14 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
         return (true);
       }
   
-      Map<AttributeLoader.AttributeKey, String> attribs = flf_.loadTheFile(attribFile, null, true);
+      Map<AttributeKey, String> attribs = flf_.loadTheFile(attribFile, null, true);
       if (attribs == null) {
         return (true);
       }
  
-      return (flf_.loadFromASource(file, attribs, null, new UniqueLabeller(), 
-      														 FileLoadFlows.FileLoadType.SIF, false));
+      FileLoadFlows.FileLoadResult flr = flf_.loadFromASource(file, attribs, null, new UniqueLabeller(), 
+      														                            FileLoadFlows.FileLoadType.SIF, false);
+      return (flr.getSuccess());
     }
   }
   

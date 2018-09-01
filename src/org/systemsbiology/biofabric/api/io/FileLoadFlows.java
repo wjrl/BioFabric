@@ -28,14 +28,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 
-import javax.swing.JFrame;
-
 import org.systemsbiology.biofabric.api.model.AugRelation;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.util.PluginResourceManager;
 import org.systemsbiology.biofabric.api.util.UniqueLabeller;
-import org.systemsbiology.biofabric.io.AttributeLoader;
+import org.systemsbiology.biofabric.api.io.AttributeKey;
 
 /****************************************************************************
 **
@@ -43,6 +41,7 @@ import org.systemsbiology.biofabric.io.AttributeLoader;
 */
 
 public interface FileLoadFlows {
+
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -115,19 +114,21 @@ public interface FileLoadFlows {
    ** Load from file and directly receive link set and loners set
    */
   
-  public boolean loadFromASource(File file, List<NetLink> links,
-                                 Set<NetNode> loneNodes, Integer magBins,
-                                 UniqueLabeller idGen, boolean loadOnly, 
-                                 FileLoadType type, boolean skipShadowQuestion);
+  public FileLoadResult loadFromASource(File file, List<NetLink> links,
+                                        Set<NetNode> loneNodes, Integer magBins,
+                                        UniqueLabeller idGen, boolean loadOnly, 
+                                        FileLoadType type, boolean skipShadowQuestion);
   
   /***************************************************************************
    **
-   ** Common load operation for gw or sif
+   ** Common load operation for gw or sif. Returns the file that caches the previous network, which is
+   ** useful for restoring original network during a multi-file-loading workflow. If there was a problem,
+   ** it returns null.
    */
   
-  public boolean loadFromASource(File file, Map<AttributeLoader.AttributeKey, String> nameMap,
-                                 Integer magBins, UniqueLabeller idGen, 
-                                 FileLoadType type, boolean skipShadowQuestion);
+  public FileLoadResult loadFromASource(File file, Map<AttributeKey, String> nameMap,
+                                        Integer magBins, UniqueLabeller idGen, 
+                                        FileLoadType type, boolean skipShadowQuestion);
   
   /***************************************************************************
   **
@@ -179,7 +180,7 @@ public interface FileLoadFlows {
   ** Load the file. Map keys are strings or Links
   */
      
-  public Map<AttributeLoader.AttributeKey, String> loadTheFile(File file, Map<String, Set<NetNode>> nameToIDs, boolean forNodes);
+  public Map<AttributeKey, String> loadTheFile(File file, Map<String, Set<NetNode>> nameToIDs, boolean forNodes);
  
   /***************************************************************************
   **
@@ -194,5 +195,16 @@ public interface FileLoadFlows {
   */ 
 
   public FileLoadType getFileLoadType(File toCheck);
+  
+  /***************************************************************************
+  **
+  ** Return value for file loads.
+  */  
+  	
+	public interface FileLoadResult {
+		public boolean getSuccess();
+		public File getCacheFile();
+	}
+  
   
 }
