@@ -26,7 +26,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-import org.systemsbiology.biofabric.parser.ParserClient;
+import org.systemsbiology.biofabric.api.parser.ParserClient;
 import org.xml.sax.Attributes;
 
 /****************************************************************************

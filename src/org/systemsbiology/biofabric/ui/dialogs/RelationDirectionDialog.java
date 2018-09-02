@@ -40,6 +40,7 @@ import org.systemsbiology.biofabric.api.model.AugRelation;
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 import org.systemsbiology.biofabric.api.util.FixedJButton;
 import org.systemsbiology.biofabric.ui.dialogs.utils.EditableTable;
+import org.systemsbiology.biofabric.util.ResourceManager;
 
 /****************************************************************************
 **
@@ -73,7 +74,7 @@ public class RelationDirectionDialog extends BTStashResultsDialog {
   */ 
   
   public RelationDirectionDialog(JFrame parent, SortedMap<AugRelation, Boolean> relationMap) {
-    super(parent, "relDir.title", new Dimension(800, 400), 1);
+    super(parent, ResourceManager.getManager().getString("relDir.title"), new Dimension(800, 400), 1);
     
     getFromFile_ = false;
     returnMap_ = null;

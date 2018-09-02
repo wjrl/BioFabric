@@ -33,7 +33,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
 import org.systemsbiology.biofabric.api.dialog.BTStashResultsDialog;
-import org.systemsbiology.biofabric.api.dialog.DialogSupport;
+import org.systemsbiology.biofabric.api.dialog.DialogObj;
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 import org.systemsbiology.biofabric.api.util.FixedJButton;
 import org.systemsbiology.biofabric.util.ResourceManager;
@@ -51,6 +51,8 @@ public class LinkRelationDialog extends BTStashResultsDialog {
   private JTextField textField_;
   private final String DEFAULT_RELATION_;
   
+  private static final long serialVersionUID = 1L;
+  
   ////////////////////////////////////////////////////////////////////////////
   //
   // CONSTRUCTOR
@@ -58,7 +60,7 @@ public class LinkRelationDialog extends BTStashResultsDialog {
   ////////////////////////////////////////////////////////////////////////////
   
   public LinkRelationDialog(JFrame parent, final String default_relation) {
-    super(parent, "dialog.relationTitle", new Dimension(600, 200), 2);
+    super(parent, ResourceManager.getManager().getString("dialog.relationTitle"), new Dimension(600, 200), 2);
     this.parent_ = parent;
     this.DEFAULT_RELATION_ = default_relation;
     
@@ -102,7 +104,7 @@ public class LinkRelationDialog extends BTStashResultsDialog {
     // OK and Cancel button
     //
     
-    DialogSupport.Buttons buttons = finishConstruction();
+    DialogObj.Buttons buttons = finishConstruction();
     
     buttonOK_ = buttons.okButton;
     manageOKButton();

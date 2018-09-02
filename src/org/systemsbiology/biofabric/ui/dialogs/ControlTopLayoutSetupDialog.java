@@ -27,6 +27,7 @@ import javax.swing.JLabel;
 
 import org.systemsbiology.biofabric.api.dialog.BTStashResultsDialog;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
+import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.TrueObjChoiceContent;
 
 /****************************************************************************
@@ -68,7 +69,7 @@ public class ControlTopLayoutSetupDialog extends BTStashResultsDialog {
   */ 
   
   public ControlTopLayoutSetupDialog(JFrame parent) {     
-    super(parent, "controlTopLayout.title", new Dimension(800, 200), 2);
+    super(parent, ResourceManager.getManager().getString("controlTopLayout.title"), new Dimension(800, 200), 2);
        
     controlTopChoice_ = new JComboBox(ControlTopLayout.CtrlMode.getControlChoices());
     targetChoice_ = new JComboBox(ControlTopLayout.TargMode.getTargChoices());

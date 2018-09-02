@@ -75,7 +75,7 @@ public class NodeSimilarityLayoutSetupDialog extends BTStashResultsDialog {
   */ 
   
   public NodeSimilarityLayoutSetupDialog(JFrame parent, NodeSimilarityLayout.ClusterParams params) {     
-    super(parent, "clusteredLayout.title", new Dimension(600, 350), 2);
+    super(parent, ResourceManager.getManager().getString("clusteredLayout.title"), new Dimension(600, 350), 2);
     results_ = null;
        
     distanceTypeCombo_ = new JComboBox(NodeSimilarityLayout.ClusterParams.getDistanceChoices());

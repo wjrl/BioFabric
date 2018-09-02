@@ -57,12 +57,12 @@ import javax.swing.ListSelectionModel;
 
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
+import org.systemsbiology.biofabric.api.util.MinMax;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.FabricDisplayOptionsManager;
 import org.systemsbiology.biofabric.ui.render.PaintCacheSmall;
 import org.systemsbiology.biofabric.util.ColorListRenderer;
-import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.UiUtil;
 
 

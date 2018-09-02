@@ -96,7 +96,7 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
   */ 
   
   public ClusterLayoutSetupDialog(JFrame parent, BioFabricNetwork bfn, NetNode selNode) {     
-    super(parent, "nodeClusterLayout.title", new Dimension(600, 350), 2);
+    super(parent, ResourceManager.getManager().getString("nodeClusterLayout.title"), new Dimension(600, 350), 2);
     results_ = null;
     bfn_ = bfn;
     currSel_ = selNode;

@@ -33,6 +33,7 @@ import java.util.List;
 import org.systemsbiology.biofabric.api.layout.AnnotColorSource;
 import org.systemsbiology.biofabric.api.model.Annot;
 import org.systemsbiology.biofabric.api.model.AnnotationSet;
+import org.systemsbiology.biofabric.api.util.MinMax;
 import org.systemsbiology.biofabric.model.AnnotationSetImpl;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.model.BioFabricNetwork.LinkInfo;
@@ -40,7 +41,6 @@ import org.systemsbiology.biofabric.model.BioFabricNetwork.NodeInfo;
 import org.systemsbiology.biofabric.ui.BasicZoomTargetSupport;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
-import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************

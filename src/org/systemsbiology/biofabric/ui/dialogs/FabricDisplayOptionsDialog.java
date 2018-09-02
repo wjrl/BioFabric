@@ -94,7 +94,7 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
   */ 
   
   public FabricDisplayOptionsDialog(JFrame parent) {     
-    super(parent, "displayOptions.title", new Dimension(1000, 600), 2);
+    super(parent, ResourceManager.getManager().getString("displayOptions.title"), new Dimension(1000, 600), 2);
     ResourceManager rMan = ResourceManager.getManager();
     parent_ = parent; 
     
