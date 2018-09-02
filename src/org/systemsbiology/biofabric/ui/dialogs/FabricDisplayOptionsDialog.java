@@ -242,7 +242,14 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
     String selOpqStr = selectionOpaqueLevelField_.getText();
     Double selOpq = parseDouble(selOpqStr, "displayOptions.badOpqLevel");
     if (selOpq == null) {
-      return (false);
+      return (false); 	
+    } else if ((selOpq.doubleValue() < 0.0) || (selOpq.doubleValue() > 1.0))	{
+        ResourceManager rMan = ResourceManager.getManager();
+        JOptionPane.showMessageDialog(parent_, 
+                                      rMan.getString("displayOptions.opacityOOB"), 
+                                      rMan.getString("displayOptions.badLevelTitle"),
+                                      JOptionPane.ERROR_MESSAGE);
+        return (false);
     } else {
       newOpts_.setSelectionOpaqueLevel(selOpq.doubleValue());
     }
@@ -251,6 +258,13 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
     Double nodeLight = parseDouble(nodeLightStr, "displayOptions.badNodeLightLevel");
     if (nodeLight == null) {
       return (false);
+    } else if ((nodeLight.doubleValue() < 0.0) || (nodeLight.doubleValue() > 1.0))	{
+        ResourceManager rMan = ResourceManager.getManager();
+        JOptionPane.showMessageDialog(parent_, 
+                                      rMan.getString("displayOptions.nodeLightOOB"), 
+                                      rMan.getString("displayOptions.badLevelTitle"),
+                                      JOptionPane.ERROR_MESSAGE);
+        return (false);
     } else {
       newOpts_.setNodeLighterLevel(nodeLight.doubleValue());
       needRecolor_ = needRecolor_ || (oldOpts.getNodeLighterLevel() != newOpts_.getNodeLighterLevel());
@@ -260,6 +274,13 @@ public class FabricDisplayOptionsDialog extends BTStashResultsDialog {
     Double linkDrk = parseDouble(linkDrkStr, "displayOptions.badLinkDarkLevel");
     if (linkDrk == null) {
       return (false);
+    } else if ((linkDrk.doubleValue() < 0.0) || (linkDrk.doubleValue() > 1.0))	{
+        ResourceManager rMan = ResourceManager.getManager();
+        JOptionPane.showMessageDialog(parent_, 
+                                      rMan.getString("displayOptions.linkDarkOOB"), 
+                                      rMan.getString("displayOptions.badLevelTitle"),
+                                      JOptionPane.ERROR_MESSAGE);
+        return (false);
     } else {
       newOpts_.setLinkDarkerLevel(linkDrk.doubleValue());
       needRecolor_ = needRecolor_ || (oldOpts.getLinkDarkerLevel() != newOpts_.getLinkDarkerLevel());      
