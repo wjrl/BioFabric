@@ -843,7 +843,9 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     BackgroundFileReader br = new BackgroundFileReader(); 
     br.doBackgroundRead(ff, sup, file, true, null);
     file.delete();
-    postXMLLoad(ff, file.getName(), null);
+    // Fix for issue # 79
+    String cfn = (currentFile_ == null) ? null : currentFile_.getName();
+    postXMLLoad(ff, cfn, null);
     return (true);
   }
   
