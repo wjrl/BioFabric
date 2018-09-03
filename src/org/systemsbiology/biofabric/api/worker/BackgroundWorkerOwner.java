@@ -38,10 +38,10 @@ public interface BackgroundWorkerOwner {
   
   /****************************************************************************
   **
-  ** Things to do if we get cancelled
+  ** Things to do if we get cancelled. Returns true if user chooses to restore.
   */  
   
-  public void handleCancellation();  
+  public boolean handleCancellation();  
   
   /****************************************************************************
   **
@@ -59,5 +59,5 @@ public interface BackgroundWorkerOwner {
   ** dialogs).
   */
   
-  public void cleanUpPostRepaint(Object result);   
+  public void cleanUpPostRepaint(Object result, boolean skipImage);   
 } 

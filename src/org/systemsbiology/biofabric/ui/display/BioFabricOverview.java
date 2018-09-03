@@ -137,8 +137,6 @@ public class BioFabricOverview {
     return (myPanel_);
   }
 
-
-  
   /***************************************************************************
   **
   ** Show or hide the view
