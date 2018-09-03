@@ -94,7 +94,6 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
 
     // bfn is only for pre-selecting the JComboBox to current LayoutMode
     installJComboBox(mode);
-    UiUtil.fixMePrintout("Link group annotations being set to per network for CaseII layout. NO!");
        
     showAnnotationsBox_ = new JCheckBox(rMan_.getString("linkGroupEdit.showLinkAnnotations"));
     addWidgetFullRow(showAnnotationsBox_, true, true);

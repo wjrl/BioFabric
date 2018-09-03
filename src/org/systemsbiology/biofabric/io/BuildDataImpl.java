@@ -53,7 +53,6 @@ import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.plugin.PluginBuildData;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.util.DataUtil;
-import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -162,7 +161,8 @@ public class BuildDataImpl implements BuildData {
   public List<String> fixedOrder; 
   public Map<String, Set<NetNode>> normNameToIDs;
   public Boolean pointUp;
-
+  public SetLayout.LinkMeans linkMeaning;
+  
   private PluginBuildData plugInData_;
   
   ////////////////////////////////////////////////////////////////////////////
@@ -407,6 +407,11 @@ public class BuildDataImpl implements BuildData {
     this.pointUp = pointUp;
     return;
   }
+  
+  public void setLinkMeaning(SetLayout.LinkMeans linkMeaning) {
+    this.linkMeaning = linkMeaning;
+    return;
+  }
 
   public boolean needsLayoutForRelayout() {
     switch (mode_) {
@@ -460,11 +465,8 @@ public class BuildDataImpl implements BuildData {
         return (new ControlTopLayout(cMode, tMode, fixedOrder, normNameToIDs));
       case HIER_DAG_LAYOUT:  
         return (new HierDAGLayout(pointUp.booleanValue())); 
-      case SET_LAYOUT:   
-        UiUtil.fixMePrintout("Get customized set dialog");
-        NetLink link = allLinks_.iterator().next();
-        UiUtil.fixMePrintout(link + " means what?");            
-        return (new SetLayout(pointUp.booleanValue() ? SetLayout.LinkMeans.BELONGS_TO : SetLayout.LinkMeans.CONTAINS)); 
+      case SET_LAYOUT:         
+        return (new SetLayout(linkMeaning)); 
   	  default:
   	  	throw new IllegalStateException();
   	} 	

@@ -170,10 +170,10 @@ public interface FileLoadFlows {
   
   /***************************************************************************
   **
-  ** Routine for handling cancellation/restore operation
+  ** Routine for handling cancellation/restore operation. True if user has restored.
   */
   
-  public void cancelAndRestore(File restoreFile);
+  public boolean cancelAndRestore(File restoreFile);
 
   /***************************************************************************
   **
