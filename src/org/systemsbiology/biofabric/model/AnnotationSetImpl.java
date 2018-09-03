@@ -38,9 +38,8 @@ import org.systemsbiology.biofabric.api.io.Indenter;
 import org.systemsbiology.biofabric.api.layout.AnnotColorSource;
 import org.systemsbiology.biofabric.api.parser.AbstractFactoryClient;
 import org.systemsbiology.biofabric.api.parser.GlueStick;
+import org.systemsbiology.biofabric.api.util.MinMax;
 import org.systemsbiology.biofabric.io.FabricFactory;
-import org.systemsbiology.biofabric.util.MinMax;
-
 import org.xml.sax.Attributes;
 
 /****************************************************************************

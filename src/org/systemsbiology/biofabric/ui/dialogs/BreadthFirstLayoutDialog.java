@@ -82,7 +82,7 @@ public class BreadthFirstLayoutDialog extends BTStashResultsDialog {
   */ 
   
   public BreadthFirstLayoutDialog(JFrame parent, NetNode currSel, BioFabricNetwork bfn) {     
-    super(parent, "breadthFirstLayout.title", new Dimension(600, 350), 2);
+    super(parent, ResourceManager.getManager().getString("breadthFirstLayout.title"), new Dimension(600, 350), 2);
     params_ = null;
     bfn_ = bfn;
     

@@ -45,6 +45,8 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.systemsbiology.biofabric.api.util.MinMax;
+
 /****************************************************************************
 **
 ** Utility for some data functions

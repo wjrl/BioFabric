@@ -72,7 +72,7 @@ public class LinkGroupingSetupDialog extends BTStashResultsDialog {
   private boolean showAnnotations_;
   private BioFabricNetwork.LayoutMode chosenMode;
   
-   private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 1L;
 
   ////////////////////////////////////////////////////////////////////////////
   //

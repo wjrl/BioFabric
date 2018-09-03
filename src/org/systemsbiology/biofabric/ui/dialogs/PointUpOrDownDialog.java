@@ -26,6 +26,7 @@ import javax.swing.JFrame;
 import javax.swing.JRadioButton;
 
 import org.systemsbiology.biofabric.api.dialog.BTStashResultsDialog;
+import org.systemsbiology.biofabric.util.ResourceManager;
 
 /****************************************************************************
 **
@@ -64,7 +65,7 @@ public class PointUpOrDownDialog extends BTStashResultsDialog {
   */ 
   
   public PointUpOrDownDialog(JFrame parent) {     
-    super(parent, "hierDagUpOrDown.title", new Dimension(400, 200), 2);
+    super(parent, ResourceManager.getManager().getString("hierDagUpOrDown.title"), new Dimension(400, 200), 2);
    
     pointUp_ = new JRadioButton(rMan_.getString("hierDagUpOrDown.pointUp"), true);
     addWidgetFullRow(pointUp_, false);

@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2014 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -31,8 +31,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
-import org.systemsbiology.biofabric.api.dialog.DialogSupport.Buttons;
-import org.systemsbiology.biofabric.api.dialog.DialogSupport.DialogSupportClient;
+import org.systemsbiology.biofabric.ui.dialogs.utils.DialogSupport;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 
@@ -41,7 +40,7 @@ import org.systemsbiology.biofabric.util.UiUtil;
 ** Abstract base class for stash results dialogs
 */
 
-public abstract class BTStashResultsDialog extends JDialog implements DialogSupport.DialogSupportClient {
+public abstract class BTStashResultsDialog extends JDialog implements DialogObj.DialogSupportClient {
 
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -71,7 +70,7 @@ public abstract class BTStashResultsDialog extends JDialog implements DialogSupp
   */ 
   
   protected BTStashResultsDialog(JFrame parent, String titleResource, Dimension size, int columns) {     
-    super(parent, ResourceManager.getManager().getString(titleResource), true);
+    super(parent, titleResource, true);
     haveResult_ = false;
     parent_ = parent;
     rMan_ = ResourceManager.getManager();    
@@ -238,8 +237,8 @@ public abstract class BTStashResultsDialog extends JDialog implements DialogSupp
   ** Finish building
   */ 
   
-  protected DialogSupport.Buttons finishConstruction() {      
-    DialogSupport.Buttons but = ds_.buildAndInstallButtonBox(cp_, rowNum_, columns_, false, true);
+  protected DialogObj.Buttons finishConstruction() {      
+    DialogObj.Buttons but = ds_.buildAndInstallButtonBox(cp_, rowNum_, columns_, false, true);
     setLocationRelativeTo(parent_);
     return (but);
   } 

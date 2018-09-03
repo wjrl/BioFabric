@@ -20,7 +20,7 @@
 package org.systemsbiology.biofabric.api.model;
 
 import org.systemsbiology.biofabric.api.layout.AnnotColorSource;
-import org.systemsbiology.biofabric.util.MinMax;
+import org.systemsbiology.biofabric.api.util.MinMax;
 
 /***************************************************************************
 **

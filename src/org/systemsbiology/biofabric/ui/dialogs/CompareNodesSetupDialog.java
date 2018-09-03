@@ -78,7 +78,7 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
   */ 
 
   public CompareNodesSetupDialog(JFrame parent, Set<NetNode> allNodeIDs, Map<String, Set<NetNode>> normNameToID) { 
-    super(parent, "compareNodesSetup.title", new Dimension(600, 500), 2);
+    super(parent, ResourceManager.getManager().getString("compareNodesSetup.title"), new Dimension(600, 500), 2);
     result_ = null;
     allNodeIDs_ = allNodeIDs;
     normNameToID_ = normNameToID;
