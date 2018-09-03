@@ -179,17 +179,12 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
     public TableRow constructARow() {
       return (new TableRow());     
     }
-      
-    
+       
     List<NetNode> applyValues() {
       List<TableRow> vals = getValuesFromTable();
       
-      //
-      // Make sure the groups are OK. Names must be unique, non-blank, present as suffixes in the
-      // provided set of link relations, and they must cover the set.
-      //
-      
       ResourceManager rMan = ResourceManager.getManager();
+      ArrayList<String> seenStrings = new ArrayList<String>();
       ArrayList<NetNode> seenTags = new ArrayList<NetNode>();
       int size = vals.size();
       if (size == 0) {
@@ -208,7 +203,7 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
         
         tag = tag.trim();
         
-        if (DataUtil.containsKey(seenTags, tag)) {
+        if (DataUtil.containsKey(seenStrings, tag)) {
           JOptionPane.showMessageDialog(parent_, rMan.getString("compareNodesSetup.dupName"),
                                         rMan.getString("compareNodesSetup.dupNameTitle"),
                                         JOptionPane.ERROR_MESSAGE);           
@@ -219,24 +214,30 @@ public class CompareNodesSetupDialog extends BTStashResultsDialog {
         String normTag = DataUtil.normKey(tag);
         Set<NetNode> haveIDs = normNameToID_.get(normTag);
         boolean gotIt = (haveIDs != null);
+        NetNode matchNode = null;
         if (gotIt) {
-        	gotIt = false;
         	for (NetNode haveID : haveIDs) {
         		if (allNodeIDs_.contains(haveID)) {
-        			gotIt = true;
-        			break;
+        			if (matchNode != null) {
+        				JOptionPane.showMessageDialog(parent_, rMan.getString("compareNodesSetup.ambiguousNode"),
+                                              rMan.getString("compareNodesSetup.ambiguousTitle"),
+                                              JOptionPane.ERROR_MESSAGE);           
+                return (null);
+        			} else {
+        			  matchNode = haveID;
+        			}
         		}
         	}
         }
-        
-        if (!gotIt) {
+
+        if (matchNode == null) {
           JOptionPane.showMessageDialog(parent_, rMan.getString("compareNodesSetup.notANode"),
                                         rMan.getString("compareNodesSetup.notANodeTitle"),
-                                        JOptionPane.ERROR_MESSAGE);           
-            
+                                        JOptionPane.ERROR_MESSAGE);               
           return (null);
         }
-        seenTags.add(new FabricNode(new NID(row.nid), tag));
+        seenTags.add(matchNode);
+        seenStrings.add(tag);
       }
       
       return (seenTags);

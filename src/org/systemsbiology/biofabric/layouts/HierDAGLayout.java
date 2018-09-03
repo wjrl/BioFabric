@@ -322,7 +322,13 @@ public class HierDAGLayout extends NodeLayout {
       addToPlaceList(nextBatch);
       annot = PluginSupportFactory.buildAnnotation("Level " + count++, start, placeList_.size() - 1, 0, null);
       nAnnots.addAnnot(annot);
-      nodesToGo.removeAll(nextBatch);
+      // Used to do removeAll, but this took FOREVER with the nextBatch as a List, and stalled the
+      // progress counter.
+      for (NetNode nbNod : nextBatch) {
+    	  if (nodesToGo.contains(nbNod)) {
+    		  nodesToGo.remove(nbNod);
+    	  }
+      }
     }
     lr.finish();
     

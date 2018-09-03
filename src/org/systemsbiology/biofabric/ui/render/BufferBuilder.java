@@ -478,7 +478,7 @@ public class BufferBuilder {
   			  System.arraycopy(bbs, currOffBase, bbs, currOffDest, screenDim_.width * 3);
         } catch (ArrayIndexOutOfBoundsException aex) {
         	
-        	UiUtil.fixMePrintout("Have seen array out of bounds here!");
+        	UiUtil.fixMePrintout("Have seen array out of bounds here (collatz.sif->Hierarchical)!");
         	//ik 896 10
           //bbs 4,350,000
           //col 4,300,800
