@@ -95,9 +95,9 @@ public class ImgAndBufPool {
  
   	BufferedImage bi;
    	if (stack.isEmpty()) {
-  //		System.out.println("Creating new BI");
+      //		System.out.println("Creating new BI");
   	  bi = new BufferedImage(imgWidth, imgHeight, type);	  
-  //	  System.out.println("BI " + bi);
+      //	  System.out.println("BI " + bi);
   	  /* 
   	  WritableRaster rast = bi.getRaster();
   	  SampleModel asm = rast.getSampleModel();
@@ -123,7 +123,7 @@ public class ImgAndBufPool {
       graphics.setPaint(new Color(255, 255, 255));
       graphics.fillRect (0, 0, bi.getWidth(), bi.getHeight());
     }
- //  	System.out.println("fetching BI : size = " + stack.size() + " " +  + bi.hashCode());
+    //  	System.out.println("fetching BI : size = " + stack.size() + " " +  + bi.hashCode());
    	
     return (bi);
   }

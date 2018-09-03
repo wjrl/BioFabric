@@ -24,7 +24,7 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.geom.Line2D;
 
-import org.systemsbiology.biofabric.util.MinMax;
+import org.systemsbiology.biofabric.api.util.MinMax;
 
 /****************************************************************************
 **

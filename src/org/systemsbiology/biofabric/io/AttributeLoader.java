@@ -1,6 +1,6 @@
 
 /*
-**    Copyright (C) 2003-2011 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.systemsbiology.biofabric.api.io.AttributeKey;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.model.FabricLink;
 import org.systemsbiology.biofabric.util.DataUtil;
@@ -143,16 +144,7 @@ public class AttributeLoader {
     in.close();
     return (retval);
   }
-
-  ////////////////////////////////////////////////////////////////////////////
-  //
-  // PUBLIC INTERFACE
-  //
-  ////////////////////////////////////////////////////////////////////////////
-
-  public interface AttributeKey { // Marker Only
-  }   
-    
+     
   ////////////////////////////////////////////////////////////////////////////
   //
   // PUBLIC INNER CLASES

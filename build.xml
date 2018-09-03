@@ -10,19 +10,18 @@
  -->
 
 <!--
-You must install signtools (from Mono project) to sign exe file
+You must install the osslsigncode tool (https://sourceforge.net/projects/osslsigncode/) to sign the exe:
 You must have appbundler (floating around on github) to build Mac app bundle
 
 Layout of build directory:
 BioFabRelease
  |- lib
  |   |- appbundler-1.01wl.jar
+ |   |-
  |- launch4j 
  |   |- launch4j distribution files
  |- KeyFiles
  |   |- isbcert.p12
- |   |- authenticode.pvk
- |   |- authenticode.spc
  |- extlib (currently empty, holds external jars needed for compilation)
  -->
 
@@ -188,7 +187,7 @@ Here are the targets that count:
     <replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_FULL_VERSTRING__" value="${app.datedVersion} "/>
     <replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_CURRYEAR__" value="${app.year}"/>
     <exec executable="${app.buildWin}" failonerror="true">
-      <arg line="${app.winExeDir} ${app.winExeSrcDir} ${app.l4jDir} ${app.NDversion} ${app.year}"/>
+      <arg line="${app.winExeDir} ${app.winExeSrcDir} ${app.l4jDir} ${app.NDversion} ${app.year} ${app.releaseDir}/lib/  ${app.keyStoreDir}" />
     </exec>
     <copy file="${app.winExeDir}/BioFabric${app.NDversion}.zip" tofile="${app.releaseDists}/BioFabric${app.NDversion}.zip" />
   </target>
@@ -241,9 +240,9 @@ Here are the targets that count:
 
   <!-- Mac AppBundler Stuff -->
 	
-  <taskdef name="bundleapp"
+	<!--<taskdef name="bundleapp"
            classname="com.oracle.appbundler.AppBundlerTask"   
-           classpath="${app.releaseDir}/lib/appbundler-1.01wl.jar" />
+           classpath="${app.releaseDir}/lib/appbundler-1.01wl.jar" /> -->
 
   <target name="buildMac">
   	<delete dir="${app.macExeDir}" quiet="true" />

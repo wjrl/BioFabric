@@ -39,6 +39,7 @@ import org.systemsbiology.biofabric.api.io.BuildData;
 import org.systemsbiology.biofabric.api.layout.NodeLayout;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.MinMax;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.api.worker.LoopReporter;
@@ -47,7 +48,6 @@ import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.util.ChoiceContent;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.DoubMinMax;
-import org.systemsbiology.biofabric.util.MinMax;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.UiUtil;
 

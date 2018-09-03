@@ -41,12 +41,12 @@ import org.systemsbiology.biofabric.api.model.AnnotationSet;
 import org.systemsbiology.biofabric.api.model.Annot;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.util.MinMax;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.api.worker.LoopReporter;
 
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
-import org.systemsbiology.biofabric.util.MinMax;
 
 /****************************************************************************
 **
@@ -322,7 +322,13 @@ public class HierDAGLayout extends NodeLayout {
       addToPlaceList(nextBatch);
       annot = PluginSupportFactory.buildAnnotation("Level " + count++, start, placeList_.size() - 1, 0, null);
       nAnnots.addAnnot(annot);
-      nodesToGo.removeAll(nextBatch);
+      // Used to do removeAll, but this took FOREVER with the nextBatch as a List, and stalled the
+      // progress counter.
+      for (NetNode nbNod : nextBatch) {
+    	  if (nodesToGo.contains(nbNod)) {
+    		  nodesToGo.remove(nbNod);
+    	  }
+      }
     }
     lr.finish();
     

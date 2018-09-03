@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 
-import org.systemsbiology.biofabric.parser.ParserClient;
 import org.xml.sax.Attributes;
 
 /****************************************************************************

@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.SortedMap;
 
 import org.systemsbiology.biofabric.analysis.Link;
+import org.systemsbiology.biofabric.api.io.AttributeKey;
 import org.systemsbiology.biofabric.api.io.BuildData;
 import org.systemsbiology.biofabric.api.layout.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.api.layout.DefaultLayout;
@@ -296,10 +297,10 @@ public class BuildDataImpl implements BuildData {
     return (retval);	
   }
   
-  public void setNodeOrderFromAttrib(Map<AttributeLoader.AttributeKey, String> nodeOrderIn) {
+  public void setNodeOrderFromAttrib(Map<AttributeKey, String> nodeOrderIn) {
     this.nodeOrder_ = new HashMap<NetNode, Integer>();
     Map<String, Set<NetNode>> nameToID = genNormNameToID();
-    for (AttributeLoader.AttributeKey key : nodeOrderIn.keySet()) {
+    for (AttributeKey key : nodeOrderIn.keySet()) {
       try {
         Integer newRow = Integer.valueOf(nodeOrderIn.get(key));
         String keyName = ((AttributeLoader.StringKey)key).key;
@@ -462,7 +463,7 @@ public class BuildDataImpl implements BuildData {
       case SET_LAYOUT:   
         UiUtil.fixMePrintout("Get customized set dialog");
         NetLink link = allLinks_.iterator().next();
-        System.out.print(link + " means what?");            
+        UiUtil.fixMePrintout(link + " means what?");            
         return (new SetLayout(pointUp.booleanValue() ? SetLayout.LinkMeans.BELONGS_TO : SetLayout.LinkMeans.CONTAINS)); 
   	  default:
   	  	throw new IllegalStateException();

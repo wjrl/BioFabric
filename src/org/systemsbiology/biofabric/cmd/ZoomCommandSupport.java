@@ -37,6 +37,7 @@ import javax.swing.event.ChangeListener;
 
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 
 /****************************************************************************
@@ -377,8 +378,8 @@ public class ZoomCommandSupport {
       	}
       } else if (currZoomIndex_ == 0) {
   	    if (fullModelZoom_ == null) {
-  	    	System.out.println("Seeing this as null after recolor while zoomed!!");
-  	    	System.out.println("And zoom out ");
+  	    	UiUtil.fixMePrintout("Seeing this as null after recolor while zoomed!!");
+  	    	UiUtil.fixMePrintout("And zoom out ");
   	    	Rectangle bounds = sup_.getCurrentBasicBounds();    
           Dimension vDim = jsp_.getViewport().getExtentSize();
           fullModelZoom_ = calcOptimalZoom(bounds, vDim);

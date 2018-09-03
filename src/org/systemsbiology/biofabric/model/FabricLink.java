@@ -22,11 +22,10 @@ package org.systemsbiology.biofabric.model;
 
 import java.util.Map;
 
+import org.systemsbiology.biofabric.api.io.AttributeKey;
 import org.systemsbiology.biofabric.api.model.AugRelation;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
-import org.systemsbiology.biofabric.api.util.NID;
-import org.systemsbiology.biofabric.io.AttributeLoader;
 import org.systemsbiology.biofabric.util.DataUtil;
 
 /****************************************************************************
@@ -34,7 +33,7 @@ import org.systemsbiology.biofabric.util.DataUtil;
 ** A Class
 */
 
-public class FabricLink implements NetLink, Cloneable, AttributeLoader.AttributeKey {
+public class FabricLink implements NetLink, Cloneable, AttributeKey {
   private NetNode srcID_;
   private NetNode trgID_;
   private String relation_;

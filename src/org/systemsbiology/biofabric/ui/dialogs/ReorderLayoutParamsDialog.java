@@ -71,7 +71,7 @@ public class ReorderLayoutParamsDialog extends BTStashResultsDialog {
   */ 
   
   public ReorderLayoutParamsDialog(JFrame parent, NodeSimilarityLayout.ResortParams params) {     
-    super(parent, "clusteredLayout.reorderTitle", new Dimension(600, 300), 2);
+    super(parent, ResourceManager.getManager().getString("clusteredLayout.reorderTitle"), new Dimension(600, 300), 2);
     ResourceManager rMan = ResourceManager.getManager();
     parent_ = parent; 
     results_ = null;

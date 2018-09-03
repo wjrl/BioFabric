@@ -51,6 +51,7 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
 
+import org.systemsbiology.biofabric.api.io.AttributeKey;
 import org.systemsbiology.biofabric.api.io.BuildData;
 import org.systemsbiology.biofabric.api.io.BuildExtractor;
 import org.systemsbiology.biofabric.api.io.FileLoadFlows;
@@ -63,6 +64,7 @@ import org.systemsbiology.biofabric.api.model.AnnotationSet;
 import org.systemsbiology.biofabric.api.model.AugRelation;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
+import org.systemsbiology.biofabric.api.parser.ParserClient;
 import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 import org.systemsbiology.biofabric.api.util.PluginResourceManager;
 import org.systemsbiology.biofabric.api.util.UniqueLabeller;
@@ -80,7 +82,6 @@ import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
 
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
-import org.systemsbiology.biofabric.parser.ParserClient;
 import org.systemsbiology.biofabric.parser.ProgressFilterInputStream;
 import org.systemsbiology.biofabric.parser.SUParser;
 import org.systemsbiology.biofabric.plugin.BioFabricToolPlugInData;
@@ -381,7 +382,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Do network relayout
   */ 
      
-  public void doNetworkRelayout(Map<AttributeLoader.AttributeKey, String> nodeAttributes) {
+  public void doNetworkRelayout(Map<AttributeKey, String> nodeAttributes) {
     NetworkRelayout nb = new NetworkRelayout();
     nb.setNodeOrderFromAttrib(nodeAttributes);
     nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.NODE_ATTRIB_LAYOUT);   
@@ -487,7 +488,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
             if (fileEda == null) {
               return (true);
             }
-            Map<AttributeLoader.AttributeKey, String> relAttributes = loadTheFile(fileEda, null, true);  // Use the simple a = b format of node attributes
+            Map<AttributeKey, String> relAttributes = loadTheFile(fileEda, null, true);  // Use the simple a = b format of node attributes
             if (relAttributes == null) {
               return (true);
             }
@@ -495,7 +496,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
             HashSet<AugRelation> needed = new HashSet<AugRelation>(relaMap.keySet());
           
             boolean tooMany = false;
-            Iterator<AttributeLoader.AttributeKey> rit = relAttributes.keySet().iterator();
+            Iterator<AttributeKey> rit = relAttributes.keySet().iterator();
             while (rit.hasNext()) {
               AttributeLoader.StringKey sKey = (AttributeLoader.StringKey)rit.next();
               String key = sKey.key;
@@ -628,14 +629,14 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
    ** Common load operation for gw or sif
    */
   
-  public boolean loadFromASource(File file, Map<AttributeLoader.AttributeKey, String> nameMap,
-                                 Integer magBins, UniqueLabeller idGen, 
-                                 FileLoadFlows.FileLoadType type, boolean skipShadowQuestion) {
+  public FileLoadFlows.FileLoadResult loadFromASource(File file, Map<AttributeKey, String> nameMap,
+                                                      Integer magBins, UniqueLabeller idGen, 
+                                                      FileLoadFlows.FileLoadType type, boolean skipShadowQuestion) {
     
     HashMap<String, String> nodeNames = null;
     if (nameMap != null) {
       nodeNames = new HashMap<String, String>();
-      for (AttributeLoader.AttributeKey key : nameMap.keySet()) {
+      for (AttributeKey key : nameMap.keySet()) {
         nodeNames.put(((AttributeLoader.StringKey)key).key, nameMap.get(key));
       }
     }
@@ -670,7 +671,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         throw (new IllegalArgumentException("File type not identified"));
       }
       if (!finished) {
-        return (true);
+        return (new FileLoadResultImpl(true, holdIt));
       }
     } else {
       try {
@@ -681,7 +682,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
           boolean finished = (new GWImportLoader.GWRelationManager()).process(links, topWindow_, null);
           if (!finished) {
             // should not happen
-            return (false);
+            return (new FileLoadResultImpl(false, holdIt));
           }
         } else {
           throw (new IllegalArgumentException("File type not identified"));
@@ -689,13 +690,13 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         PluginSupportFactory.getBuildExtractor().extractRelations(links, relMap, null);
       } catch (AsynchExitRequestException axex) {
         // Should never happen
-        return (false);
+        return (new FileLoadResultImpl(false, holdIt));
       } catch (IOException ioe) {
         displayFileInputError(ioe);
-        return (false);
+        return (new FileLoadResultImpl(false, holdIt));
       } catch (OutOfMemoryError oom) {
         ExceptionHandler.getHandler().displayOutOfMemory(oom);
-        return (false);
+        return (new FileLoadResultImpl(false, holdIt));
       }
     }
   
@@ -710,7 +711,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     if (finished) {
       buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
     }
-    return (true);
+    return (new FileLoadResultImpl(true, holdIt));
   }
   
   /***************************************************************************
@@ -718,10 +719,11 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
    ** Load from file and directly receive link set and loners set
    */
   
-  public boolean loadFromASource(File file, List<NetLink> links,
-                                 Set<NetNode> loneNodes, Integer magBins,
-                                 UniqueLabeller idGen, boolean loadOnly, 
-                                 FileLoadFlows.FileLoadType type, boolean skipShadowQuestion) {
+  public FileLoadFlows.FileLoadResult loadFromASource(File file, List<NetLink> links,
+                                                      Set<NetNode> loneNodes, Integer magBins,
+                                                      UniqueLabeller idGen, boolean loadOnly, 
+                                                      FileLoadFlows.FileLoadType type, 
+                                                      boolean skipShadowQuestion) {
     
     File holdIt;
     try {
@@ -749,7 +751,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     }
   
     if (!finished) {
-      return (true);
+      return (new FileLoadResultImpl(true, holdIt));
     }
   
     //
@@ -763,7 +765,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     //
   
     if (loadOnly) {
-      return (true);
+      return (new FileLoadResultImpl(true, holdIt));
     }
   
     //
@@ -776,7 +778,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     if (finished) {
       buildTheNetworkFomLinks(file, idGen, loneNodes, reducedLinks, holdIt);
     }
-    return (true);
+    return (new FileLoadResultImpl(true, holdIt));
   }
   
   /***************************************************************************
@@ -841,7 +843,9 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     BackgroundFileReader br = new BackgroundFileReader(); 
     br.doBackgroundRead(ff, sup, file, true, null);
     file.delete();
-    postXMLLoad(ff, file.getName(), null);
+    // Fix for issue # 79
+    String cfn = (currentFile_ == null) ? null : currentFile_.getName();
+    postXMLLoad(ff, cfn, null);
     return (true);
   }
   
@@ -1077,8 +1081,8 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Load the file. Map keys are strings or Links
   */
      
-  public Map<AttributeLoader.AttributeKey, String> loadTheFile(File file, Map<String, Set<NetNode>> nameToIDs, boolean forNodes) {
-    HashMap<AttributeLoader.AttributeKey, String> attributes = new HashMap<AttributeLoader.AttributeKey, String>();
+  public Map<AttributeKey, String> loadTheFile(File file, Map<String, Set<NetNode>> nameToIDs, boolean forNodes) {
+    HashMap<AttributeKey, String> attributes = new HashMap<AttributeKey, String>();
     try {    
       AttributeLoader.ReadStats stats = new AttributeLoader.ReadStats();
       AttributeLoader alod = new AttributeLoader();
@@ -2144,7 +2148,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       return;
     }
 
-    public void setNodeOrderFromAttrib(Map<AttributeLoader.AttributeKey, String> nodeAttributes) {
+    public void setNodeOrderFromAttrib(Map<AttributeKey, String> nodeAttributes) {
       runner_.setNodeOrderFromAttrib(nodeAttributes);
       return;
     }  
@@ -2242,7 +2246,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private BuildDataImpl.BuildMode mode_;
     private NodeLayout.Params params_;
     private BioFabricNetwork bfn_;
-    private Map<AttributeLoader.AttributeKey, String> nodeAttrib_;
+    private Map<AttributeKey, String> nodeAttrib_;
     private File holdIt_;
     private List<String> groupOrder_; 
     private BioFabricNetwork.LayoutMode layMode_;
@@ -2278,7 +2282,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       return;
     }
 
-    void setNodeOrderFromAttrib(Map<AttributeLoader.AttributeKey, String> nodeAttributes) {
+    void setNodeOrderFromAttrib(Map<AttributeKey, String> nodeAttributes) {
       nodeAttrib_ = nodeAttributes;
       return;     
     }  
@@ -2653,5 +2657,29 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
 
   public FileLoadFlows.FileLoadType getFileLoadType(File toCheck) {
     return ((GWImportLoader.isGWFile(toCheck)) ? FileLoadFlows.FileLoadType.GW : FileLoadFlows.FileLoadType.SIF);
+  }
+  
+  /***************************************************************************
+  **
+  ** Return value for file load flows.
+  */ 
+    
+  public static class FileLoadResultImpl implements FileLoadFlows.FileLoadResult {
+  	
+  	private boolean success_;
+  	private File cacheFile_;
+  	
+  	public FileLoadResultImpl(boolean success, File cacheFile) {
+  		success_ = success;
+  		cacheFile_ = cacheFile;			
+  	}
+  	  	
+ 		public boolean getSuccess() {
+ 			return (success_);		
+ 		}
+ 		
+		public File getCacheFile() {
+			return (cacheFile_);
+		}
   }
 }
