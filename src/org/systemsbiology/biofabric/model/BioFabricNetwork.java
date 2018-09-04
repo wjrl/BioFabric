@@ -445,49 +445,6 @@ public class BioFabricNetwork implements Network {
     return (true);
   }
   
-  /***************************************************************************
-  ** 
-  ** Given an attribute list giving node order, confirm it is valid:
-  */
-
-  public boolean checkNodeClusterAssignment(Map<AttributeKey, String> nodeClusters) { 
-    
-    //
-    // All nodes must be assigned to a cluster
-    //
-    
-    HashSet<AttributeKey> asUpper = new HashSet<AttributeKey>();
-    Iterator<NetNode> rttvit = rowToTargID_.values().iterator();
-    /*
-    while (rttvit.hasNext()) { 	
-    	
-      asUpper.add(new AttributeLoader.StringKey(rttvit.next().toUpperCase()));
-      
-      
-      this.nodeOrder = new HashMap<NID, Integer>();
-      Map<String, Set<NID>> nameToID = genNormNameToID();
-      for (AttributeLoader.AttributeKey key : nodeOrder.keySet()) {
-        try {
-          Integer newRow = Integer.valueOf(nodeOrder.get(key));
-          String normName = DataUtil.normKey(((AttributeLoader.StringKey)key).key);
-          Set<NID> ids = nameToID.get(normName);
-          if (ids.size() != 1) {
-          	throw new IllegalStateException();
-          }
-          NID id = ids.iterator().next();
-          this.nodeOrder.put(id, newRow);
-        } catch (NumberFormatException nfex) {
-          throw new IllegalStateException();
-        }
-      }
-    }*/
-    UiUtil.fixMePrintout("Actually do something");
- //   if (!asUpper.equals(new HashSet<AttributeLoader.AttributeKey>(nodeClusters.keySet()))) {
-  //    return (false);
-  //  }
-   
-    return (true);
-  }
   
   /***************************************************************************
   ** 
