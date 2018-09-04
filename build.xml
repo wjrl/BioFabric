@@ -78,7 +78,9 @@ Here are the targets that count:
   <property name="app.srcFile"                  location="${app.buildDir}/&appName;-&appVersion;-src.tar.gz" />
   <property name="app.tarBaseDir"               location="${app.srcDir}" />
   <property name="app.signedJarDir"             location="CodeSigning" />
-  <property name="app.buildWin"                 value="${basedir}/releaseTools/buildWindowsExe.sh" />
+  <property name="app.buildWin1"                 value="${basedir}/releaseTools/buildWindowsExe-Step1.sh" />
+  <property name="app.buildWin2"                 value="${basedir}/releaseTools/buildWindowsExe-Step2.sh" />
+  <property name="app.buildWin3"                 value="${basedir}/releaseTools/buildWindowsExe-Step3.sh" />
   <property name="app.buildLin"                 value="${basedir}/releaseTools/buildLinuxReleaseTar.sh" />
   <property name="app.buildMac"                 value="${basedir}/releaseTools/buildMacReleaseDir.sh" />
   <property name="app.signJar"                  value="${basedir}/releaseTools/signIt.sh" />
@@ -175,7 +177,7 @@ Here are the targets that count:
   	 <echo message="Need password! Execute: ${app.signJar} ${app.keyStoreDir} ${app.signDir} ${app.version}"/>
   </target>
 		
-  <target name="buildWindowsExe">
+  <target name="buildWindowsExe-Step1">
   	<delete dir="${app.winExeDir}" quiet="true" />
     <mkdir dir="${app.winExeDir}" />
     <copy file="${app.winExeSrcDir}/bioFabl4j.xml" tofile="${app.winExeDir}/bioFabl4jWorking.xml" />
@@ -186,12 +188,22 @@ Here are the targets that count:
     <replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_RESLOC__" value="${app.winExeSrcDir}"/>
     <replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_FULL_VERSTRING__" value="${app.datedVersion} "/>
     <replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_CURRYEAR__" value="${app.year}"/>
-    <exec executable="${app.buildWin}" failonerror="true">
+    <exec executable="${app.buildWin1}" failonerror="true">
+      <arg line="${app.winExeDir} ${app.winExeSrcDir} ${app.l4jDir} ${app.NDversion} ${app.year} ${app.releaseDir}/lib/  ${app.keyStoreDir}" />
+    </exec>
+  </target>
+	
+  <target name="buildWindowsExe-Step2">
+  	<echo message="Need password!  DO WE NEED TO CD FIRST??? Execute: ${app.buildWin2} ${app.winExeDir} ${app.winExeSrcDir} ${app.l4jDir} ${app.NDversion} ${app.year} ${app.releaseDir}/lib/  ${app.keyStoreDir}"/>
+  </target>	
+	
+  <target name="buildWindowsExe-Step3">
+    <exec executable="${app.buildWin2}" failonerror="true">
       <arg line="${app.winExeDir} ${app.winExeSrcDir} ${app.l4jDir} ${app.NDversion} ${app.year} ${app.releaseDir}/lib/  ${app.keyStoreDir}" />
     </exec>
     <copy file="${app.winExeDir}/BioFabric${app.NDversion}.zip" tofile="${app.releaseDists}/BioFabric${app.NDversion}.zip" />
-  </target>
-
+  </target>	
+	
   <target name="buildLinuxTar">
   	<delete dir="${app.linExeDir}" quiet="true" />
     <mkdir dir="${app.linExeDir}" />
@@ -202,11 +214,6 @@ Here are the targets that count:
   </target>
 
 
-
-  <target name="releaseDistribs" depends="buildWindowsExe, buildLinuxTar, stageForMacDmg" >
-	<copy file="${app.signJarFile}" todir="${app.releaseDists}" />
-  </target>
-  
 <!-- Build about file to have current version info -->
 
   <target name="installAbout">
