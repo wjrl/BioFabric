@@ -124,7 +124,7 @@ public class ControlTopLayout extends NodeLayout {
   private CtrlMode ctrlMode_;
   private TargMode targMode_;
   private List<String> fixedOrder_;
-  Map<String, Set<NetNode>> normNameToIDs_;
+  private Map<String, Set<NetNode>> normNameToIDs_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -160,7 +160,7 @@ public class ControlTopLayout extends NodeLayout {
                              BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                                LayoutCriterionFailureException {
     //
-    // 1) What are the requirements?
+    // 1) The network must be fully directed.
     // 2) If we are given a fixed list, we need to map to nodes, and make sure it is 1:1 and onto.
     // Do we handle singleton nodes OK???
     //
@@ -170,6 +170,17 @@ public class ControlTopLayout extends NodeLayout {
     if ((fixedOrder_ != null) && (normNameToIDs_ == null)) {
       throw new LayoutCriterionFailureException();
     }
+     
+    //
+    // If we are provided with a fixed order for control nodes, it must be that case that *all* nodes with outbound
+    // edges are in the list, and that no target nodes are in the list.
+    //
+    
+    //for (String foNode : fixedOrder_) {
+    //	
+    //}
+    
+    
     lr.finish();
     
     UiUtil.fixMePrintout("ACTUALLY CHECK SOMETHING OK???");
