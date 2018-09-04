@@ -6,12 +6,12 @@
 <!ENTITY appVersionMinor "0">
 <!ENTITY appVersionPatch "B">
 <!ENTITY appVersionBuild "1">
-<!ENTITY appVersionWinA "241">
-<!ENTITY appVersionWinB "2331">
+<!ENTITY appVersionWinA "247">
+<!ENTITY appVersionWinB "2339">
 <!ENTITY appVersion "&appVersionMajor;.&appVersionMinor;.&appVersionPatch;.&appVersionBuild;">
 <!ENTITY appNDVersion "&appVersionMajor;&appVersionMinor;&appVersionPatch;&appVersionBuild;">
 <!ENTITY appWinFileVersion "&appVersionMajor;.&appVersionMinor;.&appVersionWinA;.&appVersionWinB;">
-<!ENTITY appDate "Tue Aug 28 23:31:07 PDT 2018">
+<!ENTITY appDate "Mon Sep 3 23:39:51 PDT 2018">
 <!ENTITY appDatedVersion "&appVersion; &appDate;">
 <!ENTITY appYear "2018">
 
