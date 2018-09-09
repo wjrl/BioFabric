@@ -485,6 +485,7 @@ public class BuildDataImpl implements BuildData {
   	  case REORDER_LAYOUT:
       case CLUSTERED_LAYOUT:  
       case NODE_CLUSTER_LAYOUT:
+      case SET_LAYOUT:
          // The above layouts do edge layout as part of node layout:
         return (null);
       case HIER_DAG_LAYOUT: 

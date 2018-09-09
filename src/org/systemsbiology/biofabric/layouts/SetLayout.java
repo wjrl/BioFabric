@@ -26,20 +26,26 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.systemsbiology.biofabric.analysis.GraphSearcher;
 import org.systemsbiology.biofabric.api.io.BuildData;
+import org.systemsbiology.biofabric.api.layout.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.api.layout.DefaultLayout;
 import org.systemsbiology.biofabric.api.layout.LayoutCriterionFailureException;
 import org.systemsbiology.biofabric.api.layout.NodeLayout;
+import org.systemsbiology.biofabric.api.model.Annot;
+import org.systemsbiology.biofabric.api.model.AnnotationSet;
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.api.worker.LoopReporter;
+import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -170,20 +176,266 @@ public class SetLayout extends NodeLayout {
       setList.addAll(forDeg);
     }
     ArrayList<NetNode> nodeOrder = new ArrayList<NetNode>(setList);
+    Map<NetNode, Set<NetNode>> setMembers = new HashMap<NetNode, Set<NetNode>>();
+    HashMap<Set<NetNode>, String> tagMap = new HashMap<Set<NetNode>, String>();
+    StringBuffer buf = new StringBuffer();
 
     SortedSet<GraphSearcher.SourcedNodeGray> snds = GraphSearcher.nodeGraySetWithSourceFromMap(setList, setsPerElem_);
     for (GraphSearcher.SourcedNodeGray node : snds) {   
       nodeOrder.add(node.getNodeID());
+      Set<NetNode> setNodes = node.getSrcs();
+      setMembers.put(node.getNodeID(), setNodes); 
+      String tag = tagMap.get(setNodes);
+      if (tag == null) {
+        tag = buildTag(setNodes, setList, buf);
+        tagMap.put(setNodes, tag);
+      } 
     }
-    
+
     //
     // Now have the ordered list of targets we are going to display.
     // Build target->row maps and the inverse:
     //
+    
     (new DefaultLayout()).installNodeOrder(nodeOrder, rbd, monitor);
+    
+    //
+    // We lay out the edges using default layout. The only reason we do this here is because we want to do link annotations
+    // as part of the layout:
+    //
+   
+    (new DefaultEdgeLayout()).layoutEdges(rbd, monitor); 
+    
+    
+    AnnotationSet nAnnots = generateNodeAnnotations(rbd, setMembers, tagMap);
+    rbd.setNodeAnnotations(nAnnots);
+    
+   Map<Boolean, AnnotationSet> lAnnots = generateLinkAnnotations(rbd, setMembers, tagMap);
+   rbd.setLinkAnnotations(lAnnots);
+    
     return (nodeOrder);
   }
 
+  /***************************************************************************
+  **
+  ** Generate set intersection tag
+  */
+    
+  private String buildTag(Set<NetNode> setNodes, ArrayList<NetNode> setList, StringBuffer buf) {
+     
+  	buf.setLength(0);
+  	boolean first = true;
+    for (NetNode node : setList) {
+      if (setNodes.contains(node)) {
+	      if (first) {
+	    		first = false;
+	    	} else {
+	    		buf.append("&");
+	    	}
+      	buf.append(node.getName());
+      }
+    }
+    return (buf.toString());
+  }
+
+  /***************************************************************************
+  **
+  ** Generate node annotations to tag each cluster
+  */
+    
+  private AnnotationSet generateNodeAnnotations(BuildData rbd, Map<NetNode, Set<NetNode>> setMembers, Map<Set<NetNode>, String> tagMap) {
+    
+    AnnotationSet retval = PluginSupportFactory.buildAnnotationSet();
+    
+    TreeMap<Integer, NetNode> invert = new TreeMap<Integer, NetNode>();
+    
+    Map<NetNode, Integer> nod = rbd.getNodeOrder(); 
+    
+    for (NetNode node : nod.keySet()) {
+      invert.put(nod.get(node), node);
+    }
+     
+    Set<NetNode> currIntersect = null;
+    Integer startRow = null;
+    Integer lastKey = invert.lastKey();
+    for (Integer row : invert.keySet()) {
+      NetNode node = invert.get(row);
+      Set<NetNode> sets = setMembers.get(node);
+      if (currIntersect == null) {
+        currIntersect = sets;
+        startRow = row;
+        if (row.equals(lastKey)) {
+          Annot annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startRow.intValue(), row.intValue(), 0, null);
+          retval.addAnnot(annot);
+          break;
+        }
+        continue;
+      }
+      if (currIntersect.equals(sets)) {
+        if (row.equals(lastKey)) {
+          Annot annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startRow.intValue(), row.intValue(), 0, null);
+          retval.addAnnot(annot);
+          break;
+        }
+        continue;
+      } else { 
+        // We have just entered a new cluster
+        Annot annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startRow.intValue(), row.intValue() - 1, 0, null);
+
+        retval.addAnnot(annot);
+        startRow = row;
+        currIntersect = sets;
+        if (row.equals(lastKey)) {
+          annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startRow.intValue(), row.intValue(), 0, null);
+          retval.addAnnot(annot);
+          break;
+        }
+      }
+    }
+    
+    return (retval);
+  }
+  
+   /***************************************************************************
+  **
+  ** Generate link annotations to tag each set node and intersection band
+  */
+    
+  private Map<Boolean, AnnotationSet> generateLinkAnnotations(BuildData rbd, Map<NetNode, Set<NetNode>> setMembers, 
+  																														Map<Set<NetNode>, String> tagMap) { 
+  	HashMap<Boolean, AnnotationSet> retval = new HashMap<Boolean, AnnotationSet>();
+    
+  	SortedMap<Integer, NetLink> lod = rbd.getLinkOrder();
+  	
+  	List<NetLink> noShadows = new ArrayList<NetLink>();
+  	List<NetLink> withShadows = new ArrayList<NetLink>();
+  	for (Integer col : lod.keySet()) {
+  		NetLink fl = lod.get(col);
+  		withShadows.add(fl);
+  		if (!fl.isShadow()) {
+  			noShadows.add(fl);
+  		}
+  	}
+
+  	retval.put(Boolean.FALSE, generateLinkAnnotationsForSets(noShadows));
+  	AnnotationSet forShad = generateLinkAnnotationsForSets(withShadows);
+  	retval.put(Boolean.TRUE, appendLinkAnnotationsForIntersections(forShad, withShadows, setMembers, tagMap));
+  	    
+    return (retval);
+  }
+   
+  /***************************************************************************
+  **
+  ** Generate link annotations to tag each set intersection banc
+  */
+    
+  private AnnotationSet generateLinkAnnotationsForSets(List<NetLink> linkList) { 
+    
+    AnnotationSet retval = PluginSupportFactory.buildAnnotationSet();
+  	
+  	NetNode currSetNode = null;
+    int startCol = 0;
+    int lastCol = linkList.size() - 1;
+    
+    for (int i = 0; i < linkList.size(); i++) {
+  		NetLink fl = linkList.get(i);
+  		UiUtil.fixMePrintout("Crazy inefficient");
+  		if (fl.isShadow()) {
+  			continue;
+  		}
+  		UiUtil.fixMePrintout("No depends on the order");
+  		NetNode src = fl.getSrcNode(); //FIXME
+      if (currSetNode == null) {
+        currSetNode = src;
+        startCol = i;
+          		UiUtil.fixMePrintout("No misses last set (which is not last link)");
+        if (i == lastCol) {
+          Annot annot = PluginSupportFactory.buildAnnotation(currSetNode.getName(), startCol, i, 0, null);
+          retval.addAnnot(annot);
+          break;
+        }
+        continue;
+      }
+      if (currSetNode.equals(src)) {
+      	          		UiUtil.fixMePrintout("No misses last set (which is not last link)");
+        if (i == lastCol) {
+          Annot annot = PluginSupportFactory.buildAnnotation(currSetNode.getName(), startCol, i, 0, null);
+          retval.addAnnot(annot);
+          break;
+        }
+        continue;
+      } else { 
+        // We have just entered a new cluster
+        Annot annot = PluginSupportFactory.buildAnnotation(currSetNode.getName(), startCol, i - 1, 0, null);
+
+        retval.addAnnot(annot);
+        startCol = i;
+        currSetNode = src;
+        if (i == lastCol) {
+          annot = PluginSupportFactory.buildAnnotation(currSetNode.getName(), startCol, i, 0, null);
+          retval.addAnnot(annot);
+          break;
+        }
+      }
+    }
+    
+    return (retval);
+  }
+  
+  /***************************************************************************
+  **
+  ** Generate link annotations to tag each set intersection banc
+  */
+    
+  private AnnotationSet appendLinkAnnotationsForIntersections(AnnotationSet retval, List<NetLink> linkList, Map<NetNode, Set<NetNode>> setMembers, 
+  																									          Map<Set<NetNode>, String> tagMap) { 
+    
+  	Set<NetNode> currIntersect = null;
+    int startCol = 0;
+    int lastCol = linkList.size() - 1;
+    
+    for (int i = 0; i < linkList.size(); i++) {
+  		NetLink fl = linkList.get(i);
+  		if (!fl.isShadow()) {
+  			continue;
+  		}
+  		  		UiUtil.fixMePrintout("No depends on the order");
+  		NetNode targ = fl.getTrgNode(); //FIXME
+      Set<NetNode> sets = setMembers.get(targ);
+      if (currIntersect == null) {
+        currIntersect = sets;
+        startCol = i;
+        if (i == lastCol) {
+          Annot annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startCol, i, 0, null);
+          retval.addAnnot(annot);
+          break;
+        }
+        continue;
+      }
+      if (currIntersect.equals(sets)) {
+        if (i == lastCol) {
+          Annot annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startCol, i, 0, null);
+          retval.addAnnot(annot);
+          break;
+        }
+        continue;
+      } else { 
+        // We have just entered a new cluster
+        Annot annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startCol, i - 1, 0, null);
+
+        retval.addAnnot(annot);
+        startCol = i;
+        currIntersect = sets;
+        if (i == lastCol) {
+          annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startCol, i, 0, null);
+          retval.addAnnot(annot);
+          break;
+        }
+      }
+    }
+    
+    return (retval);
+  }
   
   /***************************************************************************
   ** 

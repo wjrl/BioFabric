@@ -1142,10 +1142,12 @@ public class GraphSearcher {
     private BigInteger bi_;
     private BigInteger gray_;
     private List<NetNode> srcOrder_;
+    private Set<NetNode> mySrcs_;
     
     public SourcedNodeGray(NetNode node, List<NetNode> srcOrder, Set<NetNode> mySrcs) {
       node_ = node;
       degree_ = mySrcs.size();
+      mySrcs_ = mySrcs;
       int numSrc = srcOrder.size();
       srcOrder_ = new ArrayList<NetNode>(srcOrder);
       srcs_ = new char[numSrc];
@@ -1165,7 +1167,11 @@ public class GraphSearcher {
         bi_ = bi_.xor(working);
       }
     }
-      
+     
+    public Set<NetNode> getSrcs() {
+      return (mySrcs_);
+    }
+    
     public NetNode getNodeID() {
       return (node_);
     }

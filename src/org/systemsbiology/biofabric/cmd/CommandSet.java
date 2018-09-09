@@ -2073,7 +2073,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   	    	ResourceManager rMan = ResourceManager.getManager(); 
   	    	int keepGoing =
   		      JOptionPane.showConfirmDialog(topWindow_, rMan.getString("toggleShadow.bigFileLongTime"),
-  		                                    rMan.getString("toggleShadow.bigFileLongTime"),
+  		                                    rMan.getString("toggleShadow.bigFileLongTimeTitle"),
   		                                    JOptionPane.YES_NO_OPTION);        
   		    if (keepGoing != JOptionPane.YES_OPTION) {
   		    	return;
