@@ -1949,31 +1949,19 @@ public class BioFabricNetwork implements Network {
   
   /***************************************************************************
   ** 
-  ** Pretty icky hack:
+  ** Previous icky hack was broken, and depended on default layout algorithm being used to work.
+  ** This is more expensive, but works:
   */
 
   public Set<NetNode> getLoneNodes(BTProgressMonitor monitor) throws AsynchExitRequestException { 
-    HashSet<NetNode> retval = new HashSet<NetNode>();
-    LoopReporter lr = new LoopReporter(nodeDefs_.size(), 20, monitor, 0.0, 1.0, "progress.findingLoneNodes");   
-    Iterator<NetNode> lnit = nodeDefs_.keySet().iterator();
-    boolean checkDone = false;
-    while (lnit.hasNext()) {
-      NetNode loneID = lnit.next();
+    HashSet<NetNode> retval = new HashSet<NetNode>(nodeDefs_.keySet());
+    LoopReporter lr = new LoopReporter(fullLinkDefs_.size(), 20, monitor, 0.0, 1.0, "progress.findingLoneNodes");   
+    Iterator<LinkInfo> lnit = fullLinkDefs_.values().iterator();
+    for (LinkInfo lif : fullLinkDefs_.values()) {
       lr.report();
-      NodeInfo loneNI = nodeDefs_.get(loneID);
-      int min = loneNI.getColRange(true).min;
-      int max = loneNI.getColRange(true).max;
-      
-      if ((min == max) && (min == (shadowCols_.columnCount - 1))) {
-        if (!checkDone) {
-          if (shadowCols_.columnToSource.get(Integer.valueOf(min)) != null) {
-            return (retval);
-          } else {
-            checkDone = true;
-          }
-        }
-        retval.add(loneID);
-      }    
+      NetLink link = lif.getLink();
+      retval.remove(link.getSrcNode());
+      retval.remove(link.getTrgNode());
     }
     lr.finish();
     return (retval);

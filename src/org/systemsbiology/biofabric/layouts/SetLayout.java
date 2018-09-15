@@ -110,17 +110,18 @@ public class SetLayout extends NodeLayout {
                                                                LayoutCriterionFailureException {
     //
     // 1) All the relations in the network are directed
-    // 2) The network is bipartite
-    // 3) There are no singleton nodes
+    // 2) The network is bipartite (so self links are not legit)
+    // 3) There are no singleton nodes. No! An empty set can be a singleton node. 
     // 4) Not a multigraph.
+  	//
     //
     
     LoopReporter lr = new LoopReporter(rbd.getLinks().size(), 20, monitor, 0.0, 1.0, "progress.setLayoutCriteriaCheck"); 
     
     
-    if (!((rbd.getSingletonNodes() == null) || rbd.getSingletonNodes().isEmpty())) {
-      throw new LayoutCriterionFailureException();
-    }
+    //if (!((rbd.getSingletonNodes() == null) || rbd.getSingletonNodes().isEmpty())) {
+    //  throw new LayoutCriterionFailureException();
+    //}
      
     HashSet<String> rels = new HashSet<String>();
     for (NetLink aLink : rbd.getLinks()) {
@@ -137,7 +138,8 @@ public class SetLayout extends NodeLayout {
     
     elemsPerSet_ = new HashMap<NetNode, Set<NetNode>>();
     setsPerElem_ = new HashMap<NetNode, Set<NetNode>>();    
-    extractSets(rbd.getLinks(), monitor);
+    
+    extractSets(rbd.getLinks(), rbd.getSingletonNodes(), monitor);
  
     return (true);  
   }
@@ -156,6 +158,7 @@ public class SetLayout extends NodeLayout {
     //
     
     Map<Integer, SortedSet<NetNode>> byDegree = new TreeMap<Integer, SortedSet<NetNode>>(Collections.reverseOrder());
+    
     for (NetNode set : elemsPerSet_.keySet()) {
       Set<NetNode> elems = elemsPerSet_.get(set);
       Integer card = Integer.valueOf(elems.size());
@@ -168,15 +171,26 @@ public class SetLayout extends NodeLayout {
     }
 
     //
-    // Now we create an ordered list of the sets:
+    // Now we create an ordered list of the sets. We stick empty sets up top so they do not get hidden:
     //
     
     ArrayList<NetNode> setList = new ArrayList<NetNode>();
-    for (SortedSet<NetNode> forDeg : byDegree.values()) {
+    
+    SortedSet<NetNode> emptySets = byDegree.get(Integer.valueOf(0));
+    if (emptySets != null) {
+    	setList.addAll(emptySets);
+    }
+    
+    for (Integer size : byDegree.keySet()) {
+    	if (size.intValue() == 0) {
+    		continue;
+    	}
+    	SortedSet<NetNode> forDeg = byDegree.get(size);
       setList.addAll(forDeg);
     }
+
     ArrayList<NetNode> nodeOrder = new ArrayList<NetNode>(setList);
-    Map<NetNode, Set<NetNode>> setMembers = new HashMap<NetNode, Set<NetNode>>();
+    Map<NetNode, Set<NetNode>> setsHoldingElement = new HashMap<NetNode, Set<NetNode>>();
     HashMap<Set<NetNode>, String> tagMap = new HashMap<Set<NetNode>, String>();
     StringBuffer buf = new StringBuffer();
 
@@ -184,7 +198,7 @@ public class SetLayout extends NodeLayout {
     for (GraphSearcher.SourcedNodeGray node : snds) {   
       nodeOrder.add(node.getNodeID());
       Set<NetNode> setNodes = node.getSrcs();
-      setMembers.put(node.getNodeID(), setNodes); 
+      setsHoldingElement.put(node.getNodeID(), setNodes); 
       String tag = tagMap.get(setNodes);
       if (tag == null) {
         tag = buildTag(setNodes, setList, buf);
@@ -207,10 +221,10 @@ public class SetLayout extends NodeLayout {
     (new DefaultEdgeLayout()).layoutEdges(rbd, monitor); 
     
     
-    AnnotationSet nAnnots = generateNodeAnnotations(rbd, setMembers, tagMap);
+    AnnotationSet nAnnots = generateNodeAnnotations(rbd, setsHoldingElement, tagMap);
     rbd.setNodeAnnotations(nAnnots);
     
-   Map<Boolean, AnnotationSet> lAnnots = generateLinkAnnotations(rbd, setMembers, tagMap);
+   Map<Boolean, AnnotationSet> lAnnots = generateLinkAnnotations(rbd, setsHoldingElement, tagMap);
    rbd.setLinkAnnotations(lAnnots);
     
     return (nodeOrder);
@@ -243,7 +257,7 @@ public class SetLayout extends NodeLayout {
   ** Generate node annotations to tag each cluster
   */
     
-  private AnnotationSet generateNodeAnnotations(BuildData rbd, Map<NetNode, Set<NetNode>> setMembers, Map<Set<NetNode>, String> tagMap) {
+  private AnnotationSet generateNodeAnnotations(BuildData rbd, Map<NetNode, Set<NetNode>> setsHoldingElement, Map<Set<NetNode>, String> tagMap) {
     
     AnnotationSet retval = PluginSupportFactory.buildAnnotationSet();
     
@@ -260,7 +274,7 @@ public class SetLayout extends NodeLayout {
     Integer lastKey = invert.lastKey();
     for (Integer row : invert.keySet()) {
       NetNode node = invert.get(row);
-      Set<NetNode> sets = setMembers.get(node);
+      Set<NetNode> sets = setsHoldingElement.get(node);
       if (currIntersect == null) {
         currIntersect = sets;
         startRow = row;
@@ -301,32 +315,50 @@ public class SetLayout extends NodeLayout {
   ** Generate link annotations to tag each set node and intersection band
   */
     
-  private Map<Boolean, AnnotationSet> generateLinkAnnotations(BuildData rbd, Map<NetNode, Set<NetNode>> setMembers, 
+  private Map<Boolean, AnnotationSet> generateLinkAnnotations(BuildData rbd, Map<NetNode, Set<NetNode>> setsHoldingElement, 
   																														Map<Set<NetNode>, String> tagMap) { 
   	HashMap<Boolean, AnnotationSet> retval = new HashMap<Boolean, AnnotationSet>();
     
   	SortedMap<Integer, NetLink> lod = rbd.getLinkOrder();
-  	
+  
+  	List<NetLink> shadowsOnly = new ArrayList<NetLink>();
   	List<NetLink> noShadows = new ArrayList<NetLink>();
-  	List<NetLink> withShadows = new ArrayList<NetLink>();
+
+  	int firstShadow = -1;
   	for (Integer col : lod.keySet()) {
   		NetLink fl = lod.get(col);
-  		withShadows.add(fl);
-  		if (!fl.isShadow()) {
+  		if (fl.isShadow()) {
+  			if (firstShadow < 0) {
+  				firstShadow = col.intValue();
+  			}
+  			shadowsOnly.add(fl);
+  		} else {
   			noShadows.add(fl);
   		}
   	}
 
-  	retval.put(Boolean.FALSE, generateLinkAnnotationsForSets(noShadows));
-  	AnnotationSet forShad = generateLinkAnnotationsForSets(withShadows);
-  	retval.put(Boolean.TRUE, appendLinkAnnotationsForIntersections(forShad, withShadows, setMembers, tagMap));
+  	//
+  	// Link annotations for regular links delineate sets. For shadow links, annotations delineate nodes with identical set
+    // memberships:
+  	//
+  	
+  	AnnotationSet forSets = generateLinkAnnotationsForSets(noShadows);
+  	AnnotationSet noShad = PluginSupportFactory.buildAnnotationSet();
+  	AnnotationSet withShad = PluginSupportFactory.buildAnnotationSet();
+  	for (Annot an : forSets) {
+  		noShad.addAnnot(an);
+  		withShad.addAnnot(an);
+  	}  	
+  	
+  	retval.put(Boolean.FALSE, noShad);
+  	retval.put(Boolean.TRUE, appendLinkAnnotationsForIntersections(withShad, shadowsOnly, setsHoldingElement, tagMap, firstShadow));
   	    
     return (retval);
   }
-   
+
   /***************************************************************************
   **
-  ** Generate link annotations to tag each set intersection banc
+  ** Generate link annotations to tag each set intersection band
   */
     
   private AnnotationSet generateLinkAnnotationsForSets(List<NetLink> linkList) { 
@@ -339,16 +371,13 @@ public class SetLayout extends NodeLayout {
     
     for (int i = 0; i < linkList.size(); i++) {
   		NetLink fl = linkList.get(i);
-  		UiUtil.fixMePrintout("Crazy inefficient");
   		if (fl.isShadow()) {
-  			continue;
+  			throw new IllegalArgumentException();
   		}
-  		UiUtil.fixMePrintout("No depends on the order");
-  		NetNode src = fl.getSrcNode(); //FIXME
+  		NetNode nextSet = (direction_ == LinkMeans.CONTAINS) ? fl.getSrcNode() : fl.getTrgNode();
       if (currSetNode == null) {
-        currSetNode = src;
+        currSetNode = nextSet;
         startCol = i;
-          		UiUtil.fixMePrintout("No misses last set (which is not last link)");
         if (i == lastCol) {
           Annot annot = PluginSupportFactory.buildAnnotation(currSetNode.getName(), startCol, i, 0, null);
           retval.addAnnot(annot);
@@ -356,8 +385,7 @@ public class SetLayout extends NodeLayout {
         }
         continue;
       }
-      if (currSetNode.equals(src)) {
-      	          		UiUtil.fixMePrintout("No misses last set (which is not last link)");
+      if (currSetNode.equals(nextSet)) {
         if (i == lastCol) {
           Annot annot = PluginSupportFactory.buildAnnotation(currSetNode.getName(), startCol, i, 0, null);
           retval.addAnnot(annot);
@@ -370,7 +398,7 @@ public class SetLayout extends NodeLayout {
 
         retval.addAnnot(annot);
         startCol = i;
-        currSetNode = src;
+        currSetNode = nextSet;
         if (i == lastCol) {
           annot = PluginSupportFactory.buildAnnotation(currSetNode.getName(), startCol, i, 0, null);
           retval.addAnnot(annot);
@@ -384,50 +412,50 @@ public class SetLayout extends NodeLayout {
   
   /***************************************************************************
   **
-  ** Generate link annotations to tag each set intersection banc
+  ** Generate link annotations to tag each set intersection band
   */
     
-  private AnnotationSet appendLinkAnnotationsForIntersections(AnnotationSet retval, List<NetLink> linkList, Map<NetNode, Set<NetNode>> setMembers, 
-  																									          Map<Set<NetNode>, String> tagMap) { 
+  private AnnotationSet appendLinkAnnotationsForIntersections(AnnotationSet retval, List<NetLink> linkList, 
+  		                                                        Map<NetNode, Set<NetNode>> setsHoldingElement, 
+  																									          Map<Set<NetNode>, String> tagMap, int offset) { 
     
   	Set<NetNode> currIntersect = null;
-    int startCol = 0;
-    int lastCol = linkList.size() - 1;
+    int startCol = offset;
+    int lastCol = offset + linkList.size() - 1;
     
     for (int i = 0; i < linkList.size(); i++) {
   		NetLink fl = linkList.get(i);
   		if (!fl.isShadow()) {
-  			continue;
+  			throw new IllegalArgumentException();
   		}
-  		  		UiUtil.fixMePrintout("No depends on the order");
-  		NetNode targ = fl.getTrgNode(); //FIXME
-      Set<NetNode> sets = setMembers.get(targ);
+  		NetNode elem = (direction_ == LinkMeans.CONTAINS) ? fl.getTrgNode() : fl.getSrcNode();
+      Set<NetNode> sets = setsHoldingElement.get(elem);
       if (currIntersect == null) {
         currIntersect = sets;
-        startCol = i;
-        if (i == lastCol) {
-          Annot annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startCol, i, 0, null);
+        startCol = i + offset;
+        if (i + offset == lastCol) {
+          Annot annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startCol, i + offset, 0, null);
           retval.addAnnot(annot);
           break;
         }
         continue;
       }
       if (currIntersect.equals(sets)) {
-        if (i == lastCol) {
-          Annot annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startCol, i, 0, null);
+        if (i + offset == lastCol) {
+          Annot annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startCol, i + offset, 0, null);
           retval.addAnnot(annot);
           break;
         }
         continue;
       } else { 
         // We have just entered a new cluster
-        Annot annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startCol, i - 1, 0, null);
+        Annot annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startCol, i + offset - 1, 0, null);
 
         retval.addAnnot(annot);
-        startCol = i;
+        startCol = i + offset;
         currIntersect = sets;
-        if (i == lastCol) {
-          annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startCol, i, 0, null);
+        if (i + offset == lastCol) {
+          annot = PluginSupportFactory.buildAnnotation(tagMap.get(currIntersect), startCol, i + offset, 0, null);
           retval.addAnnot(annot);
           break;
         }
@@ -442,18 +470,28 @@ public class SetLayout extends NodeLayout {
   ** Extract the set information from the network
   */
 
-  private void extractSets(Set<NetLink> links,
+  private void extractSets(Set<NetLink> links, Set<NetNode> singletons,
                            BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                              LayoutCriterionFailureException {
   
     //
     // This graph has to be bipartite, with all directional links going from node set A to node set B
-    // ("BELONGS_TO") or the opposite ("CONTAINS"):
+    // ("BELONGS_TO") or the opposite ("CONTAINS"). Any singleton nodes must be considered to be empty sets.
     //
     
     HashSet<NetNode> setNodes = new HashSet<NetNode>();
     HashSet<NetNode> elementNodes = new HashSet<NetNode>();     
     
+    // Singletons are empty sets:
+    
+    if (singletons != null) {
+	    setNodes.addAll(singletons);
+	    for (NetNode emptySet : singletons) {
+	      elemsPerSet_.put(emptySet, new HashSet<NetNode>());
+	      System.out.println("Add single " + emptySet);
+	    }
+    } 
+       
     LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.setLayoutSetExtraction"); 
     
     for (NetLink link : links) {
