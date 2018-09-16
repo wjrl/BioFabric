@@ -248,6 +248,9 @@ public class NodeClusterLayout extends NodeLayout {
     
     installNodeOrder(allTargets, rbd, monitor);
     
+    
+     UiUtil.fixMePrintout("Inter cluster shadows are messed up and on the right");
+    
     //
     // We lay out the edges using default layout. Then, if we want edges to be positioned
     // between clusters, we move them:
@@ -417,6 +420,7 @@ public class NodeClusterLayout extends NodeLayout {
   	}
 
   	retval.put(Boolean.FALSE, generateLinkAnnotationsForSet(noShadows, params));
+  	UiUtil.fixMePrintout("Messedup link annotations with shadows");
   	retval.put(Boolean.TRUE, generateLinkAnnotationsForSet(withShadows, params));
   	
     return (retval);

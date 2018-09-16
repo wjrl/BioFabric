@@ -45,7 +45,6 @@ import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.api.worker.LoopReporter;
 import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
-import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -111,18 +110,12 @@ public class SetLayout extends NodeLayout {
     //
     // 1) All the relations in the network are directed
     // 2) The network is bipartite (so self links are not legit)
-    // 3) There are no singleton nodes. No! An empty set can be a singleton node. 
-    // 4) Not a multigraph.
+    // 3) singleton nodes represent empty sets
+    // 4) Not a multigraph. We currently insure that by enforcing only one link relation.
   	//
-    //
     
     LoopReporter lr = new LoopReporter(rbd.getLinks().size(), 20, monitor, 0.0, 1.0, "progress.setLayoutCriteriaCheck"); 
     
-    
-    //if (!((rbd.getSingletonNodes() == null) || rbd.getSingletonNodes().isEmpty())) {
-    //  throw new LayoutCriterionFailureException();
-    //}
-     
     HashSet<String> rels = new HashSet<String>();
     for (NetLink aLink : rbd.getLinks()) {
       lr.report();
@@ -488,7 +481,6 @@ public class SetLayout extends NodeLayout {
 	    setNodes.addAll(singletons);
 	    for (NetNode emptySet : singletons) {
 	      elemsPerSet_.put(emptySet, new HashSet<NetNode>());
-	      System.out.println("Add single " + emptySet);
 	    }
     } 
        

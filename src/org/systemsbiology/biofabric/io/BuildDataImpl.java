@@ -53,6 +53,7 @@ import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.plugin.PluginBuildData;
 import org.systemsbiology.biofabric.ui.FabricColorGenerator;
 import org.systemsbiology.biofabric.util.DataUtil;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -392,6 +393,7 @@ public class BuildDataImpl implements BuildData {
   } 
   
   public boolean getShowLinkGroupAnnotations() {
+  	UiUtil.fixMePrintout("Not propagating into layout operation correctly");
     return (showLinkGroupAnnotations_);
   }
   

@@ -217,8 +217,6 @@ public class ControlTopLayout extends NodeLayout {
         throw new LayoutCriterionFailureException();
       }
     }
-  
-    // Do we handle singleton nodes OK???
     
     return (true);  
   }
@@ -286,6 +284,16 @@ public class ControlTopLayout extends NodeLayout {
       default:
         throw new IllegalStateException();
     }
+    
+    //
+    // Singletons? Add them at the end
+    //
+    
+    Set<NetNode> loneNodes = rbd.getSingletonNodes();
+    if ((loneNodes != null) && !loneNodes.isEmpty()) {
+    	TreeSet<NetNode> orderedLones = new TreeSet<NetNode>(loneNodes);
+    	nodeOrder.addAll(orderedLones);
+    }   
     
     //
     // Now have the ordered list of targets we are going to display.

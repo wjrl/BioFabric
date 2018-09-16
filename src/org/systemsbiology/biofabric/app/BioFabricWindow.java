@@ -461,16 +461,21 @@ public class BioFabricWindow implements BackgroundWorkerControlManager {
     lMenu.setMnemonic(rMan.getChar("command.LayoutMnem"));
     menuBar.add(lMenu);
     lMenu.add(fc.getAction(CommandSet.DEFAULT_LAYOUT, false, null));
-    lMenu.add(fc.getAction(CommandSet.RELAYOUT_USING_CONNECTIVITY, false, null));
-    lMenu.add(fc.getAction(CommandSet.RELAYOUT_USING_SHAPE_MATCH, false, null));
-    lMenu.add(fc.getAction(CommandSet.LAYOUT_NODES_VIA_ATTRIBUTES, false, null));
-    lMenu.add(fc.getAction(CommandSet.LAYOUT_LINKS_VIA_ATTRIBUTES, false, null));
-    lMenu.add(fc.getAction(CommandSet.LAYOUT_VIA_NODE_CLUSTER_ASSIGN, false, null));   
+    lMenu.add(new JSeparator());
     lMenu.add(fc.getAction(CommandSet.LAYOUT_TOP_CONTROL, false, null)); 
-    lMenu.add(fc.getAction(CommandSet.HIER_DAG_LAYOUT, false, null)); 
+    lMenu.add(fc.getAction(CommandSet.HIER_DAG_LAYOUT, false, null));
+    lMenu.add(fc.getAction(CommandSet.LAYOUT_VIA_NODE_CLUSTER_ASSIGN, false, null));   
     lMenu.add(fc.getAction(CommandSet.SET_LAYOUT, false, null)); 
     lMenu.add(fc.getAction(CommandSet.WORLD_BANK_LAYOUT, false, null)); 
+    lMenu.add(new JSeparator());
+    lMenu.add(fc.getAction(CommandSet.RELAYOUT_USING_CONNECTIVITY, false, null));
+    lMenu.add(fc.getAction(CommandSet.RELAYOUT_USING_SHAPE_MATCH, false, null));
+    lMenu.add(new JSeparator());
+    lMenu.add(fc.getAction(CommandSet.LAYOUT_NODES_VIA_ATTRIBUTES, false, null));
+    lMenu.add(fc.getAction(CommandSet.LAYOUT_LINKS_VIA_ATTRIBUTES, false, null));
+    lMenu.add(new JSeparator());
     lMenu.add(fc.getAction(CommandSet.SET_LINK_GROUPS, false, null));
+    lMenu.add(new JSeparator());
     lMenu.add(fc.getAction(CommandSet.ADD_NODE_ANNOTATIONS, false, null));
     lMenu.add(fc.getAction(CommandSet.ADD_LINK_ANNOTATIONS, false, null));
     
