@@ -250,6 +250,9 @@ public class NodeClusterLayout extends NodeLayout {
     
     
      UiUtil.fixMePrintout("Inter cluster shadows are messed up and on the right");
+     // Can have ALL links from cluster 1 to all clusters right after cluster 1, and
+     // all links to cluster 2 right before cluster 2.
+     
     
     //
     // We lay out the edges using default layout. Then, if we want edges to be positioned
@@ -419,9 +422,9 @@ public class NodeClusterLayout extends NodeLayout {
   		}
   	}
 
-  	retval.put(Boolean.FALSE, generateLinkAnnotationsForSet(noShadows, params));
+  	retval.put(Boolean.FALSE, generateLinkAnnotationsForSet(rbd, noShadows, params));
   	UiUtil.fixMePrintout("Messedup link annotations with shadows");
-  	retval.put(Boolean.TRUE, generateLinkAnnotationsForSet(withShadows, params));
+  	retval.put(Boolean.TRUE, generateLinkAnnotationsForSet(rbd, withShadows, params));
   	
     return (retval);
   }
@@ -431,32 +434,81 @@ public class NodeClusterLayout extends NodeLayout {
   ** Generate link annotations to tag each cluster and intercluster links
   */
     
-  private AnnotationSet generateLinkAnnotationsForSet(List<NetLink> linkList, ClusterParams params) { 
+  private AnnotationSet generateLinkAnnotationsForSet(BuildData rbd, List<NetLink> linkList, ClusterParams params) { 
     
   	HashMap<String, MinMax> clustRanges = new HashMap<String, MinMax>();
-  	 	
-  	for (int i = 0; i < linkList.size() ; i++) {
-  		NetLink fl = linkList.get(i);
-  
-  		String srcClust = params.getClusterForNode(fl.getSrcNode());
-      String trgClust = params.getClusterForNode(fl.getTrgNode());
-  		if (srcClust.equals(trgClust)) {
-  			MinMax mmc = clustRanges.get(srcClust);
+  	
+  	//
+  	// If the interlinks are inline, we have nothing to do except annotate the clusters themselves. Cluster bounds
+  	// are set by the cluster of the top node of regular links. If shadows are shown, we include the bottom node 
+  	// of shadow links.
+  	//
+  	
+  	Map<NetNode, Integer> nod = rbd.getNodeOrder();
+  	
+  	
+  	if (params.iLink == ClusterParams.InterLink.INLINE) {	
+	  	for (int i = 0; i < linkList.size() ; i++) {
+	  		NetLink fl = linkList.get(i);
+	  		boolean isShad = fl.isShadow();
+  		  NetNode srcNode = fl.getSrcNode();
+  		  NetNode trgNode = fl.getTrgNode();
+  		  String srcClust = params.getClusterForNode(srcNode);
+        String trgClust = params.getClusterForNode(trgNode);
+	      int srcRow = nod.get(srcNode).intValue();
+	      int trgRow = nod.get(trgNode).intValue();
+	      String useClust;
+	      if (srcRow <= trgRow) {
+	      	useClust = (isShad) ? trgClust : srcClust;
+	      } else {
+	      	useClust = (isShad) ? srcClust : trgClust;
+	      }
+  			MinMax mmc = clustRanges.get(useClust);
   			if (mmc == null) {
   				mmc = new MinMax(i);
-  				clustRanges.put(srcClust, mmc);
+  				clustRanges.put(useClust, mmc);
   			}
   			mmc.update(i);
-  		} else {
+	  	}
+  	} else {
+  		for (int i = 0; i < linkList.size() ; i++) {
+	  		NetLink fl = linkList.get(i);
+	  		boolean isShad = fl.isShadow();
+  		  NetNode srcNode = fl.getSrcNode();
+  		  NetNode trgNode = fl.getTrgNode();
+  		  String srcClust = params.getClusterForNode(srcNode);
+        String trgClust = params.getClusterForNode(trgNode);
+        if (!srcClust.equals(trgClust)) {
+        	continue;
+        }
+	      //int srcRow = nod.get(srcNode).intValue();
+	      //int trgRow = nod.get(trgNode).intValue();
+	      String useClust = srcClust;
+	      //if (srcRow <= trgRow) {
+	      //	useClust = (isShad) ? trgClust : srcClust;
+	      //} else {
+	      //	useClust = (isShad) ? srcClust : trgClust;
+	      //}
+  			MinMax mmc = clustRanges.get(useClust);
+  			if (mmc == null) {
+  				mmc = new MinMax(i);
+  				clustRanges.put(useClust, mmc);
+  			}
+  			mmc.update(i);
+	  	}
+  	}
+  	
+  	
+  	/*	} else {
   			String combo = (srcClust.compareTo(trgClust) < 0) ? srcClust + "-" + trgClust : trgClust + "-" + srcClust;
    			MinMax mmc = clustRanges.get(combo);
   			if (mmc == null) {
   				mmc = new MinMax(i);
   				clustRanges.put(combo, mmc);
   			}
-  			mmc.update(i);
-  		}
-  	}
+  			mmc.update(i); */
+  	//	}
+  //	}
   	
   	AnnotationSet afns = PluginSupportFactory.buildAnnotationSet();
   	TreeMap<Integer, String> ord = new TreeMap<Integer, String>();

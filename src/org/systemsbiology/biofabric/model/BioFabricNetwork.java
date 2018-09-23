@@ -670,8 +670,7 @@ public class BioFabricNetwork implements Network {
         }
         rbd.setNodeOrder(norNew);
       }
-      lor = (new DefaultEdgeLayout()).layoutEdges(rbd.getNodeOrder(), rbd.getLinks(), 
-    		                                          rbd.getGroupOrder(), rbd.getGroupOrderMode(), monitor);
+      lor = (new DefaultEdgeLayout()).layoutAllEdges(rbd, monitor);
     }
 
     //

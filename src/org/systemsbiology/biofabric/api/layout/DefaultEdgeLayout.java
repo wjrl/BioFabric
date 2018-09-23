@@ -172,6 +172,24 @@ public class DefaultEdgeLayout implements EdgeLayout {
     }
     return;
   }
+  
+  /***************************************************************************
+  **
+  ** Relayout the whole network. Same as above, but the above is part of the API.
+  */
+  
+  public SortedMap<Integer, NetLink> layoutAllEdges(BuildData rbd, BTProgressMonitor monitor) throws AsynchExitRequestException {
+   
+    SortedMap<Integer, NetLink> retval = layoutEdges(rbd.getNodeOrder(), rbd.getLinks(), 
+    		                                             rbd.getGroupOrder(), rbd.getGroupOrderMode(), monitor);
+    rbd.setLinkOrder(retval);
+    if (rbd.getShowLinkGroupAnnotations()) {
+      installLinkAnnotations(rbd, monitor);
+    } else {
+      rbd.setLinkAnnotations(null);
+    }
+    return (retval);
+  }
 
   /***************************************************************************
   **
