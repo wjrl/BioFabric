@@ -2316,10 +2316,15 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         buildRestoreCache(holdIt_, monitor);
       }
       rbd_ = new BuildDataImpl(bfn_, mode_, monitor);
+      // Either link group info is coming in from a dialog, or we extract it from the network:
+      if ((groupOrder_ != null) && (layMode_ != null)) {
+        rbd_.setGroupOrderAndMode(groupOrder_, layMode_, showLinkGroupAnnotations_);
+      } else {
+        rbd_.setGroupOrderAndMode(bfn_.getLinkGrouping(), bfn_.getLayoutMode(), bfn_.getShowLinkGroupAnnotations());
+      }
+      
       if (nodeAttrib_ != null) {
         rbd_.setNodeOrderFromAttrib(nodeAttrib_);   
-      } else if ((groupOrder_ != null) && (layMode_ != null)) {
-        rbd_.setGroupOrderAndMode(groupOrder_, layMode_, showLinkGroupAnnotations_);
       } else if (linkOrder_ != null) {
         rbd_.setLinkOrder(linkOrder_);
       }

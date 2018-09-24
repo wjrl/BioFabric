@@ -43,6 +43,7 @@ import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
 import org.systemsbiology.biofabric.api.worker.LoopReporter;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
+import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.TrueObjChoiceContent;
 import org.systemsbiology.biofabric.util.UiUtil;
@@ -125,6 +126,7 @@ public class ControlTopLayout extends NodeLayout {
   private TargMode targMode_;
   private List<String> fixedOrder_;
   private Map<String, Set<NetNode>> normNameToIDs_;
+  private Set<NetNode> ctrlNodes_;
   
   ////////////////////////////////////////////////////////////////////////////
   //
@@ -142,6 +144,7 @@ public class ControlTopLayout extends NodeLayout {
     targMode_ = tMode;
     fixedOrder_ = fixedOrder;
     normNameToIDs_ = normNameToIDs;
+    ctrlNodes_ = null;
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -160,30 +163,61 @@ public class ControlTopLayout extends NodeLayout {
                              BTProgressMonitor monitor) throws AsynchExitRequestException, 
                                                                LayoutCriterionFailureException {
     //
-    // 1) The network must be fully directed.
-    // 2) If we are given a fixed list, we need to map to nodes, and make sure it is 1:1 and onto.
-    // Do we handle singleton nodes OK???
+    // 1) The network must be fully directed:
+  	//
+  	
+  	Set<NetLink> links = rbd.getLinks();
+  	LoopReporter lr = new LoopReporter(links.size(), 20, monitor, 0.0, 1.0, "progress.ControlTopLayoutCriteriaCheck1");
+  	
+  	for (NetLink link : links) {
+  		lr.report();
+  	  if (!link.isDirected()) {
+  	  	lr.finish();
+  	  	throw new LayoutCriterionFailureException();
+  	  }   	  	
+  	}
+  	lr.finish();
+  	
+  	//
+    // 2) If there are no nodes with outbound links, what the heck are we doing? Get outta here!
     //
     
-    LoopReporter lr = new LoopReporter(rbd.getLinks().size(), 20, monitor, 0.0, 1.0, "progress.ControlTopLayoutCriteriaCheck");
-    
+    ctrlNodes_ = controlNodes(rbd.getAllNodes(), rbd.getLinks(), monitor);
+    if ((ctrlNodes_ == null) || ctrlNodes_.isEmpty()) {
+      throw new LayoutCriterionFailureException();
+    }
+  	
+    //
+    // 3) If we are given a fixed list, we need to map to nodes, and make sure it is 1:1 and onto for all
+    // the control nodes:
+    //
+  	
     if ((fixedOrder_ != null) && (normNameToIDs_ == null)) {
       throw new LayoutCriterionFailureException();
     }
      
-    //
-    // If we are provided with a fixed order for control nodes, it must be that case that *all* nodes with outbound
-    // edges are in the list, and that no target nodes are in the list.
-    //
+    if (fixedOrder_ != null) {
+    	HashSet<NetNode> checkSet = new HashSet<NetNode>(ctrlNodes_);
+	    LoopReporter lr2 = new LoopReporter(fixedOrder_.size(), 20, monitor, 0.0, 1.0, "progress.ControlTopLayoutCriteriaCheck2");
+	    for (String name : fixedOrder_) {
+	    	lr2.report();
+	    	Set<NetNode> matches = normNameToIDs_.get(DataUtil.normKey(name));
+	    	if ((matches == null) || (matches.size() != 1)) {
+	    		throw new LayoutCriterionFailureException();
+	    	}
+	    	NetNode match = matches.iterator().next();
+	    	if (!checkSet.contains(match)) {
+	    		throw new LayoutCriterionFailureException();
+	    	}
+	    	checkSet.remove(match);	    	
+	    }
+	    lr2.finish();
+	    
+	    if (!checkSet.isEmpty()) {
+        throw new LayoutCriterionFailureException();
+      }
+    }
     
-    //for (String foNode : fixedOrder_) {
-    //	
-    //}
-    
-    
-    lr.finish();
-    
-    UiUtil.fixMePrintout("ACTUALLY CHECK SOMETHING OK???");
     return (true);  
   }
  
@@ -198,7 +232,10 @@ public class ControlTopLayout extends NodeLayout {
 									    
     
     List<NetNode> ctrlList;
-    SortedSet<NetNode> cnSet = new TreeSet<NetNode>(controlNodes(rbd.getAllNodes(), rbd.getLinks(), monitor));
+    if (ctrlNodes_ == null) {
+    	ctrlNodes_ = controlNodes(rbd.getAllNodes(), rbd.getLinks(), monitor);
+    }
+    SortedSet<NetNode> cnSet = new TreeSet<NetNode>(ctrlNodes_);
     List<NetNode> dfo = null;
     
     switch (ctrlMode_) {
@@ -247,6 +284,16 @@ public class ControlTopLayout extends NodeLayout {
       default:
         throw new IllegalStateException();
     }
+    
+    //
+    // Singletons? Add them at the end
+    //
+    
+    Set<NetNode> loneNodes = rbd.getSingletonNodes();
+    if ((loneNodes != null) && !loneNodes.isEmpty()) {
+    	TreeSet<NetNode> orderedLones = new TreeSet<NetNode>(loneNodes);
+    	nodeOrder.addAll(orderedLones);
+    }   
     
     //
     // Now have the ordered list of targets we are going to display.
