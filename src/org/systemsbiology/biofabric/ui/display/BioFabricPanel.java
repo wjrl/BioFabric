@@ -32,6 +32,8 @@ import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
@@ -1220,6 +1222,15 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
 
   public void setScroll(JScrollPane jsp) { 
     jsp_ = jsp;
+    // Now in V2, we use wheel scroll to zoom (thanks anonymous reviewer #1!) not
+    // to do vertical scrolling, which is useless anyway.
+    //
+    jsp_.setWheelScrollingEnabled(false);
+    jsp_.addMouseWheelListener(new MouseWheelListener() {
+	    public void mouseWheelMoved(MouseWheelEvent e) {
+	    	getZoomController().bumpZoomWrapper((e.getWheelRotation() > 0) ? '-' : '+');
+	    }
+    });
     return;
   }
   
@@ -1301,7 +1312,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     		                                     fullNetRect.getHeight()+ (2.0 * ulPty));
     UiUtil.force2DToGrid(worldRectNetAR_, GRID_SIZE);
     
-    zoomer_.setWorldRect(UiUtil.rectFromRect2D(worldRectNetAR_)); 
+    zoomer_.setWorldRect(UiUtil.rectFromRect2D(worldRectNetAR_));
  
     bucketRend_.buildBucketCache(bfn_.getNodeDefList(), bfn_.getLinkDefList(showShadows), 
     		                         bfn_.getNodeAnnotations(), bfn_.getLinkAnnotations(Boolean.valueOf(showShadows)),
@@ -1350,11 +1361,22 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
 
   public void initZoom() { 
     getZoomController().zoomToModel(true);
-    // This is needed to make sure that the full-on view of the model
+    // Prior to V2 Beta, we called this:
+    // zoomer_.setWorldRect(UiUtil.rectFromRect2D(getFullScreenWorld()));   
+    // Previously, "This is needed to make sure that the full-on view of the model
     // encapsulates the whole workspace.  Otherwise, drag rects on
     // e.g. long thin models go outside the workspace and we don't
-    // actually zoom!
-    zoomer_.setWorldRect(UiUtil.rectFromRect2D(getFullScreenWorld()));   
+    // actually zoom!"
+    //
+    // BUT! This is what "bulked up" the world workspace vertically so that the right scrollbar became
+    // *completely useless* on long thin models! In that case e.g. 99% of the scroll travel
+    // was for blank space above and below the model.
+    // 
+    // Instead, the correct approach was to ditch the BioTapestry-centric approach that
+    // took the UNION of the world workspace and the selected rect, and if it was not equal,
+    // it centered on the UNION. That was useless. That is fixed (see 
+    // ZoomCommandSupport.zoomToSelectedGutsGuts(), so we abandon fullScreenWorld bit.
+   
     return;
   }
   
@@ -1384,8 +1406,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
   
   /***************************************************************************
   **
-  ** Find the full extent of the view!
-  */
+  ** Find the full extent of the view! Note we are not using this anymore
   
   public Rectangle getFullScreenWorld() {
     JViewport view = jsp_.getViewport();
@@ -1941,7 +1962,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
       }
       return (new Rectangle(rx, ry, rw, rh));
     } else {
-      return (null);
+     return (null);
     }
   }  
  
@@ -2768,7 +2789,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     }  
     
     private void dragResult(int sx, int sy, int ex, int ey, boolean isCtrl) {
-      if (isCtrl) {  // Keep floater alive!
+      if (!isCtrl) {  // Keep floater alive! (change to ! for V2)
         return;
       }
       if (collectingZoomMode_) {
@@ -2803,7 +2824,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
           Point screenLoc = me.getComponent().getLocationOnScreen();
           lastAbs_ = new Point(me.getX() + screenLoc.x, me.getY() + screenLoc.y);         
           lastShifted_ = me.isShiftDown();        
-          lastCtrl_ = me.isControlDown();
+          lastCtrl_ = me.isControlDown() || (isAMac_ && me.isMetaDown());
         }
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
@@ -2838,7 +2859,19 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
     @Override
     public void mouseReleased(MouseEvent me) {
       try {
+      	
+      	//
+      	// Now that we use a simple drag to scroll, we need to know if the user
+      	// has done that (else it just looks like a click: no world coordinate change
+      	// between press and release:
+      	//
+      	
+      	Point screenLoc = me.getComponent().getLocationOnScreen();
+        Point newAbs = new Point(me.getX() + screenLoc.x, me.getY() + screenLoc.y);
+        boolean absChange = (lastAbs_ != null) && !newAbs.equals(lastAbs_);
+  
         // Do this stuff NO MATTER WHAT!
+
         lastView_ = null;
         lastAbs_ = null;
 
@@ -2849,17 +2882,23 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
           return;
         }
         
-        if (me.isControlDown() || (isAMac_ && me.isMetaDown())) {
-          lastPress_ = null;
-          return;
-        }
+        //
+        // V2: Control is now used for boxing select, so this needs to go:
+        //
+        
+        // if (me.isControlDown() || (isAMac_ && me.isMetaDown())) {
+        //   lastPress_ = null;
+        //  return;
+        // }
         
         boolean shiftPressed = me.isShiftDown();
         int currX = me.getX();
-        int currY = me.getY();     
+        int currY = me.getY();
+
         if (lastPress_ == null) {
           return;
         }
+        
         int lastX = lastPress_.x;
         int lastY = lastPress_.y;
         int diffX = Math.abs(currX - lastX);
@@ -2868,11 +2907,18 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
         // Note that a ctrl-drag leaves us with diff == 0, thus
         // it would select after the ctrl drag!
         
-        if (!lastCtrl_ && (diffX <= CLICK_SLOP_) && (diffY <= CLICK_SLOP_)) { 
+        if (!absChange && (diffX <= CLICK_SLOP_) && (diffY <= CLICK_SLOP_)) { 
           handleClick(lastX, lastY, shiftPressed);
-        } else if ((diffX >= CLICK_SLOP_) || (diffY >= CLICK_SLOP_)) {
+        } else if (lastCtrl_ && ((diffX >= CLICK_SLOP_) || (diffY >= CLICK_SLOP_))) {
           dragResult(lastX, lastY, currX, currY, lastCtrl_);
         }
+
+        // Pre-V2 code (ctrl pressed was drag)
+        //if (!lastCtrl_ && (diffX <= CLICK_SLOP_) && (diffY <= CLICK_SLOP_)) { 
+        //  handleClick(lastX, lastY, shiftPressed);
+        //} else if ((diffX >= CLICK_SLOP_) || (diffY >= CLICK_SLOP_)) {
+        //  dragResult(lastX, lastY, currX, currY, lastCtrl_);
+        //}
         floaterSet_.floater = null;
         lastPress_ = null;  // DO THIS NO MATTER WHAT TOO       
         handleFloaterChange();
@@ -2921,6 +2967,14 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
         }
         Point currPt = me.getPoint();
         if (me.isControlDown() || (isAMac_ && me.isMetaDown())) {
+        	Point2D lpw = viewToWorld(lastPress_);
+          Point2D cupw = viewToWorld(currPt);
+          floaterSet_.floater = valsToRect((int)lpw.getX(), (int)lpw.getY(), (int)cupw.getX(), (int)cupw.getY(), false);
+          handleFloaterChange();
+        } else if (collectingZoomMode_) {
+          floaterSet_.floater = null;
+          handleFloaterChange();        
+        } else {
           Point compLoc = me.getComponent().getLocationOnScreen();
           Point currAbs = new Point(compLoc.x + currPt.x, compLoc.y + currPt.y); 
 
@@ -2941,15 +2995,6 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
           jsp_.getViewport().setViewPosition(new Point(newX, newY));
           jsp_.getViewport().invalidate(); 
           jsp_.revalidate();
-          return;
-        } else if (collectingZoomMode_) {
-          floaterSet_.floater = null;
-          handleFloaterChange();        
-        } else {
-          Point2D lpw = viewToWorld(lastPress_);
-          Point2D cupw = viewToWorld(currPt);
-          floaterSet_.floater = valsToRect((int)lpw.getX(), (int)lpw.getY(), (int)cupw.getX(), (int)cupw.getY(), false);
-          handleFloaterChange();
         }
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
@@ -3118,6 +3163,7 @@ public class BioFabricPanel implements ZoomTarget, ZoomPresentation, Printable,
             Dimension viewDim = view.getViewSize();       
             wideTrans.translate(viewDim.getWidth() / 2.0, viewDim.getHeight() / 2.0);
             wideTrans.scale(izoom, izoom);
+            UiUtil.fixMePrintout("Scaling image " + izoom);
             wideTrans.translate(-img.getWidth() / 2.0, -img.getHeight() / 2.0);
             stX = 0;
             stY = 0;

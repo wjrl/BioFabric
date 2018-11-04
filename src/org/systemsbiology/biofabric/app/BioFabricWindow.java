@@ -230,6 +230,7 @@ public class BioFabricWindow implements BackgroundWorkerControlManager {
     cp_.getPanel().setBackground(Color.white);
     
     JScrollPane jsp = new JScrollPane(cp_.getPanel());
+    
     //
     // "Zoom to full model" has problems if scrollbars come and go, since we check viewport
     // size to calculate the zoom:
