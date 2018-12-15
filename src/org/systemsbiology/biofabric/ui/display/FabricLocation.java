@@ -1,6 +1,6 @@
 
 /*
-**    Copyright (C) 2003-2017 Institute for Systems Biology 
+**    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -25,10 +25,8 @@ import java.awt.GridLayout;
 import java.util.Iterator;
 import java.util.List;
 
-import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 
-import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **

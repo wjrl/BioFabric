@@ -45,6 +45,7 @@ import java.net.URL;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -113,6 +114,7 @@ import org.systemsbiology.biofabric.ui.dialogs.LinkGroupingSetupDialog;
 import org.systemsbiology.biofabric.ui.dialogs.NodeSimilarityLayoutSetupDialog;
 import org.systemsbiology.biofabric.ui.dialogs.PointUpOrDownDialog;
 import org.systemsbiology.biofabric.ui.dialogs.ReorderLayoutParamsDialog;
+import org.systemsbiology.biofabric.ui.dialogs.SetRelationSemanticsDialog;
 import org.systemsbiology.biofabric.ui.display.BioFabricPanel;
 import org.systemsbiology.biofabric.ui.display.FabricMagnifyingTool;
 import org.systemsbiology.biofabric.util.FileExtensionFilters;
@@ -2017,12 +2019,22 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
     @Override
     public void actionPerformed(ActionEvent e) {
       try {
-        PointUpOrDownDialog puodd = new PointUpOrDownDialog(topWindow_);
+      	HashSet<String> rels = new HashSet<String>();
+      	Set<NetLink> links = bfp_.getNetwork().getAllLinks(false);
+      	for (NetLink link : links) {
+      		rels.add(link.getRelation());
+      	}
+      	if (rels.size() != 1) { 
+          ResourceManager rMan = ResourceManager.getManager();
+          JOptionPane.showMessageDialog(topWindow_, rMan.getString("setLayout.oneRelationAllowed"),
+                                        rMan.getString("setLayout.oneRelationAllowedTitle"),
+                                        JOptionPane.WARNING_MESSAGE);
+          return;
+        }
+        SetRelationSemanticsDialog puodd = new SetRelationSemanticsDialog(topWindow_, rels.iterator().next());
         puodd.setVisible(true);
-        boolean pointUp = false;
         if (puodd.haveResult()) {
-          pointUp = puodd.getPointUp();
-          flf_.doSetRelayout(pointUp);
+          flf_.doSetRelayout(puodd.getLinkMeaning());
         }
       } catch (Exception ex) {
         ExceptionHandler.getHandler().displayException(ex);
@@ -2061,7 +2073,7 @@ public class CommandSet implements ZoomChangeTracker, SelectionChangeListener, F
   	    	ResourceManager rMan = ResourceManager.getManager(); 
   	    	int keepGoing =
   		      JOptionPane.showConfirmDialog(topWindow_, rMan.getString("toggleShadow.bigFileLongTime"),
-  		                                    rMan.getString("toggleShadow.bigFileLongTime"),
+  		                                    rMan.getString("toggleShadow.bigFileLongTimeTitle"),
   		                                    JOptionPane.YES_NO_OPTION);        
   		    if (keepGoing != JOptionPane.YES_OPTION) {
   		    	return;

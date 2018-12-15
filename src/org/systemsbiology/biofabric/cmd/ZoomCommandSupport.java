@@ -1,4 +1,3 @@
-
 /*
 **    Copyright (C) 2003-2018 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
@@ -501,16 +500,27 @@ public class ZoomCommandSupport {
       zoomToModel(false);
       return;
     }
-    Rectangle wsBounds = sup_.getWorldRect();
-    Rectangle union = wsBounds.union(bounds);
-    if (!union.equals(wsBounds)) { // i.e. selected is outside of union
-      Point2D cent = sup_.getRawCenterPoint();
-      bounds = centeredUnion(union, cent);
-    }
     
+    //
+    // Previous BioTapestry-driven approach supported having network elements
+    // outside of the workspace. So a zoom partially outside of the workspace
+    // would show selected elements. This is not going to happen in BioFabric,
+    // and the feature meant that a zoom rect that was larger than some workspace
+    // dimensions would not zoom (think fat rectangle around a piece of a long
+    // thin network). Use the intersection rectangle instead to fix this problem,
+    // instead of the previous solution that made the vertical scrollbar useless
+    // on long thin networks!
+    //
+    
+    Rectangle wsBounds = sup_.getWorldRect();
+    bounds = wsBounds.intersection(bounds);
+    if (bounds.isEmpty()) {
+    	return;
+    }
+       
     Dimension vDim = jsp_.getViewport().getExtentSize();
     if (doZoom) {
-      ZoomResult zres = calcOptimalZoom(bounds, vDim);  
+      ZoomResult zres = calcOptimalZoom(bounds, vDim);       	
       setCurrentZoom(zres);
       sup_.setZoomFactor(getCurrentZoom(), vDim);
     }

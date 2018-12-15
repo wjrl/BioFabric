@@ -162,7 +162,8 @@ public class BuildDataImpl implements BuildData {
   public List<String> fixedOrder; 
   public Map<String, Set<NetNode>> normNameToIDs;
   public Boolean pointUp;
-
+  public SetLayout.LinkMeans linkMeaning;
+  
   private PluginBuildData plugInData_;
   
   ////////////////////////////////////////////////////////////////////////////
@@ -392,6 +393,7 @@ public class BuildDataImpl implements BuildData {
   } 
   
   public boolean getShowLinkGroupAnnotations() {
+  	UiUtil.fixMePrintout("Not propagating into layout operation correctly");
     return (showLinkGroupAnnotations_);
   }
   
@@ -405,6 +407,11 @@ public class BuildDataImpl implements BuildData {
   
   public void setPointUp(Boolean pointUp) {
     this.pointUp = pointUp;
+    return;
+  }
+  
+  public void setLinkMeaning(SetLayout.LinkMeans linkMeaning) {
+    this.linkMeaning = linkMeaning;
     return;
   }
 
@@ -460,11 +467,8 @@ public class BuildDataImpl implements BuildData {
         return (new ControlTopLayout(cMode, tMode, fixedOrder, normNameToIDs));
       case HIER_DAG_LAYOUT:  
         return (new HierDAGLayout(pointUp.booleanValue())); 
-      case SET_LAYOUT:   
-        UiUtil.fixMePrintout("Get customized set dialog");
-        NetLink link = allLinks_.iterator().next();
-        UiUtil.fixMePrintout(link + " means what?");            
-        return (new SetLayout(pointUp.booleanValue() ? SetLayout.LinkMeans.BELONGS_TO : SetLayout.LinkMeans.CONTAINS)); 
+      case SET_LAYOUT:         
+        return (new SetLayout(linkMeaning)); 
   	  default:
   	  	throw new IllegalStateException();
   	} 	
@@ -483,6 +487,7 @@ public class BuildDataImpl implements BuildData {
   	  case REORDER_LAYOUT:
       case CLUSTERED_LAYOUT:  
       case NODE_CLUSTER_LAYOUT:
+      case SET_LAYOUT:
          // The above layouts do edge layout as part of node layout:
         return (null);
       case HIER_DAG_LAYOUT: 

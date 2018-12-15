@@ -78,7 +78,9 @@ Here are the targets that count:
   <property name="app.srcFile"                  location="${app.buildDir}/&appName;-&appVersion;-src.tar.gz" />
   <property name="app.tarBaseDir"               location="${app.srcDir}" />
   <property name="app.signedJarDir"             location="CodeSigning" />
-  <property name="app.buildWin"                 value="${basedir}/releaseTools/buildWindowsExe.sh" />
+  <property name="app.buildWin1"                 value="${basedir}/releaseTools/buildWindowsExe-Step1.sh" />
+  <property name="app.buildWin2"                 value="${basedir}/releaseTools/buildWindowsExe-Step2.sh" />
+  <property name="app.buildWin3"                 value="${basedir}/releaseTools/buildWindowsExe-Step3.sh" />
   <property name="app.buildLin"                 value="${basedir}/releaseTools/buildLinuxReleaseTar.sh" />
   <property name="app.buildMac"                 value="${basedir}/releaseTools/buildMacReleaseDir.sh" />
   <property name="app.signJar"                  value="${basedir}/releaseTools/signIt.sh" />
@@ -175,7 +177,7 @@ Here are the targets that count:
   	 <echo message="Need password! Execute: ${app.signJar} ${app.keyStoreDir} ${app.signDir} ${app.version}"/>
   </target>
 		
-  <target name="buildWindowsExe">
+  <target name="buildWindowsExe-Step1">
   	<delete dir="${app.winExeDir}" quiet="true" />
     <mkdir dir="${app.winExeDir}" />
     <copy file="${app.winExeSrcDir}/bioFabl4j.xml" tofile="${app.winExeDir}/bioFabl4jWorking.xml" />
@@ -186,12 +188,22 @@ Here are the targets that count:
     <replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_RESLOC__" value="${app.winExeSrcDir}"/>
     <replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_FULL_VERSTRING__" value="${app.datedVersion} "/>
     <replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_CURRYEAR__" value="${app.year}"/>
-    <exec executable="${app.buildWin}" failonerror="true">
+    <exec executable="${app.buildWin1}" failonerror="true">
+      <arg line="${app.winExeDir} ${app.winExeSrcDir} ${app.l4jDir} ${app.NDversion} ${app.year} ${app.releaseDir}/lib/  ${app.keyStoreDir}" />
+    </exec>
+  </target>
+	
+  <target name="buildWindowsExe-Step2">
+  	<echo message="Need password!  DO WE NEED TO CD FIRST??? Execute: ${app.buildWin2} ${app.winExeDir} ${app.winExeSrcDir} ${app.l4jDir} ${app.NDversion} ${app.year} ${app.releaseDir}/lib/  ${app.keyStoreDir}"/>
+  </target>	
+	
+  <target name="buildWindowsExe-Step3">
+    <exec executable="${app.buildWin2}" failonerror="true">
       <arg line="${app.winExeDir} ${app.winExeSrcDir} ${app.l4jDir} ${app.NDversion} ${app.year} ${app.releaseDir}/lib/  ${app.keyStoreDir}" />
     </exec>
     <copy file="${app.winExeDir}/BioFabric${app.NDversion}.zip" tofile="${app.releaseDists}/BioFabric${app.NDversion}.zip" />
-  </target>
-
+  </target>	
+	
   <target name="buildLinuxTar">
   	<delete dir="${app.linExeDir}" quiet="true" />
     <mkdir dir="${app.linExeDir}" />
@@ -202,11 +214,6 @@ Here are the targets that count:
   </target>
 
 
-
-  <target name="releaseDistribs" depends="buildWindowsExe, buildLinuxTar, stageForMacDmg" >
-	<copy file="${app.signJarFile}" todir="${app.releaseDists}" />
-  </target>
-  
 <!-- Build about file to have current version info -->
 
   <target name="installAbout">
@@ -240,23 +247,23 @@ Here are the targets that count:
 
   <!-- Mac AppBundler Stuff -->
 	
-	<!--<taskdef name="bundleapp"
+  <taskdef name="bundleapp"
            classname="com.oracle.appbundler.AppBundlerTask"   
-           classpath="${app.releaseDir}/lib/appbundler-1.01wl.jar" /> -->
+           classpath="${app.releaseDir}/lib/appbundler-1.01wl.jar" />
 
   <target name="buildMac">
   	<delete dir="${app.macExeDir}" quiet="true" />
     <mkdir dir="${app.macExeDir}" />
     <bundleapp outputdirectory="${app.macExeDir}"
-               name="BioFabric2.0Beta1"
-               displayname="BioFabric V2 Beta1"
+               name="BioFabric2.0BetaRel1"
+               displayname="BioFabric V2 Beta Rel1 "
                identifier="org.systemsbiology.biofabric"
 	       icon="${app.macExeSrcDir}/BioFabIcon.icns"
-	       shortversion="V 2.0.B1"	
+	       shortversion="V 2.0.BR1"	
 	       signature="BFAB"
            mainclassname="org.systemsbiology.biofabric.app.BioFabricApplication"
-	       version="2.0.B1"
-	       copyright="BioFabric Version 2.0 Beta1 Copyright (c) 2003-2018 Institute for Systems Biology"
+	       version="2.0.BR1"
+	       copyright="BioFabric Version 2.0 Beta Rel 1 Copyright (c) 2003-2018 Institute for Systems Biology"
 	       supportsAutomaticGraphicsSwitching="false">
        <classpath file="${app.releaseDir}/signing/sBioFabric-V2.0.B.1.jar" />
        <runtime dir="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home" />
@@ -273,20 +280,20 @@ Here are the targets that count:
 		
   <target name="signMac" depends="stageForMacDmg">
   	<exec executable="/usr/bin/codesign" failonerror="true">
-  	  <arg line="-s &quot;Developer ID Application: William Longabaugh (DKRXRD3Z9U)&quot; -v &quot;${app.macExeDir}/BioFabric2.0Beta1.app/Contents/PlugIns/JavaAppletPlugin.plugin&quot;"/>
+  	  <arg line="-s &quot;Developer ID Application: William Longabaugh (DKRXRD3Z9U)&quot; -v &quot;${app.macExeDir}/BioFabric2.0BetaRel1.app/Contents/PlugIns/JavaAppletPlugin.plugin&quot;"/>
   	</exec>
     <exec executable="/usr/bin/codesign" failonerror="true">
-      <arg line="-s &quot;Developer ID Application: William Longabaugh (DKRXRD3Z9U)&quot; -v &quot;${app.macExeDir}/BioFabric2.0Beta1.app&quot;"/>
+      <arg line="-s &quot;Developer ID Application: William Longabaugh (DKRXRD3Z9U)&quot; -v &quot;${app.macExeDir}/BioFabric2.0BetaRel1.app&quot;"/>
     </exec>
   </target>
 	
   <!-- OK, would like to copy the executable using ant copy, but we lose the execute permissions bit! -->
   <target name="macDisk" depends="signMac">
 	<delete dir="${app.macExeDir}/disk" quiet="true" />
-        <delete file="${app.macExeDir}/BioFabricInstallImageV2Beta1.dmg" quiet="true" />
+        <delete file="${app.macExeDir}/BioFabricInstallImageV2BetaRel1.dmg" quiet="true" />
         <mkdir dir="${app.macExeDir}/disk" />
         <exec executable="/bin/cp" failonerror="true">
-           <arg line="-r &quot;${app.macExeDir}/BioFabric2.0Beta1.app&quot; &quot;${app.macExeDir}/disk/BioFabricV2-Beta1.app&quot;"/>
+           <arg line="-r &quot;${app.macExeDir}/BioFabric2.0BetaRel1.app&quot; &quot;${app.macExeDir}/disk/BioFabricV2-BetaRel1.app&quot;"/>
         </exec>
         <!-- <move file="${app.buildDir}/BioFabric2.0Beta1.app" todir="${app.buildDir}/disk" /> -->
 	<copy todir="${app.macExeDir}/disk/Licenses">
@@ -294,19 +301,19 @@ Here are the targets that count:
     </copy>
 	<copy file="${app.macExeDir}/INSTALL-README.rtf" tofile="${app.macExeDir}/disk/INSTALL-README.rtf"/>
 	<exec executable="/usr/bin/hdiutil" failonerror="true">
-	  <arg line="create ${app.macExeDir}/BioFabricInstallImageV2Beta1.dmg -volname &quot;BioFabric V2.0 Beta1&quot; -fs HFS+ -srcfolder ${app.macExeDir}/disk -size 250m"/>
+	  <arg line="create ${app.macExeDir}/BioFabricInstallImageV2BetaRel1.dmg -volname &quot;BioFabric V2.0 Beta1&quot; -fs HFS+ -srcfolder ${app.macExeDir}/disk -size 250m"/>
 	</exec>
   </target>	
 
   <target name="signMacDiskOnSierraOnly" depends="macDisk">
   	<exec executable="/usr/bin/codesign" failonerror="true">
-  	  <arg line="-s &quot;Developer ID Application: William Longabaugh (DKRXRD3Z9U)&quot; -v ${app.macExeDir}/BioFabricInstallImageV2Beta1.dmg"/>
+  	  <arg line="-s &quot;Developer ID Application: William Longabaugh (DKRXRD3Z9U)&quot; -v ${app.macExeDir}/BioFabricInstallImageV2BetaRel1.dmg"/>
   	</exec>
   </target>	
   			
   <target name="verifyMacDiskOnSierraOnly">
   	<exec executable="/usr/sbin/spctl" failonerror="true">
-  	  <arg line="-a -t open --context context:primary-signature ${app.macExeDir}/BioFabricInstallImageV2Beta1.dmg"/>
+  	  <arg line="-a -t open --context context:primary-signature ${app.macExeDir}/BioFabricInstallImageV2BetaRel1.dmg"/>
   	</exec>
   </target>				
 	

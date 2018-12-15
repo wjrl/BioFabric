@@ -80,7 +80,7 @@ import org.systemsbiology.biofabric.cmd.HeadlessOracle;
 import org.systemsbiology.biofabric.layouts.ControlTopLayout;
 import org.systemsbiology.biofabric.layouts.NodeClusterLayout;
 import org.systemsbiology.biofabric.layouts.NodeSimilarityLayout;
-
+import org.systemsbiology.biofabric.layouts.SetLayout;
 import org.systemsbiology.biofabric.model.BioFabricNetwork;
 import org.systemsbiology.biofabric.parser.ProgressFilterInputStream;
 import org.systemsbiology.biofabric.parser.SUParser;
@@ -321,9 +321,9 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
    ** Do set relayout
    */ 
       
-   public void doSetRelayout(boolean pointUp) {
+   public void doSetRelayout(SetLayout.LinkMeans linkMeaning) {
      NetworkRelayout nb = new NetworkRelayout();
-     nb.setPointUp(pointUp);
+     nb.setLinkMeaning(linkMeaning);
      nb.doNetworkRelayout(bfp_.getNetwork(), BuildDataImpl.BuildMode.SET_LAYOUT);
      return;
    }
@@ -1435,15 +1435,16 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       return;
     }
     
-    public void handleCancellation() {
+    public boolean handleCancellation() {
+    	boolean restored = false;
     	if (!forRecovery_) {
-    	  cancelAndRestore(holdIt_);
+    	  restored = cancelAndRestore(holdIt_);
     	}
     	finished_ = false;
-    	return;
+    	return (restored);
     }     
     
-    public void cleanUpPostRepaint(Object result) { 
+    public void cleanUpPostRepaint(Object result, boolean skipImage) { 
       finishedLoad();
       return;
     }
@@ -1551,13 +1552,12 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       return;
     }
     
-    public void handleCancellation() {
+    public boolean handleCancellation() {
       finished_ = false;
-      cancelAndRestore(holdIt_);
-      return;
+      return (cancelAndRestore(holdIt_));
     }     
     
-    public void cleanUpPostRepaint(Object result) {   
+    public void cleanUpPostRepaint(Object result, boolean skipImage) {   
       return;
     }
   }  
@@ -1658,15 +1658,15 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       return;
     }
     
-    public void handleCancellation() {
+    public boolean handleCancellation() {
     	// Maybe a future enhancement to allow user to choose if they wish the cancelled file wrote to be deleted?
     	if (file_ != null) {
     	  file_.delete();
     	}
-    	return;
+    	return (false);
     }     
     
-    public void cleanUpPostRepaint(Object result) { 
+    public void cleanUpPostRepaint(Object result, boolean skipImage) { 
       finishedOut();
       return;
     }
@@ -1865,7 +1865,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Routine for handling cancellation/restore operation
   */
   
-  public void cancelAndRestore(File restoreFile) {
+  public boolean cancelAndRestore(File restoreFile) {
   	if ((restoreFile != null) && restoreFile.exists() && (restoreFile.length() > 20)) { // empty ZIP has 20 bytes
 	    ResourceManager rMan = ResourceManager.getManager();
 	    int restore =
@@ -1874,14 +1874,14 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
 	                                    JOptionPane.YES_NO_OPTION);        
 	    if (restore == JOptionPane.YES_OPTION) {
 	    	restoreFromBackup(restoreFile);
-	    	return;
+	    	return (true);
 	    } else {
 	      restoreFile.delete();
 	      manageWindowTitle(null);
         buildEmptyNetwork();
 	    }
   	}
-    return;
+    return (false);
   }
  
   /***************************************************************************
@@ -1977,7 +1977,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     public boolean handleRemoteException(Exception remoteEx) {
       finished_ = false;
       if (remoteEx instanceof IOException) {
-        finishedImport(null, (IOException)remoteEx);
+        finishedImport(null, (IOException)remoteEx, false);
         return (true);
       } else if (remoteEx instanceof LayoutCriterionFailureException) {
         ResourceManager rMan = ResourceManager.getManager();
@@ -1997,23 +1997,22 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       return;
     }
     
-    public void handleCancellation() {
+    public boolean handleCancellation() {
       finished_ = false;
-      cancelAndRestore(holdIt_);
-      return;
+      return (cancelAndRestore(holdIt_));
     }     
     
-    public void cleanUpPostRepaint(Object result) {   
-      finishedImport(result, null);
+    public void cleanUpPostRepaint(Object result, boolean skipImage) {   
+      finishedImport(result, null, skipImage);
       return;
     }
 
-    private void finishedImport(Object result, IOException ioEx) {     
+    private void finishedImport(Object result, IOException ioEx, boolean skipImage) {     
       if (ioEx != null) {
         displayFileInputError(ioEx);
         return;                
       }
-      postLoadOperations((BufferedImage)result);
+      postLoadOperations((BufferedImage)result, skipImage);
       return;
     }
   }
@@ -2163,7 +2162,11 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       return;
     }
     
- 
+    public void setLinkMeaning(SetLayout.LinkMeans linkMeaning) {
+      runner_.setLinkMeaning(linkMeaning);
+      return;
+    }
+     
     public void setControlTopModes(ControlTopLayout.CtrlMode cMode,  ControlTopLayout.TargMode tMode, List<String> fixedList) {
       runner_.setControlTopModes(cMode, tMode, fixedList);
       return;      
@@ -2191,7 +2194,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
 
     public boolean handleRemoteException(Exception remoteEx) {
       if (remoteEx instanceof IOException) {
-        finishedImport(null, (IOException)remoteEx);
+        displayFileInputError((IOException)remoteEx);
         return (true);
       }
       if (remoteEx instanceof LayoutCriterionFailureException) {
@@ -2199,10 +2202,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         JOptionPane.showMessageDialog(topWindow_, 
                                       rMan.getString("netLayout.unmetCriteriaMessage"), 
                                       rMan.getString("netLayout.unmetCriteriaTitle"),
-                                      JOptionPane.ERROR_MESSAGE);
-        
-        
-        cancelAndRestore(holdIt_);     
+                                      JOptionPane.ERROR_MESSAGE);   
         return (true);
       }
       return (false);
@@ -2215,22 +2215,17 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     //
     // Cancellation takes place on the UI Thread:
     //
-    public void handleCancellation() {
-      cancelAndRestore(holdIt_);
-      return;
+    public boolean handleCancellation() {
+      return (cancelAndRestore(holdIt_));
     }     
     
-    public void cleanUpPostRepaint(Object result) {   
-      finishedImport(result, null);
+    public void cleanUpPostRepaint(Object result, boolean skipImage) {   
+      finishedImport(result, null, skipImage);
       return;
     }
 
-    private void finishedImport(Object result, IOException ioEx) {     
-      if (ioEx != null) {
-        displayFileInputError(ioEx);
-        return;                
-      }
-      postLoadOperations((BufferedImage)result);
+    private void finishedImport(Object result, IOException ioEx, boolean skipImage) {     
+      postLoadOperations((BufferedImage)result, skipImage);
       return;
     }
   }
@@ -2251,6 +2246,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     private List<String> groupOrder_; 
     private BioFabricNetwork.LayoutMode layMode_;
     private Boolean pointUp_;
+    private SetLayout.LinkMeans linkMeaning_;
     private SortedMap<Integer, NetLink> linkOrder_;
     private ControlTopLayout.CtrlMode cMode_; 
     private ControlTopLayout.TargMode tMode_; 
@@ -2297,6 +2293,11 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       return;
     }
     
+    void setLinkMeaning(SetLayout.LinkMeans linkMeaning) {
+      linkMeaning_ = linkMeaning;
+      return;
+    }
+        
     void setControlTopModes(ControlTopLayout.CtrlMode cMode,  ControlTopLayout.TargMode tMode, List<String> fixedList) {
       cMode_ = cMode;
       tMode_ = tMode;
@@ -2315,15 +2316,22 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         buildRestoreCache(holdIt_, monitor);
       }
       rbd_ = new BuildDataImpl(bfn_, mode_, monitor);
+      // Either link group info is coming in from a dialog, or we extract it from the network:
+      if ((groupOrder_ != null) && (layMode_ != null)) {
+        rbd_.setGroupOrderAndMode(groupOrder_, layMode_, showLinkGroupAnnotations_);
+      } else {
+        rbd_.setGroupOrderAndMode(bfn_.getLinkGrouping(), bfn_.getLayoutMode(), bfn_.getShowLinkGroupAnnotations());
+      }
+      
       if (nodeAttrib_ != null) {
         rbd_.setNodeOrderFromAttrib(nodeAttrib_);   
-      } else if ((groupOrder_ != null) && (layMode_ != null)) {
-        rbd_.setGroupOrderAndMode(groupOrder_, layMode_, showLinkGroupAnnotations_);
       } else if (linkOrder_ != null) {
         rbd_.setLinkOrder(linkOrder_);
       }
       rbd_.setCTL(cMode_, tMode_, fixedList_, bfn_);
+      
       rbd_.setPointUp(pointUp_);
+      rbd_.setLinkMeaning(linkMeaning_);
       
       bfn_ = null; // Let go so we get GC!
       preLoadOperations();
@@ -2394,12 +2402,11 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
       return;
     }
     
-    public void handleCancellation() {
-      cancelAndRestore(holdIt_);
-      return;
+    public boolean handleCancellation() {
+      return (cancelAndRestore(holdIt_));
     }     
     
-    public void cleanUpPostRepaint(Object result) {   
+    public void cleanUpPostRepaint(Object result, boolean skipImage) {   
       finishedRecolor(result, null);
       return;
     }
@@ -2552,8 +2559,11 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   ** Handles post-loading operations
   */ 
        
-  public void postLoadOperations(BufferedImage topImage) {
-    bfw_.getOverview().installImage(topImage, bfp_.getWorldScreen());
+  public void postLoadOperations(BufferedImage topImage, boolean skipImageLoad) {
+  	// Sometimes when we cancel we need to not load an empty result over a restored image
+  	if (!skipImageLoad) {
+      bfw_.getOverview().installImage(topImage, bfp_.getWorldScreen());
+  	}
     bfp_.installModelPost();
     bfp_.initZoom();
     // Doing this before checkForChanges lets the plugins know how to answer: 
@@ -2620,7 +2630,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     preLoadOperations();
     try {
       BufferedImage topImage = expensiveModelOperations(bfnbd, forMain, null);
-      postLoadOperations(topImage);
+      postLoadOperations(topImage, false);
     } catch (AsynchExitRequestException aex) {
       // Not being used in background; will not happen
     } catch (LayoutCriterionFailureException ex) {

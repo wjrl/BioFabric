@@ -41,6 +41,7 @@ import org.systemsbiology.biofabric.api.io.AttributeKey;
 import org.systemsbiology.biofabric.api.io.BuildData;
 import org.systemsbiology.biofabric.api.io.CharacterEntityMapper;
 import org.systemsbiology.biofabric.api.io.Indenter;
+import org.systemsbiology.biofabric.api.layout.AnnotColorSource;
 import org.systemsbiology.biofabric.api.layout.DefaultEdgeLayout;
 import org.systemsbiology.biofabric.api.layout.EdgeLayout;
 import org.systemsbiology.biofabric.api.layout.LayoutCriterionFailureException;
@@ -88,9 +89,7 @@ public class BioFabricNetwork implements Network {
   // PUBLIC CONSTANTS
   //
   //////////////////////////////////////////////////////////////////////////// 
-  
-
-                      
+                 
   ////////////////////////////////////////////////////////////////////////////
   //
   // PRIVATE INSTANCE MEMBERS
@@ -445,49 +444,6 @@ public class BioFabricNetwork implements Network {
     return (true);
   }
   
-  /***************************************************************************
-  ** 
-  ** Given an attribute list giving node order, confirm it is valid:
-  */
-
-  public boolean checkNodeClusterAssignment(Map<AttributeKey, String> nodeClusters) { 
-    
-    //
-    // All nodes must be assigned to a cluster
-    //
-    
-    HashSet<AttributeKey> asUpper = new HashSet<AttributeKey>();
-    Iterator<NetNode> rttvit = rowToTargID_.values().iterator();
-    /*
-    while (rttvit.hasNext()) { 	
-    	
-      asUpper.add(new AttributeLoader.StringKey(rttvit.next().toUpperCase()));
-      
-      
-      this.nodeOrder = new HashMap<NID, Integer>();
-      Map<String, Set<NID>> nameToID = genNormNameToID();
-      for (AttributeLoader.AttributeKey key : nodeOrder.keySet()) {
-        try {
-          Integer newRow = Integer.valueOf(nodeOrder.get(key));
-          String normName = DataUtil.normKey(((AttributeLoader.StringKey)key).key);
-          Set<NID> ids = nameToID.get(normName);
-          if (ids.size() != 1) {
-          	throw new IllegalStateException();
-          }
-          NID id = ids.iterator().next();
-          this.nodeOrder.put(id, newRow);
-        } catch (NumberFormatException nfex) {
-          throw new IllegalStateException();
-        }
-      }
-    }*/
-    UiUtil.fixMePrintout("Actually do something");
- //   if (!asUpper.equals(new HashSet<AttributeLoader.AttributeKey>(nodeClusters.keySet()))) {
-  //    return (false);
-  //  }
-   
-    return (true);
-  }
   
   /***************************************************************************
   ** 
@@ -714,8 +670,7 @@ public class BioFabricNetwork implements Network {
         }
         rbd.setNodeOrder(norNew);
       }
-      lor = (new DefaultEdgeLayout()).layoutEdges(rbd.getNodeOrder(), rbd.getLinks(), 
-    		                                          rbd.getGroupOrder(), rbd.getGroupOrderMode(), monitor);
+      lor = (new DefaultEdgeLayout()).layoutAllEdges(rbd, monitor);
     }
 
     //
@@ -1579,12 +1534,16 @@ public class BioFabricNetwork implements Network {
     if (doPrune) {
       linkList = pruneToMinSubModel(bfn, targetList, linkList);
     }
-      
+     
+    //
+    // Figure out the new node bounds. This figures out the current rightmost column of all nodes
+    // needed to show the links we want to include in the subnet:
+    //
+    
     HashMap<NetNode, Integer> lastColForNode = new HashMap<NetNode, Integer>();
     HashMap<NetNode, Integer> lastShadColForNode = new HashMap<NetNode, Integer>();
-    Iterator<LinkInfo> lcit = linkList.iterator();
-    while (lcit.hasNext()) {
-      LinkInfo linf = lcit.next();
+    
+    for (LinkInfo linf : linkList) {
       if (!linf.isShadow()) {
         Integer lastCol = lastColForNode.get(linf.getTarget());
         if ((lastCol == null) || (lastCol.intValue() < linf.getUseColumn(false))) {
@@ -1614,9 +1573,7 @@ public class BioFabricNetwork implements Network {
     TreeSet<Integer> needColumns = new TreeSet<Integer>();   
     TreeSet<Integer> needColumnsShad = new TreeSet<Integer>();   
 
-    Iterator<NodeInfo> tgit = targetList.iterator();
-    while (tgit.hasNext()) {
-      NodeInfo targetInf = tgit.next();
+    for (NodeInfo targetInf : targetList) {
       needRows.add(Integer.valueOf(targetInf.nodeRow));
       needColumns.add(Integer.valueOf(targetInf.getColRange(false).min));
       needColumnsShad.add(Integer.valueOf(targetInf.getColRange(true).min));
@@ -1642,23 +1599,17 @@ public class BioFabricNetwork implements Network {
     TreeMap<Integer, Integer> shadColumnMap = new TreeMap<Integer, Integer>();
 
     int rowCount = 0;
-    Iterator<Integer> mrit = needRows.iterator();
-    while (mrit.hasNext()) {
-      Integer fullRow = mrit.next();
+    for (Integer fullRow : needRows) {
       rowMap.put(fullRow, Integer.valueOf(rowCount++));
     }
 
     int colCount = 0;
-    Iterator<Integer> mcit = needColumns.iterator();
-    while (mcit.hasNext()) {
-      Integer fullCol = mcit.next();
+    for (Integer fullCol : needColumns) {
       columnMap.put(fullCol, Integer.valueOf(colCount++));
     }
     
     int shadColCount = 0;
-    Iterator<Integer> ncsit = needColumnsShad.iterator();
-    while (ncsit.hasNext()) {
-      Integer fullCol = ncsit.next();
+    for (Integer fullCol : needColumnsShad) {
       shadColumnMap.put(fullCol, Integer.valueOf(shadColCount++));
     }
   
@@ -1705,9 +1656,7 @@ public class BioFabricNetwork implements Network {
  
     int minTrgCol = Integer.MAX_VALUE;
     int minShadTrgCol = Integer.MAX_VALUE;
-    tgit = targetList.iterator();
-    while (tgit.hasNext()) {
-      NodeInfo infoFull = tgit.next();
+    for (NodeInfo infoFull : targetList) {
       Integer miniRowObj = rowMap.get(Integer.valueOf(infoFull.nodeRow));
       NodeInfo infoMini = new NodeInfo(infoFull.getNodeID(), infoFull.getNodeName(), miniRowObj.intValue(), infoFull.colorKey);
 
@@ -1799,6 +1748,8 @@ public class BioFabricNetwork implements Network {
     // with a link has a drain zone
     //
     
+     UiUtil.fixMePrintout("Are multiple drain zones handled for submodels? NO");
+    
     Iterator<NetNode> ndkit = nodeDefs_.keySet().iterator();
     while (ndkit.hasNext()) {
       NetNode node = ndkit.next();
@@ -1869,10 +1820,73 @@ public class BioFabricNetwork implements Network {
         srcNI.addDrainZone(new DrainZone(shadowSrcDrain, true));
       }
     }
- 
+   
+    UiUtil.fixMePrintout("Nodes are stretching all the way to right border in LesMizCluster subset.");
+    
+    //
+    // Handle the subsetting of the node and link annotations
+    //
+    
+    this.nodeAnnot_ = annotationsForSubNet(rowMap, bfn.nodeAnnot_);
+    if (bfn.linkAnnots_ != null) {
+    	this.linkAnnots_ = new HashMap<Boolean, AnnotationSet>();
+    	if (bfn.linkAnnots_.get(Boolean.FALSE) != null) {
+        this.linkAnnots_.put(Boolean.FALSE, annotationsForSubNet(columnMap, bfn.linkAnnots_.get(Boolean.FALSE)));
+    	}
+    	if (bfn.linkAnnots_.get(Boolean.TRUE) != null) {
+        this.linkAnnots_.put(Boolean.TRUE, annotationsForSubNet(shadColumnMap, bfn.linkAnnots_.get(Boolean.TRUE)));
+    	}
+    }
+    
     return;
   }
 
+  /***************************************************************************
+  **
+  ** Fill out reduced node or link annotations
+  */
+
+  private AnnotationSet annotationsForSubNet(TreeMap<Integer, Integer> reduceMap, AnnotationSet origAnnots) {
+  	AnnotationSet retval = new AnnotationSetImpl();
+  	if ((origAnnots == null) || (origAnnots.size() == 0)) {
+  		return (retval);
+  	}
+  	
+  	//
+  	// We need to go through each annotation and see if any of the nodes/links in the subnet are in it. If so, it
+  	// needs to be in the subset, with min/max values taken from the rows/cols present in the subnet.
+  	//
+  	
+  	TreeMap<Annot, MinMax> useAnnots = new TreeMap<Annot, MinMax>();
+  	for (Integer origRow : reduceMap.keySet()) {
+  		int orVal = origRow.intValue();
+  		for (Annot origAnnot : origAnnots) { 
+  		  MinMax anRange = origAnnot.getRange();
+  		  if ((orVal >= anRange.min) && (orVal <= anRange.max)) {
+  		  	MinMax useRange = useAnnots.get(origAnnot);
+  		  	Integer newRowOrCol = reduceMap.get(origRow);
+  		  	int nrVal = newRowOrCol.intValue();
+  		  	if (useRange == null) {
+  		  		useRange = new MinMax(nrVal, nrVal);
+  		  		useAnnots.put(origAnnot, useRange);
+  		  	} else {
+  		  		useRange.update(nrVal);
+  		  	}
+  		  	break;
+  		  }
+  	  }
+    }
+  	
+  	for (Annot oldAnnot : useAnnots.keySet()) {
+  		MinMax useRange = useAnnots.get(oldAnnot);
+  		AnnotColorSource.AnnotColor color = oldAnnot.getColor();
+  		String colorName = (color == null) ? null : color.getName();
+  		AnnotationSetImpl.AnnotImpl ai = new AnnotationSetImpl.AnnotImpl(oldAnnot.getName(), useRange.min, useRange.max, 
+  																																		 oldAnnot.getLayer(), colorName);
+  		retval.addAnnot(ai);
+  	}  	
+  	return (retval);
+  }
 
   /***************************************************************************
   ** 
@@ -1992,31 +2006,18 @@ public class BioFabricNetwork implements Network {
   
   /***************************************************************************
   ** 
-  ** Pretty icky hack:
+  ** Previous icky hack was broken, and depended on default layout algorithm being used to work.
+  ** This is more expensive, but works:
   */
 
   public Set<NetNode> getLoneNodes(BTProgressMonitor monitor) throws AsynchExitRequestException { 
-    HashSet<NetNode> retval = new HashSet<NetNode>();
-    LoopReporter lr = new LoopReporter(nodeDefs_.size(), 20, monitor, 0.0, 1.0, "progress.findingLoneNodes");   
-    Iterator<NetNode> lnit = nodeDefs_.keySet().iterator();
-    boolean checkDone = false;
-    while (lnit.hasNext()) {
-      NetNode loneID = lnit.next();
+    HashSet<NetNode> retval = new HashSet<NetNode>(nodeDefs_.keySet());
+    LoopReporter lr = new LoopReporter(fullLinkDefs_.size(), 20, monitor, 0.0, 1.0, "progress.findingLoneNodes");   
+    for (LinkInfo lif : fullLinkDefs_.values()) {
       lr.report();
-      NodeInfo loneNI = nodeDefs_.get(loneID);
-      int min = loneNI.getColRange(true).min;
-      int max = loneNI.getColRange(true).max;
-      
-      if ((min == max) && (min == (shadowCols_.columnCount - 1))) {
-        if (!checkDone) {
-          if (shadowCols_.columnToSource.get(Integer.valueOf(min)) != null) {
-            return (retval);
-          } else {
-            checkDone = true;
-          }
-        }
-        retval.add(loneID);
-      }    
+      NetLink link = lif.getLink();
+      retval.remove(link.getSrcNode());
+      retval.remove(link.getTrgNode());
     }
     lr.finish();
     return (retval);

@@ -303,18 +303,21 @@ public class BackgroundWorkerClient {
         progressDialog_.setVisible(false);
         progressDialog_.dispose();
       }
+      boolean didRestore = false;
       if (remoteEx != null) {
+      	// Remote exceptions can occur if a network does not
+      	// meet layout criteria.
         if (!owner_.handleRemoteException(remoteEx)) {
           ExceptionHandler.getHandler().displayException(remoteEx);
         }
-        owner_.handleCancellation();
+        didRestore = owner_.handleCancellation();
       }
       owner_.cleanUpPreEnable(result);      
       if (suw_ != null) {
         suw_.reenableControls();
         suw_.redraw();
       }
-      owner_.cleanUpPostRepaint(result);
+      owner_.cleanUpPostRepaint(result, didRestore);
     } catch (Exception ex) {
       ExceptionHandler.getHandler().displayException(ex);
     }

@@ -50,6 +50,7 @@ import org.systemsbiology.biofabric.plugin.PluginSupportFactory;
 import org.systemsbiology.biofabric.util.DataUtil;
 import org.systemsbiology.biofabric.util.ResourceManager;
 import org.systemsbiology.biofabric.util.TrueObjChoiceContent;
+import org.systemsbiology.biofabric.util.UiUtil;
 
 /****************************************************************************
 **
@@ -311,7 +312,10 @@ public class ClusterLayoutSetupDialog extends BTStashResultsDialog {
                                     JOptionPane.WARNING_MESSAGE);
       return (false);
     }
+    UiUtil.fixMePrintout("Gotta make sure that no node name maps to two nodes (with different internal IDS)");
     Map<String, Set<NetNode>> nn2ids = bfn.getNormNameToIDs();
+    
+    
     Map<String, NetNode> nn2id = PluginSupportFactory.getBuildExtractor().reduceNameSetToOne(nn2ids);
     params.install(nodeAttributes, nn2id);
     return (true);
