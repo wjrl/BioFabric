@@ -321,7 +321,11 @@ public class GWImportLoader extends FabricImportLoader {
       for (int i = 1; i < HEADER_LINES; i++) { // skip next three lines; We assume four header lines
         in.readLine();
       }
-      String[] tok = in.readLine().split(" ");
+      line = in.readLine();
+      if (line == null) { // is sif file that has very few lines
+        return (false);
+      }
+      String[] tok = line.split(" ");
       if (tok.length != 1) {  // should be #nodes here
         return (false);
       }
