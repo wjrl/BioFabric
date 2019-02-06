@@ -200,4 +200,46 @@ public class BuildExtractorImpl implements BuildExtractor {
     }
     return;
   }
+  
+  /***************************************************************************
+   **
+   ** Generates a Node->Neighbors and Node->Links Map
+   */
+  
+  public void createNeighborLinkMap(Collection<NetLink> allLinks, Set<NetNode> loneNodeIDs,
+                                    Map<NetNode, Set<NetNode>> nodeToNeighbors, Map<NetNode, Set<NetLink>> nodeToLinks,
+                                    BTProgressMonitor monitor) throws AsynchExitRequestException {
+  
+    LoopReporter lr = new LoopReporter(allLinks.size(), 20, monitor, 0.0, 1.0, "progress.generatingStructures");
+  
+    for (NetLink link : allLinks) {
+      lr.report();
+      NetNode src = link.getSrcNode(), trg = link.getTrgNode();
+    
+      if (nodeToLinks.get(src) == null) {
+        nodeToLinks.put(src, new HashSet<NetLink>());
+      }
+      if (nodeToLinks.get(trg) == null) {
+        nodeToLinks.put(trg, new HashSet<NetLink>());
+      }
+      if (nodeToNeighbors.get(src) == null) {
+        nodeToNeighbors.put(src, new HashSet<NetNode>());
+      }
+      if (nodeToNeighbors.get(trg) == null) {
+        nodeToNeighbors.put(trg, new HashSet<NetNode>());
+      }
+    
+      nodeToLinks.get(src).add(link);
+      nodeToLinks.get(trg).add(link);
+      nodeToNeighbors.get(src).add(trg);
+      nodeToNeighbors.get(trg).add(src);
+    }
+  
+    for (NetNode node : loneNodeIDs) {
+      nodeToLinks.put(node, new HashSet<NetLink>());
+      nodeToNeighbors.put(node, new HashSet<NetNode>());
+    }
+    return;
+  }
+  
 }

@@ -87,5 +87,14 @@ public interface BuildExtractor {
 
   public void preprocessLinks(List<NetLink> allLinks, Set<NetLink> retval, Set<NetLink> culled,
   		                        BTProgressMonitor monitor) throws AsynchExitRequestException;
-
+  
+  /***************************************************************************
+   **
+   ** Generates a Node->Neighbors and Node->Links Map
+   */
+  
+  public void createNeighborLinkMap(Collection<NetLink> allLinks, Set<NetNode> loneNodeIDs, Map<NetNode,
+          Set<NetNode>> nodeToNeighbors, Map<NetNode, Set<NetLink>> nodeToLinks, BTProgressMonitor monitor)
+          throws AsynchExitRequestException;
+  
 }
