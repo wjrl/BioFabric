@@ -25,6 +25,7 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.font.FontRenderContext;
+import java.awt.font.LineMetrics;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
@@ -906,18 +907,21 @@ public class PaintCacheSmall {
 	  double scaleHeight = useBounds.getHeight();
 	  double scaleWidth = useBounds.getWidth();
 	  
+	  // Precise vertical placement in short annotation blocks:
+	  LineMetrics metrics = fonts_.get(useFont).getLineMetrics(name, frc);
+	  
     if (isHoriz) {
-	    namey = rect.getCenterY() + (0.5 * scaleHeight);
+	    namey = rect.getCenterY() - (0.5 * scaleHeight) + metrics.getAscent();
 	    namex = rect.getX();      
     } else {
     	if (rotate) {
     		namey = rect.getY() + (0.5 * pad) + (0.5 * scaleWidth);
-	      namex = rect.getCenterX() + (0.5 * scaleHeight);
+	      namex = rect.getCenterX() - (0.5 * scaleHeight) + metrics.getAscent();
 	      double hold = scaleHeight;
 	      scaleHeight = scaleWidth;
 	      scaleWidth = hold;
     	} else {
-	      namey = rect.getY() + (0.5 * pad) + (0.5 * scaleHeight);
+	      namey = rect.getY() + (0.5 * pad) - (0.5 * scaleHeight) + metrics.getAscent();
 	      namex = rect.getCenterX() - (0.5 * scaleWidth);
     	}
     }

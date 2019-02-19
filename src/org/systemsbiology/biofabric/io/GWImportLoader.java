@@ -35,7 +35,6 @@ import javax.swing.JFrame;
 
 import org.systemsbiology.biofabric.api.model.NetLink;
 import org.systemsbiology.biofabric.api.model.NetNode;
-import org.systemsbiology.biofabric.api.util.ExceptionHandler;
 import org.systemsbiology.biofabric.api.util.UniqueLabeller;
 import org.systemsbiology.biofabric.api.worker.AsynchExitRequestException;
 import org.systemsbiology.biofabric.api.worker.BTProgressMonitor;
@@ -311,8 +310,9 @@ public class GWImportLoader extends FabricImportLoader {
    */
   
   public static boolean isGWFile(File file) {
+  	BufferedReader in = null;
     try {
-      BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+      in = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
   
       String line = in.readLine();
       if (line.equals("LEDA.GRAPH")) {
@@ -334,6 +334,9 @@ public class GWImportLoader extends FabricImportLoader {
       if (numNodes > 0) {
         String aNode = in.readLine();
         int len = aNode.length();
+        if (len < 4) { // No guarantee there are four characters to substring:
+        	return (false);
+        }
         if (aNode.substring(0,2).equals("|{") && aNode.substring(len - 2, len).equals("}|")) {
           return (true);
         }
@@ -345,6 +348,13 @@ public class GWImportLoader extends FabricImportLoader {
       return (false);
     } catch (NumberFormatException nfe) {
       return (false);
+    } finally {
+    	if (in != null) {
+    		try {
+    		  in.close();
+    		} catch (IOException ioe) {		
+    		}
+    	}
     }
     return (false);
   }
