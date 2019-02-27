@@ -314,6 +314,7 @@ public class PaintCacheSmall {
      
           int xStrt = sCol * BioFabricPanel.GRID_SIZE;
           int xEnd = eCol * BioFabricPanel.GRID_SIZE;
+          System.out.println("S/E: " + xStrt + " " + xEnd);
           int y = i * BioFabricPanel.GRID_SIZE;
   
           line.setLine(xStrt, y, xEnd, y);
@@ -475,6 +476,7 @@ public class PaintCacheSmall {
     
     LoopReporter lr = new LoopReporter(targets.size(), 20, monitor, 0.0, 1.0, "progress.buildNodeGraphics");
     HashMap<Integer, MinMax> nodeExtents = ext.allNodeExtents.get(Boolean.valueOf(showShadows));
+    Integer singletonMinRow = ext.singletonNodeStart.get(Boolean.valueOf(showShadows));
     MinMax nodeRows = ext.allNodeFullRange.get(Boolean.valueOf(showShadows));
     for (int i = 0; i < numNodes; i++) {
       BioFabricNetwork.NodeInfo node = targets.get(i);
@@ -519,7 +521,7 @@ public class PaintCacheSmall {
         AnnotColorSource.AnnotColor acol = an.getColor();
         AnnotColorSource.AnnotColor col = (acol == null) ? annotColors_[annotCount++ % annotColors_.length] : acol;
         lr4.report();
-        buildAnAnnotationRect(an.getRange(), an.getName(), col.getColor(), true, nodeExtents, frc, linkCols, qtpc);
+        buildAnAnnotationRect(an.getRange(), an.getName(), col.getColor(), true, nodeExtents, frc, linkCols, qtpc, null);
       }
     }
     
@@ -535,7 +537,7 @@ public class PaintCacheSmall {
           col = (acol == null) ? annotColors_[annotCount++ % annotColors_.length].getColor() : acol.getColor();
         }  
         lr5.report();
-        buildAnAnnotationRect(an.getRange(), an.getName(), col, false, linkExtents, frc, nodeRows, qtpc);
+        buildAnAnnotationRect(an.getRange(), an.getName(), col, false, linkExtents, frc, nodeRows, qtpc, singletonMinRow);
       }
     }
     
@@ -829,15 +831,17 @@ public class PaintCacheSmall {
 
   /***************************************************************************
   **
-  ** Build an annotation backRect
+  ** Build an annotation backRect. For Nodes, isHoriz is true.
   */
   
   private void buildAnAnnotationRect(MinMax dzmm, String name, Color col, boolean isHoriz, 
                                      Map<Integer, MinMax> extents, FontRenderContext frc, 
-                                     MinMax fullExtents, ArrayList<QuadTree.Payload> payloadCache) {  
+                                     MinMax fullExtents, ArrayList<QuadTree.Payload> payloadCache,
+                                     Integer extentCap) {  
     
     int minExtent = fullExtents.min; //Integer.MAX_VALUE;
-    int maxExtent = fullExtents.max; //Integer.MIN_VALUE;
+    int maxExtent = (extentCap == null) ? fullExtents.max : extentCap - 1; //Integer.MIN_VALUE;
+    
     int pad = calcAnnotationPad(fullExtents);
       
     int rectLeft;

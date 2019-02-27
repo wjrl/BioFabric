@@ -2875,12 +2875,14 @@ public class BioFabricNetwork implements Network {
   	public HashMap<Boolean, HashMap<Integer, MinMax>> allNodeExtents;
   	public HashMap<Boolean, MinMax> allLinkFullRange;
   	public HashMap<Boolean, MinMax> allNodeFullRange;
+  	public HashMap<Boolean, Integer> singletonNodeStart;
   		
   	public Extents() { 
   		allLinkExtents = new HashMap<Boolean, HashMap<Integer, MinMax>>();
   	  allNodeExtents = new HashMap<Boolean, HashMap<Integer, MinMax>>();
   	  allLinkFullRange = new HashMap<Boolean, MinMax>();
   	  allNodeFullRange = new HashMap<Boolean, MinMax>();
+  	  singletonNodeStart = new HashMap<Boolean, Integer>();
   	  boolean[] builds = new boolean[] {true, false};
   	  for (boolean build : builds) {
     	  MinMax linkFullRange = new MinMax();
@@ -2919,8 +2921,9 @@ public class BioFabricNetwork implements Network {
     	}
 	    
       for (boolean build : builds) {
-      	MinMax nodeFullRange = allNodeFullRange.get(Boolean.valueOf(build)).init();
-    	  HashMap<Integer, MinMax> nodeExtents = allNodeExtents.get(Boolean.valueOf(build));
+      	Boolean boolKey = Boolean.valueOf(build);
+      	MinMax nodeFullRange = allNodeFullRange.get(boolKey).init();
+    	  HashMap<Integer, MinMax> nodeExtents = allNodeExtents.get(boolKey);
   
 	    	List<BioFabricNetwork.NodeInfo> targets = bfn.getNodeDefList();
 	      int numNodes = targets.size();
@@ -2934,6 +2937,20 @@ public class BioFabricNetwork implements Network {
 		      MinMax cols = node.getColRange(build);
 		      nodeExtents.put(Integer.valueOf(num), cols);
 		      nodeFullRange.update(num);
+		      // Singleton node! We want to know the top of the singleton nodes so we can
+		      // not draw link groups down into that region
+		      if (cols.min == cols.max) { 
+		      	Integer existing = singletonNodeStart.get(boolKey);
+		      	Integer singMin = null;
+		      	if (existing == null) {
+		      		singMin = Integer.valueOf(num);
+		      	} else if (existing.intValue() > num) {
+		      		singMin = Integer.valueOf(num);
+		      	}
+		      	if (singMin != null) {
+		      		singletonNodeStart.put(boolKey, singMin);
+		      	}	
+		      } 
 		    }
 		    lr.finish();
     	}
