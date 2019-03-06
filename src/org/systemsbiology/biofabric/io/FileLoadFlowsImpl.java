@@ -2105,6 +2105,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
         if (headlessOracle_ != null) {
         	monitor = null;
         }
+        
         BufferedImage bi = expensiveModelOperations(bd, forMain_, monitor);
         if (linkCount_ > 10000) {
           (new GarbageRequester()).askForGC(monitor);
@@ -2576,7 +2577,7 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
   
   /***************************************************************************
   **
-  ** Background file write
+  ** Information available to the plugin
   */ 
     
   public static class PlugInInfo implements PlugInNetworkModelAPI {
@@ -2619,6 +2620,12 @@ public class FileLoadFlowsImpl implements FileLoadFlows {
     public BioFabricToolPlugInData providePluginData(String keyword) {
       return (bfn_.providePluginData(keyword));
     }
+    
+    public boolean getDisplayShadows() {
+    	FabricDisplayOptionsManager fdom = FabricDisplayOptionsManager.getMgr();
+      return (fdom.getDisplayOptions().getDisplayShadows());
+    }
+
   }
 
   /***************************************************************************

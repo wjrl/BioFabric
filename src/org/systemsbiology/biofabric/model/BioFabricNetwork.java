@@ -181,7 +181,7 @@ public class BioFabricNetwork implements Network {
         transferRelayoutBuildData(bd);
         relayoutNetwork(bd, monitor);
         break;
-      case BUILD_FROM_PLUGIN:
+      case BUILD_FROM_PLUGIN:      	
         standardBuildDataInit(bd);
         transferRelayoutBuildData(bd);
         processLinks(bd, monitor);
@@ -560,7 +560,7 @@ public class BioFabricNetwork implements Network {
   */
 
   private void processLinks(BuildData bd, BTProgressMonitor monitor) 
-  		throws AsynchExitRequestException, LayoutCriterionFailureException  {
+  		throws AsynchExitRequestException, LayoutCriterionFailureException {
     //
     // Note the allLinks Set has pruned out duplicates and synonymous non-directional links
     //

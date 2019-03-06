@@ -1,5 +1,5 @@
 /*
-**    Copyright (C) 2003-2018 Institute for Systems Biology 
+**    Copyright (C) 2003-2019 Institute for Systems Biology 
 **                            Seattle, Washington, USA. 
 **
 **    This library is free software; you can redistribute it and/or
@@ -86,4 +86,11 @@ public interface PlugInNetworkModelAPI {
   
   public BioFabricToolPlugInData providePluginData(String keyword);
  
+  /***************************************************************************
+  **
+  ** Get if we are currently set to display shadow links
+  */
+
+  public boolean getDisplayShadows();
+  
 }
