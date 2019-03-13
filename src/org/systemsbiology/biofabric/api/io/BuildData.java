@@ -95,5 +95,10 @@ public interface BuildData {
   public NodeLayout getNodeLayout();
   
   public EdgeLayout getEdgeLayout();
+  
+  public boolean getTurnOnShadows();
+  
+  public void setTurnOnShadows(boolean turnOn);
+  
 
 }

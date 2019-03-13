@@ -149,10 +149,7 @@ public class BuildDataImpl implements BuildData {
   //
   
   private FabricColorGenerator colGen_;
-  
-  
-  
-  
+
   public Map<NetNode, String> clustAssign;
 
   public UniqueLabeller idGen;
@@ -163,6 +160,7 @@ public class BuildDataImpl implements BuildData {
   public Map<String, Set<NetNode>> normNameToIDs;
   public Boolean pointUp;
   public SetLayout.LinkMeans linkMeaning;
+  private boolean turnOnShadows_;
   
   private PluginBuildData plugInData_;
   
@@ -174,6 +172,7 @@ public class BuildDataImpl implements BuildData {
         
   public BuildDataImpl(BuildMode mode) {
     this.mode_ = mode;
+    this.turnOnShadows_ = false;
   }
   
   public BuildDataImpl(BioFabricNetwork fullNet, List<BioFabricNetwork.NodeInfo> subNodes, List<BioFabricNetwork.LinkInfo> subLinks) {
@@ -414,7 +413,16 @@ public class BuildDataImpl implements BuildData {
     this.linkMeaning = linkMeaning;
     return;
   }
-
+  
+  public boolean getTurnOnShadows() {
+  	return (this.turnOnShadows_);
+  }
+  
+  public void setTurnOnShadows(boolean turnOn) {
+    this.turnOnShadows_ = turnOn;
+    return;
+  }
+  
   public boolean needsLayoutForRelayout() {
     switch (mode_) {
       case DEFAULT_LAYOUT:

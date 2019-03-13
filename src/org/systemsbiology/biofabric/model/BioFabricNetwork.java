@@ -180,11 +180,21 @@ public class BioFabricNetwork implements Network {
         standardBuildDataInit(bd);
         transferRelayoutBuildData(bd);
         relayoutNetwork(bd, monitor);
+        // Some layouts can ask to force shadows to be activated:
+		    if (bd.getTurnOnShadows()) {
+		      FabricDisplayOptions dops = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
+				  dops.setDisplayShadows(true);
+		    }
         break;
       case BUILD_FROM_PLUGIN:      	
         standardBuildDataInit(bd);
         transferRelayoutBuildData(bd);
         processLinks(bd, monitor);
+        // Some layouts can ask to force shadows to be activated:
+		    if (bd.getTurnOnShadows()) {
+		      FabricDisplayOptions dops = FabricDisplayOptionsManager.getMgr().getDisplayOptions();
+				  dops.setDisplayShadows(true);
+		    }
         break;
       case BUILD_FOR_SUBMODEL:
         colGen_ = bd.fullNet.colGen_;
@@ -263,6 +273,7 @@ public class BioFabricNetwork implements Network {
     this.layoutMode_ = built.layoutMode_;
     this.nodeAnnot_ = built.nodeAnnot_;
     this.linkAnnots_= built.linkAnnots_;
+ 
     return;
   }
   
