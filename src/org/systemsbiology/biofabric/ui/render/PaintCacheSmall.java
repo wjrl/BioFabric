@@ -314,7 +314,6 @@ public class PaintCacheSmall {
      
           int xStrt = sCol * BioFabricPanel.GRID_SIZE;
           int xEnd = eCol * BioFabricPanel.GRID_SIZE;
-          System.out.println("S/E: " + xStrt + " " + xEnd);
           int y = i * BioFabricPanel.GRID_SIZE;
   
           line.setLine(xStrt, y, xEnd, y);

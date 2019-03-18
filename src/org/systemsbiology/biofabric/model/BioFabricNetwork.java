@@ -2910,7 +2910,35 @@ public class BioFabricNetwork implements Network {
   	public Extents(BioFabricNetwork bfn, BTProgressMonitor monitor) throws AsynchExitRequestException { 
   		this();
     	boolean[] builds = new boolean[] {true, false};
-    	for (boolean build : builds) {
+    	
+    	HashMap<NID, Integer> singletons = new HashMap<NID, Integer>();
+ 
+      for (boolean build : builds) {
+      	Boolean boolKey = Boolean.valueOf(build);
+      	MinMax nodeFullRange = allNodeFullRange.get(boolKey).init();
+    	  HashMap<Integer, MinMax> nodeExtents = allNodeExtents.get(boolKey);
+  
+	    	List<BioFabricNetwork.NodeInfo> targets = bfn.getNodeDefList();
+	      int numNodes = targets.size();
+	      String tag = (build) ? "WithShadows" : "NoShadows";
+	          
+	      LoopReporter lr = new LoopReporter(targets.size(), 20, monitor, 0.0, 1.0, "progress.buildNodeExtents" + tag);
+		    for (int i = 0; i < numNodes; i++) {
+		      BioFabricNetwork.NodeInfo node = targets.get(i);
+		      int num = node.nodeRow;
+		      Integer numObj = Integer.valueOf(num);
+		      lr.report();
+		      MinMax cols = node.getColRange(build);
+		      nodeExtents.put(numObj, cols);
+		      nodeFullRange.update(num);
+		      if (build) { // only need to do this once....
+		        singletons.put(node.getNodeID(), numObj);
+		      }
+		    }
+		    lr.finish();
+    	}
+      
+      for (boolean build : builds) {
     	  MinMax linkFullRange = allLinkFullRange.get(Boolean.valueOf(build)).init();
     	  HashMap<Integer, MinMax> linkExtents = allLinkExtents.get(Boolean.valueOf(build));
     	
@@ -2927,44 +2955,36 @@ public class BioFabricNetwork implements Network {
 		      int eRow = link.bottomRow();
 		      linkExtents.put(Integer.valueOf(num), new MinMax(sRow, eRow));
 		      linkFullRange.update(num);
+		      if (build) {
+		        singletons.remove(link.getSource().getNID().getNID());
+		        singletons.remove(link.getTarget().getNID().getNID());
+		      }
 		    }
 		    lr0.finish();
     	}
-	    
+    
       for (boolean build : builds) {
-      	Boolean boolKey = Boolean.valueOf(build);
-      	MinMax nodeFullRange = allNodeFullRange.get(boolKey).init();
-    	  HashMap<Integer, MinMax> nodeExtents = allNodeExtents.get(boolKey);
-  
-	    	List<BioFabricNetwork.NodeInfo> targets = bfn.getNodeDefList();
-	      int numNodes = targets.size();
-	      String tag = (build) ? "WithShadows" : "NoShadows";
-	    
-	      LoopReporter lr = new LoopReporter(targets.size(), 20, monitor, 0.0, 1.0, "progress.buildNodeExtents" + tag);
-		    for (int i = 0; i < numNodes; i++) {
-		      BioFabricNetwork.NodeInfo node = targets.get(i);
-		      int num = node.nodeRow;
-		      lr.report();
-		      MinMax cols = node.getColRange(build);
-		      nodeExtents.put(Integer.valueOf(num), cols);
-		      nodeFullRange.update(num);
-		      // Singleton node! We want to know the top of the singleton nodes so we can
-		      // not draw link groups down into that region
-		      if (cols.min == cols.max) { 
-		      	Integer existing = singletonNodeStart.get(boolKey);
-		      	Integer singMin = null;
-		      	if (existing == null) {
-		      		singMin = Integer.valueOf(num);
-		      	} else if (existing.intValue() > num) {
-		      		singMin = Integer.valueOf(num);
-		      	}
-		      	if (singMin != null) {
-		      		singletonNodeStart.put(boolKey, singMin);
-		      	}	
-		      } 
+      	Boolean boolKey = Boolean.valueOf(build);  	
+      	String tag = (build) ? "WithShadows" : "NoShadows";
+        LoopReporter lr2 = new LoopReporter(singletons.size(), 20, monitor, 0.0, 1.0, "progress.buildSingletonExtents" + tag);
+        // Singleton node! We want to know the top of all the singleton nodes so we can
+		    // not draw link groups down into that region
+        for (NID singNode : singletons.keySet()) {
+		      Integer existing = singletonNodeStart.get(boolKey);
+		      lr2.report();
+		      Integer singMin = null;
+		      Integer singNum = singletons.get(singNode);
+		      if (existing == null) {
+		      	singMin = singNum;
+		      } else if (existing.intValue() > singNum.intValue()) {
+		      	singMin = singNum;
+		      }
+		      if (singMin != null) {
+		      	singletonNodeStart.put(boolKey, singMin);
+		      }	
 		    }
-		    lr.finish();
-    	}
+		    lr2.finish();
+      }
 	  }
   }
 }
