@@ -487,9 +487,9 @@ Here are the targets that count:
 		<exec executable="/sbin/md5" failonerror="true" output="${app.macExeDir}/BioFabricInstallImage${macDiskVersion}.dmg-MD5.txt">
 			<arg line="${app.macExeDir}/BioFabricInstallImage${macDiskVersion}.dmg"/>
 		</exec>
-		<replace file="${app.macExeDir}/BioFabricInstallImage${macDiskVersion}.dmg-MD5.txt" token="${app.macExeDir}/" value=""/>
-		<copy file="${app.linuxDistFile}" todir="${app.releaseDists}" />
-		<copy file="${app.linuxDistFile}-MD5.txt" todir="${app.releaseDists}" />
+		<replace file="${app.macExeDir}/BioFabricInstallImage${app.macDiskVersion}.dmg-MD5.txt" token="${app.macExeDir}/" value=""/>
+		<copy file="${app.macExeDir}/BioFabricInstallImage${macDiskVersion}.dmg" todir="${app.releaseDists}" />
+		<copy file="${app.macExeDir}/BioFabricInstallImage${macDiskVersion}.dmg-MD5.txt" todir="${app.releaseDists}" />
 	</target>
 
 	<!-- Build Source Tar Files: -->
