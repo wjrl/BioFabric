@@ -38,7 +38,9 @@ Version 2 contains a number of new features, many of which are dedicated to hand
 
 * Shadow links can be toggled from a button on the toolbar.
 
-* **NEW in Beta release 2** The mouse scroll wheel now zooms the main view, and scrolling can be accomplished by pressing the left mouse button and dragging. 
+* **NEW in Beta release 2** The mouse scroll wheel now zooms the main view, and scrolling can be accomplished by pressing the left mouse button and dragging.
+
+* **NEW in Beta release 2** Java heap limit for all three platform executables has been increased to 8 GB. It can be tweaked most easily on the Linux version, which sets the value in a shell script. 
 
 * Basic [GW files](http://www.algorithmic-solutions.info/leda_manual/GW.html) can be imported, link groups can be either gathered per node or per network, and multiple node zones per node can be labeled (hat tip to [Rishi Desai](https://github.com/RishiDesai) for these features).
 
