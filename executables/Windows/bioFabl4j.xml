@@ -7,7 +7,7 @@
   <cmdLine></cmdLine>
   <chdir></chdir>
   <priority>normal</priority>
-  <downloadUrl>http://java.com/download</downloadUrl>
+  <downloadUrl>https://jdk.java.net/</downloadUrl>
   <supportUrl></supportUrl>
   <customProcName>false</customProcName>
   <stayAlive>false</stayAlive>
@@ -18,11 +18,12 @@
     <cp>sBioFabric-V__WJRL_VERNUM__.jar</cp>
   </classPath>
   <jre>
-    <path></path>
-    <minVersion>1.5.0</minVersion>
+    <!-- To bundle a JRE and NOT search for a JRE, we set the path  -->
+    <!-- http://launch4j.sourceforge.net/docs.html (jre tag) -->
+    <path>lib/__WJRL_JDK_VER__</path>
     <maxVersion></maxVersion>
     <jdkPreference>preferJre</jdkPreference>
-    <maxHeapSize>4000</maxHeapSize>
+    <maxHeapSize>8000</maxHeapSize>
   </jre>
   <versionInfo>
     <fileVersion>__WJRL_FILE_VERNUM__</fileVersion>

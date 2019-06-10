@@ -5,13 +5,25 @@
 <!ENTITY appVersionMajor "2">
 <!ENTITY appVersionMinor "0">
 <!ENTITY appVersionPatch "B">
-<!ENTITY appVersionBuild "1">
-<!ENTITY appVersionWinA "247">
-<!ENTITY appVersionWinB "2339">
+<!ENTITY appVersionBuild "2">
+<!ENTITY appVersionWinA "245">
+<!ENTITY appVersionWinB "2216">
 <!ENTITY appVersion "&appVersionMajor;.&appVersionMinor;.&appVersionPatch;.&appVersionBuild;">
 <!ENTITY appNDVersion "&appVersionMajor;&appVersionMinor;&appVersionPatch;&appVersionBuild;">
 <!ENTITY appWinFileVersion "&appVersionMajor;.&appVersionMinor;.&appVersionWinA;.&appVersionWinB;">
-<!ENTITY appDate "Mon Sep 3 23:39:51 PDT 2018">
+<!ENTITY appDate "Mon Apr 29 22:16:30 PDT 2019">
 <!ENTITY appDatedVersion "&appVersion; &appDate;">
-<!ENTITY appYear "2018">
+<!ENTITY appYear "2019">
+<!ENTITY jdkVer "12.0.1">
+<!ENTITY macName "BioFabric2.0BetaRel2">
+<!ENTITY macDiskVersion "V2BetaRel2">
+<!ENTITY macDiskVolName "BioFabric V2.0 Beta2" >
+<!ENTITY macDisplayName "BioFabric V2 Beta Rel2 ">
+<!ENTITY macShortversion "V 2.0.BR2">	
+<!ENTITY macVersion "2.0.BR2">
+<!ENTITY macCopyright "Copyright (c) 2003-2019 Institute for Systems Biology. Portions Copyright (c) 2018-2019 Rishi Desai">
+
+
+
+
 

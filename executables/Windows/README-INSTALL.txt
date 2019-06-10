@@ -1,3 +1,1 @@
-To install BioFabric, drag the BioFabric.exe file out of
-the zip archive onto your desktop.  Double-clicking on the
-icon should launch the application.
+To install BioFabric, double-click on the BioFabricInstaller program. If you want to install it in the Windows "Program Files" folder, you will need to run the BioFabricInstaller as an Admin user. If you are not an Admin, you will need to choose to install it within your home directory. 

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <!--
-  Copyright (C) 2003-2018 by Institute for Systems Biology,
+  Copyright (C) 2003-2019 by Institute for Systems Biology,
   Seattle, Washington, USA.  All rights reserved.
   
   This source code is distributed under the GNU Lesser 
@@ -10,30 +10,54 @@
  -->
 
 <!--
+PREREQUISITES:
+
 You must install the osslsigncode tool (https://sourceforge.net/projects/osslsigncode/) to sign the exe:
-You must have appbundler (floating around on github) to build Mac app bundle
+You must have appbundler (https://github.com/TheInfiniteKind/appbundler) to build the Mac app bundle. The
+  version used here is a custom (appbundler-1.01wl2.jar) version that runs on Mac 10.10.5 and is aware of new OpenJDK layout.
+You must have the launch4j (http://launch4j.sourceforge.net/) to build the Windows exe
+You must have installed the NSIS installer builder. On Mac, it can be installed via MacPorts using "sudo port install nsis"
+To sign the Mac app and installer, you need to be running on Mac Sierra or higher, and have an App Developer certificate on your keychain.
+To sign the Windows and Linux apps, you need to have a signing cert from e.g. GoDaddy.
+You must have downloaded OpenJDKs for Windows, Mac, and Linux. They are bundled with the BioFabric exe
 
 Layout of build directory:
 BioFabRelease
  |- lib
- |   |- appbundler-1.01wl.jar
- |   |-
+ |   |- appbundler-1.01wl2.jar
+ |   |- osslsigncode
  |- launch4j 
  |   |- launch4j distribution files
  |- KeyFiles
- |   |- isbcert.p12
+ |   |- codeSigning.zip (GoDaddy signing zip)
+ |   |- ISB_codesign.key (Encrypted ISB Private Key)
+ |   |- appleDev.properties (ID of Apple developer for signing, e.g. has line "app.devID=Steve Jobs (D01)")
+ |   |- 
  |- extlib (currently empty, holds external jars needed for compilation)
+ |   |- 
+ |- OpenJDKs
+ |   |- Apple
+ |   |   |- jdk-12.0.1.jdk (e.g.)
+ |   |   |   |- Contents
+ |   |- Windows
+ |   |   |- jdk-12.0.1 (e.g.)
+ |   |- Linux
+ |   |   |- jdk-12.0.1 (e.g.)
  -->
 
 <!--
 build.xml
 
 Here are the targets that count:
- signRegJars
  buildExeJar
+ cleanBuildExeJar
+ buildWindowsRelease
  buildSrcTar
+ buildKeyStore
  releaseDistribs
 -->
+
+<!-- This approach could be replaced with properties files; a holdover from 2003! -->
 
 <!DOCTYPE BuildFile [
 <!ENTITY % AppConfig SYSTEM "config/AppConfig.dtd">
@@ -42,280 +66,442 @@ Here are the targets that count:
 
 <project name="BioFabric" default="buildExeJar" basedir=".">
 
-  <property environment="env"/>
+	<property environment="env"/>
 
-  <property name="app.releaseDir"               location="${env.HOME}/BioFabRelease" />
-  <property name="app.l4jDir"                   location="${app.releaseDir}/launch4j" />
-  <property name="app.extLibDir"                location="${app.releaseDir}/extlib" />	
-  <property name="app.keyStoreDir"              location="${app.releaseDir}/KeyFiles" />	
-  <property name="app.buildDir"                 location="${app.releaseDir}/build" />
-  <property name="app.version"                  value="&appVersion;" />
-  <property name="app.winFileVersion"           value="&appWinFileVersion;" />
-  <property name="app.NDversion"                value="&appNDVersion;" />
-  <property name="app.datedVersion"             value="&appDatedVersion;" />
-  <property name="app.date"                     value="&appDate;" />
-  <property name="app.year"                     value="&appYear;" />
-  <property name="app.rootPackage"              value="org" />
-
-  <property name="app.exeDir"                   location="${app.releaseDir}/Executables" />
-  <property name="app.exeSrcDir"                location="executables" />
-  <property name="app.winExeDir"                location="${app.exeDir}/Windows" />
-  <property name="app.winExeSrcDir"             location="${app.exeSrcDir}/Windows" />
-  <property name="app.linExeDir"                location="${app.exeDir}/Linux" />
-  <property name="app.linExeSrcDir"             location="${app.exeSrcDir}/Linux" />
-  <property name="app.macExeDir"                location="${app.exeDir}/Apple" />
-  <property name="app.macExeSrcDir"             location="${app.exeSrcDir}/Apple" />
-  <property name="app.classesDir"               location="${app.releaseDir}/classes" />
-
-  <property name="app.srcDir"                   location="src" />
-  <property name="app.srcTarDir"                location="${app.releaseDir}/srcTar" />
-  <property name="app.signDir"                  location="${app.releaseDir}/signing" />	
-  <property name="app.baseDir"                  location="${app.srcDir}/org" />
-  <property name="app.licenseDir"               location="${app.srcDir}/org/systemsbiology/biofabric/license" />
-  <property name="app.classesLicenseDir"        location="${app.classesDir}/org/systemsbiology/biofabric/license" />
-  <property name="app.jarFile"                  value="${app.buildDir}/bioFabric-V${app.version}.jar" />
-  <property name="app.signJarFile"              value="${app.signDir}/sBioFabric-V${app.version}.jar" />
-  <property name="app.srcFile"                  location="${app.buildDir}/&appName;-&appVersion;-src.tar.gz" />
-  <property name="app.tarBaseDir"               location="${app.srcDir}" />
-  <property name="app.signedJarDir"             location="CodeSigning" />
-  <property name="app.buildWin1"                 value="${basedir}/releaseTools/buildWindowsExe-Step1.sh" />
-  <property name="app.buildWin2"                 value="${basedir}/releaseTools/buildWindowsExe-Step2.sh" />
-  <property name="app.buildWin3"                 value="${basedir}/releaseTools/buildWindowsExe-Step3.sh" />
-  <property name="app.buildLin"                 value="${basedir}/releaseTools/buildLinuxReleaseTar.sh" />
-  <property name="app.buildMac"                 value="${basedir}/releaseTools/buildMacReleaseDir.sh" />
-  <property name="app.signJar"                  value="${basedir}/releaseTools/signIt.sh" />
-  <property name="app.releaseDists"             location="releaseDistArchive" />
-
-<!-- Get the classpath to include external libraries -->
-
-  <path id="app.classpath">
-    <pathelement location="${app.classesDir}" />
-    <fileset dir="${app.extLibDir}"> 
-      <!-- <include name="yourExternalJarGoesHere.jar" /> -->
-    </fileset>
-  </path>
-
-<!-- Compiles -->
-
-  <target name="compile15">
-    <mkdir dir="${app.classesDir}" />
-  	<mkdir dir="${app.extLibDir}" />
-    <javac srcdir="${app.srcDir}"
-           destdir="${app.classesDir}"
-           source="1.5"
-           target="1.5"
-           debug="on"
-    	   includeantruntime="false">
-      <classpath refid="app.classpath" />
-      <compilerarg value="-Xlint:none"/>
-    </javac>
-  </target>
-
-
-<!-- Clean -->
-
-  <target name="clean">
-    <delete dir="${app.buildDir}" quiet="yes" />
-    <delete dir="${app.classesDir}" quiet="yes" />
-  </target>
-	
-<!-- Copying -->
-
-  <target name="srcCopy">
-    <copy todir="${app.srcTarDir}">
-      <fileset dir="${app.srcDir}">
-        <include name="**" />
-      </fileset>
-    </copy>
-  </target>
-
-  <target name="copyResources">
-    <copy todir="${app.classesDir}">
-      <fileset dir="${app.srcDir}">
-        <include name="**/biofabric/images/*.gif" />
-        <include name="**/biofabric/props/*.properties" />
-        <include name="**/biofabric/plugin/core/*.properties" />
-        <include name="**/biofabric/plugin/plugInListing.xml" />        
-        <include name="**/biofabric/license/*" />
-      </fileset>
-    </copy>
-  </target>
-
-  <target name="copySrcResources">
-    <copy todir="${app.srcTarDir}">
-      <fileset dir="${app.srcDir}">
-        <include name="**/biofabric/images/*.gif" />
-        <include name="**/biofabric/props/*.properties" />
-        <include name="**/biofabric/plugin/core/*.properties" />
-        <include name="**/biofabric/plugin/plugInListing.xml" />        
-        <include name="**/biofabric/license/*" />
-      </fileset>
-    </copy>
-    <copy todir="${app.srcTarDir}">
-      <fileset dir="${app.classesDir}">
-      	<include name="**/biofabric/license/about.html" />
-      </fileset>
-    </copy>
-  </target>
-			
-<!-- Interesting, but puts pass as a command line argument -->
-
-  <target name="hide">
-  	<input message="Enter Password:" addproperty="password"/>
-  	<exec executable="sh">
-  	<arg line="-c 'stty echo isig &lt; /dev/tty'"/>
-  	</exec>
-	<echo message="The hidden message is: ${password}"/>
-  </target>
-
-<!-- Executables -->
+	<property name="app.releaseDir"               location="${env.HOME}/BioFabRelease" />
+	<property name="app.l4jDir"                   location="${app.releaseDir}/launch4j" />
+	<property name="app.extLibDir"                location="${app.releaseDir}/extlib" />	
+	<property name="app.keyStoreDir"              location="${app.releaseDir}/KeyFiles" />	
+	<property name="app.buildDir"                 location="${app.releaseDir}/build" />
+	<property name="app.buildLibDir"              location="${app.releaseDir}/lib" />
+	<property name="app.openJDKDir"               location="${app.releaseDir}/OpenJDKs" />
+	<property name="app.JREDir"                   location="${app.releaseDir}/customJREs" />
+	<property name="app.winInstaller"             location="${app.releaseDir}/winInstaller" />
+	<property name="app.version"                  value="&appVersion;" />
+	<property name="app.winFileVersion"           value="&appWinFileVersion;" />
+	<property name="app.NDversion"                value="&appNDVersion;" />
+	<property name="app.datedVersion"             value="&appDatedVersion;" />
+	<property name="app.date"                     value="&appDate;" />
+	<property name="app.year"                     value="&appYear;" />
+	<property name="app.jdkVer"                   value="&jdkVer;" />
+	<property name="app.macName"                  value="&macName;" />
+	<property name="app.macDisplayName"           value="&macDisplayName;" />
+	<property name="app.macShortversion"          value="&macShortversion;" />	
+	<property name="app.macVersion"               value="&macVersion;" />
+	<property name="app.macCopyright"             value="&macCopyright;" />
+	<property name="app.macDiskVersion"           value="&macDiskVersion;" />
+	<property name="app.macDiskVolName"           value="&macDiskVolName;" />
 		
-  <target name="signJars" depends="buildExeJar">
-     <delete dir="${app.signDir}" quiet="true" />
-     <mkdir dir="${app.signDir}" />
-  	 <copy file="${app.jarFile}" todir="${app.signDir}" />
-  	 <echo message="Need password! Execute: ${app.signJar} ${app.keyStoreDir} ${app.signDir} ${app.version}"/>
-  </target>
+	<property name="app.rootPackage"              value="org" />
+	
+	<property name="app.exeDir"                   location="${app.releaseDir}/Executables" />
+	<property name="app.exeSrcDir"                location="executables" />
+	<property name="app.winExeDir"                location="${app.exeDir}/Windows" />
+	<property name="app.winExeSrcDir"             location="${app.exeSrcDir}/Windows" />
+	<property name="app.linExeDir"                location="${app.exeDir}/Linux" />
+	<property name="app.linExeSrcDir"             location="${app.exeSrcDir}/Linux" />
+	<property name="app.macExeDir"                location="${app.exeDir}/Apple" />
+	<property name="app.macExeSrcDir"             location="${app.exeSrcDir}/Apple" />
+	<property name="app.classesDir"               location="${app.releaseDir}/classes" />
+	
+	<property name="app.srcDir"                   location="src" />
+	<property name="app.srcTarDir"                location="${app.releaseDir}/srcTar" />
+	<property name="app.signDir"                  location="${app.releaseDir}/signing" />	
+	<property name="app.baseDir"                  location="${app.srcDir}/org" />
+	<property name="app.licenseDir"               location="${app.srcDir}/org/systemsbiology/biofabric/license" />
+	<property name="app.classesLicenseDir"        location="${app.classesDir}/org/systemsbiology/biofabric/license" />
+	<property name="app.jarFile"                  value="${app.buildDir}/bioFabric-V${app.version}.jar" />
+	<property name="app.signJarFile"              value="sBioFabric-V${app.version}.jar" />
+	<property name="app.srcFile"                  location="${app.buildDir}/&appName;-&appVersion;-src.tar.gz" />
+	<property name="app.linuxDistTar"             value="&appName;-&appVersion;.tgz" />
+	<property name="app.linuxDistFile"            location="${app.linExeDir}/${app.linuxDistTar}" />
+	<property name="app.tarBaseDir"               location="${app.srcDir}" />
+	<property name="app.toolsDir"                 value="${basedir}/releaseTools" />
+	<property name="app.buildKeystore"            value="${app.toolsDir}/buildKeystore.sh" />
+	<property name="app.buildWinRunLaunch4J"      value="${app.toolsDir}/buildWindowsRunLaunch4J.sh" />
+	<property name="app.buildWinSignExe"          value="${app.toolsDir}/buildWindowsSignExe.sh" />
+	<property name="app.buildWinCopyLic"          value="${app.toolsDir}/copyWindowsLicenses.sh" />
+	<property name="app.buildWinSignInstall"      value="${app.toolsDir}/buildWindowsSignInstaller.sh" />
+	<property name="app.buildWinBuildZip"         value="${app.toolsDir}/buildWindowsBuildZip.sh" />
+	<property name="app.buildLin"                 value="${app.toolsDir}/buildLinuxReleaseTar.sh" />
+	<property name="app.buildMac"                 value="${app.toolsDir}/buildMacReleaseDir.sh" />
+	<property name="app.signJar"                  value="${app.toolsDir}/signIt.sh" />
+	<property name="app.buildJREs"                value="${app.toolsDir}/makeJREs.sh" />
+	<property name="app.releaseDists"             location="releaseDistArchive" />
+	
+	<!-- Identity of Apple Developer for signing -->
+	
+	<property file="${app.keyStoreDir}/appleDev.properties" />
+	
+	<!-- Password util. Can be run as a separate target as a dependency -->	
+	<target name="getPassword">
+		<input message="Password:" addproperty="password">
+			<handler classname="org.apache.tools.ant.input.SecureInputHandler" />
+		</input>
+	</target>	
 		
-  <target name="buildWindowsExe-Step1">
-  	<delete dir="${app.winExeDir}" quiet="true" />
-    <mkdir dir="${app.winExeDir}" />
-    <copy file="${app.winExeSrcDir}/bioFabl4j.xml" tofile="${app.winExeDir}/bioFabl4jWorking.xml" />
-    <replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_FILE_VERNUM__" value="${app.winFileVersion}"/>
-    <replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_JARLOC__" value="${app.signDir}"/>
-    <replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_VERNUM__" value="${app.version}"/>
-    <replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_EXELOC__" value="${app.winExeDir}"/>
-    <replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_RESLOC__" value="${app.winExeSrcDir}"/>
-    <replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_FULL_VERSTRING__" value="${app.datedVersion} "/>
-    <replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_CURRYEAR__" value="${app.year}"/>
-    <exec executable="${app.buildWin1}" failonerror="true">
-      <arg line="${app.winExeDir} ${app.winExeSrcDir} ${app.l4jDir} ${app.NDversion} ${app.year} ${app.releaseDir}/lib/  ${app.keyStoreDir}" />
-    </exec>
-  </target>
+	<!-- Java Key store for code signing. Only needs to be run once, when a new signing key is bought -->
+		
+	<target name="buildKeyStore" depends="getPassword">
+		<mkdir dir="${app.toolsDir}/classes" />
+		<javac srcdir="${app.toolsDir}"
+		       destdir="${app.toolsDir}/classes"
+		       source="1.5"
+		       target="1.5"
+		       debug="on"
+			   includeantruntime="false">
+		  <classpath refid="app.classpath" />
+		  <compilerarg value="-Xlint:none"/>
+		</javac>
+		<jar destfile="${app.toolsDir}/ImportKey.jar" basedir="${app.toolsDir}/classes">
+			<manifest>
+				<attribute name="Main-Class" value="keytools.ImportKey"/>
+			</manifest>
+		</jar>
+		<!-- send output to /dev/null so password not echoed to display -->
+		<exec executable="${app.buildKeystore}" inputstring="${password}" failonerror="true" output="/dev/null">
+			<arg line="${app.keyStoreDir} ${app.toolsDir} phase_1" />
+		</exec>
+		<exec executable="${app.buildKeystore}" inputstring="${password}" failonerror="true" output="/dev/null">
+			<arg line="${app.keyStoreDir} ${app.toolsDir} phase_2" />
+		</exec> 
+	</target>	
+
+	<!-- Get the classpath to include external libraries -->
+
+	<path id="app.classpath">
+		<pathelement location="${app.classesDir}" />
+		<fileset dir="${app.extLibDir}"> 
+			<!-- <include name="yourExternalJarGoesHere.jar" /> -->
+		</fileset>
+	</path>
+
+	<!-- Compile -->
+
+	<target name="compile15">
+		<mkdir dir="${app.classesDir}" />
+		<mkdir dir="${app.extLibDir}" />
+		<javac srcdir="${app.srcDir}"
+		       destdir="${app.classesDir}"
+		       source="1.5"
+		       target="1.5"
+		       debug="on"
+			   includeantruntime="false">
+			<classpath refid="app.classpath" />
+			<compilerarg value="-Xlint:none"/>
+		</javac>
+	</target>
+
+	<!-- Clean -->
+
+	<target name="clean">
+		<delete dir="${app.buildDir}" quiet="yes" />
+		<delete dir="${app.classesDir}" quiet="yes" />
+	</target>
 	
-  <target name="buildWindowsExe-Step2">
-  	<echo message="Need password!  DO WE NEED TO CD FIRST??? Execute: ${app.buildWin2} ${app.winExeDir} ${app.winExeSrcDir} ${app.l4jDir} ${app.NDversion} ${app.year} ${app.releaseDir}/lib/  ${app.keyStoreDir}"/>
-  </target>	
+	<!-- Copying -->
+
+	<target name="srcCopy">
+		<copy todir="${app.srcTarDir}">
+			<fileset dir="${app.srcDir}">
+				<include name="**" />
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="copyResources">
+		<copy todir="${app.classesDir}">
+			<fileset dir="${app.srcDir}">
+				<include name="**/biofabric/images/*.gif" />
+				<include name="**/biofabric/props/*.properties" />
+				<include name="**/biofabric/plugin/core/*.properties" />
+				<include name="**/biofabric/plugin/plugInListing.xml" />        
+				<include name="**/biofabric/license/*" />
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="copySrcResources">
+		<copy todir="${app.srcTarDir}">
+			<fileset dir="${app.srcDir}">
+				<include name="**/biofabric/images/*.gif" />
+				<include name="**/biofabric/props/*.properties" />
+				<include name="**/biofabric/plugin/core/*.properties" />
+				<include name="**/biofabric/plugin/plugInListing.xml" />        
+				<include name="**/biofabric/license/*" />
+			</fileset>
+		</copy>
+		<copy todir="${app.srcTarDir}">
+			<fileset dir="${app.classesDir}">
+				<include name="**/biofabric/license/about.html" />
+			</fileset>
+		</copy>
+	</target>
 	
-  <target name="buildWindowsExe-Step3">
-    <exec executable="${app.buildWin2}" failonerror="true">
-      <arg line="${app.winExeDir} ${app.winExeSrcDir} ${app.l4jDir} ${app.NDversion} ${app.year} ${app.releaseDir}/lib/  ${app.keyStoreDir}" />
-    </exec>
-    <copy file="${app.winExeDir}/BioFabric${app.NDversion}.zip" tofile="${app.releaseDists}/BioFabric${app.NDversion}.zip" />
-  </target>	
+	<!-- Build about file to have current version info -->
+
+	<target name="installAbout">
+		<copy file="${app.licenseDir}/about.html" tofile="${app.classesLicenseDir}/about.html" />
+		<replace file="${app.classesLicenseDir}/about.html" token="_V_WJRL_V_" value="${app.version}"/>
+		<replace file="${app.classesLicenseDir}/about.html" token="_D_WJRL_D_" value="${app.date}"/>
+		<replace file="${app.classesLicenseDir}/about.html" token="_Y_WJRL_Y_" value="${app.year}"/>
+	</target>	
+
+	<!-- Build the JAR file: -->
+
+	<target name="buildExeJar" depends="compile15, copyResources, installAbout">
+		<mkdir dir="${app.buildDir}" />
+		<jar destfile="${app.jarFile}" basedir="${app.classesDir}">
+			<manifest>
+				<attribute name="Main-Class" value="org.systemsbiology.biofabric.app.BioFabricApplication"/>
+			</manifest>
+		</jar>
+	</target>	
 	
-  <target name="buildLinuxTar">
-  	<delete dir="${app.linExeDir}" quiet="true" />
-    <mkdir dir="${app.linExeDir}" />
-    <exec executable="${app.buildLin}" failonerror="true">
-      <arg line="${app.signDir} ${app.linExeDir} ${app.linExeSrcDir} ${app.version} ${app.NDversion} ${app.year}"/>
-    </exec>
-   <copy file="${app.linExeDir}/BioTapestryEditorForLinux${app.NDversion}.tgz" tofile="${app.releaseDists}/BioTapestryEditorForLinux${app.NDversion}.tgz" />
-  </target>
-
-
-<!-- Build about file to have current version info -->
-
-  <target name="installAbout">
-    <copy file="${app.licenseDir}/about.html" tofile="${app.classesLicenseDir}/about.html" />
-    <replace file="${app.classesLicenseDir}/about.html" token="_V_WJRL_V_" value="${app.version}"/>
-    <replace file="${app.classesLicenseDir}/about.html" token="_D_WJRL_D_" value="${app.date}"/>
-    <replace file="${app.classesLicenseDir}/about.html" token="_Y_WJRL_Y_" value="${app.year}"/>
-  </target>
-
-<!-- Build the JAR file: -->
-
-  <target name="buildExeJar" depends="clean, compile15, copyResources, installAbout">
-    <mkdir dir="${app.buildDir}" />
-    <jar destfile="${app.jarFile}" basedir="${app.classesDir}">
-  	  <manifest>
-  	    <attribute name="Main-Class" value="org.systemsbiology.biofabric.app.BioFabricApplication"/>
-  	  </manifest>
-    </jar>
-  </target>
+	<!-- Clean and build the JAR file: -->
 	
-  <!-- Build Source Tar Files: -->
+	<target name="cleanBuildExeJar" depends="clean, buildExeJar" />
+	
+	<!-- Build the customized JREs from the OpenJDK: -->
+	
+	<target name="buildOpenWinJRE" depends="buildExeJar">
+		<mkdir dir="${app.JREDir}" />
+		<exec executable="${app.buildJREs}" failonerror="true">
+			<arg line="${app.openJDKDir} ${app.buildDir} ${app.version} ${app.jdkVer} ${app.JREDir} Win" />
+		</exec>
+	</target>
+	
+	<target name="buildOpenMacJRE" depends="buildExeJar">
+		<mkdir dir="${app.JREDir}" />
+		<exec executable="${app.buildJREs}" failonerror="true">
+			<arg line="${app.openJDKDir} ${app.buildDir} ${app.version} ${app.jdkVer} ${app.JREDir} Mac" />
+		</exec>
+	</target>
+	
+	<target name="buildOpenLinuxJRE" depends="buildExeJar">
+		<mkdir dir="${app.JREDir}" />
+		<exec executable="${app.buildJREs}" failonerror="true">
+			<arg line="${app.openJDKDir} ${app.buildDir} ${app.version} ${app.jdkVer} ${app.JREDir} Linux" />
+		</exec>
+	</target>	
+
+	<!-- Executables -->	
+	
+	<target name="signJars" depends="buildExeJar, getPassword">
+		<delete dir="${app.signDir}" quiet="true" />
+	 	<mkdir dir="${app.signDir}" />
+	 	<copy file="${app.jarFile}" todir="${app.signDir}" />
+	 	<exec executable="${app.signJar}" inputstring="${password}" failonerror="true">
+			<arg line="${app.keyStoreDir} ${app.signDir} ${app.version}" />
+		</exec>
+	</target>
+
+	<!-- Windows -->
+	<!-- Step 1: with a signed jar, build the Windows version using Launch4j to turn jar into an exe file -->	
+	
+	<target name="buildWindowsExe-Step1" depends="signJars">
+		<delete dir="${app.winExeDir}" quiet="true" />
+		<mkdir dir="${app.winExeDir}" />
+		<copy file="${app.winExeSrcDir}/bioFabl4j.xml" tofile="${app.winExeDir}/bioFabl4jWorking.xml" />
+		<replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_FILE_VERNUM__" value="${app.winFileVersion}"/>
+		<replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_JARLOC__" value="${app.signDir}"/>
+		<replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_VERNUM__" value="${app.version}"/>
+		<replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_EXELOC__" value="${app.winExeDir}"/>
+		<replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_RESLOC__" value="${app.winExeSrcDir}"/>
+		<replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_FULL_VERSTRING__" value="${app.datedVersion} "/>
+		<replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_CURRYEAR__" value="${app.year}"/>
+		<replace file="${app.winExeDir}/bioFabl4jWorking.xml" token="__WJRL_JDK_VER__" value="win-jre-${app.jdkVer}"/>
+		<exec executable="${app.buildWinRunLaunch4J}" failonerror="true">
+			<arg line="${app.winExeDir} ${app.winExeSrcDir} ${app.l4jDir} ${app.NDversion} ${app.year} ${app.releaseDir}/lib/ ${app.keyStoreDir}" />
+		</exec>
+	</target>
+	
+	<!--Windows step 2: sign the exe file (note the osslsigncode insists on asking for password again itself)-->
+	
+	<target name="buildWindowsExe-Step2" depends="buildWindowsExe-Step1">
+ 		<exec executable="${app.buildWinSignExe}" failonerror="true">
+			<arg line="${app.winExeDir} ${app.buildLibDir} ${app.keyStoreDir}" />
+  		</exec>
+	</target>	
+	
+	<!--Windows step 3: bundle exe with JRE using NSIS installer -->
+	
+	<target name="buildWindowsExe-Step3" depends="buildWindowsExe-Step2, buildOpenWinJRE">
+		<delete dir="${app.winInstaller}" quiet="true" />
+		<mkdir dir="${app.winInstaller}" />
+		<copy file="${app.winExeSrcDir}/BioFabInstaller.nsi" tofile="${app.winInstaller}/BioFabInstallerWorking.nsi" />
+		<replace file="${app.winInstaller}/BioFabInstallerWorking.nsi" token="__WJRL_JDK_VER__" value="win-jre-${app.jdkVer}"/>
+		<copy file="${app.winExeDir}/BioFabric.exe" tofile="${app.winInstaller}/BioFabric.exe" />
+		<copy todir="${app.winInstaller}/lib/win-jre-${app.jdkVer}">
+			<fileset dir="${app.JREDir}/win-jre-${app.jdkVer}" />
+		</copy>
+		<exec executable="${app.buildWinCopyLic}" failonerror="true">
+			<arg line="${app.winInstaller} ${app.winExeSrcDir} ${app.year}" />
+		</exec>
+		<exec executable="makensis" failonerror="true" dir="${app.winInstaller}">
+			<arg line="${app.winInstaller}/BioFabInstallerWorking.nsi" />
+		</exec>
+	</target>		
+ 	
+	<!--Windows step 4: sign the NSIS installer (note the osslsigncode insists on asking for password again itself) -->
+	
+	<target name="buildWindowsExe-Step4" depends="buildWindowsExe-Step3">
+		<exec executable="${app.buildWinSignInstall}" failonerror="true">
+			<arg line="${app.winInstaller} ${app.buildLibDir} ${app.keyStoreDir}" />
+		</exec>
+	</target>	
+		
+	<!--Windows step 5:  Zip up the installer in a Zip file for download-->
+	
+	<target name="buildWindowsRelease" depends="buildWindowsExe-Step4">
+		<exec executable="${app.buildWinBuildZip}" failonerror="true">
+			<arg line="${app.winInstaller} ${app.winExeSrcDir} ${app.NDversion}" />
+		</exec>
+		<exec executable="/sbin/md5" failonerror="true" output="${app.winInstaller}/BioFabric${app.NDversion}.zip-MD5.txt">
+			<arg line="${app.winInstaller}/BioFabric${app.NDversion}.zip"/>
+		</exec>
+		<replace file="${app.winInstaller}/BioFabric${app.NDversion}.zip-MD5.txt" token="${app.winInstaller}/" value=""/>
+		<copy file="${app.winInstaller}/BioFabric${app.NDversion}.zip" todir="${app.releaseDists}" />
+		<copy file="${app.winInstaller}/BioFabric${app.NDversion}.zip-MD5.txt" todir="${app.releaseDists}" />
+	</target>		
+	
+	<!--Linux -->	
+	
+	<target name="buildLinuxTar" depends="signJars, buildOpenLinuxJRE">
+		<delete dir="${app.linExeDir}" quiet="true" />
+		<mkdir dir="${app.linExeDir}/BioFabric" />
+		<copy file="${app.linExeSrcDir}/BioFabricTemplate.sh" tofile="${app.linExeDir}/BioFabric/BioFabric${app.macDiskVersion}.sh" />
+		<replace file="${app.linExeDir}/BioFabric/BioFabric${app.macDiskVersion}.sh" token="__WJRL_VERNUM__" value="${app.version}"/>
+		<replace file="${app.linExeDir}/BioFabric/BioFabric${app.macDiskVersion}.sh" token="__WJRL_JDK_VER__" value="lin-jre-${app.jdkVer}"/>
+		<copy todir="${app.linExeDir}/BioFabric/Licenses">
+			<fileset dir="${app.linExeSrcDir}/Licenses" />
+		</copy>
+		<copy todir="${app.linExeDir}/BioFabric/lib/lin-jre-${app.jdkVer}">
+			<fileset dir="${app.JREDir}/lin-jre-${app.jdkVer}" />
+		</copy>
+		<copy file="${app.signDir}/${app.signJarFile}" tofile="${app.linExeDir}/BioFabric/lib/${app.signJarFile}" />
+		<exec executable="/usr/bin/find" failonerror="true">
+			<arg line="${app.linExeDir}/BioFabric -name .DS_Store -delete"/>
+		</exec>	
+		<tar destfile="${app.linuxDistFile}" 
+			 basedir="${app.linExeDir}/BioFabric"
+			 compression="gzip">
+		</tar>
+		<exec executable="/sbin/md5" failonerror="true" output="${app.linuxDistFile}-MD5.txt">
+			<arg line="${app.linuxDistFile}" />
+		</exec>
+		<replace file="${app.linuxDistFile}-MD5.txt" token="${app.linExeDir}/" value=""/>
+		<copy file="${app.linuxDistFile}" todir="${app.releaseDists}" />
+		<copy file="${app.linuxDistFile}-MD5.txt" todir="${app.releaseDists}" />
+		
+	</target>
+
+	<!-- Mac AppBundler definition -->
+	
+	<taskdef name="bundleapp" classname="com.oracle.appbundler.AppBundlerTask" classpath="${app.releaseDir}/lib/appbundler-1.01wl2.jar" />
+	
+	<!-- Build the Mac App using appbundler -->
+	
+	<target name="buildMac" depends="buildOpenMacJRE, signJars">
+		<delete dir="${app.macExeDir}" quiet="true" />
+		<mkdir dir="${app.macExeDir}" />
+		<bundleapp outputdirectory="${app.macExeDir}"
+				   name="${app.macName}"
+				   displayname="${app.macDisplayName}"
+			   identifier="org.systemsbiology.biofabric"
+			   icon="${app.macExeSrcDir}/BioFabIcon.icns"
+			   shortversion="${app.macShortversion}"	
+			   signature="BFAB"
+			   mainclassname="org.systemsbiology.biofabric.app.BioFabricApplication"
+			   version="${app.macVersion}"
+			   copyright="${app.macCopyright}"
+			   supportsAutomaticGraphicsSwitching="false">
+			<classpath file="${app.signDir}/${app.signJarFile}" />
+			<runtime dir="${app.JREDir}/mac-jre-${app.jdkVer}/Contents/Home" />
+			<option value="-Dapple.laf.useScreenMenuBar=true" />
+			<option value="-Xmx8000m" />
+		</bundleapp>
+	</target>
+	
+	<!-- Build the folder for the disk image -->	
+	
+	<target name="stageForMacDmg" depends="buildMac">
+		<exec executable="${app.buildMac}" failonerror="true">
+			<arg line="${app.macExeDir} ${app.macExeSrcDir} ${app.year}"/>
+		</exec>
+	</target>	
+
+	<!-- Sign both the BioFabric app and the JRE runtime -->
+	
+	<target name="signMac" depends="stageForMacDmg">
+		<exec executable="/usr/bin/codesign" failonerror="true">
+			<arg line="-s &quot;Developer ID Application: ${app.devID}&quot; -v &quot;${app.macExeDir}/${app.macName}.app/Contents/PlugIns/mac-jre-${app.jdkVer}/&quot;"/>
+		</exec>
+		<exec executable="/usr/bin/codesign" failonerror="true">
+			<arg line="-s &quot;Developer ID Application: ${app.devID}&quot; -v &quot;${app.macExeDir}/${app.macName}.app&quot;"/>
+		</exec>
+	</target>
+	
+	<!-- Build the Mac DMG for distribution -->	
+	
+	<!-- OK, would like to copy the executable using ant copy, but we lose the execute permissions bit! -->
+	<target name="macDisk" depends="signMac">
+		<delete dir="${app.macExeDir}/disk" quiet="true" />
+		<delete file="${app.macExeDir}/BioFabricInstallImage${macDiskVersion}.dmg" quiet="true" />
+		<mkdir dir="${app.macExeDir}/disk" />
+		<exec executable="/bin/cp" failonerror="true">
+			<arg line="-r &quot;${app.macExeDir}/${app.macName}.app&quot; &quot;${app.macExeDir}/disk/${app.macName}.app&quot;"/>
+		</exec>
+		<!-- <move file="${app.buildDir}/${app.macName}.app" todir="${app.buildDir}/disk" /> -->
+		<copy todir="${app.macExeDir}/disk/Licenses">
+			<fileset dir="${app.macExeDir}/Licenses" />
+		</copy>
+		<exec executable="/usr/bin/find" failonerror="true">
+			<arg line="${app.macExeDir}/disk -name .DS_Store -delete"/>
+		</exec>	
+		<copy file="${app.macExeDir}/INSTALL-README.rtf" tofile="${app.macExeDir}/disk/INSTALL-README.rtf"/>
+		<exec executable="/usr/bin/hdiutil" failonerror="true">
+			<arg line="create ${app.macExeDir}/BioFabricInstallImage${app.macDiskVersion}.dmg -volname &quot;${app.macDiskVolName}&quot; -fs HFS+ -srcfolder ${app.macExeDir}/disk -size 50m"/>
+		</exec>
+	</target>	
+
+	<!-- Have to be on Mac Sierra or later to sign the disk image. Drop dependency so it can be done on different machine -->	
+	
+	<target name="signMacDiskOnSierraOnly" > <!--  depends="macDisk"> -->
+		<exec executable="/usr/bin/codesign" failonerror="true">
+			<arg line="-s &quot;Developer ID Application: ${app.devID}&quot; -v ${app.macExeDir}/BioFabricInstallImage${app.macDiskVersion}.dmg"/>
+		</exec>
+	</target>	
+  		
+	<!-- Have to be on Mac Sierra or later to verify the disk image -->
+	
+	<target name="verifyMacDiskOnSierraOnly" depends="signMacDiskOnSierraOnly">
+		<exec executable="/usr/sbin/spctl" failonerror="true">
+  			<arg line="-a -t open --context context:primary-signature ${app.macExeDir}/BioFabricInstallImage${macDiskVersion}.dmg"/>
+		</exec>
+	</target>
+	
+	<!-- MD5 after the disk image is signed -->
+	
+	<target name="macDiskMD5" depends="verifyMacDiskOnSierraOnly">
+		<exec executable="/sbin/md5" failonerror="true" output="${app.macExeDir}/BioFabricInstallImage${macDiskVersion}.dmg-MD5.txt">
+			<arg line="${app.macExeDir}/BioFabricInstallImage${macDiskVersion}.dmg"/>
+		</exec>
+		<replace file="${app.macExeDir}/BioFabricInstallImage${macDiskVersion}.dmg-MD5.txt" token="${app.macExeDir}/" value=""/>
+		<copy file="${app.linuxDistFile}" todir="${app.releaseDists}" />
+		<copy file="${app.linuxDistFile}-MD5.txt" todir="${app.releaseDists}" />
+	</target>
+
+	<!-- Build Source Tar Files: -->
  
-  <target name="buildSrcTar" depends="clean, srcCopy, copyResources, installAbout, copySrcResources">
-    <mkdir dir="${app.buildDir}" />
-    <tar destfile="${app.srcFile}" 
-         basedir="${app.srcTarDir}"
-         includes="${app.rootPackage}/**/*.java,${app.rootPackage}/**/images/*.gif,${app.rootPackage}/**/*.properties,${app.rootPackage}/**/plugInListing.xml,${app.rootPackage}/**/licenses/*, ${app.rootPackage}/**/about.html, LICENSE, LICENSE-SUN" 
-         compression="gzip">
-    </tar>
-  </target>
+	<target name="buildSrcTar" depends="clean, srcCopy, copyResources, installAbout, copySrcResources">
+		<mkdir dir="${app.buildDir}" />
+		<tar destfile="${app.srcFile}" 
+			 basedir="${app.srcTarDir}"
+			 includes="${app.rootPackage}/**/*.java,${app.rootPackage}/**/images/*.gif,${app.rootPackage}/**/*.properties,${app.rootPackage}/**/plugInListing.xml,${app.rootPackage}/**/licenses/*, ${app.rootPackage}/**/about.html, LICENSE, LICENSE-SUN" 
+			 compression="gzip">
+		</tar>
+  	</target>	
 
-  <!-- Mac AppBundler Stuff -->
-	
-  <taskdef name="bundleapp"
-           classname="com.oracle.appbundler.AppBundlerTask"   
-           classpath="${app.releaseDir}/lib/appbundler-1.01wl.jar" />
-
-  <target name="buildMac">
-  	<delete dir="${app.macExeDir}" quiet="true" />
-    <mkdir dir="${app.macExeDir}" />
-    <bundleapp outputdirectory="${app.macExeDir}"
-               name="BioFabric2.0BetaRel1"
-               displayname="BioFabric V2 Beta Rel1 "
-               identifier="org.systemsbiology.biofabric"
-	       icon="${app.macExeSrcDir}/BioFabIcon.icns"
-	       shortversion="V 2.0.BR1"	
-	       signature="BFAB"
-           mainclassname="org.systemsbiology.biofabric.app.BioFabricApplication"
-	       version="2.0.BR1"
-	       copyright="BioFabric Version 2.0 Beta Rel 1 Copyright (c) 2003-2018 Institute for Systems Biology"
-	       supportsAutomaticGraphicsSwitching="false">
-       <classpath file="${app.releaseDir}/signing/sBioFabric-V2.0.B.1.jar" />
-       <runtime dir="/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home" />
-       <option value="-Dapple.laf.useScreenMenuBar=true" />
-       <option value="-Xmx4800m" />
-    </bundleapp>
-  </target>
-	
-  <target name="stageForMacDmg" depends="buildMac">
-	<exec executable="${app.buildMac}" failonerror="true">
-	   <arg line="${app.macExeDir} ${app.macExeSrcDir} ${app.year}"/>
-	</exec>
-  </target>	
-		
-  <target name="signMac" depends="stageForMacDmg">
-  	<exec executable="/usr/bin/codesign" failonerror="true">
-  	  <arg line="-s &quot;Developer ID Application: William Longabaugh (DKRXRD3Z9U)&quot; -v &quot;${app.macExeDir}/BioFabric2.0BetaRel1.app/Contents/PlugIns/JavaAppletPlugin.plugin&quot;"/>
-  	</exec>
-    <exec executable="/usr/bin/codesign" failonerror="true">
-      <arg line="-s &quot;Developer ID Application: William Longabaugh (DKRXRD3Z9U)&quot; -v &quot;${app.macExeDir}/BioFabric2.0BetaRel1.app&quot;"/>
-    </exec>
-  </target>
-	
-  <!-- OK, would like to copy the executable using ant copy, but we lose the execute permissions bit! -->
-  <target name="macDisk" depends="signMac">
-	<delete dir="${app.macExeDir}/disk" quiet="true" />
-        <delete file="${app.macExeDir}/BioFabricInstallImageV2BetaRel1.dmg" quiet="true" />
-        <mkdir dir="${app.macExeDir}/disk" />
-        <exec executable="/bin/cp" failonerror="true">
-           <arg line="-r &quot;${app.macExeDir}/BioFabric2.0BetaRel1.app&quot; &quot;${app.macExeDir}/disk/BioFabricV2-BetaRel1.app&quot;"/>
-        </exec>
-        <!-- <move file="${app.buildDir}/BioFabric2.0Beta1.app" todir="${app.buildDir}/disk" /> -->
-	<copy todir="${app.macExeDir}/disk/Licenses">
-      <fileset dir="${app.macExeDir}/Licenses" />
-    </copy>
-	<copy file="${app.macExeDir}/INSTALL-README.rtf" tofile="${app.macExeDir}/disk/INSTALL-README.rtf"/>
-	<exec executable="/usr/bin/hdiutil" failonerror="true">
-	  <arg line="create ${app.macExeDir}/BioFabricInstallImageV2BetaRel1.dmg -volname &quot;BioFabric V2.0 Beta1&quot; -fs HFS+ -srcfolder ${app.macExeDir}/disk -size 250m"/>
-	</exec>
-  </target>	
-
-  <target name="signMacDiskOnSierraOnly" depends="macDisk">
-  	<exec executable="/usr/bin/codesign" failonerror="true">
-  	  <arg line="-s &quot;Developer ID Application: William Longabaugh (DKRXRD3Z9U)&quot; -v ${app.macExeDir}/BioFabricInstallImageV2BetaRel1.dmg"/>
-  	</exec>
-  </target>	
-  			
-  <target name="verifyMacDiskOnSierraOnly">
-  	<exec executable="/usr/sbin/spctl" failonerror="true">
-  	  <arg line="-a -t open --context context:primary-signature ${app.macExeDir}/BioFabricInstallImageV2BetaRel1.dmg"/>
-  	</exec>
-  </target>				
-	
 </project>
 

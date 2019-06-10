@@ -1,4 +1,9 @@
-# /bin/sh
+# /bin/bash
+
+#
+# This script runs launch4j, which creates a windows executable out of the
+# jar file.
+#
 
 EXEHOME=$1
 RESHOME=$2
