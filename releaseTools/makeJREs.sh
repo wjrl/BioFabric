@@ -27,8 +27,8 @@ cd ${JRE_TARG}
 if [ ${WHICH} = "Linux" ]; then
   rm -rf lin-jre-${JDK_VER}
 
-  ${MAC_JAVA_HOME}/bin/jlink --module-path ${WIN_JAVA_HOME}/jmods --add-modules ${JRE_DEPS} --output lin-jre-${JDK_VER} --strip-debug --compress 2 --no-header-files --no-man-pages
-
+  ${MAC_JAVA_HOME}/bin/jlink --module-path ${LIN_JAVA_HOME}/jmods --add-modules ${JRE_DEPS} --output lin-jre-${JDK_VER} --strip-debug --compress 2 --no-header-files --no-man-pages
+  chmod +x lin-jre-${JDK_VER}/bin/*
   find lin-jre-${JDK_VER} -name .DS_Store -delete
 fi
 
