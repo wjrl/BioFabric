@@ -1,17 +1,17 @@
 <!-- These are things that change with version-->
-<!-- Beta releases use day numbers for windows file versions https://www.epochconverter.com/days/2018 -->
+<!-- Beta releases use day numbers for windows file version A https://www.epochconverter.com/days/2019 -->
 
 <!ENTITY appName "BioFabric">
 <!ENTITY appVersionMajor "2">
 <!ENTITY appVersionMinor "0">
 <!ENTITY appVersionPatch "B">
 <!ENTITY appVersionBuild "2">
-<!ENTITY appVersionWinA "245">
-<!ENTITY appVersionWinB "2216">
+<!ENTITY appVersionWinA "161">
+<!ENTITY appVersionWinB "2133">
 <!ENTITY appVersion "&appVersionMajor;.&appVersionMinor;.&appVersionPatch;.&appVersionBuild;">
 <!ENTITY appNDVersion "&appVersionMajor;&appVersionMinor;&appVersionPatch;&appVersionBuild;">
 <!ENTITY appWinFileVersion "&appVersionMajor;.&appVersionMinor;.&appVersionWinA;.&appVersionWinB;">
-<!ENTITY appDate "Mon Apr 29 22:16:30 PDT 2019">
+<!ENTITY appDate "Sun Jun 9 21:33:44 PDT 2019">
 <!ENTITY appDatedVersion "&appVersion; &appDate;">
 <!ENTITY appYear "2019">
 <!ENTITY jdkVer "12.0.1">
