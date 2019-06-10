@@ -399,7 +399,7 @@ Here are the targets that count:
 	<!-- Mac AppBundler definition -->
 	
 	<taskdef name="bundleapp" classname="com.oracle.appbundler.AppBundlerTask" classpath="${app.releaseDir}/lib/appbundler-1.01wl2.jar" />
-	
+
 	<!-- Build the Mac App using appbundler -->
 	
 	<target name="buildMac" depends="buildOpenMacJRE, signJars">
@@ -475,21 +475,21 @@ Here are the targets that count:
   		
 	<!-- Have to be on Mac Sierra or later to verify the disk image -->
 	
-	<target name="verifyMacDiskOnSierraOnly" depends="signMacDiskOnSierraOnly">
+	<target name="verifyMacDiskOnSierraOnly" > <!-- depends="signMacDiskOnSierraOnly"> -->
 		<exec executable="/usr/sbin/spctl" failonerror="true">
-  			<arg line="-a -t open --context context:primary-signature ${app.macExeDir}/BioFabricInstallImage${macDiskVersion}.dmg"/>
+  			<arg line="-a -t open --context context:primary-signature ${app.macExeDir}/BioFabricInstallImage${app.macDiskVersion}.dmg"/>
 		</exec>
 	</target>
 	
 	<!-- MD5 after the disk image is signed -->
 	
 	<target name="macDiskMD5" depends="verifyMacDiskOnSierraOnly">
-		<exec executable="/sbin/md5" failonerror="true" output="${app.macExeDir}/BioFabricInstallImage${macDiskVersion}.dmg-MD5.txt">
-			<arg line="${app.macExeDir}/BioFabricInstallImage${macDiskVersion}.dmg"/>
+		<exec executable="/sbin/md5" failonerror="true" output="${app.macExeDir}/BioFabricInstallImage${app.macDiskVersion}.dmg-MD5.txt">
+			<arg line="${app.macExeDir}/BioFabricInstallImage${app.macDiskVersion}.dmg"/>
 		</exec>
 		<replace file="${app.macExeDir}/BioFabricInstallImage${app.macDiskVersion}.dmg-MD5.txt" token="${app.macExeDir}/" value=""/>
-		<copy file="${app.macExeDir}/BioFabricInstallImage${macDiskVersion}.dmg" todir="${app.releaseDists}" />
-		<copy file="${app.macExeDir}/BioFabricInstallImage${macDiskVersion}.dmg-MD5.txt" todir="${app.releaseDists}" />
+		<copy file="${app.macExeDir}/BioFabricInstallImage${app.macDiskVersion}.dmg" todir="${app.releaseDists}" />
+		<copy file="${app.macExeDir}/BioFabricInstallImage${app.macDiskVersion}.dmg-MD5.txt" todir="${app.releaseDists}" />
 	</target>
 
 	<!-- Build Source Tar Files: -->
