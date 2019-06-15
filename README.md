@@ -10,7 +10,7 @@ BioFabric is an open-source network visualization tool that uses a new approach:
 ---
 
 
-Work on Version 2.0 is continuing (Sept 2018). It is currently available as [Version 2.0 Beta Release 1](https://github.com/wjrl/BioFabric/releases/tag/V2.0Beta1a), and bug fixing continues with frequent merges into the master branch.
+Work on Version 2.0 is continuing (June 2019). It is currently available as [Version 2.0 Beta Release 2](https://github.com/wjrl/BioFabric/releases/tag/V2.0Beta2), and bug fixing continues with frequent merges into the master branch.
 
 Version 2 contains a number of new features, many of which are dedicated to handling *very* large networks. While there are still bugs being addressed, this new version is the only practical way to deal with large networks with over a million links.
 
@@ -38,9 +38,15 @@ Version 2 contains a number of new features, many of which are dedicated to hand
 
 * Shadow links can be toggled from a button on the toolbar.
 
+* **NEW in Beta release 2** The mouse scroll wheel now zooms the main view, and scrolling can be accomplished by pressing the left mouse button and dragging.
+
+* **NEW in Beta release 2** Java heap limit for all three platform executables has been increased to 8 GB. It can be tweaked most easily on the Linux version, which sets the value in a shell script. 
+
 * Basic [GW files](http://www.algorithmic-solutions.info/leda_manual/GW.html) can be imported, link groups can be either gathered per node or per network, and multiple node zones per node can be labeled (hat tip to [Rishi Desai](https://github.com/RishiDesai) for these features).
 
 ---
+
+This Version 2.0 Beta Release 2 replaces Version 2.0 Beta Release 1.
 
 The current stable production release (Version 1, released 2012) is available as the V1.0 tag.
 

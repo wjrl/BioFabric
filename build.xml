@@ -379,14 +379,20 @@ Here are the targets that count:
 		<copy todir="${app.linExeDir}/BioFabric/lib/lin-jre-${app.jdkVer}">
 			<fileset dir="${app.JREDir}/lin-jre-${app.jdkVer}" />
 		</copy>
+		<!--Dang ant copy loses the permissions -->
+		<chmod file="${app.linExeDir}/BioFabric/BioFabric${app.macDiskVersion}.sh" perm="+x"/>
+		<chmod file="${app.linExeDir}/BioFabric/lib/lin-jre-${app.jdkVer}/bin/java" perm="+x"/>
+		<chmod file="${app.linExeDir}/BioFabric/lib/lin-jre-${app.jdkVer}/bin/keytool" perm="+x"/>
 		<copy file="${app.signDir}/${app.signJarFile}" tofile="${app.linExeDir}/BioFabric/lib/${app.signJarFile}" />
 		<exec executable="/usr/bin/find" failonerror="true">
 			<arg line="${app.linExeDir}/BioFabric -name .DS_Store -delete"/>
-		</exec>	
-		<tar destfile="${app.linuxDistFile}" 
-			 basedir="${app.linExeDir}/BioFabric"
-			 compression="gzip">
-		</tar>
+		</exec>
+		<!--Dang ant tar loses the permissions too-->
+	    <exec executable="/usr/bin/tar" failonerror="true" dir="${app.linExeDir}">
+	        <arg value="-cvzf"/>
+	        <arg value="${app.linuxDistFile}"/>
+	        <arg value="BioFabric"/>
+	    </exec>
 		<exec executable="/sbin/md5" failonerror="true" output="${app.linuxDistFile}-MD5.txt">
 			<arg line="${app.linuxDistFile}" />
 		</exec>
