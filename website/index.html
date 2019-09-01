@@ -38,13 +38,11 @@ font-family: Arial, Helvetica, sans-serif;
 <tr><td bgcolor="#E0E0E0"><font size="2"><b>Contents</b></font></td></tr>
 <tr><td bgcolor="#F0FOF0"><font size="2"><a href="#demo">Super-Quick Demo</a></font></td></tr>
 <tr><td bgcolor="#F0FOF0"><font size="2"><a href="#description">Description</a></font></td></tr>
-<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#launch">Try BioFabric Online</a></font></td></tr>
 <tr><td bgcolor="#F0FOF0"><font size="2"><a href="#download">Download</a></font></td></tr>
-<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#gallery"><b>NEW!</b> Gallery</a></font></td></tr>
+<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#gallery">Gallery</a></font></td></tr>
 <tr><td bgcolor="#F0FOF0"><font size="2"><a href="#docs">Documentation</a></font></td></tr>
 <tr><td bgcolor="#F0FOF0"><font size="2"><a href="#group">BioFabric-users Google Group</a></font></td></tr>
 <tr><td bgcolor="#F0FOF0"><font size="2"><a href="#blog">BioFabric Blog</a></font></td></tr>
-<tr><td bgcolor="#F0FOF0"><font size="2"><a href="#gaggle">BioFabric for Gaggle</a></font></td></tr>
 <tr><td bgcolor="#F0FOF0"><font size="2"><a href="#sif">SIF files</a></font></td></tr>
 <tr><td bgcolor="#F0FOF0"><font size="2"><a href="#data">Data Files</a></font></td></tr>
 <tr><td bgcolor="#F0FOF0"><font size="2"><a href="#pub">Publications</a></font></td></tr>
@@ -59,10 +57,7 @@ font-family: Arial, Helvetica, sans-serif;
 <center>
 <table width="70%" cols="1">
 <tr><th bgcolor="#E0E0E0"><center>News</center></th></tr>
-<tr><td bgcolor="#E0E0E0"><center><b>February 15, 2013:</b> The BioFabric paper is now available in final published form!</br>See <a href="#pub">Publications</a></center></td></tr>
-<tr><td bgcolor="#E0E0E0"><center><b>February 19, 2013:</b> Our new gallery of networks has started. Lots more to come! </br>See <a href="gallery/index.html">Gallery</a></center></td></tr>
-<tr><td bgcolor="#E0E0E0"><center><b>February 20, 2013:</b> Come visit the new BioFabric blog at <a href="http://biofabric.blogspot.com/">biofabric.blogspot.com</a></center></td></tr>
-<tr><td bgcolor="#E0E0E0"><center><b>May 6, 2013:</b> BioFabric is now also hosted on <a href="https://github.com/wjrl/BioFabric">GitHub</a></center></td></tr>
+<tr><td bgcolor="#FFE0E0"><center><b>June 15, 2019:</b> BioFabric Version 2 Beta Release 2 is now on <a href="https://github.com/wjrl/BioFabric/releases/tag/V2.0Beta2">GitHub</a></center></td></tr>
 </table>
 </center>
 
@@ -158,29 +153,36 @@ of the network structure while using the same underlying two-dimensional resourc
 </ul>
 </p>
 
-
-<hr noshade="true" width="67%"/>
-<a name="launch"/>
-<h3>Try BioFabric Online</h3>
-<p>
-BioFabric can be downloaded as a standalone executable and run on your Windows or Mac computer; see <a href="#download">below</a>.
-However, if you just want to have a look, it can be run from the following link using Java WebStart.  Once it is running, you can import
-a <b>tab-delimited</b> <code>.sif</code> file using <b>File-&gt;Import-&gt;Import SIF File...</b>.
-</p>
-<p>
-Click <a href="webStart/bioFabric.jnlp"><b>HERE</b></a> to run BioFabric (version 1.0.0, released 07/27/12, 
-<b>REQUIRES Java 5</b> or above; <b>Java 6 highly recommended for Macs</b>) using Java Web Start. 
-</p>
-<p>
-If you are working with very large networks, you will need the huge memory version (4 GB allocated for the Java heap) along with the hardware
-to make this feasable. Click <a href="webStart/bioFabricBigMem.jnlp"><b>HERE</b></a> 
-to run this version (version 1.0.0, released 07/27/12, <b>REQUIRES Java 5</b> or above; <b>Java 6 highly recommended for Macs</b>). 
-</p>
-
-
 <hr noshade="true" width="67%"/>
 <a name="download"/>
 <h3>Download</h3>
+
+<p>
+BioFabric Version 1.0, available from the links below, remains the current production version. However, it is
+now almost seven years old. Development has been continuing over the years, and Version 2.0 is now approaching
+completion. <b>Version 2 Beta Release 2</b> is now available on 
+<a href="https://github.com/wjrl/BioFabric/releases/tag/V2.0Beta2">GitHub</a>. A list of the improvements
+introduced in V2 is provided in the <a href="https://github.com/wjrl/BioFabric/blob/master/README.md">GitHub README</a>.
+While there are still some issues to be resolved, it is so much better in so many ways that it is probably the better
+option at this point. If you run into any problems with the Beta version, you can post a bug report on the 
+<a href="https://github.com/wjrl/BioFabric/issues">GitHub Issues</a> page.
+</p>
+<p>
+Starting with <b>Version 2 Beta Release 2</b>, BioFabric is bundled with its own Java runtime for all three
+popular platforms, so no additional Java Runtime Environment (JRE) installation is required. The executables are
+also signed, so there should be no issues installing or running the program (though with Mac you will need to at
+least temporarily allow GateKeeper to install programs not from the App Store). The Windows version is no longer
+a single jar file, and it comes with an installer program that also installs the Java runtime. Plus, there is finally 
+a tailored Linux version as well!
+</p>
+<p>
+Also starting with <b>Version 2 Beta Release 2</b>, to keep up with the times. BioFabric sets the Java heap space 
+to 8 GB. If this is a problem for your system, feel free to report it on the <a href="https://github.com/wjrl/BioFabric/issues">GitHub Issues</a> 
+page.
+</p>
+
+<h4>(Soon to be Obsolete) Version 1 Download Instructions</h4>
+
 <p>
 BioFabric is written in Java, and can be run on your Windows, Mac, or Linux computer.  Note that all these downloadable executables 
 require that you first download and install the Java Runtime Environment (JRE), which can be downloaded from 
@@ -246,13 +248,7 @@ But if that route does not work, use the information provided in "<i>Gatekeeper 
 </table>
 </center>
 <br/>
-<li><b>Linux:</b> Sorry this is taking so long to get this done. In the meantime, use the <a href="#launch">webstart link</a> on this page to run on Linux.</li><br/>
-
-<!-- <li><b>Linux:</b> Download the compressed tar file <a href="executables/BioFabricForLinux-1.0.0.tgz">BioFabricForLinux-1.0.0.tgz</a>
-and place it where you want to install the program.  Untar the file: <code>tar xvzf BioFabricForLinux-1.0.0.tgz</code>, then
-<code>cd BioFabric</code>, and run the wrapper script <code>BioFabric.sh</code>.  You MUST have defined the environment
-variable <code>JAVA_HOME</code> or have the correct <code>java/bin</code> directory in your <code>PATH</code>.</li><br/> -->
-
+<li><b>Linux:</b> For a Linux version, use the new V2 Beta release described above.</li><br/>
 </ul>
 </p>
 
@@ -260,19 +256,21 @@ variable <code>JAVA_HOME</code> or have the correct <code>java/bin</code> direct
 <a name="gallery"/>
 <h3>Gallery</h3>
 <p>
-We are continuing to add to the <a href="gallery/index.html">gallery</a> of BioFabric networks. Go and check them out!
+The <a href="gallery/index.html">gallery</a> of BioFabric networks shows some interesting applications of the
+software. Go and check them out!
 </p>
 
 <hr noshade="true" width="67%"/>
 <a name="docs"/>
 <h3>Documentation</h3>
 <p>
-Version 1.0.0 of BioFabric has just been released, and the user documentation is... lagging (sorry!). Since the program is just a viewer and 
+Documentation continues to lag. The BioFabric blog <a href="http://biofabric.blogspot.com/">Combing the Hairball</a> has not been updated in a few
+years, but does contain many articles with useful tips and tricks that can help get you started. Also, since the program is just a viewer and 
 not an editor, all you really need to do to get started is to import a <b>tab-delimited</b> <code>.sif</code> file (just like Cytoscape uses) 
-using <b>File-&gt;Import-&gt;Import SIF File...</b> and start playing around. The <a href="http://dx.doi.org/10.1186/1471-2105-13-275">BioFabric paper</a> 
+using <b>File-&gt;Import-&gt;Import SIF File...</b> and start playing around. Examples of SIF files are 
+<a href="sifFiles.html">here</a>. The <a href="http://dx.doi.org/10.1186/1471-2105-13-275">BioFabric paper</a> 
 in BMC Bioinformatics gives a good overview of essential features to know about.  Finally, the <a href="http://groups.google.com/group/biofabric-users">BioFabric-users Google 
-group</a> is the place to ask any questions that you may have.  It is also the place where I am adding HOWTO posts for using BioFabric; these posts will
-probably form the basis for future official documentation.
+group</a> is the place to ask any questions that you may have.
 </p>
 
 <hr noshade="true" width="67%"/>
@@ -289,27 +287,13 @@ and discussions about BioFabric.  The group home page is:
 <hr noshade="true" width="67%"/>
 <a name="blog"/>
 <h3>BioFabric Blog</h3>
-The blog <i>Combing the Hairball</i> is active, with new posts about various BioFabric topics:
+The blog <i>Combing the Hairball</i> has not been updated for some time, but the posts there about various 
+BioFabric topics can provide insights into using the software:
 <center>
 <blockquote>
 <a href="http://biofabric.blogspot.com/"><code>biofabric.blogspot.com</code></a> 
 </blockquote>
 </center>
-
-<hr noshade="true" width="67%"/>
-<a name="gaggle"/>
-<h3>BioFabric for Gaggle</h3>
-<p>
-The <a href="http://gaggle.systemsbiology.net/docs/">Gaggle</a> is a framework, developed at the Institute for Systems Biology, 
-"...for exchanging data between independently developed software tools and databases to enable interactive exploration of 
-systems biology data."  BioFabric supports Gaggle, and the link below will launch the
-program with the Gaggle feature enabled. Launch the Gaggle Boss and other Gaggle-aware applications using the links on the  
-<a href="http://gaggle.systemsbiology.net/2007-04/blankslate.php">Gaggle Blank Slate</a> page.
-</p>
-<p>
-Click <a href="webStart/bioFabricWithGaggle.jnlp"><b>HERE</b></a> to run the Gaggle-enabled BioFabric
-(version 1.0.0, released 07/27/12, <b>REQUIRES Java 5</b> or above; <b>Java 6 highly recommended for Macs</b>) using Java Web Start. 
-</p>
 
 <hr noshade="true" width="67%"/>
 <a name="sif"/>
@@ -323,10 +307,9 @@ A variety of <code>.sif</code> files are available <a href="sifFiles.html">here<
 <h3>Data File</h3>
 <p>
 The network described in Case Study III of the BioFabric paper is available <a href="data/CaseStudyIII-CorrGE5.zip">here</a> (32 MB).
-<b>WARNING!</b> This is a compressed zip file of a network with a huge number (over 1,000,000) of links, and is a <b>poor example</b> for 
-learning how to use BioFabric.  It requires the Java WebStart "huge memory version" of BioFabric to run (link provided above), and a computer 
-with enough physical memory to handle it.  It is only included here because the BMC Bioinformatics supplementary materials site does not support files
-this large.  Instead, use the <code>.sif</code> example network files provided above, or some of the other <code>.bif</code> files available 
+<b>WARNING!</b> This is a compressed zip file of a network with over 1,000,000 links, and is a <b>poor example</b> for 
+learning how to use BioFabric. It is included here because the BMC Bioinformatics supplementary materials site did not support files
+this large. Instead, use the <code>.sif</code> example network files provided above, or some of the other <code>.bif</code> files available 
 as supplementary materials to the BMC paper.
 </p>
 
@@ -350,7 +333,7 @@ BMC Bioinformatics, 13:275, 2012.
 <a name="sourcecode"/>
 <h3>Source Code</h3>
 <p>
-A tar file of the current version of the source code is available <a href="src/BioFabric-1.0.0-src.tar.gz">here</a>, but it lacks the toolbar 
+A tar file of Version 1.0 of the source code is available <a href="src/BioFabric-1.0.0-src.tar.gz">here</a>, though it lacks the toolbar 
 image files that are needed to get the program running. The entire project is now also hosted on <a href="https://github.com/wjrl/BioFabric">GitHub</a>.
 </p>
 <hr noshade="true" width="67%"/>
@@ -416,7 +399,7 @@ liability stemming from the use of this software.
 <hr noshade="true"/>
 
 <p>
-<b>Last updated: April 21, 2014</b>
+<b>Last updated: June 15, 2019</b>
 </p>
 <p>
 <b><code>wlongabaugh -a~t- systemsbiology -d~o~t- org</code></b>
