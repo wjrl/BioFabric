@@ -31,6 +31,7 @@ BioFabRelease
  |- KeyFiles
  |   |- codeSigning.zip (GoDaddy signing zip)
  |   |- ISB_codesign.key (Encrypted ISB Private Key)
+ |   |- ISBSignCert.jks (after buildKeyStore target has run)
  |   |- appleDev.properties (ID of Apple developer for signing, e.g. has line "app.devID=Steve Jobs (D01)")
  |   |- 
  |- extlib (currently empty, holds external jars needed for compilation)
@@ -504,7 +505,7 @@ Here are the targets that count:
 		<mkdir dir="${app.buildDir}" />
 		<tar destfile="${app.srcFile}" 
 			 basedir="${app.srcTarDir}"
-			 includes="${app.rootPackage}/**/*.java,${app.rootPackage}/**/images/*.gif,${app.rootPackage}/**/*.properties,${app.rootPackage}/**/plugInListing.xml,${app.rootPackage}/**/licenses/*, ${app.rootPackage}/**/about.html, LICENSE, LICENSE-SUN" 
+			 includes="${app.rootPackage}/**/*.java,${app.rootPackage}/**/images/*.gif,${app.rootPackage}/**/*.properties,${app.rootPackage}/**/plugInListing.xml,${app.rootPackage}/**/license/*" 
 			 compression="gzip">
 		</tar>
   	</target>	
